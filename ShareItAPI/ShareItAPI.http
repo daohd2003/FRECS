@@ -1,0 +1,6 @@
+@ShareItAPI_HostAddress = http://localhost:5232
+
+GET {{ShareItAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
