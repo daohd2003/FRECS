@@ -6,26 +6,24 @@ using System.Threading.Tasks;
 
 namespace BusinessObject.Enums
 {
+    /// <summary>
+    /// Vai trò người dùng trong hệ thống
+    /// </summary>
     public enum UserRole
     {
         /// <summary>
         /// Người dùng thông thường, có thể thuê quần áo
         /// </summary>
-        Customer,
+        customer,
 
         /// <summary>
         /// Nhân viên quản lý đơn hàng, sản phẩm
         /// </summary>
-        Staff,
+        provider,
 
         /// <summary>
         /// Quản trị viên hệ thống
         /// </summary>
-        Admin,
-
-        /// <summary>
-        /// Chủ hệ thống/platform
-        /// </summary>
-        SuperAdmin
+        admin
     }
 }

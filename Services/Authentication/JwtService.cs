@@ -46,7 +46,6 @@ namespace Services.Authentication
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("email", user.Email),
-                new Claim("name", user.Username),
                 new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
@@ -133,8 +132,8 @@ namespace Services.Authentication
             var principal = ValidateToken(accessToken, validateLifetime: false);
             if (principal == null) return null;
 
-            var userIdClaim = principal?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdClaim, out int userId)) return null;
+            var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out Guid userId)) return null;
 
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime < DateTime.UtcNow)
@@ -150,8 +149,8 @@ namespace Services.Authentication
             user.RefreshTokenExpiryTime = newExpiry;
             await _userRepository.UpdateAsync(user);
 
-            var tokenHander = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHander.ReadJwtToken(accessToken);
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(accessToken);
             var expDate = jwtToken.ValidTo;
 
             await _loggedOutTokenRepository.AddAsync(accessToken, expDate);
@@ -215,10 +214,16 @@ namespace Services.Authentication
 
             var newUser = new User
             {
-                Username = request.FullName,
                 Email = request.Email,
-                AvatarUrl = "https://static-00.iconduck.com/assets.00/avatar-default-symbolic-icon-479x512-n8sg74wg.png",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                IsActive = true
+            };
+
+            // Tạo profile mặc định cho user
+            newUser.Profile = new Profile
+            {
+                FullName = request.FullName ?? "", 
+                ProfilePictureUrl = "https://static-00.iconduck.com/assets.00/avatar-default-symbolic-icon-479x512-n8sg74wg.png"
             };
 
             var accessToken = GenerateToken(newUser);

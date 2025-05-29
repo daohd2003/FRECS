@@ -23,7 +23,7 @@ namespace Services.UserServices
             return await _userRepository.GetAllAsync();
         }
 
-        public async Task<User?> GetByIdAsync(int id)
+        public async Task<User?> GetByIdAsync(Guid id)
         {
             return await _userRepository.GetByIdAsync(id);
         }
@@ -38,16 +38,14 @@ namespace Services.UserServices
             return await _userRepository.UpdateAsync(user);
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(Guid id)
         {
             return await _userRepository.DeleteAsync(id);
         }
 
         public async Task<User> GetOrCreateUserAsync(GooglePayload payload)
         {
-            var user = await _userRepository.GetOrCreateUserAsync(payload);
-
-            return user;
+            return await _userRepository.GetOrCreateUserAsync(payload);
         }
     }
 }

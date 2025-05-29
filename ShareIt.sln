@@ -11,7 +11,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories", "Repositorie
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "Services\Services.csproj", "{4527F3AB-8E1D-4E8B-87A4-38B7B3856AC8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShareItAPI", "ShareItAPI\ShareItAPI.csproj", "{FAF033D4-7F29-4467-8FBD-B6525D96AA48}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShareItAPI", "ShareItAPI\ShareItAPI.csproj", "{FAF033D4-7F29-4467-8FBD-B6525D96AA48}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{9BD86AC3-7CAE-4A73-AE67-BDB813C08719}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{FAF033D4-7F29-4467-8FBD-B6525D96AA48}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FAF033D4-7F29-4467-8FBD-B6525D96AA48}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FAF033D4-7F29-4467-8FBD-B6525D96AA48}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BD86AC3-7CAE-4A73-AE67-BDB813C08719}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BD86AC3-7CAE-4A73-AE67-BDB813C08719}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BD86AC3-7CAE-4A73-AE67-BDB813C08719}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BD86AC3-7CAE-4A73-AE67-BDB813C08719}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

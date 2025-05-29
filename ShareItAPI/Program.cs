@@ -17,6 +17,8 @@ using Microsoft.Extensions.Options;
 using CloudinaryDotNet;
 using Repositories.Logout;
 using Services.CloudServices;
+using Repositories.ProfileRepositories;
+using Services.ProfileServices;
 
 namespace ShareItAPI
 {
@@ -40,10 +42,12 @@ namespace ShareItAPI
             builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<ILoggedOutTokenRepository, LoggedOutTokenRepository>();
+            builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
 
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddHttpClient<GoogleAuthService>();
-
+            
+            builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddHttpClient();
 
             // Bind thông tin từ appsettings.json vào đối tượng JwtSettings

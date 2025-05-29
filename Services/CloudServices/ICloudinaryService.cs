@@ -9,6 +9,6 @@ namespace Services.CloudServices
 {
     public interface ICloudinaryService
     {
-        Task<string> UploadImage(IFormFile file, int userId, string projectName, string folderType);
+        Task<string> UploadImage(IFormFile file, Guid userId, string projectName, string folderType);
     }
 }

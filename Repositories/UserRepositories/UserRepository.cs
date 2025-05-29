@@ -38,18 +38,22 @@ namespace Repositories.UserRepositories
                     // VD: "user" + 6 chữ số random
                     username = "user" + new Random().Next(100000, 999999);
                 }
-                while (await _context.Users.AnyAsync(u => u.Username == username));
+                while (await _context.Profiles.AnyAsync(u => u.FullName == username));
 
                 user = new User
                 {
-                    Username = username,
                     Email = payload.Email,
-                    AvatarUrl = "https://static-00.iconduck.com/assets.00/avatar-default-symbolic-icon-479x512-n8sg74wg.png",
                     GoogleId = payload.Sub,
-                    Role = UserRole.Customer.ToString(),
+                    Role = UserRole.customer,
                     PasswordHash = "",
                     RefreshToken = "",
-                    RefreshTokenExpiryTime = DateTime.Now
+                    RefreshTokenExpiryTime = DateTime.Now,
+                    IsActive = true,
+                    Profile = new Profile
+                    {
+                        FullName = username,
+                        ProfilePictureUrl = "https://static-00.iconduck.com/assets.00/avatar-default-symbolic-icon-479x512-n8sg74wg.png"
+                    }
                 };
 
                 _context.Users.Add(user);

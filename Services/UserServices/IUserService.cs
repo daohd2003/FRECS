@@ -11,10 +11,10 @@ namespace Services.UserServices
     public interface IUserService
     {
         Task<IEnumerable<User>> GetAllAsync();
-        Task<User?> GetByIdAsync(int id);
+        Task<User?> GetByIdAsync(Guid id);
         Task AddAsync(User user);
         Task<bool> UpdateAsync(User user);
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(Guid id);
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
     }
 }

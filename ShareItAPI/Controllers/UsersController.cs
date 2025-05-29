@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.CloudServices;
 using Services.UserServices;
+using Services.Utilities;
 using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
@@ -13,15 +14,13 @@ namespace ShareItAPI.Controllers
     {
         private readonly IUserService _userService;
 
-        private readonly ICloudinaryService _cloudinaryService;
-
-        public UsersController(IUserService userService, ICloudinaryService cloudinaryService)
+        public UsersController(IUserService userService)
         {
             _userService = userService;
-            _cloudinaryService = cloudinaryService;
         }
 
         [HttpGet]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAll()
         {
             var users = await _userService.GetAllAsync();
@@ -29,7 +28,8 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        [Authorize(Roles = "admin,customer,provider")]
+        public async Task<IActionResult> GetById(Guid id)
         {
             var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound();
@@ -40,42 +40,33 @@ namespace ShareItAPI.Controllers
         public async Task<IActionResult> Create(User user)
         {
             await _userService.AddAsync(user);
-            return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+            return CreatedAtAction(nameof(Create), new { id = user.Id }, user);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, User user)
+        [Authorize(Roles = "admin,customer,provider")]
+        public async Task<IActionResult> Update(string id, User user)
         {
-            if (id != user.Id) return BadRequest();
+            var validation = GuidUtilities.ValidateGuid(id, user.Id);
+
+            if (!validation.IsValid)
+            {
+                return BadRequest(validation.ErrorMessage);
+            }
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+
             var result = await _userService.UpdateAsync(user);
             if (!result) return NotFound();
             return Ok();
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Delete(int id)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _userService.DeleteAsync(id);
             if (!result) return NotFound();
             return Ok();
-        }
-
-        [HttpPost("upload-image")]
-        [Authorize(Roles = "Customer")]
-        public async Task<ActionResult<string>> UploadAvatar(IFormFile file, string projectName = "ShareIt", string folderType = "profile_pics")
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-                string ImageUrl = await _cloudinaryService.UploadImage(file, userId, projectName, folderType);
-
-                return Ok(ImageUrl);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
         }
     }
 }

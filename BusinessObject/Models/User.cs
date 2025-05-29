@@ -5,37 +5,54 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BusinessObject.Models
 {
     public class User
     {
-
-        public int Id { get; set; }
-
-        [Required]
-        [MaxLength(128)]
-        public string Username { get; set; } = string.Empty;
+        [Key]
+        public Guid Id { get; set; }
 
         [Required]
         [EmailAddress]
-        [MaxLength(128)]
+        [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
 
         [Required]
+        [MaxLength(255)]
         public string PasswordHash { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(128)]
-        public string Role { get; set; } = UserRole.Customer.ToString();
-
-        public string AvatarUrl { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.customer;
 
         [MaxLength(200)]
-        public string RefreshToken { get; set; }
+        public string? RefreshToken { get; set; }
 
         public DateTime RefreshTokenExpiryTime { get; set; }
 
+        [MaxLength(255)]
         public string GoogleId { get; set; } = string.Empty;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? LastLogin { get; set; }
+
+        public bool? IsActive { get; set; }
+
+        // Navigation properties
+        public Profile? Profile { get; set; }
+
+        public ICollection<Product> Products { get; set; } = new List<Product>();
+
+        public ICollection<Message> MessagesSent { get; set; } = new List<Message>();
+        public ICollection<Message> MessagesReceived { get; set; } = new List<Message>();
+
+        public ICollection<Order> OrdersAsCustomer { get; set; } = new List<Order>();
+        public ICollection<Order> OrdersAsProvider { get; set; } = new List<Order>();
+
+        public ICollection<Report> ReportsMade { get; set; } = new List<Report>();
+        public ICollection<Report> ReportsReceived { get; set; } = new List<Report>();
+
     }
 }

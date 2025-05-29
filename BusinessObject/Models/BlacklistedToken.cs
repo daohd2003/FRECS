@@ -15,7 +15,7 @@ namespace BusinessObject.Models
         public int Id { get; set; }
 
         [Required]
-        [MaxLength(512)]
+        [MaxLength(2000)]
         public string Token { get; set; } = string.Empty;
 
         [Required]

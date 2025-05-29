@@ -23,7 +23,7 @@ namespace Repositories.RepositoryBase
             await _context.SaveChangesAsync();
         }
 
-        public virtual async Task<bool> DeleteAsync(int id)
+        public virtual async Task<bool> DeleteAsync(Guid id)
         {
             var entity = await _context.Set<T>().FindAsync(id);
 
@@ -40,9 +40,9 @@ namespace Repositories.RepositoryBase
             return await _context.Set<T>().ToListAsync();
         }
 
-        public virtual async Task<T?> GetByIdAsync(int id)
+        public virtual async Task<T?> GetByIdAsync(Guid id)
         {
-            return await _context.Set<T>().FindAsync(id) ?? null;
+            return await _context.Set<T>().FindAsync(id);
         }
 
         public virtual async Task<bool> UpdateAsync(T entity)
