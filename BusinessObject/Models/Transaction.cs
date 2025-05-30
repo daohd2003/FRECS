@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Transactions;
+using BusinessObject.Enums;
 
 namespace BusinessObject.Models
 {
@@ -34,5 +34,7 @@ namespace BusinessObject.Models
         public string PaymentMethod { get; set; }  // Phương thức thanh toán (Ví dụ: VNPAY Card, QR code Bank,...)
 
         public DateTime TransactionDate { get; set; } = DateTime.UtcNow;  // Thời gian giao dịch được tạo
+
+        public string? Content { get; set; } // Nội dung ghi chú từ thanh toán, ví dụ chứa OrderId
     }
 }

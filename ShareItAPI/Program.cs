@@ -19,6 +19,10 @@ using Repositories.Logout;
 using Services.CloudServices;
 using Repositories.ProfileRepositories;
 using Services.ProfileServices;
+using LibraryManagement.Services.Payments.Transactions;
+using Services.Transactions;
+using Services.Payments.VNPay;
+using BusinessObject.DTOs.BankQR;
 
 namespace ShareItAPI
 {
@@ -118,6 +122,10 @@ namespace ShareItAPI
                 var account = new Account(settings.CloudName, settings.APIKey, settings.APISecret);
                 return new Cloudinary(account);
             });
+
+            builder.Services.AddScoped<ITransactionService, TransactionService>();
+            builder.Services.AddSingleton<IVnpay, Vnpay>();
+            builder.Services.Configure<BankQrConfig>(builder.Configuration.GetSection("BankQrConfig"));
 
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
