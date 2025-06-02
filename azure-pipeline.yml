@@ -4,10 +4,11 @@
 # https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
 
 trigger:
-- CICD
+- main
 
 pool:
-  vmImage: 'Hosted Agent'
+  name: 'Default'
+  vmImage: 'shareit-pool'
 
 
 stages:
