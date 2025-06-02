@@ -1,0 +1,10 @@
+  
+services:
+  web:  # Define a service named 'web'
+    container_name: shareit-app
+    image: shareit # Replace with your image name
+    build:
+      context: .  # Build context (current directory)
+      dockerfile: ./Dockerfile  # Specify the Dockerfile to use
+    ports:
+      - "80:80"

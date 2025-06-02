@@ -128,7 +128,7 @@ namespace ShareItAPI
             builder.Services.Configure<BankQrConfig>(builder.Configuration.GetSection("BankQrConfig"));
 
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
-
+            builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();
 
             app.UseMiddleware<TokenValidationMiddleware>();

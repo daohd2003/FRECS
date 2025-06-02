@@ -1,0 +1,39 @@
+# ASP.NET
+# Build and test ASP.NET projects.
+# Add steps that publish symbols, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
+
+trigger:
+- main
+
+pool:
+  name: 'Default' 
+  vmImage: 'shareit-pool'
+
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    steps:
+    - checkout: self
+    - task: DockerCompose@1
+      inputs:
+        containerregistrytype: 'Azure Container Registry'
+        azureSubscription: 'Azure for Students(755ce589-4aa8-47c5-9d2e-a0bc0969702c)'
+        azureContainerRegistry: '{"loginServer":"shareitregistry.azurecr.io", "id" : "/subscriptions/755ce589-4aa8-47c5-9d2e-a0bc0969702c/resourceGroups/ShareIt/providers/Microsoft.ContainerRegistry/registries/shareitregistry"}'
+        dockerComposeFile: '**/docker-compose.yml'
+        projectName: 'shareit-be'
+        action: 'Build services'
+        includeLatestTag: true
+    - task: DockerCompose@1
+      inputs:
+        containerregistrytype: 'Azure Container Registry'
+        azureSubscription: 'Azure for Students(755ce589-4aa8-47c5-9d2e-a0bc0969702c)'
+        azureContainerRegistry: '{"loginServer":"shareitregistry.azurecr.io", "id" : "/subscriptions/755ce589-4aa8-47c5-9d2e-a0bc0969702c/resourceGroups/ShareIt/providers/Microsoft.ContainerRegistry/registries/shareitregistry"}'
+        dockerComposeFile: '**/docker-compose.yml'
+        action: 'Push services'
+        projectName: 'shareit-be'
+        includeLatestTag: true
