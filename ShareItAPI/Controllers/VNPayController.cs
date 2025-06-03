@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.VNPay;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.VNPay;
 using BusinessObject.Enums;
 using BusinessObject.Enums.VNPay;
 using BusinessObject.Models;
@@ -33,21 +34,16 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// Tạo url thanh toán
+        /// Create payment URL
         /// </summary>
-        /// <param name="money">Số tiền phải thanh toán</param>
-        /// <param name="description">Mô tả giao dịch</param>
-        /// <returns></returns>
         [HttpGet("CreatePaymentUrl")]
         [Authorize(Roles = "customer")]
-        public ActionResult<string> CreatePaymentUrl(Guid orderId, double money, string note)
+        public ActionResult<ApiResponse<string>> CreatePaymentUrl(Guid orderId, double money, string note)
         {
-            var customerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-
             try
             {
+                var customerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
                 var ipAddress = NetworkHelper.GetIpAddress(HttpContext);
-
                 var description = $"OID:{orderId}-{note}";
 
                 var request = new PaymentRequest
@@ -63,18 +59,17 @@ namespace ShareItAPI.Controllers
                 };
 
                 var paymentUrl = _vnpay.GetPaymentUrl(request);
-                return Created(paymentUrl, paymentUrl);
+                return Created("", new ApiResponse<string>("Payment URL created successfully", paymentUrl));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
             }
         }
 
         /// <summary>
-        /// Thực hiện hành động sau khi thanh toán. URL này cần được khai báo với VNPAY để API này hoạt đồng (ví dụ: http://localhost:1234/api/Vnpay/IpnAction)
+        /// Handle payment notification callback from VNPay
         /// </summary>
-        /// <returns></returns>
         [HttpGet("IpnAction")]
         [HttpPost("IpnAction")]
         public async Task<IActionResult> IpnAction()
@@ -87,14 +82,11 @@ namespace ShareItAPI.Controllers
                 {
                     var paymentResult = _vnpay.GetPaymentResult(Request.Query);
                     var orderId = GetUIDUtils.ExtractOrderId(paymentResult.Description);
+
                     if (paymentResult.IsSuccess)
                     {
                         _logger.LogInformation("Payment success for PaymentId: {PaymentId}", paymentResult.PaymentId);
 
-                        // Lấy CustomerId, ProviderId từ order service
-                        // var (customerId, providerId) = await _orderService.GetCustomerAndProviderByOrderIdAsync(orderId);
-
-                        // Thực hiện hành động nếu thanh toán thành công tại đây. Ví dụ: Cập nhật trạng thái đơn hàng trong cơ sở dữ liệu.
                         var transaction = new Transaction
                         {
                             Id = Guid.NewGuid(),
@@ -112,11 +104,11 @@ namespace ShareItAPI.Controllers
                         _logger.LogInformation("Transaction to save: {Transaction}", transactionJson);
                         await _transactionService.SaveTransactionAsync(transaction);
 
-                        return Ok();
+                        return Ok(new ApiResponse<string>("Payment completed successfully", transactionJson));
                     }
+
                     _logger.LogWarning("Payment failed for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                    // Thực hiện hành động nếu thanh toán thất bại tại đây. Ví dụ: Hủy đơn hàng.
-                    // Lưu transaction thất bại
+
                     var failedTransaction = new Transaction
                     {
                         Id = Guid.NewGuid(),
@@ -135,23 +127,23 @@ namespace ShareItAPI.Controllers
 
                     await _transactionService.SaveTransactionAsync(failedTransaction);
 
-                    return BadRequest("Thanh toán thất bại");
+                    return BadRequest(new ApiResponse<string>("Payment failed", failedTransactionJson));
                 }
                 catch (Exception ex)
                 {
-                    return BadRequest(ex.Message);
+                    return BadRequest(new ApiResponse<string>(ex.Message, null));
                 }
             }
+
             _logger.LogWarning("IpnAction called but query string is empty");
-            return NotFound("Không tìm thấy thông tin thanh toán.");
+            return NotFound(new ApiResponse<string>("Payment information not found.", null));
         }
 
         /// <summary>
-        /// Trả kết quả thanh toán về cho người dùng
+        /// Return payment result to user
         /// </summary>
-        /// <returns></returns>
         [HttpGet("Callback")]
-        public ActionResult<PaymentResult> Callback()
+        public ActionResult<ApiResponse<PaymentResult>> Callback()
         {
             _logger.LogInformation("Callback endpoint was called at {Time}", DateTime.Now);
 
@@ -164,19 +156,21 @@ namespace ShareItAPI.Controllers
                     if (paymentResult.IsSuccess)
                     {
                         _logger.LogInformation("Payment success for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                        return Ok(paymentResult);
+                        return Ok(new ApiResponse<PaymentResult>("Payment succeeded", paymentResult));
                     }
+
                     _logger.LogWarning("Payment failed for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                    return BadRequest(paymentResult);
+                    return BadRequest(new ApiResponse<PaymentResult>("Payment failed", paymentResult));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing Callback");
-                    return BadRequest(ex.Message);
+                    return BadRequest(new ApiResponse<string>(ex.Message, null));
                 }
             }
+
             _logger.LogWarning("Callback called but query string is empty");
-            return NotFound("Không tìm thấy thông tin thanh toán.");
+            return NotFound(new ApiResponse<string>("Payment information not found.", null));
         }
     }
 }

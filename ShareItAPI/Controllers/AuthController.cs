@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.Login;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.Login;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -23,18 +24,17 @@ namespace ShareItAPI.Controllers
             _googleAuthService = googleAuthService;
         }
 
-        // POST: /api/v1/auth/login
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             try
             {
                 var tokenResponse = await _jwtService.Authenticate(request.Email, request.Password);
-                return Ok(tokenResponse);
+                return Ok(new ApiResponse<TokenResponseDto>("Login successful", tokenResponse));
             }
             catch (UnauthorizedAccessException)
             {
-                return Unauthorized(new { message = "Invalid email or password" });
+                return Unauthorized(new ApiResponse<string>("Invalid email or password", null));
             }
         }
 
@@ -43,17 +43,14 @@ namespace ShareItAPI.Controllers
         {
             try
             {
-                // Xác thực ID token với Google
                 var payload = await _googleAuthService.VerifyGoogleTokenAsync(request.IdToken);
                 if (payload == null)
                 {
-                    return Unauthorized(new { message = "Invalid Google token" });
+                    return Unauthorized(new ApiResponse<string>("Invalid Google token", null));
                 }
 
-                // Kiểm tra xem người dùng có trong hệ thống không, nếu không thì tạo mới
                 var user = await _userService.GetOrCreateUserAsync(payload);
 
-                // Tạo access token và refresh token
                 var tokens = _jwtService.GenerateToken(user);
                 var refreshTokens = _jwtService.GenerateRefreshToken();
                 var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
@@ -63,35 +60,36 @@ namespace ShareItAPI.Controllers
 
                 await _userService.UpdateAsync(user);
 
-                return Ok(new TokenResponseDto
+                var response = new TokenResponseDto
                 {
                     Token = tokens,
                     RefreshToken = refreshTokens,
-                    RefreshTokenExpiryTime = expiryTime
-                });
+                    RefreshTokenExpiryTime = expiryTime,
+                    Role = user.Role.ToString()
+                };
+
+                return Ok(new ApiResponse<TokenResponseDto>("Google login successful", response));
             }
             catch (Exception ex)
             {
-                // Xử lý lỗi nếu không xác thực được ID Token
-                return Unauthorized(new { message = "Invalid or expired Google ID token", error = ex.Message });
+                return Unauthorized(new ApiResponse<string>($"Google authentication error: {ex.Message}", null));
             }
         }
 
-        // POST: /api/v1/auth/refresh-token
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {
             var token = TokenHelper.ExtractAccessToken(HttpContext);
 
             if (string.IsNullOrEmpty(token))
-                return Unauthorized(new { message = "Access token is missing or invalid" });
+                return Unauthorized(new ApiResponse<string>("Access token is missing or invalid", null));
 
             var result = await _jwtService.RefreshTokenAsync(token, request.RefreshToken);
 
             if (result == null)
-                return Unauthorized(new { message = "Invalid or expired refresh token" });
+                return Unauthorized(new ApiResponse<string>("Refresh token is invalid or has expired", null));
 
-            return Ok(result);
+            return Ok(new ApiResponse<TokenResponseDto>("Token refreshed successfully", result));
         }
 
         [HttpPost("log-out")]
@@ -102,12 +100,12 @@ namespace ShareItAPI.Controllers
 
             if (string.IsNullOrEmpty(token))
             {
-                return BadRequest("No token found");
+                return BadRequest(new ApiResponse<string>("Token not found", null));
             }
 
             await _jwtService.LogoutAsync(token);
 
-            return Ok(new { message = "Logout successful" });
+            return Ok(new ApiResponse<string>("Logout successful", null));
         }
 
         [HttpPost("register")]
@@ -115,9 +113,9 @@ namespace ShareItAPI.Controllers
         {
             var tokenResponse = await _jwtService.RegisterAsync(request);
             if (tokenResponse == null)
-                return BadRequest("Email is already registered.");
+                return BadRequest(new ApiResponse<string>("Email is already registered", null));
 
-            return Ok(tokenResponse);
+            return Ok(new ApiResponse<TokenResponseDto>("Registration successful", tokenResponse));
         }
     }
 }

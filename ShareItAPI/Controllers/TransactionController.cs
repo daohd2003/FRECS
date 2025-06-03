@@ -1,4 +1,5 @@
 ﻿using Azure.Core;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.BankQR;
 using BusinessObject.DTOs.TransactionsDto;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Services.Transactions;
 using System.Security.Claims;
-using System.Transactions;
 
 namespace ShareItAPI.Controllers
 {
@@ -30,10 +30,10 @@ namespace ShareItAPI.Controllers
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var customerId))
-                return Unauthorized("Không thể xác định người dùng.");
+                return Unauthorized(new ApiResponse<string>("Unable to identify user.", null));
 
             var transactions = await _transactionService.GetUserTransactionsAsync(customerId);
-            return Ok(transactions);
+            return Ok(new ApiResponse<object>("Success", transactions));
         }
 
         [HttpPost("create")]
@@ -41,7 +41,7 @@ namespace ShareItAPI.Controllers
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var customerId))
-                return Unauthorized("Không thể xác định người dùng.");
+                return Unauthorized(new ApiResponse<string>("Unable to identify user.", null));
 
             var transaction = new BusinessObject.Models.Transaction
             {
@@ -53,21 +53,23 @@ namespace ShareItAPI.Controllers
                 Status = BusinessObject.Enums.TransactionStatus.initiated,
                 PaymentMethod = "SEPAY",
                 TransactionDate = DateTime.UtcNow,
-                Content = $"PAY_ORDER_{request.OrderId}::{request.Content ?? "Thanh toán đơn hàng"}"
+                Content = $"PAY_ORDER_{request.OrderId}::{request.Content ?? "Order payment"}"
             };
 
             await _transactionService.SaveTransactionAsync(transaction);
 
             var base64Image = await GenerateQrCodeBase64((double)transaction.Amount, transaction.Content);
 
-            return Ok(new
+            var responseData = new
             {
                 transaction.Id,
                 transaction.OrderId,
                 transaction.Status,
                 transaction.Amount,
                 QrImage = base64Image
-            });
+            };
+
+            return Ok(new ApiResponse<object>("Transaction created successfully", responseData));
         }
 
         [HttpPost("{transactionId}/pay")]
@@ -75,25 +77,27 @@ namespace ShareItAPI.Controllers
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var customerId))
-                return Unauthorized("Không thể xác định người dùng.");
+                return Unauthorized(new ApiResponse<string>("Unable to identify user.", null));
 
             var transaction = await _transactionService.GetTransactionByIdAsync(transactionId);
             if (transaction == null || transaction.CustomerId != customerId)
-                return NotFound("Giao dịch không tồn tại hoặc không thuộc người dùng.");
+                return NotFound(new ApiResponse<string>("Transaction not found or does not belong to the user.", null));
 
             if (transaction.Status != BusinessObject.Enums.TransactionStatus.initiated)
-                return BadRequest("Giao dịch đã được xử lý hoặc không thể thanh toán.");
+                return BadRequest(new ApiResponse<string>("Transaction has already been processed or cannot be paid.", null));
 
-            var qrImageUrl = GenerateQrCodeUrl((double)transaction.Amount, transaction.Content ?? $"Thanh toán - {transaction.Id}");
+            var qrImageUrl = GenerateQrCodeUrl((double)transaction.Amount, transaction.Content ?? $"Payment - {transaction.Id}");
 
-            return Ok(new
+            var responseData = new
             {
                 transaction.Id,
                 transaction.OrderId,
                 transaction.Status,
                 transaction.Amount,
                 QrImageUrl = qrImageUrl
-            });
+            };
+
+            return Ok(new ApiResponse<object>("Payment QR code generated successfully", responseData));
         }
 
         private async Task<string> GenerateQrCodeBase64(double amount, string description)

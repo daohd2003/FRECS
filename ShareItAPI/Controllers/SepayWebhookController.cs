@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.VNPay.Request;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.VNPay.Request;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Services.Transactions;
@@ -26,10 +27,10 @@ namespace ShareItAPI.Controllers
             if (!result)
             {
                 _logger.LogWarning("Webhook processing failed for: {TransactionCode}", request.TransactionCode);
-                return BadRequest("Failed to process webhook");
+                return BadRequest(new ApiResponse<string>("Failed to process webhook", null));
             }
 
-            return Ok(new { message = "Transaction updated" });
+            return Ok(new ApiResponse<string>("Transaction updated", null));
         }
     }
 }

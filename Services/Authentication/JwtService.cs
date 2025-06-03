@@ -174,13 +174,15 @@ namespace Services.Authentication
 
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = refreshExpiry;
+
                 await _userRepository.UpdateAsync(user);
 
                 return new TokenResponseDto
                 {
                     Token = token,
                     RefreshToken = refreshToken,
-                    RefreshTokenExpiryTime = refreshExpiry
+                    RefreshTokenExpiryTime = refreshExpiry,
+                    Role = user.Role.ToString()
                 };
             }
             else
@@ -239,7 +241,8 @@ namespace Services.Authentication
             {
                 Token = accessToken,
                 RefreshToken = refreshToken,
-                RefreshTokenExpiryTime = refreshExpiry
+                RefreshTokenExpiryTime = refreshExpiry,
+                Role = newUser.Role.ToString()
             };
         }
     }

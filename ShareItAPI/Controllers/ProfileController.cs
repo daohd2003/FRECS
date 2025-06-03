@@ -1,4 +1,5 @@
 ﻿using BusinessObject.Models;
+using BusinessObject.DTOs.ApiResponses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,6 @@ namespace ShareItAPI.Controllers
     public class ProfileController : ControllerBase
     {
         private readonly IProfileService _profileService;
-
         private readonly ICloudinaryService _cloudinaryService;
 
         public ProfileController(IProfileService profileService, ICloudinaryService cloudinaryService)
@@ -29,9 +29,9 @@ namespace ShareItAPI.Controllers
         {
             var profile = await _profileService.GetByUserIdAsync(userId);
             if (profile == null)
-                return NotFound("Profile not found");
+                return NotFound(new ApiResponse<string>("Profile not found", null));
 
-            return Ok(profile);
+            return Ok(new ApiResponse<Profile>("Profile retrieved successfully", profile));
         }
 
         // PUT: api/profile/{userId}
@@ -39,27 +39,26 @@ namespace ShareItAPI.Controllers
         public async Task<IActionResult> UpdateProfile(Guid userId, [FromBody] Profile updatedProfile)
         {
             if (userId != updatedProfile.UserId)
-                return BadRequest("User ID mismatch");
+                return BadRequest(new ApiResponse<string>("User ID mismatch", null));
 
             await _profileService.UpdateAsync(updatedProfile);
-
-            return Ok();
+            return Ok(new ApiResponse<string>("Profile updated successfully", null));
         }
 
         [HttpPost("upload-image")]
         [Authorize(Roles = "admin,customer,provider")]
-        public async Task<ActionResult<string>> UploadAvatar(IFormFile file, string projectName = "ShareIt", string folderType = "profile_pics")
+        public async Task<IActionResult> UploadAvatar(IFormFile file, string projectName = "ShareIt", string folderType = "profile_pics")
         {
             try
             {
                 var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-                string ImageUrl = await _cloudinaryService.UploadImage(file, userId, projectName, folderType);
+                string imageUrl = await _cloudinaryService.UploadImage(file, userId, projectName, folderType);
 
-                return Ok(ImageUrl);
+                return Ok(new ApiResponse<string>("Image uploaded successfully", imageUrl));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                return StatusCode(500, new ApiResponse<string>($"Image upload failed: {ex.Message}", null));
             }
         }
     }
