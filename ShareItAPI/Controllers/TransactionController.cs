@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Services.ProfileServices;
 using Services.Transactions;
+using Services.UserServices;
 using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
@@ -18,10 +20,14 @@ namespace ShareItAPI.Controllers
     {
         private readonly ITransactionService _transactionService;
         private readonly BankQrConfig _bankQrConfig;
+        private readonly IUserService _userService;
+        private readonly IProfileService _profileService;
 
-        public TransactionController(ITransactionService transactionService, IOptions<BankQrConfig> bankQrOptions)
+        public TransactionController(ITransactionService transactionService, IOptions<BankQrConfig> bankQrOptions, IUserService userService, IProfileService profileService)
         {
             _transactionService = transactionService;
+            _userService = userService;
+            _profileService = profileService;
             _bankQrConfig = bankQrOptions.Value;
         }
 
@@ -43,6 +49,8 @@ namespace ShareItAPI.Controllers
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var customerId))
                 return Unauthorized(new ApiResponse<string>("Unable to identify user.", null));
 
+            var profile = await _profileService.GetByUserIdAsync(customerId);
+
             var transaction = new BusinessObject.Models.Transaction
             {
                 Id = Guid.NewGuid(),
@@ -53,7 +61,7 @@ namespace ShareItAPI.Controllers
                 Status = BusinessObject.Enums.TransactionStatus.initiated,
                 PaymentMethod = "SEPAY",
                 TransactionDate = DateTime.UtcNow,
-                Content = $"PAY_ORDER_{request.OrderId}::{request.Content ?? "Order payment"}"
+                Content = $"PAY_ORDER_{request.OrderId}::{profile.FullName + request.Content ?? "Order payment"}"
             };
 
             await _transactionService.SaveTransactionAsync(transaction);

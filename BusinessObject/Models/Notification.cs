@@ -23,6 +23,12 @@ namespace BusinessObject.Models
         [Required]
         public string Message { get; set; }
 
+        // Add reference to Order (nullable for non-order notifications)
+        public Guid? OrderId { get; set; }
+
+        [ForeignKey(nameof(OrderId))]
+        public Order? Order { get; set; }
+
         [Required]
         public NotificationType Type { get; set; }
 

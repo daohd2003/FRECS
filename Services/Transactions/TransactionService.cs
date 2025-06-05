@@ -9,6 +9,8 @@ using System;
 using System.Text.RegularExpressions;
 using BusinessObject.DTOs.BankQR;
 using Microsoft.Extensions.Options;
+using Services.NotificationServices;
+using Services.OrderServices;
 
 namespace LibraryManagement.Services.Payments.Transactions
 {
@@ -16,12 +18,16 @@ namespace LibraryManagement.Services.Payments.Transactions
     {
         private readonly ShareItDbContext _dbContext;
         private readonly ILogger<TransactionService> _logger;
+        private readonly INotificationService _notificationService;
+        private readonly IOrderService _orderService;
         private readonly BankQrConfig _bankQrConfig;
 
-        public TransactionService(ShareItDbContext dbContext, ILogger<TransactionService> logger, IOptions<BankQrConfig> bankQrOptions)
+        public TransactionService(ShareItDbContext dbContext, ILogger<TransactionService> logger, IOptions<BankQrConfig> bankQrOptions, INotificationService notificationService, IOrderService orderService)
         {
             _dbContext = dbContext;
             _logger = logger;
+            _notificationService = notificationService;
+            _orderService = orderService;
             _bankQrConfig = bankQrOptions.Value;
         }
 
@@ -93,6 +99,7 @@ namespace LibraryManagement.Services.Payments.Transactions
 
                 _logger.LogInformation("Transaction for Order {OrderId} marked as Completed", orderId);
                 // TODO: Cập nhật trạng thái đơn hàng nếu cần
+                await _orderService.CompleteTransactionAsync(orderId.Value);
             }
             else
             {
@@ -100,6 +107,7 @@ namespace LibraryManagement.Services.Payments.Transactions
                 transaction.PaymentMethod = "Bank Transfer - SEPay";
                 transaction.TransactionDate = DateTime.UtcNow;
 
+                await _orderService.FailTransactionAsync(orderId.Value);
                 _logger.LogWarning("Transaction for Order {OrderId} marked as Failed", orderId);
             }
             await _dbContext.SaveChangesAsync();

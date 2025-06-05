@@ -8,6 +8,7 @@ using Common.Utilities.VNPAY.Common.Utilities.VNPAY;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.Transactions;
 using System.Security.Claims;
@@ -21,9 +22,10 @@ namespace ShareItAPI.Controllers
         private readonly IVnpay _vnpay;
         private readonly IConfiguration _configuration;
         private readonly ILogger<VNPayController> _logger;
+        private readonly IOrderService _orderService;
         private readonly ITransactionService _transactionService;
 
-        public VNPayController(IVnpay vnpay, IConfiguration configuration, ILogger<VNPayController> logger, ITransactionService transactionService)
+        public VNPayController(IVnpay vnpay, IConfiguration configuration, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService)
         {
             _vnpay = vnpay;
             _configuration = configuration;
@@ -31,6 +33,7 @@ namespace ShareItAPI.Controllers
             _vnpay.Initialize(_configuration["Vnpay:TmnCode"], _configuration["Vnpay:HashSecret"], _configuration["Vnpay:BaseUrl"], _configuration["Vnpay:CallbackUrl"]);
             _logger = logger;
             _transactionService = transactionService;
+            _orderService = orderService;
         }
 
         /// <summary>
@@ -104,6 +107,8 @@ namespace ShareItAPI.Controllers
                         _logger.LogInformation("Transaction to save: {Transaction}", transactionJson);
                         await _transactionService.SaveTransactionAsync(transaction);
 
+                        await _orderService.CompleteTransactionAsync(orderId);
+
                         return Ok(new ApiResponse<string>("Payment completed successfully", transactionJson));
                     }
 
@@ -126,6 +131,8 @@ namespace ShareItAPI.Controllers
                     _logger.LogInformation("Failed transaction to save: {Transaction}", failedTransactionJson);
 
                     await _transactionService.SaveTransactionAsync(failedTransaction);
+
+                    await _orderService.FailTransactionAsync(orderId);
 
                     return BadRequest(new ApiResponse<string>("Payment failed", failedTransactionJson));
                 }

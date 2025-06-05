@@ -1,0 +1,30 @@
+﻿using BusinessObject.DTOs.DashboardStatsDto;
+using BusinessObject.DTOs.OrdersDto;
+using BusinessObject.Enums;
+using BusinessObject.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Services.OrderServices
+{
+    public interface IOrderService
+    {
+        Task ChangeOrderStatus(Guid orderId, OrderStatus newStatus);
+        Task CreateOrderAsync(CreateOrderDto dto);
+        Task CancelOrderAsync(Guid orderId);
+        Task UpdateOrderItemsAsync(Guid orderId, List<Guid> updatedItemIds, int rentalDays);
+        Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
+        Task<IEnumerable<OrderWithDetailsDto>> GetOrdersByStatusAsync(OrderStatus status);
+        Task<IEnumerable<Order>> GetAllAsync();
+        Task<OrderWithDetailsDto> GetOrderDetailAsync(Guid orderId);
+        Task MarkAsReceivedAsync(Guid orderId, bool paid);
+        Task MarkAsReturnedAsync(Guid orderId);
+        Task CompleteTransactionAsync(Guid orderId);
+        Task FailTransactionAsync(Guid orderId);
+        Task<DashboardStatsDTO> GetDashboardStatsAsync();
+        Task<IEnumerable<OrderDto>> GetOrdersByProviderAsync(Guid providerId);
+    }
+}

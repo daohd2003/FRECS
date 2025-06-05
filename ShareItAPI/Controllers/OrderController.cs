@@ -1,0 +1,107 @@
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.OrdersDto;
+using BusinessObject.Enums;
+using BusinessObject.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Services.OrderServices;
+
+namespace ShareItAPI.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize(Roles ="customer,provider")]
+    public class OrderController : ControllerBase
+    {
+        private readonly IOrderService _orderService;
+
+        public OrderController(IOrderService orderService)
+        {
+            _orderService = orderService;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
+        {
+            await _orderService.CreateOrderAsync(dto);
+            return Ok(new ApiResponse<string>("Order created", null));
+        }
+
+        [HttpPut("{orderId:guid}/status")]
+        public async Task<IActionResult> ChangeOrderStatus(Guid orderId, [FromQuery] OrderStatus newStatus)
+        {
+            await _orderService.ChangeOrderStatus(orderId, newStatus);
+            return Ok(new ApiResponse<string>($"Order status changed to {newStatus}", null));
+        }
+
+        [HttpPut("{orderId:guid}/cancel")]
+        public async Task<IActionResult> CancelOrder(Guid orderId)
+        {
+            await _orderService.CancelOrderAsync(orderId);
+            return Ok(new ApiResponse<string>("Order cancelled", null));
+        }
+
+        [HttpPut("{orderId:guid}/items")]
+        public async Task<IActionResult> UpdateOrderItems(Guid orderId, [FromBody] List<Guid> updatedItemIds, int rentalDays)
+        {
+            await _orderService.UpdateOrderItemsAsync(orderId, updatedItemIds, rentalDays);
+            return Ok(new ApiResponse<string>("Order items updated", null));
+        }
+
+        [HttpGet("details")]
+        public async Task<IActionResult> GetAllOrdersDetails()
+        {
+            var orders = await _orderService.GetAllOrdersAsync();
+            return Ok(new ApiResponse<object>("All orders detail retrieved", orders));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllOrders()
+        {
+            var orders = await _orderService.GetAllAsync();
+            return Ok(new ApiResponse<object>("All orders retrieved", orders));
+        }
+
+        [HttpGet("status/{status}")]
+        public async Task<IActionResult> GetOrdersByStatus(OrderStatus status)
+        {
+            var orders = await _orderService.GetOrdersByStatusAsync(status);
+            return Ok(new ApiResponse<object>($"Orders with status {status}", orders));
+        }
+
+        [HttpGet("{orderId:guid}")]
+        public async Task<IActionResult> GetOrderDetail(Guid orderId)
+        {
+            var order = await _orderService.GetOrderDetailAsync(orderId);
+            return Ok(new ApiResponse<object>("Order detail retrieved", order));
+        }
+
+        [HttpPut("{orderId:guid}/mark-received")]
+        public async Task<IActionResult> MarkAsReceived(Guid orderId, [FromQuery] bool paid)
+        {
+            await _orderService.MarkAsReceivedAsync(orderId, paid);
+            return Ok(new ApiResponse<string>($"Order marked as received (Paid: {paid})", null));
+        }
+
+        [HttpPut("{orderId:guid}/mark-returned")]
+        public async Task<IActionResult> MarkAsReturned(Guid orderId)
+        {
+            await _orderService.MarkAsReturnedAsync(orderId);
+            return Ok(new ApiResponse<string>("Order marked as returned", null));
+        }
+
+        [HttpGet("dashboard-stats")]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            var stats = await _orderService.GetDashboardStatsAsync();
+            return Ok(new ApiResponse<object>("Dashboard statistics", stats));
+        }
+
+        [HttpGet("provider/{providerId:guid}")]
+        public async Task<IActionResult> GetOrdersByProvider(Guid providerId)
+        {
+            var orders = await _orderService.GetOrdersByProviderAsync(providerId);
+            return Ok(new ApiResponse<object>("Orders by provider", orders));
+        }
+    }
+}

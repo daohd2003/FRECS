@@ -23,6 +23,12 @@ using LibraryManagement.Services.Payments.Transactions;
 using Services.Transactions;
 using Services.Payments.VNPay;
 using BusinessObject.DTOs.BankQR;
+using Repositories.NotificationRepositories;
+using Hubs;
+using Services.NotificationServices;
+using Repositories.OrderRepositories;
+using Services.OrderServices;
+using BusinessObject.Mappings;
 
 namespace ShareItAPI
 {
@@ -128,6 +134,18 @@ namespace ShareItAPI
             builder.Services.Configure<BankQrConfig>(builder.Configuration.GetSection("BankQrConfig"));
 
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+
+            // Đăng ký Notification
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
+
+            builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);
+
+            // Thêm SignalR service
+            builder.Services.AddSignalR();
+
             builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();
 
@@ -145,6 +163,8 @@ namespace ShareItAPI
             app.UseAuthentication();
             app.UseAuthorization();
 
+            // Cấu hình endpoint
+            app.MapHub<NotificationHub>("/notificationHub");
 
             app.MapControllers();
 
