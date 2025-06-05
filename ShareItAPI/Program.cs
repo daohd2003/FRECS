@@ -29,6 +29,11 @@ using Services.NotificationServices;
 using Repositories.OrderRepositories;
 using Services.OrderServices;
 using BusinessObject.Mappings;
+using BusinessObject.DTOs.EmailSetiings;
+using Services.EmailServices;
+using Repositories.EmailRepositories;
+using Common.Utilities;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ShareItAPI
 {
@@ -56,7 +61,7 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddHttpClient<GoogleAuthService>();
-            
+
             builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddHttpClient();
 
@@ -142,6 +147,15 @@ namespace ShareItAPI
             builder.Services.AddScoped<IOrderService, OrderService>();
 
             builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);
+
+            builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
+            builder.Services.AddScoped<IEmailRepository, EmailRepository>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
+
+            builder.Services.Configure<ApiBehaviorOptions>(options =>
+            {
+                options.InvalidModelStateResponseFactory = ValidationErrorHelper.CreateFormattedValidationErrorResponse;
+            });
 
             // Thêm SignalR service
             builder.Services.AddSignalR();

@@ -20,5 +20,11 @@ namespace Services.Authentication
         Task LogoutAsync(string token);
         Task<bool> IsTokenValidAsync(string token);
         Task<TokenResponseDto?> RegisterAsync(RegisterRequest request);
+        Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword);
+        Task<bool> ForgotPasswordAsync(string email);
+        Task<bool> ResetPasswordAsync(string email, string token, string newPassword);
+        Task<bool> SendEmailVerificationAsync(Guid userId);
+        Task<bool> ConfirmEmailAsync(string email, string token);
+
     }
 }

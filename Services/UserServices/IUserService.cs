@@ -12,6 +12,7 @@ namespace Services.UserServices
     {
         Task<IEnumerable<User>> GetAllAsync();
         Task<User?> GetByIdAsync(Guid id);
+        Task<User?> GetUserByEmailAsync(string email);
         Task AddAsync(User user);
         Task<bool> UpdateAsync(User user);
         Task<bool> DeleteAsync(Guid id);

@@ -12,6 +12,9 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using System.Web;
+using Microsoft.Extensions.Configuration;
+using Services.EmailServices;
 namespace Services.Authentication
 {
     public class JwtService : IJwtService
@@ -20,13 +23,23 @@ namespace Services.Authentication
         private readonly IUserRepository _userRepository;
         private readonly ILoggedOutTokenRepository _loggedOutTokenRepository;
         private readonly ILogger<JwtService> _logger;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public JwtService(IOptions<JwtSettings> jwtSettings, IUserRepository userRepository, ILogger<JwtService> logger, ILoggedOutTokenRepository loggedOutTokenRepository)
+        public JwtService(
+            IOptions<JwtSettings> jwtSettings,
+            IUserRepository userRepository,
+            ILogger<JwtService> logger,
+            ILoggedOutTokenRepository loggedOutTokenRepository,
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             _jwtSettings = jwtSettings.Value;
             _userRepository = userRepository;
             _logger = logger;
             _loggedOutTokenRepository = loggedOutTokenRepository;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         public string GenerateRefreshToken()
@@ -168,6 +181,8 @@ namespace Services.Authentication
             var user = await _userRepository.GetUserByEmailAsync(email);
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
+                if (!user.EmailConfirmed) throw new Exception("Email chưa được xác minh");
+
                 var token = GenerateToken(user);
                 var refreshToken = GenerateRefreshToken();
                 var refreshExpiry = GetRefreshTokenExpiryTime();
@@ -224,7 +239,7 @@ namespace Services.Authentication
             // Tạo profile mặc định cho user
             newUser.Profile = new Profile
             {
-                FullName = request.FullName ?? "", 
+                FullName = request.FullName ?? "",
                 ProfilePictureUrl = "https://static-00.iconduck.com/assets.00/avatar-default-symbolic-icon-479x512-n8sg74wg.png"
             };
 
@@ -237,6 +252,10 @@ namespace Services.Authentication
 
             await _userRepository.AddAsync(newUser);
 
+
+            await SendEmailVerificationAsync(newUser.Id);
+
+
             return new TokenResponseDto
             {
                 Token = accessToken,
@@ -244,6 +263,86 @@ namespace Services.Authentication
                 RefreshTokenExpiryTime = refreshExpiry,
                 Role = newUser.Role.ToString()
             };
+        }
+
+        public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return false;
+
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+                return false;
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            await _userRepository.UpdateAsync(user);
+            return true;
+        }
+
+        public async Task<bool> ForgotPasswordAsync(string email)
+        {
+            var user = await _userRepository.GetUserByEmailAsync(email);
+            if (user == null) return false;
+
+            var token = GenerateTokenString();
+            user.PasswordResetToken = token;
+            user.PasswordResetTokenExpiry = DateTime.UtcNow.AddMinutes(30);
+            await _userRepository.UpdateAsync(user);
+
+            var baseUrl = _configuration["Frontend:BaseUrl"];
+            var resetLink = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
+
+            await _emailService.SendVerificationEmailAsync(email, resetLink);
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword)
+        {
+            var user = await _userRepository.GetUserByEmailAsync(email);
+            if (user == null) return false;
+            if (user.PasswordResetToken != token || user.PasswordResetTokenExpiry < DateTime.UtcNow) return false;
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiry = null;
+
+            await _userRepository.UpdateAsync(user);
+            return true;
+        }
+
+        public async Task<bool> SendEmailVerificationAsync(Guid userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null || user.EmailConfirmed) return false;
+
+            var token = GenerateTokenString();
+            user.EmailVerificationToken = token;
+            user.EmailVerificationExpiry = DateTime.UtcNow.AddHours(1);
+            await _userRepository.UpdateAsync(user);
+
+            var baseUrl = _configuration["Frontend:BaseUrl"];
+            var verifyLink = $"{baseUrl}/verify-email?email={HttpUtility.UrlEncode(user.Email)}&token={HttpUtility.UrlEncode(token)}";
+
+            await _emailService.SendVerificationEmailAsync(user.Email, verifyLink);
+            return true;
+        }
+
+        public async Task<bool> ConfirmEmailAsync(string email, string token)
+        {
+            var user = await _userRepository.GetUserByEmailAsync(email);
+            if (user == null || user.EmailConfirmed) return false;
+            if (user.EmailVerificationToken != token || user.EmailVerificationExpiry < DateTime.UtcNow) return false;
+
+            user.EmailConfirmed = true;
+            user.EmailVerificationToken = null;
+            user.EmailVerificationExpiry = null;
+
+            await _userRepository.UpdateAsync(user);
+            return true;
+        }
+
+        private string GenerateTokenString()
+        {
+            return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         }
     }
 }

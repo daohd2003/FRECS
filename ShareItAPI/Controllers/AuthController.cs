@@ -51,6 +51,11 @@ namespace ShareItAPI.Controllers
 
                 var user = await _userService.GetOrCreateUserAsync(payload);
 
+                if (user == null)
+                {
+                    return BadRequest(new ApiResponse<string>("Email is already registered", null));
+                }
+
                 var tokens = _jwtService.GenerateToken(user);
                 var refreshTokens = _jwtService.GenerateRefreshToken();
                 var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
@@ -116,6 +121,95 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new ApiResponse<string>("Email is already registered", null));
 
             return Ok(new ApiResponse<TokenResponseDto>("Registration successful", tokenResponse));
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new ApiResponse<string>("Invalid user", null));
+
+            var result = await _jwtService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+            if (!result)
+                return BadRequest(new ApiResponse<string>("Current password is incorrect or user not found", null));
+
+            return Ok(new ApiResponse<string>("Password changed successfully", null));
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            var result = await _jwtService.ForgotPasswordAsync(request.Email);
+            if (!result)
+                return BadRequest(new ApiResponse<string>("Email not found", null));
+
+            return Ok(new ApiResponse<string>("Password reset email sent", null));
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            var result = await _jwtService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword);
+            if (!result)
+                return BadRequest(new ApiResponse<string>("Invalid token or token expired", null));
+
+            return Ok(new ApiResponse<string>("Password reset successful", null));
+        }
+
+        [HttpPost("send-email-verification")]
+        [Authorize]
+        public async Task<IActionResult> SendEmailVerification()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new ApiResponse<string>("Invalid user", null));
+
+            var result = await _jwtService.SendEmailVerificationAsync(userId);
+            if (!result)
+                return BadRequest(new ApiResponse<string>("Email already verified or user not found", null));
+
+            return Ok(new ApiResponse<string>("Verification email sent", null));
+        }
+
+        [HttpPost("confirm-email")]
+        // This endpoint is used by the frontend form to manually confirm email using email and token in the request body.
+        public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto request)
+        {
+            var result = await _jwtService.ConfirmEmailAsync(request.Email, request.Token);
+            if (!result)
+                return BadRequest(new ApiResponse<string>("Invalid token or email already confirmed", null));
+
+            return Ok(new ApiResponse<string>("Email confirmed successfully", null));
+        }
+
+        [HttpGet("verify-email")]
+        // This endpoint is triggered by clicking the verification link sent to the user's email.
+        // It verifies the email directly via query string parameters (email & token).
+        // This is useful when you don't have a frontend app to handle the confirmation.
+        public async Task<IActionResult> VerifyEmail([FromQuery] string email, [FromQuery] string token)
+        {
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new ApiResponse<string>("Invalid email or token", null));
+            }
+
+            var user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound(new ApiResponse<string>("User not found", null));
+            }
+
+            var isValid = await _jwtService.ConfirmEmailAsync(user.Email, token);
+            if (!isValid)
+            {
+                return BadRequest(new ApiResponse<string>("Invalid or expired verification token", null));
+            }
+
+            await _userService.UpdateAsync(user);
+
+            return Ok(new ApiResponse<string>("Email verified successfully", null));
         }
     }
 }

@@ -27,6 +27,14 @@ namespace Repositories.UserRepositories
 
         public async Task<User> GetOrCreateUserAsync(GooglePayload payload)
         {
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == payload.Email);
+
+            if (existingUser != null)
+            {
+                return null;
+            }
+
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.GoogleId == payload.Sub);
 

@@ -31,6 +31,15 @@ namespace BusinessObject.Models
 
         public DateTime RefreshTokenExpiryTime { get; set; }
 
+        // Email verification
+        public string? EmailVerificationToken { get; set; }
+        public DateTime? EmailVerificationExpiry { get; set; }
+        public bool EmailConfirmed { get; set; } = false;
+
+        // Password reset
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiry { get; set; }
+
         [MaxLength(255)]
         public string GoogleId { get; set; } = string.Empty;
 
