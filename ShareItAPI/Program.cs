@@ -56,6 +56,16 @@ namespace ShareItAPI
 
             // Add services to the container.
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+
             builder.Services.AddControllers()
                 .AddOData(opt => opt
                     .EnableQueryFeatures()
@@ -200,6 +210,8 @@ namespace ShareItAPI
 
             builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();
+
+            app.UseCors("AllowAll");
 
             app.UseMiddleware<GlobalExceptionMiddleware>();
             app.UseMiddleware<TokenValidationMiddleware>();
