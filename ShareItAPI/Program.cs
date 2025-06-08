@@ -38,6 +38,13 @@ using Repositories.BankAccountRepositories;
 using Services.ProviderFinanceServices;
 using Repositories.TransactionRepositories;
 using Services.ProviderBankServices;
+using Repositories.ProductRepositories;
+using Services.ProductServices;
+using Microsoft.AspNetCore.OData;
+using BusinessObject.Models;
+using Microsoft.OData.Edm;
+using Microsoft.OData.ModelBuilder;
+using BusinessObject.DTOs.ProductDto;
 
 namespace ShareItAPI
 {
@@ -49,7 +56,19 @@ namespace ShareItAPI
 
             // Add services to the container.
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddOData(opt => opt
+                    .EnableQueryFeatures()
+                    .AddRouteComponents("odata", GetEdmModel())
+                    .Select()
+                    .Filter()
+                    .OrderBy()
+                    .Expand()
+                    .Count()
+                    .SetMaxTop(100)
+                    .SkipToken()
+                );
+
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
 
@@ -149,7 +168,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IOrderService, OrderService>();
 
+            builder.Services.AddAutoMapper(typeof(UserProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(OrderItemProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
             builder.Services.AddScoped<IEmailRepository, EmailRepository>();
@@ -161,7 +183,7 @@ namespace ShareItAPI
             });
 
             builder.Services.AddScoped<IBankAccountRepository, BankAccountRepository>();
-            builder.Services.AddScoped<IProviderFinanceService,  ProviderFinanceService>();
+            builder.Services.AddScoped<IProviderFinanceService, ProviderFinanceService>();
 
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
@@ -169,6 +191,9 @@ namespace ShareItAPI
 
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<UserContextHelper>();
+
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IProductService, ProductService>();
 
             // Thêm SignalR service
             builder.Services.AddSignalR();
@@ -198,6 +223,16 @@ namespace ShareItAPI
             app.MapControllers();
 
             app.Run();
+
+            static IEdmModel GetEdmModel()
+            {
+                var builder = new ODataConventionModelBuilder();
+
+                // Đăng ký các entity bạn muốn query bằng OData
+                builder.EntitySet<ProductDTO>("products");
+
+                return builder.GetEdmModel();
+            }
         }
     }
 }

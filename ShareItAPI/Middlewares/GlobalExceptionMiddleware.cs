@@ -27,23 +27,32 @@ namespace ShareItAPI.Middlewares
 
         private Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
-            HttpStatusCode statusCode = HttpStatusCode.InternalServerError;
-            string message = "An unexpected error occurred.";
-
-            if (exception is InvalidOperationException)
+            if (!context.Response.HasStarted)
             {
-                statusCode = HttpStatusCode.BadRequest;
-                message = exception.Message;
+                HttpStatusCode statusCode = HttpStatusCode.InternalServerError;
+                string message = "An unexpected error occurred.";
+
+                if (exception is InvalidOperationException)
+                {
+                    statusCode = HttpStatusCode.BadRequest;
+                    message = exception.Message;
+                }
+
+                var includeDetails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
+                var response = new ApiResponse<string>(
+                    message,
+                    includeDetails ? exception.ToString() : null
+                );
+
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = (int)statusCode;
+
+                var jsonResponse = JsonSerializer.Serialize(response);
+
+                return context.Response.WriteAsync(jsonResponse);
             }
-
-            var response = new ApiResponse<string>(message, null);
-
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = (int)statusCode;
-
-            var jsonResponse = JsonSerializer.Serialize(response);
-
-            return context.Response.WriteAsync(jsonResponse);
+            return Task.CompletedTask;
         }
     }
 }

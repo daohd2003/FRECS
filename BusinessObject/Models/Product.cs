@@ -44,6 +44,11 @@ namespace BusinessObject.Models
         [Required]
         public AvailabilityStatus AvailabilityStatus { get; set; }
 
+        /// <summary>
+        /// Sản phẩm có được quảng cáo hay không
+        /// </summary>
+        public bool IsPromoted { get; set; } = false;
+
         public int RentCount { get; set; } = 0;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
