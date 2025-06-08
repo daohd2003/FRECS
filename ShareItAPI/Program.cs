@@ -34,6 +34,10 @@ using Services.EmailServices;
 using Repositories.EmailRepositories;
 using Common.Utilities;
 using Microsoft.AspNetCore.Mvc;
+using Repositories.BankAccountRepositories;
+using Services.ProviderFinanceServices;
+using Repositories.TransactionRepositories;
+using Services.ProviderBankServices;
 
 namespace ShareItAPI
 {
@@ -48,7 +52,6 @@ namespace ShareItAPI
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
             // Add DbContext with SQL Server
             builder.Services.AddDbContext<ShareItDbContext>(options =>
@@ -157,12 +160,23 @@ namespace ShareItAPI
                 options.InvalidModelStateResponseFactory = ValidationErrorHelper.CreateFormattedValidationErrorResponse;
             });
 
+            builder.Services.AddScoped<IBankAccountRepository, BankAccountRepository>();
+            builder.Services.AddScoped<IProviderFinanceService,  ProviderFinanceService>();
+
+            builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+
+            builder.Services.AddScoped<IProviderBankService, ProviderBankService>();
+
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<UserContextHelper>();
+
             // Thêm SignalR service
             builder.Services.AddSignalR();
 
             builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();
 
+            app.UseMiddleware<GlobalExceptionMiddleware>();
             app.UseMiddleware<TokenValidationMiddleware>();
 
             // Configure the HTTP request pipeline.
@@ -173,6 +187,7 @@ namespace ShareItAPI
             }
 
             app.UseHttpsRedirection();
+            app.UseRouting();
 
             app.UseAuthentication();
             app.UseAuthorization();

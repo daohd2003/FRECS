@@ -53,7 +53,7 @@ namespace ShareItAPI.Controllers
 
                 if (user == null)
                 {
-                    return BadRequest(new ApiResponse<string>("Email is already registered", null));
+                    return BadRequest(new ApiResponse<string>("Email is already registered using traditional login", null));
                 }
 
                 var tokens = _jwtService.GenerateToken(user);

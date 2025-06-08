@@ -32,7 +32,13 @@ namespace Repositories.UserRepositories
 
             if (existingUser != null)
             {
-                return null;
+                if (string.IsNullOrEmpty(existingUser.GoogleId))
+                {
+                    // Đã đăng ký bằng tài khoản truyền thống
+                    return null;
+                }
+
+                return existingUser;
             }
 
             var user = await _context.Users
