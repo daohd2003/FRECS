@@ -11,6 +11,7 @@ namespace BusinessObject.Models
     /// <summary>
     /// Hình ảnh của sản phẩm
     /// </summary>
+    [Table("ProductImages")]
     public class ProductImage
     {
         [Key]
