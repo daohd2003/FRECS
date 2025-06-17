@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.OrdersDto;
+using BusinessObject.DTOs.ApiResponses; // Add this using statement
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -37,8 +38,8 @@ namespace ShareItAPI.Controllers
         /// Retrieve current user's cart
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CartDto))]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiResponse<CartDto>))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
         public async Task<IActionResult> GetCart()
         {
             try
@@ -48,14 +49,19 @@ namespace ShareItAPI.Controllers
 
                 if (cart == null)
                 {
-                    return Ok(new CartDto { CustomerId = customerId, Items = new System.Collections.Generic.List<CartItemDto>(), TotalAmount = 0 });
+                    // If cart is null, return an empty cart with a success message
+                    return Ok(new ApiResponse<CartDto>("Cart retrieved successfully (empty cart).", new CartDto { CustomerId = customerId, Items = new System.Collections.Generic.List<CartItemDto>(), TotalAmount = 0 }));
                 }
 
-                return Ok(cart);
+                return Ok(new ApiResponse<CartDto>("Cart retrieved successfully.", cart));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
             }
         }
 
@@ -63,9 +69,9 @@ namespace ShareItAPI.Controllers
         /// Add product to cart
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ApiResponse<CartDto>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
         public async Task<IActionResult> AddToCart([FromBody] CartAddRequestDto dto)
         {
             try
@@ -75,15 +81,25 @@ namespace ShareItAPI.Controllers
 
                 if (!result)
                 {
-                    return BadRequest("Failed to add product to cart.");
+                    return BadRequest(new ApiResponse<object>("Failed to add product to cart. Please check product ID and quantity.", null));
                 }
 
                 var updatedCart = await _cartService.GetUserCartAsync(customerId);
-                return CreatedAtAction(nameof(GetCart), updatedCart);
+                // For CreatedAtAction, we usually return the created resource.
+                // Here, we return the updated cart as it reflects the addition.
+                return CreatedAtAction(nameof(GetCart), new ApiResponse<CartDto>("Product added to cart successfully.", updatedCart));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
+            }
+            catch (ArgumentException ex) // Catch specific exceptions for better error messages
+            {
+                return BadRequest(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
             }
         }
 
@@ -91,9 +107,9 @@ namespace ShareItAPI.Controllers
         /// Update cart item quantity and duration
         /// </summary>
         [HttpPut("{itemId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
         public async Task<IActionResult> UpdateCartItem(Guid itemId, [FromBody] CartUpdateRequestDto dto)
         {
             try
@@ -103,14 +119,22 @@ namespace ShareItAPI.Controllers
 
                 if (!result)
                 {
-                    return NotFound("Cart item not found or does not belong to the current user.");
+                    return NotFound(new ApiResponse<object>("Cart item not found or does not belong to the current user.", null));
                 }
 
-                return Ok(new { message = "Cart item updated successfully." });
+                return Ok(new ApiResponse<object>("Cart item updated successfully.", null));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
             }
         }
 
@@ -119,7 +143,7 @@ namespace ShareItAPI.Controllers
         /// </summary>
         [HttpDelete("{itemId}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
         public async Task<IActionResult> RemoveFromCart(Guid itemId)
         {
             try
@@ -129,14 +153,20 @@ namespace ShareItAPI.Controllers
 
                 if (!result)
                 {
-                    return NotFound("Cart item not found or does not belong to the current user.");
+                    return NotFound(new ApiResponse<object>("Cart item not found or does not belong to the current user.", null));
                 }
 
+                // For 204 No Content, we don't return a body, so ApiResponse is not directly used here for the success case.
+                // However, for error cases, we can still use it.
                 return NoContent();
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
             }
         }
 
@@ -144,12 +174,12 @@ namespace ShareItAPI.Controllers
         /// Initiates the checkout process from the current user's cart, creating an order.
         /// </summary>
         [HttpPost("checkout")]
-        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(OrderDto))]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ApiResponse<OrderDto>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ApiResponse<object>))]
         public async Task<IActionResult> Checkout([FromBody] CheckoutRequestDto checkoutRequestDto)
         {
             try
@@ -158,27 +188,27 @@ namespace ShareItAPI.Controllers
                 var createdOrderDto = await _orderService.CreateOrderFromCartAsync(customerId, checkoutRequestDto);
 
                 return CreatedAtAction(
-                    "GetOrderDetail",
+                    "GetOrderDetail", // Assuming "GetOrderDetail" action exists in "Order" controller
                     "Order",
                     new { orderId = createdOrderDto.Id },
-                    createdOrderDto
+                    new ApiResponse<OrderDto>("Order created successfully from cart.", createdOrderDto)
                 );
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
             }
             catch (ArgumentException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new ApiResponse<object>(ex.Message, null));
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new { message = ex.Message });
+                return Conflict(new ApiResponse<object>(ex.Message, null));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
             }
         }
     }
