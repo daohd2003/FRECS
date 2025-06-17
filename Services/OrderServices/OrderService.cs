@@ -1,12 +1,16 @@
 ﻿using AutoMapper;
+using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using DataAccess;
 using Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Repositories.CartRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
+using Repositories.UserRepositories;
 using Services.NotificationServices;
 using System;
 using System.Collections.Generic;
@@ -24,6 +28,9 @@ namespace Services.OrderServices
         private readonly IRepository<OrderItem> _orderItemRepository;
         private readonly IMapper _mapper;
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ICartRepository _cartRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ShareItDbContext _context;
 
         public OrderService(
             IOrderRepository orderRepo,
@@ -31,7 +38,10 @@ namespace Services.OrderServices
             IHubContext<NotificationHub> hubContext,
             IRepository<Product> productRepository,
             IRepository<OrderItem> orderItemRepository,
-            IMapper mapper)
+            IMapper mapper,
+            ICartRepository cartRepository,
+            IUserRepository userRepository,
+            ShareItDbContext context)
         {
             _orderRepo = orderRepo;
             _notificationService = notificationService;
@@ -39,6 +49,9 @@ namespace Services.OrderServices
             _mapper = mapper;
             _productRepository = productRepository;
             _orderItemRepository = orderItemRepository;
+            _cartRepository = cartRepository;
+            _userRepository = userRepository;
+            _context = context;
         }
 
         public async Task CreateOrderAsync(CreateOrderDto dto)
@@ -48,7 +61,7 @@ namespace Services.OrderServices
 
             // Map Items → liên kết OrderId sau khi có Order Id
             foreach (var item in order.Items)
-            {
+                {
                 item.Id = Guid.NewGuid();
                 item.OrderId = order.Id;
             }
@@ -58,7 +71,7 @@ namespace Services.OrderServices
 
             await _notificationService.NotifyNewOrderCreated(order.Id);
 
-            // Send notifications to both parties
+                    // Send notifications to both parties
             await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
                 .SendAsync("ReceiveNotification", $"New order #{order.Id} created (Status: {order.Status})");
 
@@ -143,7 +156,7 @@ namespace Services.OrderServices
                 };
                 await _orderItemRepository.AddAsync(newItem);
             }
-            
+
             // Gọi UpdateAsync để EF xử lý add/update/delete đúng cách
             await _orderRepo.UpdateAsync(order);
 
@@ -253,6 +266,40 @@ namespace Services.OrderServices
             };
 
             return stats;
+
+        }
+
+        public async Task<DashboardStatsDTO> GetCustomerDashboardStatsAsync(Guid userId)
+        {
+            var orders = await _orderRepo.GetAllAsync();
+            var userOrders = orders.Where(o => o.CustomerId == userId);
+
+            var stats = new DashboardStatsDTO
+            {
+                PendingCount = userOrders.Count(o => o.Status == OrderStatus.pending),
+                ApprovedCount = userOrders.Count(o => o.Status == OrderStatus.approved),
+                InUseCount = userOrders.Count(o => o.Status == OrderStatus.in_use),
+                ReturnedCount = userOrders.Count(o => o.Status == OrderStatus.returned),
+                CancelledCount = userOrders.Count(o => o.Status == OrderStatus.cancelled)
+            };
+
+            return stats;
+        }
+        public async Task<DashboardStatsDTO> GetProviderDashboardStatsAsync(Guid userId)
+        {
+            var orders = await _orderRepo.GetAllAsync();
+            var userOrders = orders.Where(o => o.ProviderId == userId);
+
+            var stats = new DashboardStatsDTO
+            {
+                PendingCount = userOrders.Count(o => o.Status == OrderStatus.pending),
+                ApprovedCount = userOrders.Count(o => o.Status == OrderStatus.approved),
+                InUseCount = userOrders.Count(o => o.Status == OrderStatus.in_use),
+                ReturnedCount = userOrders.Count(o => o.Status == OrderStatus.returned),
+                CancelledCount = userOrders.Count(o => o.Status == OrderStatus.cancelled)
+            };
+
+            return stats;
         }
 
         public async Task<IEnumerable<OrderDto>> GetOrdersByProviderAsync(Guid providerId)
@@ -266,6 +313,106 @@ namespace Services.OrderServices
         {
             await _hubContext.Clients.Group($"notifications-{customerId}").SendAsync("ReceiveNotification", message);
             await _hubContext.Clients.Group($"notifications-{providerId}").SendAsync("ReceiveNotification", message);
+        }
+
+        public async Task<OrderDto> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto)
+        {
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+
+            if (cart == null || !cart.Items.Any())
+            {
+                throw new ArgumentException("Cart is empty or not found.");
+            }
+
+            // ... (Logic kiểm tra nhiều Provider, lấy ProviderId) ...
+            var groupedCartItems = cart.Items
+                .GroupBy(ci => ci.Product.ProviderId)
+                .ToList();
+
+            if (groupedCartItems.Count > 1)
+            {
+                throw new InvalidOperationException("Currently, items from multiple providers cannot be checked out in a single order. Please checkout items from each provider separately.");
+            }
+
+            var singleProviderGroup = groupedCartItems.First();
+            var providerId = singleProviderGroup.Key;
+            var provider = await _userRepository.GetByIdAsync(providerId);
+            if (provider == null)
+            {
+                throw new InvalidOperationException($"Provider with ID {providerId} not found.");
+            }
+
+            // ... (Logic kiểm tra tính khả dụng của sản phẩm và tính TotalAmount, tạo OrderItems) ...
+            decimal totalAmount = 0;
+            var orderItems = new List<OrderItem>();
+
+            foreach (var cartItem in singleProviderGroup)
+            {
+                var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
+
+                if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available || product.PricePerDay <= 0)
+                {
+                    throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is no longer available or has an invalid price.");
+                }
+
+                var orderItem = new OrderItem
+                {
+                    ProductId = cartItem.ProductId,
+                    RentalDays = cartItem.RentalDays,
+                    Quantity = cartItem.Quantity,
+                    DailyRate = product.PricePerDay
+                };
+                orderItems.Add(orderItem);
+
+                totalAmount += orderItem.DailyRate * orderItem.RentalDays * orderItem.Quantity;
+            }
+
+            // 3. Tạo Order mới
+            var newOrder = new Order
+            {
+                CustomerId = customerId,
+                ProviderId = providerId,
+                Status = OrderStatus.pending,
+                TotalAmount = totalAmount,
+                RentalStart = checkoutRequestDto.RentalStart, // <-- Lấy từ DTO đầu vào
+                RentalEnd = checkoutRequestDto.RentalEnd,     // <-- Lấy từ DTO đầu vào
+                Items = orderItems
+            };
+
+            // ... (Phần Transaction, AddOrder, Delete Cart Items, Notifications) ...
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    await _orderRepo.AddAsync(newOrder);
+
+                    foreach (var cartItem in singleProviderGroup)
+                    {
+                        await _cartRepository.DeleteCartItemAsync(cartItem);
+                    }
+
+                    await transaction.CommitAsync();
+
+                    // Send notifications
+                    await _notificationService.NotifyNewOrderCreated(newOrder.Id);
+                    await _hubContext.Clients.Group($"notifications-{newOrder.CustomerId}")
+                        .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} created (Status: {newOrder.Status})");
+                    await _hubContext.Clients.Group($"notifications-{newOrder.ProviderId}")
+                        .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} received (Status: {newOrder.Status})");
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw new InvalidOperationException("Failed to create order due to an internal error. Please try again.", ex);
+                }
+            }
+
+            // 5. Map Order entity sang OrderDto để trả về
+            var orderDto = _mapper.Map<OrderDto>(newOrder);
+
+            orderDto.Items = newOrder.Items.Select(oi => _mapper.Map<OrderItemDto>(oi)).ToList();
+
+            return orderDto;
         }
     }
 }

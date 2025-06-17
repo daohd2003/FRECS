@@ -13,7 +13,7 @@ using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/transactions")]
     [ApiController]
     [Authorize(Roles = "customer")]
     public class TransactionController : ControllerBase

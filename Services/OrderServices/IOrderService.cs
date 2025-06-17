@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.DashboardStatsDto;
+﻿using BusinessObject.DTOs.CartDto;
+using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
@@ -25,6 +26,9 @@ namespace Services.OrderServices
         Task CompleteTransactionAsync(Guid orderId);
         Task FailTransactionAsync(Guid orderId);
         Task<DashboardStatsDTO> GetDashboardStatsAsync();
+        Task<DashboardStatsDTO> GetCustomerDashboardStatsAsync(Guid userId);
+        Task<DashboardStatsDTO> GetProviderDashboardStatsAsync(Guid userId);
         Task<IEnumerable<OrderDto>> GetOrdersByProviderAsync(Guid providerId);
+        Task<OrderDto> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto);
     }
 }

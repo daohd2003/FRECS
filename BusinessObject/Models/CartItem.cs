@@ -29,6 +29,11 @@ namespace BusinessObject.Models
         public Product Product { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
+        public int Quantity { get; set; }
+
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "RentalDays must be at least 1.")]
         public int RentalDays { get; set; }
     }
 }

@@ -45,6 +45,10 @@ using BusinessObject.Models;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.AIDtos;
+using Services.AI;
+using Repositories.CartRepositories;
+using Services.CartServices;
 
 namespace ShareItAPI
 {
@@ -182,6 +186,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(OrderItemProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
             builder.Services.AddScoped<IEmailRepository, EmailRepository>();
@@ -207,6 +212,23 @@ namespace ShareItAPI
 
             // Thêm SignalR service
             builder.Services.AddSignalR();
+
+            // Cấu hình OpenAIOptions bằng cách ánh xạ các giá trị từ section "OpenAI"
+            builder.Services.AddHttpClient("OpenAI")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .ConfigureHttpClient(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                });
+            builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
+            builder.Services.AddScoped<IAiSearchService, AiSearchService>();
+            builder.Services.AddMemoryCache();
+
+            // Register CartRepositories
+            builder.Services.AddScoped<ICartRepository, CartRepository>();
+
+            // Register CartServices
+            builder.Services.AddScoped<ICartService, CartService>();
 
             builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();

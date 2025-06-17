@@ -9,7 +9,7 @@ using Services.ProductServices;
 
 namespace ShareItAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/products")]
     [ApiController]
     [Authorize(Roles = "admin,provider")]
     public class ProductController : ControllerBase
@@ -24,6 +24,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(Guid id)
         {
             var product = await _service.GetByIdAsync(id);

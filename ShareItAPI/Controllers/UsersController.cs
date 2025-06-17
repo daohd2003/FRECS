@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/users")]
     [ApiController]
     public class UsersController : ControllerBase
     {

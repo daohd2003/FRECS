@@ -24,6 +24,13 @@ namespace BusinessObject.Models
         public Product Product { get; set; }
 
         /// <summary>
+        /// Số lượng sản phẩm này trong đơn hàng (ví dụ: 2 chiếc áo giống hệt nhau)
+        /// </summary>
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
+        public int Quantity { get; set; }
+
+        /// <summary>
         /// Số ngày thuê sản phẩm trong đơn hàng
         /// </summary>
         [Required]

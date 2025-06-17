@@ -9,8 +9,8 @@ using Services.OrderServices;
 namespace ShareItAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    [Authorize(Roles ="customer,provider")]
+    [Route("api/orders")]
+    [Authorize(Roles = "customer,provider")]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -95,6 +95,22 @@ namespace ShareItAPI.Controllers
         {
             var stats = await _orderService.GetDashboardStatsAsync();
             return Ok(new ApiResponse<object>("Dashboard statistics", stats));
+        }
+
+        // Endpoint cho CUSTOMER
+        [HttpGet("customer/dashboard-stats/{customerId}")]
+        public async Task<IActionResult> GetCustomerDashboardStats(Guid customerId)
+        {
+            var stats = await _orderService.GetCustomerDashboardStatsAsync(customerId);
+            return Ok(new ApiResponse<object>("Customer dashboard statistics", stats));
+        }
+
+        // Endpoint cho PROVIDER
+        [HttpGet("provider/dashboard-stats/{providerId}")]
+        public async Task<IActionResult> GetProviderDashboardStats(Guid providerId)
+        {
+            var stats = await _orderService.GetProviderDashboardStatsAsync(providerId);
+            return Ok(new ApiResponse<object>("Provider dashboard statistics", stats));
         }
 
         [HttpGet("provider/{providerId:guid}")]
