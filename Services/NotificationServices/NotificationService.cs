@@ -4,11 +4,6 @@ using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.NotificationRepositories;
 using Repositories.RepositoryBase;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.NotificationServices
 {
@@ -161,17 +156,6 @@ namespace Services.NotificationServices
             };
 
             await _notificationRepository.AddAsync(notification);
-
-            // Send real-time notification
-            await _hubContext.Clients.Group($"notifications-{userId}")
-                .SendAsync("ReceiveNotification", new
-                {
-                    notification.Id,
-                    notification.Message,
-                    notification.Type,
-                    notification.CreatedAt,
-                    notification.OrderId
-                });
         }
 
         public async Task NotifyTransactionCompleted(Guid orderId, Guid userId)

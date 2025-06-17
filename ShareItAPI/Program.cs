@@ -1,54 +1,54 @@
 ﻿
-using BusinessObject.DTOs.Login;
-using DataAccess;
-using Microsoft.EntityFrameworkCore;
-using Repositories.RepositoryBase;
-using Repositories.UserRepositories;
-using Services.Authentication;
-using Services.UserServices;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
-using ShareItAPI.Middlewares;
-using Microsoft.OpenApi.Models;
-using BusinessObject.DTOs.CloudinarySetting;
-using Microsoft.Extensions.Options;
-using CloudinaryDotNet;
-using Repositories.Logout;
-using Services.CloudServices;
-using Repositories.ProfileRepositories;
-using Services.ProfileServices;
-using LibraryManagement.Services.Payments.Transactions;
-using Services.Transactions;
-using Services.Payments.VNPay;
+using BusinessObject.DTOs.AIDtos;
 using BusinessObject.DTOs.BankQR;
-using Repositories.NotificationRepositories;
-using Hubs;
-using Services.NotificationServices;
-using Repositories.OrderRepositories;
-using Services.OrderServices;
-using BusinessObject.Mappings;
+using BusinessObject.DTOs.CloudinarySetting;
 using BusinessObject.DTOs.EmailSetiings;
-using Services.EmailServices;
-using Repositories.EmailRepositories;
+using BusinessObject.DTOs.Login;
+using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.UsersDto;
+using BusinessObject.Mappings;
+using CloudinaryDotNet;
 using Common.Utilities;
+using DataAccess;
+using Hubs;
+using LibraryManagement.Services.Payments.Transactions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Repositories.BankAccountRepositories;
-using Services.ProviderFinanceServices;
-using Repositories.TransactionRepositories;
-using Services.ProviderBankServices;
-using Repositories.ProductRepositories;
-using Services.ProductServices;
 using Microsoft.AspNetCore.OData;
-using BusinessObject.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
-using BusinessObject.DTOs.ProductDto;
-using BusinessObject.DTOs.AIDtos;
-using Services.AI;
+using Microsoft.OpenApi.Models;
+using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
+using Repositories.EmailRepositories;
+using Repositories.Logout;
+using Repositories.NotificationRepositories;
+using Repositories.OrderRepositories;
+using Repositories.ProductRepositories;
+using Repositories.ProfileRepositories;
+using Repositories.RepositoryBase;
+using Repositories.TransactionRepositories;
+using Repositories.UserRepositories;
+using Services.AI;
+using Services.Authentication;
 using Services.CartServices;
+using Services.CloudServices;
+using Services.EmailServices;
+using Services.NotificationServices;
+using Services.OrderServices;
+using Services.Payments.VNPay;
+using Services.ProductServices;
+using Services.ProfileServices;
+using Services.ProviderBankServices;
+using Services.ProviderFinanceServices;
+using Services.Transactions;
+using Services.UserServices;
+using ShareItAPI.Middlewares;
+using System.Security.Claims;
+using System.Text;
 
 namespace ShareItAPI
 {
@@ -264,7 +264,7 @@ namespace ShareItAPI
 
                 // Đăng ký các entity bạn muốn query bằng OData
                 builder.EntitySet<ProductDTO>("products");
-
+                builder.EntitySet<UserODataDTO>("list/users");
                 return builder.GetEdmModel();
             }
         }
