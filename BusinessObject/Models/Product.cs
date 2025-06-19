@@ -56,5 +56,11 @@ namespace BusinessObject.Models
         public DateTime? UpdatedAt { get; set; }
 
         public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
+
+        [Column(TypeName = "decimal(2,1)")]
+        public decimal AverageRating { get; set; } = 0.0m;
+        public int RatingCount { get; set; } = 0;
+
+        public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
     }
 }
