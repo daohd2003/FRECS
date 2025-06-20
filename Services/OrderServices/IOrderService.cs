@@ -29,6 +29,6 @@ namespace Services.OrderServices
         Task<DashboardStatsDTO> GetCustomerDashboardStatsAsync(Guid userId);
         Task<DashboardStatsDTO> GetProviderDashboardStatsAsync(Guid userId);
         Task<IEnumerable<OrderDto>> GetOrdersByProviderAsync(Guid providerId);
-        Task<OrderDto> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto);
+        Task<IEnumerable<OrderDto>> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto);
     }
 }

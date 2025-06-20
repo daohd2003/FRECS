@@ -61,7 +61,7 @@ namespace Services.OrderServices
 
             // Map Items → liên kết OrderId sau khi có Order Id
             foreach (var item in order.Items)
-                {
+            {
                 item.Id = Guid.NewGuid();
                 item.OrderId = order.Id;
             }
@@ -71,7 +71,7 @@ namespace Services.OrderServices
 
             await _notificationService.NotifyNewOrderCreated(order.Id);
 
-                    // Send notifications to both parties
+            // Send notifications to both parties
             await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
                 .SendAsync("ReceiveNotification", $"New order #{order.Id} created (Status: {order.Status})");
 
@@ -315,7 +315,7 @@ namespace Services.OrderServices
             await _hubContext.Clients.Group($"notifications-{providerId}").SendAsync("ReceiveNotification", message);
         }
 
-        public async Task<OrderDto> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto)
+        public async Task<IEnumerable<OrderDto>> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto)
         {
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
 
@@ -329,90 +329,92 @@ namespace Services.OrderServices
                 .GroupBy(ci => ci.Product.ProviderId)
                 .ToList();
 
-            if (groupedCartItems.Count > 1)
-            {
-                throw new InvalidOperationException("Currently, items from multiple providers cannot be checked out in a single order. Please checkout items from each provider separately.");
-            }
+            var createdOrders = new List<Order>();
 
-            var singleProviderGroup = groupedCartItems.First();
-            var providerId = singleProviderGroup.Key;
-            var provider = await _userRepository.GetByIdAsync(providerId);
-            if (provider == null)
-            {
-                throw new InvalidOperationException($"Provider with ID {providerId} not found.");
-            }
-
-            // ... (Logic kiểm tra tính khả dụng của sản phẩm và tính TotalAmount, tạo OrderItems) ...
-            decimal totalAmount = 0;
-            var orderItems = new List<OrderItem>();
-
-            foreach (var cartItem in singleProviderGroup)
-            {
-                var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
-
-                if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available || product.PricePerDay <= 0)
-                {
-                    throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is no longer available or has an invalid price.");
-                }
-
-                var orderItem = new OrderItem
-                {
-                    ProductId = cartItem.ProductId,
-                    RentalDays = cartItem.RentalDays,
-                    Quantity = cartItem.Quantity,
-                    DailyRate = product.PricePerDay
-                };
-                orderItems.Add(orderItem);
-
-                totalAmount += orderItem.DailyRate * orderItem.RentalDays * orderItem.Quantity;
-            }
-
-            // 3. Tạo Order mới
-            var newOrder = new Order
-            {
-                CustomerId = customerId,
-                ProviderId = providerId,
-                Status = OrderStatus.pending,
-                TotalAmount = totalAmount,
-                RentalStart = checkoutRequestDto.RentalStart, // <-- Lấy từ DTO đầu vào
-                RentalEnd = checkoutRequestDto.RentalEnd,     // <-- Lấy từ DTO đầu vào
-                Items = orderItems
-            };
-
-            // ... (Phần Transaction, AddOrder, Delete Cart Items, Notifications) ...
             using (var transaction = await _context.Database.BeginTransactionAsync())
             {
                 try
                 {
-                    await _orderRepo.AddAsync(newOrder);
-
-                    foreach (var cartItem in singleProviderGroup)
+                    foreach (var providerGroup in groupedCartItems)
                     {
-                        await _cartRepository.DeleteCartItemAsync(cartItem);
+                        var providerId = providerGroup.Key;
+                        var provider = await _userRepository.GetByIdAsync(providerId);
+                        if (provider == null)
+                        {
+                            throw new InvalidOperationException($"Provider with ID {providerId} not found.");
+                        }
+
+                        decimal totalAmount = 0;
+                        var orderItems = new List<OrderItem>();
+
+                        foreach (var cartItem in providerGroup)
+                        {
+                            var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
+
+                            if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available || product.PricePerDay <= 0)
+                            {
+                                throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable or has an invalid price.");
+                            }
+
+                            var orderItem = new OrderItem
+                            {
+                                Id = Guid.NewGuid(),
+                                ProductId = cartItem.ProductId,
+                                RentalDays = cartItem.RentalDays,
+                                Quantity = cartItem.Quantity,
+                                DailyRate = product.PricePerDay
+                            };
+
+                            orderItems.Add(orderItem);
+                            totalAmount += orderItem.DailyRate * orderItem.RentalDays * orderItem.Quantity;
+                        }
+
+                        var newOrder = new Order
+                        {
+                            Id = Guid.NewGuid(),
+                            CustomerId = customerId,
+                            ProviderId = providerId,
+                            Status = OrderStatus.pending,
+                            TotalAmount = totalAmount,
+                            RentalStart = checkoutRequestDto.RentalStart,
+                            RentalEnd = checkoutRequestDto.RentalEnd,
+                            Items = orderItems
+                        };
+
+                        await _orderRepo.AddAsync(newOrder);
+                        createdOrders.Add(newOrder);
+
+                        foreach (var cartItem in providerGroup)
+                        {
+                            await _cartRepository.DeleteCartItemAsync(cartItem);
+                        }
+
+                        // Gửi thông báo
+                        await _notificationService.NotifyNewOrderCreated(newOrder.Id);
+                        await _hubContext.Clients.Group($"notifications-{newOrder.CustomerId}")
+                            .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} created (Status: {newOrder.Status})");
+                        await _hubContext.Clients.Group($"notifications-{newOrder.ProviderId}")
+                            .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} received (Status: {newOrder.Status})");
                     }
 
                     await transaction.CommitAsync();
-
-                    // Send notifications
-                    await _notificationService.NotifyNewOrderCreated(newOrder.Id);
-                    await _hubContext.Clients.Group($"notifications-{newOrder.CustomerId}")
-                        .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} created (Status: {newOrder.Status})");
-                    await _hubContext.Clients.Group($"notifications-{newOrder.ProviderId}")
-                        .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} received (Status: {newOrder.Status})");
                 }
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    throw new InvalidOperationException("Failed to create order due to an internal error. Please try again.", ex);
+                    throw new InvalidOperationException("Failed to create orders due to an internal error.", ex);
                 }
             }
 
             // 5. Map Order entity sang OrderDto để trả về
-            var orderDto = _mapper.Map<OrderDto>(newOrder);
+            var orderDtos = createdOrders.Select(order =>
+            {
+                var dto = _mapper.Map<OrderDto>(order);
+                dto.Items = order.Items.Select(i => _mapper.Map<OrderItemDto>(i)).ToList();
+                return dto;
+            }).ToList();
 
-            orderDto.Items = newOrder.Items.Select(oi => _mapper.Map<OrderItemDto>(oi)).ToList();
-
-            return orderDto;
+            return orderDtos;
         }
     }
 }
