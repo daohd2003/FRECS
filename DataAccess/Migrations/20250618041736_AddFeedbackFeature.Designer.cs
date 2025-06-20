@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250618041736_AddFeedbackFeature")]
+    partial class AddFeedbackFeature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -177,16 +180,6 @@ namespace DataAccess.Migrations
                     b.Property<Guid?>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ProviderResponse")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("ProviderResponseAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ProviderResponseById")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("Rating")
                         .HasColumnType("int");
 
@@ -206,8 +199,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("OrderItemId");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("ProviderResponseById");
 
                     b.ToTable("Feedbacks");
                 });
@@ -698,11 +689,6 @@ namespace DataAccess.Migrations
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("BusinessObject.Models.User", "ProviderResponder")
-                        .WithMany()
-                        .HasForeignKey("ProviderResponseById")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Customer");
 
                     b.Navigation("Order");
@@ -710,8 +696,6 @@ namespace DataAccess.Migrations
                     b.Navigation("OrderItem");
 
                     b.Navigation("Product");
-
-                    b.Navigation("ProviderResponder");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Message", b =>
