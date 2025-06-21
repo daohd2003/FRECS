@@ -185,14 +185,10 @@ namespace ShareItAPI.Controllers
             try
             {
                 var customerId = GetCustomerId();
-                var createdOrderDto = await _orderService.CreateOrderFromCartAsync(customerId, checkoutRequestDto);
+                var createdOrders = await _orderService.CreateOrderFromCartAsync(customerId, checkoutRequestDto);
 
-                return CreatedAtAction(
-                    "GetOrderDetail", // Assuming "GetOrderDetail" action exists in "Order" controller
-                    "Order",
-                    new { orderId = createdOrderDto.Id },
-                    new ApiResponse<OrderDto>("Order created successfully from cart.", createdOrderDto)
-                );
+                return StatusCode(StatusCodes.Status201Created,
+                    new ApiResponse<IEnumerable<OrderDto>>("Orders created successfully from cart.", createdOrders));
             }
             catch (UnauthorizedAccessException ex)
             {
