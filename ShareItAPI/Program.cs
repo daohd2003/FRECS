@@ -24,6 +24,7 @@ using Microsoft.OpenApi.Models;
 using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
 using Repositories.EmailRepositories;
+using Repositories.FeedbackRepositories;
 using Repositories.Logout;
 using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
@@ -37,6 +38,7 @@ using Services.Authentication;
 using Services.CartServices;
 using Services.CloudServices;
 using Services.EmailServices;
+using Services.FeedbackServices;
 using Services.NotificationServices;
 using Services.OrderServices;
 using Services.Payments.VNPay;
@@ -49,6 +51,7 @@ using Services.UserServices;
 using ShareItAPI.Middlewares;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace ShareItAPI
 {
@@ -100,6 +103,12 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddHttpClient();
+
+            builder.Services.AddControllers()
+                            .AddJsonOptions(options =>
+                            {
+                                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                            });
 
             // Bind thông tin từ appsettings.json vào đối tượng JwtSettings
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
@@ -175,6 +184,12 @@ namespace ShareItAPI
             builder.Services.Configure<BankQrConfig>(builder.Configuration.GetSection("BankQrConfig"));
 
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+
+            builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+            builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+
 
             // Đăng ký Notification
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();

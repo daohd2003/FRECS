@@ -111,9 +111,41 @@ namespace DataAccess
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Feedback>()
+                .Property(f => f.TargetType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Feedback>()
                 .HasOne(f => f.Customer)
                 .WithMany()
                 .HasForeignKey(f => f.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Feedback>()
+                .HasOne(f => f.Product)
+                .WithMany(p => p.Feedbacks)
+                .HasForeignKey(f => f.ProductId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Feedback>()
+                .HasOne(f => f.Order)
+                .WithMany()
+                .HasForeignKey(f => f.OrderId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Feedback>()
+                .HasOne(f => f.OrderItem)
+                .WithMany()
+                .HasForeignKey(f => f.OrderItemId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Feedback>()
+                .HasOne(f => f.ProviderResponder)
+                .WithMany()
+                .HasForeignKey(f => f.ProviderResponseById)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<OrderItem>()
@@ -133,6 +165,13 @@ namespace DataAccess
                 .WithMany(u => u.Products)
                 .HasForeignKey(p => p.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.AverageRating)
+                .HasColumnType("decimal(2,1)");
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.RatingCount);
 
             modelBuilder.Entity<ProductImage>()
                 .HasOne(pi => pi.Product)
