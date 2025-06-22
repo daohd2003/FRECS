@@ -207,8 +207,6 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new ApiResponse<string>("Invalid or expired verification token", null));
             }
 
-            await _userService.UpdateAsync(user);
-
             return Ok(new ApiResponse<string>("Email verified successfully", null));
         }
     }

@@ -1,0 +1,31 @@
+﻿@page "/verify-email"
+@model ShareItFE.Pages.VerifyEmailModel
+@{
+    ViewData["Title"] = "Email Verification";
+}
+
+<div class="container text-center py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="display-4 mb-4">Email Verification</h1>
+
+            @if (!string.IsNullOrEmpty(Model.Message))
+            {
+                <div class="alert @(Model.IsSuccess ? "alert-success" : "alert-danger")" role="alert">
+                    @Model.Message
+                </div>
+            }
+
+            <p class="mt-4">
+                <a href="/" class="btn btn-primary">Go to Home Page</a>
+                <a href="/Auth" class="btn btn-secondary">Go to Login/Register</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Optional: Any client-side logic specific to this page
+    </script>
+}

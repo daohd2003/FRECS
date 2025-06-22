@@ -1,0 +1,375 @@
+﻿@page
+@model ShareItFE.Pages.AuthModel
+@{
+    ViewData["Title"] = "Sign In / Sign Up";
+    Layout = null; // This line is crucial for no layout
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ShareIT</title>
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="app-header">
+            <div class="header-content">
+                <a href="/" class="back-link">
+                    <svg class="back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    <span>Back to Home</span>
+                </a>
+                <div class="brand-link">
+                    <svg class="brand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                    <span class="brand-name">ShareIT</span>
+                </div>
+                <div class="spacer"></div>
+            </div>
+        </header>
+
+
+        <div class="main-content-area">
+            <div class="max-width-container">
+                <div class="grid-layout">
+
+                    @* Benefits Section (Rendered by server) *@
+                    <div class="benefits-section">
+                        <div class="benefits-heading-group">
+                            <h1>
+                                Welcome to
+                                <span class="purple-text">ShareIT</span>
+                            </h1>
+                            <p>
+                                Join thousands of fashion lovers who rent designer outfits for every special occasion.
+                            </p>
+                        </div>
+
+                        <ul class="benefits-list">
+                            @{
+                                var benefits = new[]
+                                {
+                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>", Title = "Track Your Bookings", Description = "Monitor all your rentals in one place" },
+                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 10h18M7 15h10m-10 4h10M3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2z\"></path></svg>", Title = "Faster Checkout", Description = "Save payment info for quick rentals" },
+                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>", Title = "Exclusive Offers", Description = "Get early access to new collections" }
+                                };
+                            }
+                            @foreach (var benefit in benefits)
+                            {
+                                <li class="benefit-item">
+                                    <div class="benefit-icon-wrapper">
+                                        @Html.Raw(benefit.Icon)
+                                    </div>
+                                    <div class="benefit-text">
+                                        <h3>@benefit.Title</h3>
+                                        <p>@benefit.Description</p>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+
+                        <div class="offer-banner">
+                            <h3>Special Welcome Offer!</h3>
+                            <p>Get 20% off your first rental when you sign up today.</p>
+                        </div>
+                    </div>
+
+                    @* Auth Form Section *@
+                    <div class="auth-form-container">
+                        <div class="form-header">
+                            <h2 id="auth-title">
+                                @if (Model.IsLogin)
+                                {<text>Welcome Back</text> }
+                            else
+                            { <text>Create Account</text>}
+                            </h2>
+                            <p id="auth-subtitle">
+                                @if (Model.IsLogin)
+                                {<text>Sign in to access your fashion rentals</text> }
+                            else
+                            { <text>Join the RentChic community today</text>}
+                            </p>
+                        </div>
+
+                        @* Display error/success messages from Model *@
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                        {
+                            <div class="alert alert-error" role="alert">
+                                <strong>Error!</strong>
+                                <span>@Model.ErrorMessage</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                        {
+                            <div class="alert alert-success" role="alert">
+                                <strong>Success!</strong>
+                                <span>@Model.SuccessMessage</span>
+                            </div>
+                        }
+
+                        @* Social Login Buttons - Google Sign-In div uses Model.GoogleClientId *@
+                        <div class="social-buttons-wrapper">
+                            @*<div id="g_id_onload"
+                                     data-client_id="@Model.GoogleClientId"
+                                     data-callback="handleGoogleCredentialResponse"
+                                     data-auto_prompt="false"
+                                     data-auto_select="false">
+                                </div>*@
+
+                            <button type="button" class="social-button" id="google-custom-button">
+                                <svg class="social-icon-mr" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                </svg>
+                                Continue with Google
+                            </button>
+
+                            @* <div id="google-button-container" style="display: none;"></div>*@
+
+
+                            <button type="button" class="social-button">
+                                <svg class="social-icon-mr" fill="#1877F2" viewBox="0 0 24 24">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                                </svg>
+                                Continue with Facebook
+                            </button>
+                        </div>
+
+                        <div class="divider">
+                            <span>Or continue with email</span>
+                        </div>
+
+                        <form method="post">
+                            @Html.AntiForgeryToken() @* Thêm AntiForgeryToken vào đây *@
+                            <input type="hidden" id="isLogin" name="@Html.NameFor(m => m.IsLogin)" value="@Model.IsLogin.ToString().ToLowerInvariant()" />
+
+                            <div id="register-fields" class="form-group-wrapper" style="display: @(Model.IsLogin ? "none" : "block");">
+                                <div class="form-group">
+                                    <label for="name" class="form-label">Full Name</label>
+                                    <div class="input-wrapper">
+                                        <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                        <input type="text"
+                                               id="name"
+                                               name="@Html.NameFor(m => m.Name)"
+                                               value="@Model.Name"
+                                               class="form-input"
+                                               placeholder="Enter your full name" />
+                                    </div>
+                                    <span asp-validation-for="Name" class="validation-message"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email" class="form-label">Email Address</label>
+                                <div class="input-wrapper">
+                                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    <input type="email"
+                                           id="email"
+                                           name="@Html.NameFor(m => m.Email)"
+                                           value="@Model.Email"
+                                           class="form-input"
+                                           placeholder="Enter your email"
+                                           required />
+                                </div>
+                                <span asp-validation-for="Email" class="validation-message"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="password" class="form-label">Password</label>
+                                <div class="input-wrapper password-input-wrapper">
+                                    <svg class="input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v3h8z"></path></svg>
+                                    <input type="password"
+                                           id="password"
+                                           name="@Html.NameFor(m => m.Password)"
+                                           value="@Model.Password"
+                                           class="form-input"
+                                           placeholder="Enter your password"
+                                           required />
+                                    <span class="password-toggle-icon" onclick="togglePasswordVisibility('password', this)">
+                                        <svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                    </span>
+                                </div>
+                                <span asp-validation-for="Password" class="validation-message"></span>
+                            </div>
+
+                            <div id="login-options" class="login-options" style="display: @(Model.IsLogin ? "flex" : "none");">
+                                <div class="remember-me">
+                                    <input id="remember-me-checkbox"
+                                           name="remember-me"
+                                           type="checkbox"
+                                           class="remember-me-checkbox-input" />
+                                    <label for="remember-me-checkbox" class="remember-me-label">Remember me</label>
+                                </div>
+                                <a href="/ForgotPassword" class="forgot-password-link">
+                                    Forgot password?
+                                </a>
+                            </div>
+
+                            <button type="submit"
+                                    id="submit-button"
+                                    class="submit-button"
+                                    asp-page-handler="@(Model.IsLogin ? "Login" : "Register")">
+                                <span id="submit-button-text">@(Model.IsLogin ? "Sign In" : "Create Account")</span>
+                            </button>
+                        </form>
+
+                        <div class="auth-toggle-area">
+                            <p class="auth-toggle-text">
+                                <span id="auth-toggle-prompt">@(Model.IsLogin ? "Don't have an account?" : "Already have an account?")</span>
+                                <button type="button"
+                                        onclick="toggleAuthMode()"
+                                        class="auth-toggle-button"
+                                        id="auth-toggle-button-js">
+                                    @(Model.IsLogin ? "Sign up" : "Sign in")
+                                </button>
+                            </p>
+                        </div>
+
+                        <div id="terms-privacy" class="terms-privacy-area" style="display: @(Model.IsLogin ? "none" : "block");">
+                            <p class="terms-privacy-text">
+                                By creating an account, you agree to our
+                                <a href="#" class="terms-privacy-link">Terms of Service</a>
+                                and
+                                <a href="#" class="terms-privacy-link">Privacy Policy</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Place scripts here because Layout = null removes the _Layout.cshtml's render section. *@
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+
+    <script>
+        // Your existing JavaScript
+        let isLoginMode = @Model.IsLogin.ToString().ToLowerInvariant();
+
+        function togglePasswordVisibility(inputId, iconContainer) {
+            const passwordInput = document.getElementById(inputId);
+
+            // Thêm kiểm tra an toàn:
+            if (!passwordInput || !iconContainer) {
+                console.error("Lỗi: Không tìm thấy phần tử input hoặc icon cho ID:", inputId);
+                return;
+            }
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                iconContainer.innerHTML = '<svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064-7 9.542-7 1.54 0 3.003.266 4.375.772m9.467 4.148c-.618 2.053-2.032 3.753-3.875 4.868a10.04 10.04 0 01-5.122 1.344"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>'; // Eye-slash icon
+            } else {
+                passwordInput.type = 'password';
+                iconContainer.innerHTML = '<svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>'; // Eye icon
+            }
+        }
+
+        function updateAuthModeUI() {
+            document.getElementById('isLogin').value = isLoginMode;
+            const authTitle = document.getElementById('auth-title');
+            const authSubtitle = document.getElementById('auth-subtitle');
+            const registerFields = document.getElementById('register-fields');
+            const loginOptions = document.getElementById('login-options');
+            const submitButtonText = document.getElementById('submit-button-text');
+            const submitButton = document.getElementById('submit-button');
+            const authTogglePrompt = document.getElementById('auth-toggle-prompt');
+            const authToggleButton = document.getElementById('auth-toggle-button-js');
+            const termsPrivacy = document.getElementById('terms-privacy');
+            const handlerString = isLoginMode ? 'Login' : 'Register';
+
+            if (isLoginMode) {
+                authTitle.innerText = 'Welcome Back';
+                authSubtitle.innerText = 'Sign in to access your fashion rentals';
+                registerFields.style.display = 'none';
+                loginOptions.style.display = 'flex';
+                submitButtonText.innerText = 'Sign In';
+                submitButton.setAttribute('asp-page-handler', 'Login');
+                authTogglePrompt.innerText = "Don't have an account?";
+                authToggleButton.innerText = 'Sign up';
+                termsPrivacy.style.display = 'none';
+                submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
+            } else {
+                authTitle.innerText = 'Create Account';
+                authSubtitle.innerText = 'Join the RentChic community today';
+                registerFields.style.display = 'block';
+                loginOptions.style.display = 'none';
+                submitButtonText.innerText = 'Create Account';
+                submitButton.setAttribute('asp-page-handler', 'Register');
+                authTogglePrompt.innerText = "Already have an account?";
+                authToggleButton.innerText = 'Sign in';
+                termsPrivacy.style.display = 'block';
+                submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
+            }
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            updateAuthModeUI();
+        }
+
+    // --- GOOGLE SIGN-IN INTEGRATION (This function remains the same) ---
+    function handleGoogleCredentialResponse(response) {
+        console.log("Google ID Token: " + response.credential);
+
+        // Create a hidden form to post the ID token to the server
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '?handler=GoogleLogin'; // Calls OnPostGoogleLogin in AuthModel.cs
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'IdToken';
+        input.value = response.credential;
+        form.appendChild(input);
+
+        const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (antiForgeryToken) {
+            const antiForgeryInput = document.createElement('input');
+            antiForgeryInput.type = 'hidden';
+            antiForgeryInput.name = antiForgeryToken.name;
+            antiForgeryInput.value = antiForgeryToken.value;
+            form.appendChild(antiForgeryInput);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        }
+
+        /*document.addEventListener('DOMContentLoaded', () => {
+            const googleCustomButton = document.getElementById('google-custom-button');
+            if (googleCustomButton) {
+                googleCustomButton.addEventListener('click', () => {
+                    google.accounts.id.prompt();
+                });
+            }
+        });*/
+
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: '@Model.GoogleClientId',
+                callback: handleGoogleCredentialResponse,
+                auto_select: false,
+                prompt_parent_id: "google-custom-button"
+            });
+
+            google.accounts.id.renderButton(
+                document.getElementById("google-custom-button"),
+                {
+                    theme: "outline",
+                    size: "large",
+                    width: 310,
+                    type: "standard",
+                    shape: "rectangular"
+                }
+            );
+        };
+    </script>
+</body>
+</html>
