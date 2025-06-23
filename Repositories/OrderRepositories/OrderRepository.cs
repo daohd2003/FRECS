@@ -6,11 +6,6 @@ using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Repositories.OrderRepositories
 {
@@ -102,6 +97,14 @@ namespace Repositories.OrderRepositories
 
             await _context.SaveChangesAsync();
             return true;
+        }
+        public async Task UpdateOnlyStatusAndTimeAsync(Order order)
+        {
+            _context.Orders.Attach(order);
+            _context.Entry(order).Property(o => o.Status).IsModified = true;
+            _context.Entry(order).Property(o => o.UpdatedAt).IsModified = true;
+
+            await _context.SaveChangesAsync();
         }
     }
 }

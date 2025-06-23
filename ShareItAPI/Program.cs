@@ -30,6 +30,7 @@ using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
 using Repositories.ProductRepositories;
 using Repositories.ProfileRepositories;
+using Repositories.ReportRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
@@ -46,6 +47,7 @@ using Services.ProductServices;
 using Services.ProfileServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
+using Services.ReportService;
 using Services.Transactions;
 using Services.UserServices;
 using ShareItAPI.Middlewares;
@@ -190,6 +192,8 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
+            builder.Services.AddScoped<IReportService, ReportService>();
+            builder.Services.AddScoped<IReportRepository, ReportRepository>();
 
             // Đăng ký Notification
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
