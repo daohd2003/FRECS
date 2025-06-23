@@ -82,17 +82,18 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpPost("refresh-token")]
+        [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {
-            var token = TokenHelper.ExtractAccessToken(HttpContext);
+            var oldAccessToken = TokenHelper.ExtractAccessToken(HttpContext);
 
-            if (string.IsNullOrEmpty(token))
-                return Unauthorized(new ApiResponse<string>("Access token is missing or invalid", null));
+            if (string.IsNullOrEmpty(request.RefreshToken))
+                return BadRequest(new ApiResponse<string>("Refresh token is missing from the request body.", null));
 
-            var result = await _jwtService.RefreshTokenAsync(token, request.RefreshToken);
+            var result = await _jwtService.RefreshTokenAsync(oldAccessToken, request.RefreshToken);
 
             if (result == null)
-                return Unauthorized(new ApiResponse<string>("Refresh token is invalid or has expired", null));
+                return Unauthorized(new ApiResponse<string>("Refresh token is invalid or has expired. Please log in again.", null));
 
             return Ok(new ApiResponse<TokenResponseDto>("Token refreshed successfully", result));
         }

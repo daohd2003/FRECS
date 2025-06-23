@@ -82,7 +82,7 @@ namespace Services.Authentication
             return DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays);
         }
 
-        public ClaimsPrincipal? ValidateToken(string token, bool validateLifetime = false)
+        public ClaimsPrincipal? ValidateToken(string? token, bool validateLifetime = false)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
@@ -140,20 +140,37 @@ namespace Services.Authentication
             }
         }
 
-        public async Task<TokenResponseDto?> RefreshTokenAsync(string accessToken, string refreshToken)
+        public async Task<TokenResponseDto?> RefreshTokenAsync(string? accessToken, string refreshToken)
         {
-            var principal = ValidateToken(accessToken, validateLifetime: false);
-            if (principal == null) return null;
+            Guid userId;
 
-            var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdClaim, out Guid userId)) return null;
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                // Cho phép access token hết hạn nhưng vẫn phải parse được claim
+                var principal = ValidateToken(accessToken, validateLifetime: false);
+                if (principal == null) return null;
 
+                var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                if (!Guid.TryParse(userIdClaim, out userId)) return null;
+            }
+            else
+            {
+                // Nếu accessToken bị null thì tìm user theo refresh token
+                var userByToken = await _userRepository.GetByRefreshTokenAsync(refreshToken);
+                if (userByToken == null || userByToken.RefreshTokenExpiryTime < DateTime.UtcNow)
+                    return null;
+
+                userId = userByToken.Id;
+            }
+
+            // Tìm user từ ID
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime < DateTime.UtcNow)
             {
                 return null;
             }
 
+            // Tạo mới token và refresh token
             var newAccessToken = GenerateToken(user);
             var newRefreshToken = GenerateRefreshToken();
             var newExpiry = GetRefreshTokenExpiryTime();
@@ -162,11 +179,15 @@ namespace Services.Authentication
             user.RefreshTokenExpiryTime = newExpiry;
             await _userRepository.UpdateAsync(user);
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(accessToken);
-            var expDate = jwtToken.ValidTo;
+            // Nếu accessToken cũ còn tồn tại → thêm vào danh sách blacklist
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+                var expDate = jwtToken.ValidTo;
 
-            await _loggedOutTokenRepository.AddAsync(accessToken, expDate);
+                await _loggedOutTokenRepository.AddAsync(accessToken, expDate);
+            }
 
             return new TokenResponseDto
             {

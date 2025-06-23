@@ -29,7 +29,10 @@
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseMiddleware<ShareItFE.Middlewares.RefreshTokenMiddleware>();
 
             app.MapRazorPages();
 
