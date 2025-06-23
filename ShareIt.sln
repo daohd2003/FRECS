@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShareItAPI", "ShareItAPI\Sh
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common", "Common\Common.csproj", "{9BD86AC3-7CAE-4A73-AE67-BDB813C08719}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hubs", "Hubs\Hubs.csproj", "{DDFCA656-8C26-4A56-BB05-17D2F37E34F2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hubs", "Hubs\Hubs.csproj", "{DDFCA656-8C26-4A56-BB05-17D2F37E34F2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShareItFE", "ShareItFE\ShareItFE.csproj", "{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{DDFCA656-8C26-4A56-BB05-17D2F37E34F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDFCA656-8C26-4A56-BB05-17D2F37E34F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDFCA656-8C26-4A56-BB05-17D2F37E34F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

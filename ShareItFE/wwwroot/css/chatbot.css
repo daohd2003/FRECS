@@ -1,0 +1,241 @@
+﻿/* Màu sắc neon chính - bạn có thể điều chỉnh */
+:root {
+    --neon-blue-light: #87CEEB; /* Xanh da trời nhạt, gần với màu trong biểu tượng */
+    --neon-blue-medium: #007bff; /* Xanh dương trung bình */
+    --neon-purple: #EE82EE; /* Tím nhạt */
+    --neon-cyan: #00FFFF; /* Cyan sáng */
+    --neon-pink: #FF69B4; /* Thêm màu hồng neon */
+    --neon-green: #00FF7F; /* Thêm màu xanh lá neon */
+    --neon-glow-start: rgba(135, 206, 235, 0.7); /* Màu phát sáng ban đầu */
+    --neon-glow-end: rgba(0, 123, 255, 0.4); /* Màu phát sáng kết thúc */
+}
+
+/* General Chatbot Widget Styles */
+.chatbot-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px; /* Adjust width as needed */
+    height: 500px; /* Adjust height as needed */
+    /* Các lớp nền neon mờ ảo (giữ nguyên hoặc điều chỉnh nhẹ) */
+    background-image: radial-gradient(circle at 20% 20%, var(--neon-cyan) 5%, transparent 20%), radial-gradient(circle at 80% 80%, var(--neon-pink) 5%, transparent 20%), radial-gradient(circle at 90% 10%, var(--neon-green) 3%, transparent 15%), linear-gradient(135deg, rgba(10, 10, 20, 0.9) 0%, rgba(30, 30, 40, 0.8) 100%); /* Lớp nền tối cuối cùng */
+    background-repeat: no-repeat;
+    background-size: 200% 200%, 150% 150%, 180% 180%, cover; /* Kích thước các lớp gradient */
+    background-position: -50% -50%, 120% 120%, -80% 150%, center; /* Định vị các lớp gradient */
+
+    border-radius: 10px;
+    /* THAY THẾ HOẶC CẬP NHẬT ĐOẠN box-shadow NÀY */
+    box-shadow: 0 0 15px var(--neon-blue-light), /* Phát sáng ra ngoài, mạnh hơn */
+    0 0 30px var(--neon-purple), /* Lan rộng hơn nữa */
+    0 0 50px rgba(0, 255, 255, 0.3), /* Lớp cyan mờ rộng */
+    inset 0 0 10px rgba(0, 255, 255, 0.5); /* Phát sáng nhẹ vào bên trong viền */
+    /* Giữ lại shadow đen nếu muốn có chiều sâu nổi */
+    /* 0 4px 10px rgba(0, 0, 0, 0.4); */ /* Có thể bỏ hoặc giảm nếu muốn hiệu ứng nhẹ nhàng hơn */
+
+
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    color: #e0e0e0;
+    z-index: 1000;
+    border: 1px solid var(--neon-blue-light); /* Viền mỏng màu neon */
+}
+
+    .chatbot-widget.hidden {
+        display: none;
+    }
+
+/* Chat Toggle Button */
+.chat-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    /* background-color: #007bff; /* Example blue, match your icon color - Removed for neon effect */
+    background: transparent; /* Changed to transparent for glowing effect */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-blue-light), 0 0 20px var(--neon-purple); /* Phát sáng giống icon Meta AI */
+    z-index: 1001; /* Above the chatbot when hidden */
+}
+
+    .chat-toggle-btn img {
+        width: 45px; /* Make it a bit larger to stand out */
+        height: 45px;
+        filter: none; /* Removed invert(100%) as the icon should be a glowing ring or colored */
+        /* If your icon is a solid color and you want it to glow, you can re-add filter: invert(100%)
+       and add box-shadow to the img itself instead of the parent div. */
+    }
+
+/* Chat Header */
+.chat-header {
+    background-color: #3a3b3d; /* Header background, slightly lighter than body */
+    padding: 10px 15px;
+    border-bottom: 1px solid #4a4a4a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    color: #e0e0e0;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+    .chat-header .header-left {
+        display: flex;
+        align-items: center;
+        text-shadow: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-blue-light);
+    }
+
+/* Áp dụng cho biểu tượng Meta AI */
+.meta-ai-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    border-radius: 50%;
+    /* Hiệu ứng neon hiện tại */
+    box-shadow: 0 0 5px var(--neon-cyan), 0 0 10px var(--neon-blue-light), 0 0 20px var(--neon-blue-medium), 0 0 30px var(--neon-purple), 0 0 40px var(--neon-cyan);
+    /* Thêm filter để làm ảnh sáng tổng thể hơn */
+    filter: brightness(1.2) drop-shadow(0 0 8px var(--neon-blue-light)); /* Tăng độ sáng và thêm bóng đơn */
+    /* Giá trị 1.2 có nghĩa là 120% độ sáng gốc. Bạn có thể điều chỉnh.*/
+}
+
+.collapse-btn {
+    font-size: 24px;
+    cursor: pointer;
+    color: #e0e0e0;
+    padding: 0 5px;
+    line-height: 1; /* To center the '-' character */
+    user-select: none; /* Prevent text selection */
+}
+
+/* Chat Body */
+.chat-body {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+    /* --- BẮT ĐẦU SỬA ĐỔI background CHO HIỆU ỨNG NEON MẠNH HƠN --- */
+    /* Màu nền cơ bản, có thể hơi tối để nổi bật ánh sáng neon */
+    background-color: #1A1C20; /* Tối hơn nữa để ánh sáng neon nổi bật */
+    /* Các lớp nền gradient phát sáng MẠNH HƠN */
+    background-image: radial-gradient(circle at 10% 10%, rgba(0, 255, 255, 0.2) 5%, transparent 25%), /* Cyan góc trên trái, sáng hơn */
+    radial-gradient(circle at 90% 90%, rgba(255, 105, 180, 0.2) 5%, transparent 25%), /* Pink góc dưới phải, sáng hơn */
+    radial-gradient(circle at 50% 5%, rgba(135, 206, 235, 0.15) 3%, transparent 20%), /* Blue nhạt ở giữa trên, sáng hơn */
+    radial-gradient(circle at 70% 30%, rgba(0, 255, 127, 0.1) 4%, transparent 20%); /* Thêm điểm sáng xanh lá */
+
+    background-repeat: no-repeat;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%; /* Kích thước từng lớp */
+    background-position: top left, bottom right, center top, 70% 30%; /* Định vị từng lớp */
+    /* Thêm box-shadow INSET để tạo hiệu ứng phát sáng từ bên trong */
+    box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.4), /* Ánh sáng cyan mạnh từ bên trong */
+    inset 0 0 30px rgba(135, 206, 235, 0.2); /* Ánh sáng blue nhạt lan rộng hơn */
+    /* --- KẾT THÚC SỬA ĐỔI background CHO HIỆU ỨNG NEON MẠNH HƠN --- */
+
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: #555 #333; /* For Firefox */
+}
+
+    .chat-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chat-body::-webkit-scrollbar-track {
+        background: #333;
+        border-radius: 5px;
+    }
+
+    .chat-body::-webkit-scrollbar-thumb {
+        background-color: #555;
+        border-radius: 5px;
+        border: 2px solid #333;
+    }
+
+/* Chat Bubbles */
+.chat-bubble {
+    max-width: 80%;
+    padding: 10px 12px;
+    border-radius: 18px; /* More rounded corners for bubbles */
+    margin-bottom: 10px;
+    line-height: 1.4;
+    word-wrap: break-word; /* Ensure long words break */
+}
+
+    .chat-bubble.bot {
+        background-color: #4a4b4f; /* Bot bubble background */
+        color: #e0e0e0;
+        margin-right: auto; /* Align left */
+        border-bottom-left-radius: 4px; /* Slightly less rounded on the "tail" side */
+        box-shadow: 0 0 5px rgba(0, 255, 255, 0.2); /* Bóng xanh cyan nhạt */
+    }
+
+    .chat-bubble.user {
+        background-color: #007bff; /* User bubble background (blue) */
+        color: white;
+        margin-left: auto; /* Align right */
+        border-bottom-right-radius: 4px; /* Slightly less rounded on the "tail" side */
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.2); /* Bóng xanh dương nhạt */
+    }
+
+    /* Links within bubbles */
+    .chat-bubble a {
+        color: #87ceeb; /* Lighter blue for links */
+        text-decoration: none;
+    }
+
+        .chat-bubble a:hover {
+            text-decoration: underline;
+        }
+
+    /* Error messages */
+    .chat-bubble.error {
+        background-color: #dc3545; /* Red for errors */
+        color: white;
+    }
+
+/* Chat Input Form */
+.chat-input-form {
+    display: flex;
+    padding: 10px 15px;
+    border-top: 1px solid #4a4a4a;
+    background-color: #3a3b3d; /* Same as header background */
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.chat-input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--neon-blue-light); /* Viền input */
+    border-radius: 20px; /* Highly rounded input field */
+    background-color: #3a3b3d; /* Giữ nền tối, thay đổi từ 4a4b4f để khớp với input form */
+    color: #e0e0e0;
+    font-size: 14px;
+    outline: none; /* Remove focus outline */
+    margin-right: 10px;
+    box-shadow: 0 0 5px var(--neon-blue-light), inset 0 0 3px var(--neon-cyan); /* Phát sáng nhẹ vào trong */
+}
+
+    .chat-input::placeholder {
+        color: #a0a0a0;
+    }
+
+.chat-send-btn {
+    background-color: #007bff; /* Send button background */
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+    .chat-send-btn:hover {
+        background-color: #0056b3;
+    }

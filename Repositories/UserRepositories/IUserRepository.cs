@@ -13,5 +13,6 @@ namespace Repositories.UserRepositories
     {
         Task<User?> GetUserByEmailAsync(string email);
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
+        Task<User?> GetByRefreshTokenAsync(string refreshToken);
     }
 }

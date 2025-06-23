@@ -1,0 +1,111 @@
+﻿@RenderSection("Styles", required: false)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ShareIt</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ShareItFE.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/chatbot.css" />
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-container">
+            <a asp-page="/Index" style="text-decoration: none;">
+                <div class="brand-logo-group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    <span class="brand-name">ShareIt</span>
+                </div>
+            </a>
+            <nav class="main-nav">
+                <a href="#" class="nav-link">Browse</a>
+                <a href="#" class="nav-link">How it Works</a>
+                <a href="#" class="nav-link">About</a>
+                <a href="#" class="nav-link">Contact</a>
+                <a class="nav-link" asp-area="" asp-page="/Privacy">Privacy</a>
+            </nav>
+            <div class="auth-buttons">
+                @{
+                    // Check for the presence of the AccessToken cookie
+                    var accessToken = Context.Request.Cookies["AccessToken"];
+                    if (!string.IsNullOrEmpty(accessToken))
+                    {
+                        // User is logged in, show Log Out button
+                        <form asp-page="/Auth" asp-page-handler="Logout" method="post" class="logout-form">
+                            @Html.AntiForgeryToken() @* Important for security *@
+                            <button type="submit" class="logout-btn">Log Out</button>
+                        </form>
+                    }
+                    else
+                    {
+                        // User is not logged in, show Sign In link and Get Started button
+                        <a href="/Auth" class="signin-btn">Sign In</a>
+                        @* Assuming "Get Started" might lead to a registration page, e.g., /Auth?IsLogin=false *@
+                        <a href="/Auth?IsLogin=false" class="get-started-btn">Get Started</a>
+                    }
+                }
+            </div>
+        </div>
+    </header>
+    <main role="main" class="main-content-area">
+        @RenderBody()
+    </main>
+    <footer class="main-footer">
+        <div class="max-width-container">
+            <div class="footer-grid">
+                <div class="footer-brand-section">
+                    <div class="footer-brand-logo-group">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="footer-brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                        <span class="footer-brand-name">ShareIT</span>
+                    </div>
+                    <p class="footer-description">
+                        Premium fashion rentals for every special occasion. Look amazing, save money, stay sustainable.
+                    </p>
+                    <div class="footer-social-links">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="social-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.4 3 4c2.5 2.1 5.8 4.5 9 4.6 0-2 1.5-3.6 3.4-3.6 2 0 3.5 1.5 3.5 3.5 0 .2 0 .5-.1.7 3.3-1.6 5.9-3.7 7.1-5.9z"></path></svg>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="footer-column-title">Quick Links</h3>
+                    <ul class="footer-link-list">
+                        <li><a href="#" class="footer-link">Browse Collection</a></li>
+                        <li><a href="#" class="footer-link">How It Works</a></li>
+                        <li><a href="#" class="footer-link">Size Guide</a></li>
+                        <li><a href="#" class="footer-link">Care Instructions</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="footer-column-title">Categories</h3>
+                    <ul class="footer-link-list">
+                        <li><a href="#" class="footer-link">Wedding Dresses</a></li>
+                        <li><a href="#" class="footer-link">Evening Gowns</a></li>
+                        <li><a href="#" class="footer-link">Cocktail Dresses</a></li>
+                        <li><a href="#" class="footer-link">Formal Suits</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="footer-column-title">Support</h3>
+                    <ul class="footer-link-list">
+                        <li><a href="#" class="footer-link">Contact Us</a></li>
+                        <li><a href="#" class="footer-link">FAQ</a></li>
+                        <li><a href="#" class="footer-link">Returns</a></li>
+                        <li><a href="#" class="footer-link">Shipping Info</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom-bar">
+                <p>&copy; 2025 ShareIT. All rights reserved. | Privacy Policy | Terms of Service</p>
+            </div>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

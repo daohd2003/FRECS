@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using BusinessObject.DTOs.AIDtos;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Services.AI;
 
@@ -22,7 +23,11 @@ namespace ShareItAPI.Controllers
                 return BadRequest("Question is required.");
 
             var answer = await _aiSearchService.AskAboutShareITAsync(question);
-            return Ok(new { answer });
+            var responseDto = new AiSearchResponseDto
+            {
+                Answer = answer
+            };
+            return Ok(responseDto);
         }
     }
 }

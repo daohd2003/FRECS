@@ -1,0 +1,561 @@
+﻿/* Basic Reset & Box-Sizing */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    line-height: 1.5;
+    color: #333;
+    /* This background should be here as there's no _Layout.cshtml anymore */
+    background: linear-gradient(to bottom right, #f2f0ff, #e0f2fe);
+}
+
+/* Global Layout & Background */
+.page-wrapper {
+    min-height: 100vh;
+    /* Background now moved to body for full page coverage when no layout */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header (This section will be removed from HTML as per your request)
+   Leaving these styles here for reference, but they won't apply if HTML is removed.
+*/
+.app-header {
+    background-color: #fff;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.header-content {
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    height: 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.brand-link, .back-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+}
+
+.brand-link {
+    /* No margin-left: 0.5rem here unless it's for internal spacing of brand-link content */
+}
+
+.brand-icon {
+    height: 2rem;
+    width: 2rem;
+    color: #8b5cf6;
+    margin-right: 0.5rem; /* space between icon and text */
+}
+
+.brand-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.back-link {
+    color: #4a5568;
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+}
+
+    .back-link:hover {
+        color: #8b5cf6;
+    }
+
+.back-icon {
+    height: 1.25rem;
+    width: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.spacer {
+    width: 6rem;
+}
+
+
+/* --- Main Content Area for the Auth Page --- */
+.main-content-area {
+    flex: 1;
+    display: flex; /* Use flexbox for centering */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.max-width-container {
+    max-width: 1152px;
+    width: 100%;
+}
+
+.grid-layout {
+    display: grid; /* Enables grid layout */
+    grid-template-columns: 1fr; /* Single column by default */
+    gap: 3rem; /* Spacing between grid items */
+    align-items: center; /* Vertically align items in the grid */
+}
+
+@media (min-width: 1024px) {
+    .grid-layout {
+        grid-template-columns: 1fr 1fr; /* Two columns on large screens */
+    }
+}
+
+/* Benefits Section */
+.benefits-section {
+    /* This section needs spacing between its direct children */
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* Equivalent of Tailwind's space-y-8 (2 * 4 = 8rem total if all had margin, or 2rem gap if flex) */
+}
+
+.benefits-heading-group h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 1rem;
+}
+
+@media (min-width: 1024px) {
+    .benefits-heading-group h1 {
+        font-size: 3rem;
+    }
+}
+
+.benefits-heading-group .purple-text {
+    color: #8b5cf6;
+    display: block;
+}
+
+.benefits-heading-group p {
+    font-size: 1.25rem;
+    color: #4a5568;
+    line-height: 1.625;
+}
+
+.benefits-list {
+    margin-top: 1.5rem; /* Additional space if needed, otherwise rely on gap in .benefits-section */
+    padding: 0;
+    list-style: none;
+    display: flex; /* To apply margin-bottom to li items consistently */
+    flex-direction: column;
+    gap: 1.5rem; /* space-y-6 */
+}
+
+.benefit-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    background-color: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    /* margin-bottom handled by benefits-list gap */
+}
+
+.benefit-icon-wrapper {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: #ede9fe;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8b5cf6;
+    margin-right: 1rem;
+}
+
+/* This is the key for the distorted icons */
+.benefit-item-svg-icon,
+.icon-small { /* Added .icon-small for the password toggle SVGs */
+    height: 1.25rem; /* Explicit size */
+    width: 1.25rem; /* Explicit size */
+    min-width: 1.25rem; /* Prevent shrinking in flex/grid */
+    min-height: 1.25rem; /* Prevent shrinking in flex/grid */
+    display: block; /* Ensure it's treated as a block for sizing */
+}
+
+
+.benefit-text h3 {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.benefit-text p {
+    color: #4a5568;
+    font-size: 0.875rem;
+}
+
+.offer-banner {
+    background: linear-gradient(to right, #8b5cf6, #6366f1);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    color: #fff;
+    margin-top: 2rem; /* Can also be handled by benefits-section gap */
+}
+
+    .offer-banner h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .offer-banner p {
+        color: #d8b4fe;
+    }
+
+
+/* Auth Form Section */
+.auth-form-container {
+    background-color: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    padding: 2rem;
+}
+
+@media (min-width: 1024px) {
+    .auth-form-container {
+        padding: 2.5rem;
+    }
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+    .form-header h2 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-header p {
+        color: #4a5568;
+    }
+
+/* Messages */
+.alert {
+    padding: 0.75rem 1rem;
+    border-width: 1px;
+    border-radius: 0.5rem;
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+    .alert strong {
+        font-weight: 700;
+    }
+
+.alert-error {
+    background-color: #fee2e2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+}
+
+/* Social Buttons */
+.social-buttons-wrapper {
+    margin-bottom: 1.5rem;
+    display: flex; /* Make it a flex container */
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 0.75rem; /* Space between buttons (replaces space-y-3) */
+}
+
+.social-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    color: #4a5568;
+    background-color: #fff;
+    transition: background-color 0.15s ease-in-out;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .social-button:hover {
+        background-color: #f7fafc;
+    }
+
+.social-icon-mr { /* Class for icons inside social buttons */
+    height: 1.25rem;
+    width: 1.25rem;
+    margin-right: 0.75rem;
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+    display: block;
+}
+
+
+/* Or Divider */
+.divider {
+    position: relative;
+    margin-bottom: 1.5rem;
+    text-align: center; /* To center the span */
+}
+
+    .divider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        border-top: 1px solid #e2e8f0;
+        z-index: 1;
+    }
+
+    .divider span {
+        position: relative;
+        z-index: 2;
+        background-color: #fff;
+        padding: 0 0.5rem;
+        font-size: 0.875rem;
+        color: #718096;
+        display: inline-block;
+        /* left: 50%; transform: translateX(-50%); already implied by text-align: center and inline-block */
+    }
+
+/* Form Inputs */
+.form-group-wrapper {
+    /* No specific styles here, just a container */
+}
+
+.form-group {
+    margin-top: 1.5rem; /* space-y-6 equivalent for form fields */
+}
+
+    .form-group:first-child {
+        margin-top: 0; /* Remove top margin for the very first group in its wrapper */
+    }
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 1.25rem;
+    width: 1.25rem;
+    color: #a0aec0;
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+    display: block;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-left: 2.5rem; /* To make space for the icon */
+    border: 1px solid #cbd5e0;
+    border-radius: 0.5rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+    .form-input:focus {
+        outline: none;
+        border-color: transparent;
+        box-shadow: 0 0 0 2px #8b5cf6;
+    }
+
+/* Password Input Specific */
+.password-input-wrapper .form-input {
+    padding-right: 3rem; /* To make space for the toggle button */
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    transition: color 0.15s ease-in-out;
+    display: flex; /* For centering the SVG within the button */
+    align-items: center;
+    justify-content: center;
+    line-height: 1; /* Helps with vertical alignment of SVG */
+}
+
+    .password-toggle-btn:hover {
+        color: #4a5568;
+    }
+
+.validation-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+/* Login Options */
+.login-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+}
+
+.remember-me-checkbox-input {
+    height: 1rem;
+    width: 1rem;
+    /* Default browser checkbox styling can be tricky.
+       For full control, you'd typically hide default and create custom visuals.
+       For now, basic sizing and color. */
+    border: 1px solid #cbd5e0;
+    border-radius: 0.25rem;
+    accent-color: #8b5cf6; /* Modern way to set checkbox color */
+}
+
+.remember-me-label {
+    margin-left: 0.5rem;
+    display: block;
+    font-size: 0.875rem;
+    color: #4a5568;
+}
+
+.forgot-password-link {
+    font-size: 0.875rem;
+    color: #8b5cf6;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+}
+
+    .forgot-password-link:hover {
+        color: #7c3aed;
+    }
+
+/* Submit Button */
+.submit-button {
+    width: 100%;
+    background-color: #8b5cf6;
+    color: #fff;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    margin-top: 1.5rem;
+    cursor: pointer;
+    border: none;
+}
+
+    .submit-button:hover {
+        background-color: #7c3aed;
+        transform: scale(1.025);
+    }
+
+/* Auth Toggle */
+.auth-toggle-area {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.auth-toggle-text {
+    color: #4a5568;
+}
+
+.auth-toggle-button {
+    margin-left: 0.25rem;
+    color: #8b5cf6;
+    font-weight: 500;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease-in-out;
+}
+
+    .auth-toggle-button:hover {
+        color: #7c3aed;
+    }
+
+/* Terms and Privacy */
+.terms-privacy-area {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.terms-privacy-text {
+    font-size: 0.75rem;
+    color: #718096;
+}
+
+.terms-privacy-link {
+    color: #8b5cf6;
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+}
+
+    .terms-privacy-link:hover {
+        color: #7c3aed;
+    }
+
+/* Style for the password toggle icon */
+.password-toggle-icon {
+    position: absolute;
+    right: 10px; /* Adjust as needed */
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #888; /* Or your preferred icon color */
+    padding: 5px; /* Make it easier to click */
+    display: flex; /* To properly center the SVG */
+    align-items: center;
+    justify-content: center;
+}
+
+    .password-toggle-icon svg {
+        width: 20px; /* Adjust icon size */
+        height: 20px; /* Adjust icon size */
+    }

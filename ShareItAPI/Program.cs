@@ -74,6 +74,13 @@ namespace ShareItAPI
             });
 
             builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+                    options.JsonSerializerOptions.WriteIndented = true;
+                });
+
+            builder.Services.AddControllers()
                 .AddOData(opt => opt
                     .EnableQueryFeatures()
                     .AddRouteComponents("odata", GetEdmModel())
@@ -257,7 +264,11 @@ namespace ShareItAPI
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
+                    c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+                });
             }
 
             app.UseHttpsRedirection();

@@ -13,10 +13,10 @@ namespace Services.Authentication
     {
         string GenerateToken(User user);
         string GenerateRefreshToken();
-        ClaimsPrincipal? ValidateToken(string token, bool validateLifetime = false);
+        ClaimsPrincipal? ValidateToken(string? token, bool validateLifetime = false);
         DateTime GetRefreshTokenExpiryTime();
         Task<TokenResponseDto> Authenticate(string email, string password);
-        Task<TokenResponseDto?> RefreshTokenAsync(string accessToken, string refreshToken);
+        Task<TokenResponseDto?> RefreshTokenAsync(string? accessToken, string refreshToken);
         Task LogoutAsync(string token);
         Task<bool> IsTokenValidAsync(string token);
         Task<TokenResponseDto?> RegisterAsync(RegisterRequest request);

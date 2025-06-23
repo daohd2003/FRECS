@@ -1,0 +1,408 @@
+﻿@page
+@{
+    ViewData["Title"] = "ShareIT - Luxury Fashion Rentals | Designer Dresses & Suits";
+
+    // Define data directly in the Razor Page
+    var testimonials = new List<dynamic>
+{
+        new {
+            Name = "Sarah Johnson",
+            Rating = 5,
+            Text = "Absolutely amazing service! I rented a stunning gown for my wedding and it was perfect. The quality is exceptional and the process was so easy.",
+            Image = "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+        },
+        new {
+            Name = "Michael Chen",
+            Rating = 5,
+            Text = "Great selection of formal wear. Rented a tuxedo for a gala and received so many compliments. Will definitely use again!",
+            Image = "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+        },
+        new {
+            Name = "Emma Rodriguez",
+            Rating = 5,
+            Text = "Perfect for special occasions! The traditional wear collection is beautiful and authentic. Highly recommend!",
+            Image = "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+        }
+    };
+
+    var topRentals = new List<dynamic>
+{
+        new { Name = "Elegant Evening Gown", Price = "$85/day", Image = "https://images.pexels.com/photos/1021693/pexels-photo-1021693.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 4.9, Rented = 120 },
+        new { Name = "Classic Black Tuxedo", Price = "$65/day", Image = "https://images.pexels.com/photos/2036656/pexels-photo-2036656.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 4.8, Rented = 95 },
+        new { Name = "Boho Wedding Dress", Price = "$120/day", Image = "https://images.pexels.com/photos/1545590/pexels-photo-1545590.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 5.0, Rented = 78 },
+        new { Name = "Designer Cocktail Dress", Price = "$75/day", Image = "https://images.pexels.com/photos/1375849/pexels-photo-1375849.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 4.7, Rented = 156 }
+    };
+
+    var categories = new List<dynamic>
+{
+        new { Name = "Women's", Image = "https://images.pexels.com/photos/1036622/pexels-photo-1036622.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "500+" },
+        new { Name = "Men's", Image = "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "300+" },
+        new { Name = "Kids", Image = "https://images.pexels.com/photos/1620760/pexels-photo-1620760.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "200+" },
+        new { Name = "Traditional", Image = "https://images.pexels.com/photos/1239288/pexels-photo-1239288.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "150+" },
+        new { Name = "Formal", Image = "https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "400+" },
+        new { Name = "Casual", Image = "https://images.pexels.com/photos/1055691/pexels-photo-1055691.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "350+" }
+    };
+
+    var benefits = new List<dynamic>
+{
+        new { Title = "Save Money", Description = "Wear designer outfits at a fraction of the retail price. Perfect for special occasions without the commitment." },
+        new { Title = "Premium Quality", Description = "All items are professionally cleaned and maintained. We guarantee the highest quality standards for every rental." },
+        new { Title = "Always on Trend", Description = "Access the latest fashion trends without cluttering your closet. Stay stylish with our constantly updated collection." }
+    };
+
+    var howItWorksSteps = new List<dynamic>
+{
+        new { Step = "01", Title = "Choose Your Style", Description = "Browse our curated collection and select the perfect outfit for your occasion. Filter by size, color, and event type." },
+        new { Step = "02", Title = "Schedule Delivery", Description = "Pick your rental dates and we'll deliver to your doorstep. Free shipping both ways with flexible timing options." },
+        new { Step = "03", Title = "Wear & Return", Description = "Look amazing at your event! When you're done, simply return using our prepaid shipping label. No dry cleaning needed." }
+    };
+
+    var brands = new List<string>
+{
+        "Versace", "Gucci", "Prada", "Chanel", "Armani", "Valentino", "Dior", "Saint Laurent"
+    };
+}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <meta name="description" content="Rent premium designer outfits for weddings, proms, galas and special events. Luxury fashion at affordable prices with free delivery and returns." />
+
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+
+</head>
+<body>
+    <div class="page-wrapper">
+        <section class="hero-section">
+            <div class="hero-content-grid">
+                <div class="hero-text-group">
+                    <div class="hero-headline-group">
+                        <h1 class="hero-headline">
+                            Luxury Fashion
+                            <span class="hero-headline-accent">For Every Occasion</span>
+                        </h1>
+                        <p class="hero-description">
+                            Rent designer outfits for weddings, proms, galas, and special events.
+                            Look stunning without the commitment or the price tag.
+                        </p>
+                    </div>
+                    <div class="hero-buttons">
+                        <button class="btn-primary-hero">Browse Collection</button>
+                        <button class="btn-secondary-hero">Learn More</button>
+                    </div>
+                    <div class="hero-features">
+                        <div class="feature-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-8.8"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span>Free Delivery</span>
+                        </div>
+                        <div class="feature-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-8.8"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span>Expert Styling</span>
+                        </div>
+                        <div class="feature-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-8.8"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span>Easy Returns</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image-card">
+                    <img src="https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop"
+                         alt="Featured dress"
+                         class="hero-image" />
+                    <div class="hero-image-details">
+                        <h3 class="hero-image-title">Designer Evening Gown</h3>
+                        <p class="hero-image-price">From $95/day</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="categories-section">
+            <div class="max-width-container">
+                <div class="section-header">
+                    <h2 class="section-title">Browse by Category</h2>
+                    <p class="section-subtitle">Find the perfect outfit for any occasion</p>
+                </div>
+                <div class="categories-grid">
+                    @foreach (var category in categories)
+                    {
+                        <div class="category-item">
+                            <div class="category-card">
+                                <img src="@category.Image"
+                                     alt="@category.Name"
+                                     class="category-image" />
+                                <div class="category-overlay"></div>
+                                <div class="category-info">
+                                    <h3 class="category-title">@category.Name</h3>
+                                    <p class="category-count">@category.Count items</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="section-padding">
+            <div class="max-width-container">
+                <div class="section-header">
+                    <h2 class="section-title">Most Popular Rentals</h2>
+                    <p class="section-subtitle">See what everyone's raving about</p>
+                </div>
+                <div class="rental-grid">
+                    @foreach (var item in topRentals)
+                    {
+                        <div class="rental-item-card">
+                            <div class="rental-image-wrapper">
+                                <img src="@item.Image"
+                                     alt="@item.Name"
+                                     class="rental-image" />
+                                <button class="fav-button">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="fav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                </button>
+                            </div>
+                            <div class="rental-details">
+                                <h3 class="rental-name">@item.Name</h3>
+                                <div class="rental-price-rating">
+                                    <span class="rental-price">@item.Price</span>
+                                    <div class="rental-rating">
+                                        @for (int i = 0; i < Math.Floor((double)item.Rating); i++)
+                                        {
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="star-icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        }
+                                        <span class="rating-text">@item.Rating</span>
+                                    </div>
+                                </div>
+                                <p class="rented-times">Rented @item.Rented times</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="why-rent-section">
+            <div class="max-width-container">
+                <div class="section-header">
+                    <h2 class="section-title">Why Choose Rental?</h2>
+                    <p class="section-subtitle">Smart fashion for the modern lifestyle</p>
+                </div>
+                <div class="why-rent-grid">
+                    @foreach (var benefit in benefits)
+                    {
+                        <div class="benefit-item">
+                            <div class="benefit-icon-wrapper">
+                                @if (benefit.Title == "Save Money")
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="benefit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                                }
+                                else if (benefit.Title == "Premium Quality")
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="benefit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                }
+                                else if (benefit.Title == "Always on Trend")
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="benefit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                }
+                            </div>
+                            <h3 class="benefit-title">@benefit.Title</h3>
+                            <p class="benefit-description">@benefit.Description</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="how-it-works-section">
+            <div class="max-width-container">
+                <div class="section-header">
+                    <h2 class="section-title">How It Works</h2>
+                    <p class="section-subtitle">Three simple steps to your perfect outfit</p>
+                </div>
+                <div class="how-it-works-grid">
+                    @for (int i = 0; i < howItWorksSteps.Count; i++)
+                    {
+                        var step = howItWorksSteps[i];
+                        <div class="step-card-wrapper">
+                            @* New wrapper for relative positioning *@
+                            <div class="step-card">
+                                <div class="step-icon-wrapper">
+                                    @if (step.Title == "Choose Your Style")
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                                    }
+                                    else if (step.Title == "Schedule Delivery")
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18l6-6-6-6"></path><path d="M4 18V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-4"></path><circle cx="16" cy="18" r="2"></circle><circle cx="8" cy="18" r="2"></circle></svg>
+                                    }
+                                    else if (step.Title == "Wear & Return")
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-8.8"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                    }
+                                </div>
+                                <div class="step-number">@step.Step</div>
+                                <h3 class="step-title">@step.Title</h3>
+                                <p class="step-description">@step.Description</p>
+                            </div>
+                            @if (i < howItWorksSteps.Count - 1)
+                            {
+                                <div class="step-arrow-right">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="step-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="testimonials-section">
+            <div class="testimonial-slider-wrapper">
+                <div id="testimonial-slider" class="testimonial-card">
+                    @* Content will be dynamically inserted by JavaScript *@
+                </div>
+                <button id="prev-testimonial" class="slider-nav-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="slider-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <button id="next-testimonial" class="slider-nav-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="slider-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+            <div id="testimonial-dots" class="testimonial-dots-container">
+                @* Dots will be dynamically inserted by JavaScript *@
+            </div>
+        </section>
+
+        <section class="offer-banner">
+            <div class="max-width-container">
+                <h2 class="offer-title">Limited Time Offer!</h2>
+                <p class="offer-subtitle">Rent 2 Outfits, Get 1 FREE</p>
+                <p class="offer-description">Perfect for multi-day events or trying different looks. Valid until end of month.</p>
+                <button class="offer-button">Claim Offer Now</button>
+            </div>
+        </section>
+
+        <section class="brands-section">
+            <div class="max-width-container">
+                <div class="section-header">
+                    <h2 class="section-title">Featured Designers & Brands</h2>
+                    <p class="section-subtitle">Curated selection from top fashion houses</p>
+                </div>
+                <div class="brands-grid">
+                    @foreach (var brand in brands)
+                    {
+                        <div class="brand-item">
+                            <div class="brand-name-text">@brand</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="newsletter-section">
+            <div class="max-width-container">
+                <svg xmlns="http://www.w3.org/2000/svg" class="newsletter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                <h2 class="newsletter-title">Stay in Style</h2>
+                <p class="newsletter-subtitle">
+                    Get the latest fashion trends, exclusive offers, and styling tips delivered to your inbox.
+                </p>
+                <div class="newsletter-form-wrapper">
+                    <div class="newsletter-form-group">
+                        <input type="email"
+                               placeholder="Enter your email"
+                               class="newsletter-input" />
+                        <button class="newsletter-subscribe-btn">
+                            Subscribe
+                        </button>
+                    </div>
+                    <p class="newsletter-privacy-text">No spam, unsubscribe anytime.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    @* Include the chatbot partial *@
+    @await Html.PartialAsync("_Chatbot")
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const testimonialsData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(testimonials));
+            let currentTestimonialIndex = 0;
+            const testimonialSlider = document.getElementById('testimonial-slider');
+            const prevButton = document.getElementById('prev-testimonial');
+            const nextButton = document.getElementById('next-testimonial');
+            const testimonialDots = document.getElementById('testimonial-dots');
+
+            function renderTestimonial() {
+                const testimonial = testimonialsData[currentTestimonialIndex];
+                let starsHtml = '';
+                for (let i = 0; i < testimonial.Rating; i++) {
+                    starsHtml += '<svg xmlns="http://www.w3.org/2000/svg" class="testimonial-star-icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
+                }
+
+                testimonialSlider.innerHTML = `
+                    <div class="testimonial-content"> @* Added a new wrapper for content inside the card *@
+                        <img
+                            src="${testimonial.Image}"
+                            alt="${testimonial.Name}"
+                            class="testimonial-avatar"
+                        />
+                        <div class="testimonial-stars">
+                            ${starsHtml}
+                        </div>
+                        <blockquote class="testimonial-text">
+                            "${testimonial.Text}"
+                        </blockquote>
+                        <div class="testimonial-author">
+                            ${testimonial.Name}
+                        </div>
+                    </div>
+                `;
+                updateDots();
+            }
+
+            function updateDots() {
+                testimonialDots.innerHTML = '';
+                testimonialsData.forEach((_, index) => {
+                    const dot = document.createElement('button');
+                    dot.classList.add('testimonial-dot');
+                    if (index === currentTestimonialIndex) {
+                        dot.classList.add('active');
+                    }
+                    dot.addEventListener('click', () => {
+                        currentTestimonialIndex = index;
+                        renderTestimonial();
+                    });
+                    testimonialDots.appendChild(dot);
+                });
+            }
+
+            prevButton.addEventListener('click', () => {
+                currentTestimonialIndex = (currentTestimonialIndex - 1 + testimonialsData.length) % testimonialsData.length;
+                renderTestimonial();
+            });
+
+            nextButton.addEventListener('click', () => {
+                currentTestimonialIndex = (currentTestimonialIndex + 1) % testimonialsData.length;
+                renderTestimonial();
+            });
+
+            // Auto-advance testimonials
+            setInterval(() => {
+                currentTestimonialIndex = (currentTestimonialIndex + 1) % testimonialsData.length;
+                renderTestimonial();
+            }, 5000);
+
+            // Initial render
+            renderTestimonial();
+        });
+    </script>
+
+    @section Scripts {
+        @* Any page-specific scripts that need to run after global scripts *@
+    }
+</body>
+</html>

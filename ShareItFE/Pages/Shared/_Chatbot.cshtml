@@ -1,0 +1,90 @@
+﻿@inject IConfiguration Configuration
+
+<div id="chatToggleBtn" class="chat-toggle-btn">
+    <img src="~/images/chatbot-icon.png" alt="Open Chatbot" />
+</div>
+
+<div id="chatbotWidget" class="chatbot-widget hidden">
+    <div class="chat-header">
+        <div class="header-left">
+            <img src="~/images/chatbot-icon.png" alt="Meta AI Icon" class="meta-ai-icon" /> AI Assistant
+        </div>
+        <div class="header-right">
+            <span id="collapseChatBtn" class="collapse-btn">-</span>
+        </div>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="chat-bubble bot">Hello! How can I help you with ShareIT today?</div>
+    </div>
+
+    <form id="chatForm" class="chat-input-form">
+        <input type="text" id="chatInput" class="chat-input" placeholder="Enter your question..." autocomplete="off" />
+        <button type="submit" class="chat-send-btn">Send</button>
+    </form>
+</div>
+
+<script>
+    const API_BASE_URL = '@Configuration["ApiSettings:BaseUrl"]';
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const chatToggleBtn = document.getElementById("chatToggleBtn");
+        const chatbotWidget = document.getElementById("chatbotWidget");
+        const collapseChatBtn = document.getElementById("collapseChatBtn");
+        const chatForm = document.getElementById('chatForm');
+        const chatInput = document.getElementById('chatInput');
+        const chatBody = document.getElementById('chatBody');
+
+        // Function to toggle chatbot visibility
+        function toggleChatbot() {
+            chatbotWidget.classList.toggle("hidden");
+            // Show/hide the toggle button based on widget visibility
+            if (chatbotWidget.classList.contains("hidden")) {
+                chatToggleBtn.style.display = "flex"; // Show toggle button
+            } else {
+                chatToggleBtn.style.display = "none"; // Hide toggle button
+            }
+        }
+
+        // Initially hide the chatbot widget and show the toggle button
+        chatbotWidget.classList.add("hidden");
+        chatToggleBtn.style.display = "flex";
+
+        // Event listener for opening the chatbot
+        chatToggleBtn.addEventListener("click", toggleChatbot);
+
+        // Event listener for collapsing the chatbot
+        collapseChatBtn.addEventListener("click", toggleChatbot);
+
+        // Event listener for form submission
+        chatForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const question = chatInput.value.trim();
+            if (!question) return;
+
+            // Add user bubble
+            chatBody.innerHTML += `<div class="chat-bubble user">${question}</div>`;
+            chatInput.value = '';
+            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`);
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+
+                const data = await res.json();
+                const answer = data.answer || "Sorry, I don't have a suitable answer.";
+                const answerHtml = answer
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+                    .replace(/\n/g, '<br/>');
+
+                // Add bot bubble
+                chatBody.innerHTML += `<div class="chat-bubble bot">${answerHtml}</div>`;
+                chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
+            } catch (err) {
+                chatBody.innerHTML += `<div class="chat-bubble bot error">Error calling API: ${err.message}</div>`;
+                chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
+            }
+        });
+    });
+</script>
