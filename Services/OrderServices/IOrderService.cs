@@ -3,11 +3,6 @@ using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.OrderServices
 {
@@ -30,5 +25,7 @@ namespace Services.OrderServices
         Task<DashboardStatsDTO> GetProviderDashboardStatsAsync(Guid userId);
         Task<IEnumerable<OrderDto>> GetOrdersByProviderAsync(Guid providerId);
         Task<IEnumerable<OrderDto>> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto);
+        Task MarkAsReturnedWithIssueAsync(Guid orderId);
+        Task SendDamageReportEmailAsync(string toEmail, string subject, string body);
     }
 }

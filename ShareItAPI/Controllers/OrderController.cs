@@ -1,7 +1,6 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
-using BusinessObject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.OrderServices;
@@ -118,6 +117,13 @@ namespace ShareItAPI.Controllers
         {
             var orders = await _orderService.GetOrdersByProviderAsync(providerId);
             return Ok(new ApiResponse<object>("Orders by provider", orders));
+        }
+
+        [HttpPut("{orderId:guid}/mark-returnedwithissue")]
+        public async Task<IActionResult> MarkAsReturnedWithIssue(Guid orderId)
+        {
+            await _orderService.MarkAsReturnedWithIssueAsync(orderId);
+            return Ok(new ApiResponse<string>("Order marked as returned_with_issue. ", null));
         }
     }
 }

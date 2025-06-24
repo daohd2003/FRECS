@@ -8,15 +8,11 @@ using DataAccess;
 using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.CartRepositories;
+using Repositories.EmailRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Services.NotificationServices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.OrderServices
 {
@@ -31,7 +27,7 @@ namespace Services.OrderServices
         private readonly ICartRepository _cartRepository;
         private readonly IUserRepository _userRepository;
         private readonly ShareItDbContext _context;
-
+        private readonly IEmailRepository _emailRepository;
         public OrderService(
             IOrderRepository orderRepo,
             INotificationService notificationService,
@@ -41,7 +37,8 @@ namespace Services.OrderServices
             IMapper mapper,
             ICartRepository cartRepository,
             IUserRepository userRepository,
-            ShareItDbContext context)
+            ShareItDbContext context,
+            IEmailRepository emailRepository)
         {
             _orderRepo = orderRepo;
             _notificationService = notificationService;
@@ -52,6 +49,7 @@ namespace Services.OrderServices
             _cartRepository = cartRepository;
             _userRepository = userRepository;
             _context = context;
+            _emailRepository = emailRepository;
         }
 
         public async Task CreateOrderAsync(CreateOrderDto dto)
@@ -416,5 +414,53 @@ namespace Services.OrderServices
 
             return orderDtos;
         }
+        public async Task MarkAsReturnedWithIssueAsync(Guid orderId)
+        {
+            // 1. Lấy order thật từ DB
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null)
+                throw new Exception("Order not found");
+
+            // 2. Cập nhật trạng thái và thời gian
+            order.Status = OrderStatus.returned_with_issue;
+            order.UpdatedAt = DateTime.Now;
+
+            // 3. Chỉ cập nhật 2 field: Status & UpdatedAt
+            await _orderRepo.UpdateOnlyStatusAndTimeAsync(order);
+
+            // 4. Gửi thông báo trạng thái
+            await _notificationService.NotifyOrderStatusChange(
+                order.Id,
+                OrderStatus.in_use,
+                OrderStatus.returned_with_issue
+            );
+
+            // 5. Gửi thông báo đến cả khách và người cho thuê
+            await NotifyBothParties(
+                order.CustomerId,
+                order.ProviderId,
+                $"Order #{order.Id} has been marked as returned with issue"
+            );
+            // 6. Gửi email đến khách hàng
+            var customer = await _userRepository.GetByIdAsync(order.CustomerId);
+            if (customer != null)
+            {
+                var subject = "Thông báo sản phẩm trả lại bị hư hỏng";
+                var body = $@"
+            <h3>Thông Báo Từ ShareIT Shop</h3>
+            <p>Chúng tôi phát hiện đơn hàng mã <strong>{order.Id}</strong> có sản phẩm trả lại bị <strong>hư hỏng</strong>.</p>
+            <p>Vui lòng phản hồi trong vòng <strong>3 ngày</strong> để tránh bị phạt.</p>
+            <br />
+            <p>Bạn có thể phản hồi tại mục <strong>'Reports liên quan đến bạn'</strong> trong hệ thống.</p>
+            <p>Trân trọng,<br/>Đội ngũ hỗ trợ ShareIT</p>";
+
+                await SendDamageReportEmailAsync(customer.Email, subject, body);
+            }
+        }
+        public async Task SendDamageReportEmailAsync(string toEmail, string subject, string body)
+        {
+            await _emailRepository.SendEmailAsync(toEmail, subject, body);
+        }
+
     }
 }
