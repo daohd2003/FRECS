@@ -89,6 +89,19 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Order marked as returned", null));
         }
 
+        [HttpPut("{orderId:guid}/mark-approved")]
+        public async Task<IActionResult> MarkAsApproved(Guid orderId)
+        {
+            await _orderService.MarkAsApprovedAsync(orderId);
+            return Ok(new ApiResponse<string>("Order marked as approved", null));
+        }
+        [HttpPut("{orderId:guid}/mark-shipping")]
+        public async Task<IActionResult> MarkAsShipping(Guid orderId)
+        {
+            await _orderService.MarkAsShipingAsync(orderId);
+            return Ok(new ApiResponse<string>("Order marked as shipping", null));
+        }
+
         [HttpGet("dashboard-stats")]
         public async Task<IActionResult> GetDashboardStats()
         {
@@ -124,6 +137,22 @@ namespace ShareItAPI.Controllers
         {
             await _orderService.MarkAsReturnedWithIssueAsync(orderId);
             return Ok(new ApiResponse<string>("Order marked as returned_with_issue. ", null));
+        }
+
+        // NEW: Endpoint to get orders for list display (by provider)
+        [HttpGet("provider/{providerId:guid}/list-display")]
+        public async Task<IActionResult> GetProviderOrdersForListDisplay(Guid providerId)
+        {
+            var orders = await _orderService.GetProviderOrdersForListDisplayAsync(providerId);
+            return Ok(new ApiResponse<object>($"Orders for provider {providerId} list display retrieved", orders));
+        }
+
+        // NEW: Endpoint to get orders for list display (by customer)
+        [HttpGet("customer/{customerId:guid}/list-display")]
+        public async Task<IActionResult> GetCustomerOrdersForListDisplay(Guid customerId)
+        {
+            var orders = await _orderService.GetCustomerOrdersForListDisplayAsync(customerId);
+            return Ok(new ApiResponse<object>($"Orders for customer {customerId} list display retrieved", orders));
         }
     }
 }

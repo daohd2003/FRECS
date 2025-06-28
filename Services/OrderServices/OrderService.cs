@@ -13,6 +13,7 @@ using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Services.NotificationServices;
+using Microsoft.EntityFrameworkCore;
 
 namespace Services.OrderServices
 {
@@ -205,7 +206,7 @@ namespace Services.OrderServices
             order.UpdatedAt = DateTime.UtcNow;
 
             await _orderRepo.UpdateAsync(order);
-            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.approved, OrderStatus.in_use);
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
 
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} marked as received (Paid: {paid})");
         }
@@ -222,6 +223,28 @@ namespace Services.OrderServices
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returned);
 
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as returned");
+        }
+
+        public async Task MarkAsApprovedAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+            order.Status = OrderStatus.approved;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _orderRepo.UpdateAsync(order);
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.pending, OrderStatus.approved);
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as approved");
+        }
+
+        public async Task MarkAsShipingAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+            order.Status = OrderStatus.in_transit;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _orderRepo.UpdateAsync(order);
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.approved, OrderStatus.in_transit);
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as shipped");
         }
 
         public async Task CompleteTransactionAsync(Guid orderId)
@@ -462,5 +485,32 @@ namespace Services.OrderServices
             await _emailRepository.SendEmailAsync(toEmail, subject, body);
         }
 
+        public async Task<IEnumerable<OrderListDto>> GetProviderOrdersForListDisplayAsync(Guid providerId)
+        {
+            var orders = await _orderRepo.GetAll()
+                                         .Where(o => o.ProviderId == providerId)
+                                         .Include(o => o.Customer)
+                                             .ThenInclude(c => c.Profile)
+                                         .Include(o => o.Items)
+                                             .ThenInclude(oi => oi.Product)
+                                                 .ThenInclude(p => p.Images)
+                                         .ToListAsync();
+
+            return _mapper.Map<IEnumerable<OrderListDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId)
+        {
+            var orders = await _orderRepo.GetAll() 
+                                         .Where(o => o.CustomerId == customerId)
+                                         .Include(o => o.Customer)
+                                             .ThenInclude(c => c.Profile)
+                                         .Include(o => o.Items)
+                                             .ThenInclude(oi => oi.Product)
+                                                 .ThenInclude(p => p.Images)
+                                         .ToListAsync();
+
+            return _mapper.Map<IEnumerable<OrderListDto>>(orders);
+        }
     }
 }

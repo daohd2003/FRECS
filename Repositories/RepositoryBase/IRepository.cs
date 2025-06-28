@@ -13,5 +13,6 @@ namespace Repositories.RepositoryBase
         Task AddAsync(T entity);
         Task<bool> UpdateAsync(T entity);
         Task<bool> DeleteAsync(Guid id);
+        IQueryable<T> GetAll();
     }
 }
