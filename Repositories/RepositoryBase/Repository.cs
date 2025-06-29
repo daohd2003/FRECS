@@ -39,6 +39,10 @@ namespace Repositories.RepositoryBase
         {
             return await _context.Set<T>().ToListAsync();
         }
+        public virtual IQueryable<T> GetAll()
+        {
+            return _context.Set<T>().AsQueryable();
+        }
 
         public virtual async Task<T?> GetByIdAsync(Guid id)
         {

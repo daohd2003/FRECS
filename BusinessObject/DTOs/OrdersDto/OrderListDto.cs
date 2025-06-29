@@ -1,0 +1,24 @@
+﻿using BusinessObject.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BusinessObject.DTOs.OrdersDto
+{
+    public class OrderListDto
+    {
+        public Guid Id { get; set; }
+        public string OrderCode { get; set; } // Map from Id for display like DEL001, ORD001
+        public string CustomerName { get; set; }
+        public string CustomerEmail { get; set; }
+        public OrderItemListDto Item { get; set; } // Assuming one primary item for display
+        public string DeliveryAddress { get; set; }
+        public string Phone { get; set; }
+        public OrderStatus Status { get; set; }
+        public DateTime ScheduledDate { get; set; }
+        public DateTime? DeliveredDate { get; set; }
+        public DateTime? ReturnDate { get; set; }
+    }
+}
