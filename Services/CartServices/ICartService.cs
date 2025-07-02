@@ -13,5 +13,6 @@ namespace Services.CartServices
         Task<bool> AddProductToCartAsync(Guid customerId, CartAddRequestDto cartItemDto);
         Task<bool> UpdateCartItemAsync(Guid customerId, Guid cartItemId, CartUpdateRequestDto updateDto);
         Task<bool> RemoveCartItemAsync(Guid customerId, Guid cartItemId);
+        Task<int> GetCartItemCountAsync(Guid customerId);
     }
 }

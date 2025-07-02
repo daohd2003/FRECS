@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Services.CloudServices;
 using Services.ProfileServices;
 using System.Security.Claims;
+using BusinessObject.DTOs.ProfileDtos;
 
 namespace ShareItAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/profile")]
     [Authorize(Roles = "admin,customer,provider")]
     [ApiController]
     public class ProfileController : ControllerBase
@@ -36,12 +37,20 @@ namespace ShareItAPI.Controllers
 
         // PUT: api/profile/{userId}
         [HttpPut("{userId}")]
-        public async Task<IActionResult> UpdateProfile(Guid userId, [FromBody] Profile updatedProfile)
+        public async Task<IActionResult> UpdateProfile(Guid userId, [FromBody] ProfileUpdateDto profileDto)
         {
-            if (userId != updatedProfile.UserId)
-                return BadRequest(new ApiResponse<string>("User ID mismatch", null));
+            var existingProfile = await _profileService.GetByUserIdAsync(userId);
+            if (existingProfile == null)
+            {
+                return NotFound(new ApiResponse<string>("Profile not found to update.", null));
+            }
 
-            await _profileService.UpdateAsync(updatedProfile);
+            existingProfile.FullName = profileDto.FullName;
+            existingProfile.Phone = profileDto.Phone;
+            existingProfile.Address = profileDto.Address;
+
+            await _profileService.UpdateAsync(existingProfile);
+
             return Ok(new ApiResponse<string>("Profile updated successfully", null));
         }
 
@@ -60,6 +69,30 @@ namespace ShareItAPI.Controllers
             {
                 return StatusCode(500, new ApiResponse<string>($"Image upload failed: {ex.Message}", null));
             }
+        }
+
+        [HttpGet("header-info")]
+        public async Task<IActionResult> GetHeaderInfo()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var profile = await _profileService.GetByUserIdAsync(userId);
+            if (profile == null)
+            {
+                return NotFound("Profile not found.");
+            }
+
+            var headerInfo = new UserHeaderInfoDto
+            {
+                FullName = profile.FullName,
+                ProfilePictureUrl = profile.ProfilePictureUrl
+            };
+
+            return Ok(headerInfo);
         }
     }
 }

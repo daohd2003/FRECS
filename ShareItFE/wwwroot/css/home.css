@@ -74,14 +74,14 @@ body {
 }
 
 .signin-btn {
-    color: #4b5563; /* text-gray-700 */
+    color: white; /* text-gray-700 */
     transition-property: color;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms; /* transition-colors */
 }
 
     .signin-btn:hover {
-        color: #8b5cf6; /* hover:text-purple-600 */
+        color: white; /* hover:text-purple-600 */
     }
 
 .get-started-btn {

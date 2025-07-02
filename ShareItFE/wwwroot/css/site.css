@@ -40,138 +40,309 @@ body {
     box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
-/* --- General Header & Navigation Styles --- */
+/* ==========================================================================
+    HEADER STYLES
+========================================================================== 
+*/
+
+.icon {
+    width: 1.5rem; /* 24px */
+    height: 1.5rem; /* 24px */
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.icon-sm {
+    width: 1rem; /* 16px */
+    height: 1rem; /* 16px */
+}
+
+/* Cài đặt chung cho Header */
 .main-header {
-    background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* light shadow for header */
-    padding: 1rem 0; /* Vertical padding */
-    width: 100%;
+    background-color: white;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 50;
 }
 
 .header-container {
-    max-width: 1280px; /* max-w-7xl equivalent */
-    margin: 0 auto; /* Center content */
-    padding: 0 1rem; /* Horizontal padding */
+    max-width: 80rem; /* max-w-7xl */
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 1rem; /* px-4 */
     display: flex;
     justify-content: space-between;
     align-items: center;
+    height: 4rem; /* h-16 */
 }
 
-.brand-logo-group {
+/* Logo */
+.brand-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem; /* space-x-2 equivalent */
-    text-decoration: none; /* For the <a> wrapping this div */
-    color: inherit;
+    gap: 0.5rem; /* space-x-2 */
+    text-decoration: none;
 }
 
 .brand-icon {
-    height: 2rem; /* Example size, adjust as needed */
-    width: 2rem;
-    color: #8b5cf6; /* purple-600 */
+    height: 2rem; /* h-8 */
+    width: 2rem; /* w-8 */
+    color: #8b5cf6; /* text-purple-600 */
 }
 
 .brand-name {
     font-size: 1.5rem; /* text-2xl */
     font-weight: bold;
-    color: #1a202c; /* gray-900 */
+    color: #111827; /* text-gray-900 */
 }
 
+/* Thanh tìm kiếm */
+.search-container {
+    flex: 1;
+    max-width: 36rem; /* max-w-lg */
+    margin: 0 2rem;
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 1.25rem; /* h-5 */
+    width: 1.25rem; /* w-5 */
+    color: #9ca3af; /* text-gray-400 */
+}
+
+.search-input {
+    width: 100%;
+    padding-left: 2.5rem; /* pl-10 */
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem; /* py-2 */
+    border: 1px solid #d1d5db; /* border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+}
+
+    .search-input:focus {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        border-color: #a78bfa; /* ring-purple-500 */
+    }
+
+/* Điều hướng */
 .main-nav {
-    display: flex;
-    gap: 2rem; /* space-x-8 equivalent */
+    display: none; /* Ẩn mặc định, hiển thị trên màn hình lớn */
 }
 
-.nav-link {
-    color: #4b5563; /* text-gray-700 */
-    transition-property: color;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms; /* transition-colors */
-    text-decoration: none;
-    padding: 0.5rem 0; /* Adjust padding as needed for clickable area */
-}
-
-    .nav-link:visited {
-        color: #4b5563;
+    .main-nav a {
+        color: #374151; /* text-gray-700 */
+        transition: color 0.2s;
+        text-decoration: none;
     }
 
-    .nav-link:hover {
-        color: #8b5cf6; /* hover:text-purple-600 */
-        text-decoration: underline; /* Optional: add underline on hover for better UX */
-    }
+        .main-nav a:hover {
+            color: #8b5cf6; /* hover:text-purple-600 */
+        }
 
-    .nav-link:active,
-    .nav-link:focus {
-        color: #8b5cf6;
-        outline: none; /* Remove default focus outline if not desired, or style it */
-    }
-
-/* --- Auth Buttons in Header --- */
-.auth-buttons {
+/* Các nút hành động bên phải */
+.header-actions {
     display: flex;
     align-items: center;
-    gap: 1rem; /* space-x-4 equivalent */
+    gap: 1rem; /* space-x-4 */
 }
 
-.signin-btn {
+.cart-link {
+    position: relative;
+    padding: 0.5rem;
+    color: #374151; /* text-gray-700 */
+}
+
+    .cart-link:hover {
+        color: #8b5cf6; /* hover:text-purple-600 */
+    }
+
+.cart-count {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    background-color: #8b5cf6; /* bg-purple-600 */
+    color: white;
+    font-size: 0.75rem; /* text-xs */
+    border-radius: 9999px; /* rounded-full */
+    height: 1.25rem; /* h-5 */
+    width: 1.25rem; /* w-5 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Menu người dùng */
+.user-menu {
+    position: relative;
+}
+
+.user-menu-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem; /* rounded-lg */
     background: none;
     border: none;
-    color: #4b5563; /* text-gray-700 */
-    font-size: 1rem; /* text-base */
-    font-weight: normal; /* default font-weight, or 500 if you prefer medium */
-    padding: 0.5rem 0.75rem; /* px-4 py-2 equivalent */
-    border-radius: 0.375rem; /* rounded-lg equivalent */
-    text-decoration: none; /* For link-styled buttons */
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out; /* transition-colors */
     cursor: pointer;
-    display: inline-block; /* Ensure it respects padding/margins as a block */
+}
+
+    .user-menu-button:hover {
+        background-color: #f3f4f6; /* hover:bg-gray-100 */
+    }
+
+.user-avatar {
+    height: 2rem;
+    width: 2rem; /* h-8 w-8 */
+    border-radius: 9999px; /* rounded-full */
+    object-fit: cover;
+}
+
+.user-menu-dropdown {
+    display: none; /* Ẩn mặc định */
+    position: absolute;
+    right: 0;
+    margin-top: 0.5rem;
+    width: 12rem; /* w-48 */
+    background-color: white;
+    border-radius: 0.5rem; /* rounded-lg */
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    border: 1px solid #e5e7eb; /* border-gray-200 */
+    padding: 0.5rem 0;
+}
+
+    .user-menu-dropdown a,
+    .user-menu-dropdown button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem; /* space-x-2 */
+        padding: 0.5rem 1rem;
+        color: #374151; /* text-gray-700 */
+        text-decoration: none;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+        .user-menu-dropdown a:hover,
+        .user-menu-dropdown button:hover {
+            background-color: #f3f4f6; /* hover:bg-gray-100 */
+        }
+
+.logout-btn {
+    color: #dc2626; /* text-red-600 */
+}
+
+    .logout-btn:hover {
+        background-color: #fef2f2; /* hover:bg-red-50 */
+    }
+
+.signin-btn {
+    background-color: #8b5cf6;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
 }
 
     .signin-btn:hover {
-        color: #8b5cf6; /* hover:text-purple-600 */
-        background-color: #f7fafc; /* Optional: subtle background on hover */
+        background-color: #7c3aed;
+        color: white;
     }
 
-.get-started-btn, .logout-btn {
-    background-color: #8b5cf6; /* bg-purple-600 */
-    color: #fff;
-    padding: 0.5rem 1rem; /* px-4 py-2 equivalent */
-    border-radius: 0.5rem; /* rounded-lg equivalent */
-    font-size: 1rem; /* text-base */
-    font-weight: 600; /* font-semibold */
-    text-decoration: none; /* For link-styled buttons */
-    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out; /* transition-colors transform */
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow */
+/* Nút menu di động */
+.mobile-menu-button {
+    padding: 0.5rem;
+    color: #374151;
+    display: block; /* Hiển thị mặc định */
 }
 
-    .get-started-btn:hover, .logout-btn:hover {
-        background-color: #7c3aed; /* hover:bg-purple-700 */
-        transform: scale(1.02); /* slight scale on hover */
+    .mobile-menu-button:hover {
+        color: #8b5cf6;
     }
 
-.logout-form {
-    display: contents; /* Makes the form itself not affect layout, only its contents */
+.mobile-menu {
+    display: none; /* Ẩn mặc định */
+    border-top: 1px solid #e5e7eb;
+    padding: 1rem 0;
 }
 
-/* --- Main Content Area for _Layout.cshtml (usually just a placeholder) --- */
+    .mobile-menu nav a {
+        display: block;
+        padding: 0.5rem 0;
+        color: #374151;
+        text-decoration: none;
+    }
+
+        .mobile-menu nav a:hover {
+            color: #8b5cf6;
+        }
+
+/* Responsive cho Header */
+@media (min-width: 768px) { /* md breakpoint */
+    .main-nav {
+        display: flex;
+        align-items: center;
+        gap: 2rem; /* space-x-8 */
+    }
+
+    .search-container {
+        display: block;
+    }
+
+    .mobile-menu-button {
+        display: none;
+    }
+
+    .mobile-menu {
+        display: none !important;
+    }
+
+    #user-name-desktop {
+        display: block;
+    }
+}
+
+@media (max-width: 767px) {
+    .search-container {
+        display: none;
+    }
+
+    #user-name-desktop {
+        display: none;
+    }
+}
+
+/* ==========================================================================
+    MAIN CONTENT & FOOTER STYLES
+========================================================================== 
+*/
+
 .main-content-area {
     flex-grow: 1; /* Allow main content to fill available space */
     padding-bottom: 3rem; /* Add padding at the bottom of the main area */
 }
 
-
-/* --- Footer Styles --- */
 .main-footer {
-    background-color: #1a202c; /* gray-800 */
-    color: #cbd5e0; /* gray-300 */
+    background-color: #1f2937; /* gray-800 */
+    color: #d1d5db; /* gray-300 */
     padding: 4rem 0; /* py-16 */
     width: 100%;
 }
 
 .footer-grid {
-    max-width: 1280px; /* max-w-7xl */
+    max-width: 80rem; /* max-w-7xl */
     margin: 0 auto;
     padding: 0 1rem; /* px-4 */
     display: grid;
@@ -179,14 +350,7 @@ body {
     gap: 2rem; /* gap-8 */
 }
 
-@media (min-width: 768px) { /* md:grid-cols-4 */
-    .footer-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
 .footer-brand-section {
-    /* flex-col space-y-4 */
     display: flex;
     flex-direction: column;
     gap: 1rem; /* space-y-4 */
@@ -211,7 +375,7 @@ body {
 }
 
 .footer-description {
-    color: #a0aec0; /* gray-400 */
+    color: #9ca3af; /* gray-400 */
     line-height: 1.5;
 }
 
@@ -223,7 +387,7 @@ body {
 .social-icon {
     height: 1.5rem; /* h-6 */
     width: 1.5rem; /* w-6 */
-    color: #a0aec0; /* gray-300 */
+    color: #d1d5db; /* gray-300 */
     transition: color 0.15s ease-in-out; /* transition-colors */
     cursor: pointer;
 }
@@ -248,7 +412,7 @@ body {
 }
 
 .footer-link {
-    color: #a0aec0; /* gray-300 */
+    color: #d1d5db; /* gray-300 */
     text-decoration: none;
     transition: color 0.15s ease-in-out;
 }
@@ -258,10 +422,17 @@ body {
     }
 
 .footer-bottom-bar {
-    border-top: 1px solid #4a5568; /* border-t border-gray-700 */
+    border-top: 1px solid #4b5563; /* border-t border-gray-700 */
     margin-top: 3rem; /* mt-12 */
     padding-top: 2rem; /* pt-8 */
     text-align: center;
-    color: #a0aec0; /* gray-400 */
+    color: #9ca3af; /* gray-400 */
     font-size: 0.875rem; /* text-sm */
+}
+
+/* Responsive cho Footer */
+@media (min-width: 768px) { /* md:grid-cols-4 */
+    .footer-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }

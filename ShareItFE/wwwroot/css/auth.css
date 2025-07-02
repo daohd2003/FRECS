@@ -559,3 +559,13 @@ body {
         width: 20px; /* Adjust icon size */
         height: 20px; /* Adjust icon size */
     }
+/* Cho các trình duyệt Webkit như Chrome, Edge, Safari */
+input[type="password"]::-webkit-password-reveal-button {
+    display: none;
+    -webkit-appearance: none;
+}
+
+/* Cho trình duyệt Internet Explorer và Edge cũ */
+input[type="password"]::-ms-reveal {
+    display: none;
+}

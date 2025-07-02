@@ -12,6 +12,7 @@ using System.Net.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using System.Net.Http.Headers;
+using BusinessObject.Enums;
 
 namespace Services.AI
 {
@@ -62,6 +63,7 @@ namespace Services.AI
             }
 
             var products = await _context.Products
+                .Where(p => p.AvailabilityStatus == AvailabilityStatus.available)
                 .OrderBy(p => p.Id)
                 .Select(p => new
                 {
@@ -73,7 +75,7 @@ namespace Services.AI
                     p.Category,
                     p.Color
                 })
-                .Take(5)
+                .Take(50)
                 .ToListAsync();
 
             _cache.Set(cacheKey, products, new MemoryCacheEntryOptions

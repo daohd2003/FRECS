@@ -66,7 +66,7 @@ namespace Repositories.UserRepositories
                     Profile = new Profile
                     {
                         FullName = username,
-                        ProfilePictureUrl = "https://static-00.iconduck.com/assets.00/avatar-default-symbolic-icon-479x512-n8sg74wg.png"
+                        ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg"
                     }
                 };
 

@@ -1,0 +1,138 @@
+﻿@model ShareItFE.ViewComponents.Header.HeaderViewModel
+
+<header class="main-header">
+    <div class="header-container">
+        <a asp-page="/Index" class="brand-link">
+            <svg xmlns="http://www.w3.org/2000/svg" class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6.7,16.2l-2.8,2.8a1,1,0,0,0,0,1.4l7.1,7.1a1,1,0,0,0,1.4,0l7.1-7.1a1,1,0,0,0,0-1.4l-2.8-2.8" />
+                <path d="M8.1,14.8,3,20H21l-5.1-5.2" />
+                <path d="M12,2a4,4,0,0,0-4,4v2.4a4,4,0,0,0,8,0V6A4,4,0,0,0,12,2Z" />
+                <line x1="10" x2="14" y1="12" y2="12" />
+            </svg>
+            <span class="brand-name">RentChic</span>
+        </a>
+
+        <div class="search-container">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" placeholder="Search for dresses, suits, accessories..." class="search-input" />
+        </div>
+
+        <nav class="main-nav">
+            <a asp-page="/Products">Browse</a>
+            @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                <a asp-page="/PostItem">List Item</a>
+            }
+            <a href="/Index#how-it-works">How it Works</a>
+            <a asp-page="/Contact">Contact</a>
+        </nav>
+
+        <div class="header-actions">
+            @if (Model.IsUserLoggedIn)
+            {
+                @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
+                {
+                    <a asp-page="/Cart" class="cart-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
+                        @if (Model.CartItemCount > 0)
+                        {
+                            <span class="cart-count">@Model.CartItemCount</span>
+                        }
+                    </a>
+                }
+
+                <div class="user-menu">
+                    <button id="userMenuButton" class="user-menu-button">
+                        @if (!string.IsNullOrEmpty(Model.UserAvatarUrl))
+                        {
+                            <img src="@Model.UserAvatarUrl" alt="@Model.UserName" class="user-avatar" />
+                        }
+                        else
+                        {
+                            <div class="user-avatar" style="background-color: #8b5cf6; display:flex; align-items:center; justify-content:center; color:white; font-weight:600;">
+                                <span>@Model.UserName?.ToUpper().FirstOrDefault()</span>
+                            </div>
+                        }
+                        <span id="user-name-desktop">@Model.UserName</span>
+                    </button>
+                    <div id="userMenuDropdown" class="user-menu-dropdown">
+                        <a asp-page="/Profile">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>Profile</span>
+                        </a>
+                        <a asp-page="/Delivery">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            <span>My Orders</span>
+                        </a>
+
+                        @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Provider/Products">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                <span>My Listings</span>
+                            </a>
+                            <a asp-page="/PostItem">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <span>List New Item</span>
+                            </a>
+                        }
+
+                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Admin/Users">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.14,12.94a2,2,0,0,1,0,2.12l-1.1,1.1a2,2,0,0,1-2.83,0L12,12.83l-3.21,3.21a2,2,0,0,1-2.83,0l-1.1-1.1a2,2,0,0,1,0-2.12L8.17,12,4.86,8.79a2,2,0,0,1,0-2.12l1.1-1.1a2,2,0,0,1,2.83,0L12,8.83l3.21-3.21a2,2,0,0,1,2.83,0l1.1,1.1a2,2,0,0,1,0,2.12L15.83,12Z"></path></svg>
+                                <span>Admin Panel</span>
+                            </a>
+                        }
+
+                        <hr style="margin: 0.5rem 0;" />
+                        <form asp-page="/Auth" asp-page-handler="Logout" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="logout-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                <span>Sign Out</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <a href="/Auth" class="signin-btn">Sign In</a>
+            }
+
+            <button id="mobileMenuButton" class="mobile-menu-button">
+                <svg id="menuIconOpen" xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                <svg id="menuIconClose" xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" style="display:none;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="mobileMenu" class="mobile-menu">
+        <div style="padding: 0 1rem;">
+            <div style="position: relative; margin-bottom: 1rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" placeholder="Search..." class="search-input" />
+            </div>
+            <nav>
+                <a asp-page="/Products">Browse</a>
+                @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+                {
+                    <a asp-page="/PostItem">List Item</a>
+                }
+                <a href="/Index#how-it-works">How it Works</a>
+                <a asp-page="/Contact">Contact</a>
+            </nav>
+        </div>
+    </div>
+</header>
