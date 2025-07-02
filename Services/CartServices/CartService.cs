@@ -107,5 +107,15 @@ namespace Services.CartServices
             await _cartRepository.DeleteCartItemAsync(cartItem);
             return true;
         }
+
+        public async Task<int> GetCartItemCountAsync(Guid customerId)
+        {
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null || cart.Items == null)
+            {
+                return 0;
+            }
+            return cart.Items.Count;
+        }
     }
 }

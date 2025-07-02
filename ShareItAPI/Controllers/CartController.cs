@@ -207,5 +207,20 @@ namespace ShareItAPI.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
             }
         }
+
+        [HttpGet("count")]
+        [Authorize(Roles = "customer")]
+        public async Task<IActionResult> GetCartCount()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var count = await _cartService.GetCartItemCountAsync(userId);
+
+            return Ok(new { count = count });
+        }
     }
 }
