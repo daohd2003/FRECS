@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250703120025_AddDeliveredDateToOrder")]
+    partial class AddDeliveredDateToOrder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -150,24 +153,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("User2Id");
 
                     b.ToTable("Conversations");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("UserId", "ProductId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("Favorites");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Feedback", b =>
@@ -696,25 +681,6 @@ namespace DataAccess.Migrations
                     b.Navigation("User2");
                 });
 
-            modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
-                {
-                    b.HasOne("BusinessObject.Models.Product", "Product")
-                        .WithMany("Favorites")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObject.Models.User", "User")
-                        .WithMany("Favorites")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("BusinessObject.Models.Feedback", b =>
                 {
                     b.HasOne("BusinessObject.Models.User", "Customer")
@@ -903,8 +869,6 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("BusinessObject.Models.Product", b =>
                 {
-                    b.Navigation("Favorites");
-
                     b.Navigation("Feedbacks");
 
                     b.Navigation("Images");
@@ -912,8 +876,6 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("BusinessObject.Models.User", b =>
                 {
-                    b.Navigation("Favorites");
-
                     b.Navigation("MessagesReceived");
 
                     b.Navigation("MessagesSent");

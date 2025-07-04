@@ -33,6 +33,8 @@ namespace BusinessObject.Models
         public DateTime? RentalStart { get; set; }
         public DateTime? RentalEnd { get; set; }
 
+        public DateTime? DeliveredDate { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 

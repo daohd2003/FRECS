@@ -241,6 +241,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
             order.Status = OrderStatus.in_transit;
+            order.DeliveredDate = DateTime.UtcNow;
             order.UpdatedAt = DateTime.UtcNow;
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.approved, OrderStatus.in_transit);

@@ -12,7 +12,7 @@ namespace Services.ProviderBankServices
     {
         Task<IEnumerable<BankAccount>> GetBankAccounts(Guid providerId);
         Task<BankAccount?> GetBankAccountById(Guid id);
-        Task AddBankAccount(BankAccountDto dto);
-        Task<bool> UpdateBankAccount(BankAccountDto dto);
+        Task AddBankAccount(Guid providerId, BankAccountCreateDto dto);
+        Task<bool> UpdateBankAccount(Guid providerId, BankAccountUpdateDto dto);
     }
 }

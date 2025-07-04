@@ -63,7 +63,7 @@ namespace ShareItFE.ViewComponents.Header
                 {
                     try
                     {
-                        var cartResponse = await client.GetAsync("api/carts/count");
+                        var cartResponse = await client.GetAsync("api/cart/count");
                         if (cartResponse.IsSuccessStatusCode)
                         {
                             var cartContent = await cartResponse.Content.ReadFromJsonAsync<JsonElement>();

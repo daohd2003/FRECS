@@ -128,13 +128,22 @@ namespace ShareItAPI.Controllers
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new ApiResponse<object>("Validation failed", ModelState));
+            }
+
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
+            {
                 return Unauthorized(new ApiResponse<string>("Invalid user", null));
+            }
 
             var result = await _jwtService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
             if (!result)
+            {
                 return BadRequest(new ApiResponse<string>("Current password is incorrect or user not found", null));
+            }
 
             return Ok(new ApiResponse<string>("Password changed successfully", null));
         }
