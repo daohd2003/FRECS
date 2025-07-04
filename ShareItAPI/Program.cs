@@ -294,7 +294,7 @@ namespace ShareItAPI
 
                 // Đăng ký các entity bạn muốn query bằng OData
                 builder.EntitySet<ProductDTO>("products");
-                builder.EntitySet<UserODataDTO>("list/users");
+                builder.EntitySet<UserODataDTO>("users");
                 return builder.GetEdmModel();
             }
         }

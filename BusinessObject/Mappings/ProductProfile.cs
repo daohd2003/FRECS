@@ -1,9 +1,7 @@
-﻿using AutoMapper;
-using BusinessObject.DTOs.ProductDto;
+﻿using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
 using BusinessObject.Mappings.Helpers;
 using BusinessObject.Models;
-using System.Linq;
 
 namespace BusinessObject.Mappings
 {
@@ -15,7 +13,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ProviderName, opt => opt.MapFrom(src => src.Provider.Profile.FullName))
                 .ForMember(dest => dest.AvailabilityStatus, opt => opt.MapFrom(src => src.AvailabilityStatus.ToString()))
                 .ForMember(dest => dest.PrimaryImagesUrl, opt => opt.MapFrom(src =>
-                    src.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
+                    src.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl ?? String.Empty))
                 .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images));
 
             CreateMap<ProductDTO, Product>()
