@@ -28,33 +28,40 @@ namespace Services.ProviderBankServices
             return await _repo.GetByIdAsync(id);
         }
 
-        public async Task AddBankAccount(BankAccountDto dto)
+        public async Task AddBankAccount(Guid providerId, BankAccountCreateDto dto)
         {
             if (dto.IsPrimary)
             {
-                bool hasMultiplePrimary = await _repo.HasMultiplePrimaryAccounts(dto.ProviderId);
-                if (hasMultiplePrimary)
-                {
+                bool hasPrimary = await _repo.HasMultiplePrimaryAccounts(providerId);
+                if (hasPrimary)
                     throw new InvalidOperationException("Each provider can only have one primary bank account.");
-                }
             }
 
             var entity = new BankAccount
             {
                 Id = Guid.NewGuid(),
-                ProviderId = dto.ProviderId,
+                ProviderId = providerId,
                 BankName = dto.BankName,
                 AccountNumber = dto.AccountNumber,
                 RoutingNumber = dto.RoutingNumber,
                 IsPrimary = dto.IsPrimary
             };
+
             await _repo.AddAsync(entity);
         }
 
-        public async Task<bool> UpdateBankAccount(BankAccountDto dto)
+        public async Task<bool> UpdateBankAccount(Guid providerId, BankAccountUpdateDto dto)
         {
             var existing = await _repo.GetByIdAsync(dto.Id);
-            if (existing == null) return false;
+            if (existing == null || existing.ProviderId != providerId)
+                return false;
+
+            if (dto.IsPrimary && !existing.IsPrimary)
+            {
+                bool hasPrimary = await _repo.HasMultiplePrimaryAccounts(providerId);
+                if (hasPrimary)
+                    throw new InvalidOperationException("Each provider can only have one primary bank account.");
+            }
 
             existing.BankName = dto.BankName;
             existing.AccountNumber = dto.AccountNumber;

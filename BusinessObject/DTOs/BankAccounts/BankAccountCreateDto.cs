@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace BusinessObject.DTOs.BankAccounts
 {
-    public class BankAccountDto
+    public class BankAccountCreateDto
     {
-        public Guid Id { get; set; }  // Dùng cho Update
-        public Guid ProviderId { get; set; }
         public string BankName { get; set; } = string.Empty;
         public string AccountNumber { get; set; } = string.Empty;
         public string? RoutingNumber { get; set; }

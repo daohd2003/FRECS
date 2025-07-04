@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace BusinessObject.DTOs.OrdersDto
@@ -20,5 +21,7 @@ namespace BusinessObject.DTOs.OrdersDto
         public DateTime ScheduledDate { get; set; }
         public DateTime? DeliveredDate { get; set; }
         public DateTime? ReturnDate { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public decimal TotalAmount { get; set; }
     }
 }

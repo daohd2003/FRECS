@@ -7,13 +7,21 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/profile.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 }
 
 <div class="page-container">
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
-        <div id="toast-success" class="toast-message">
+        <div id="toast-success" class="toast-message bg-success text-white p-3 position-fixed top-0 end-0 m-3 rounded">
             @Model.SuccessMessage
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div id="toast-error" class="toast-message bg-danger text-white p-3 position-fixed top-0 end-0 m-3 rounded">
+            @TempData["ErrorMessage"]
         </div>
     }
 
@@ -39,7 +47,7 @@
                                 </svg>
                             </label>
 
-                            <input type="file" id="avatar-input" name="UploadedAvatar" class="hidden-input" accept="image/*" />
+                            <input type="file" id="avatar-input" name="uploadedAvatar" class="hidden-input" accept="image/*" />
                         </div>
 
                     </form>
@@ -161,24 +169,371 @@
                     </div>
                 </div>
 
-                <div class="content-panel hidden" data-tab-content="orders">
+                <div class="content-panel" data-tab-content="orders">
                     <div class="card">
                         <h1 class="page-title">My Orders</h1>
-                        <p class="text-gray-600">TODO: Load and display order list here.</p>
+
+                        @if (Model.TotalPages > 1)
+                        {
+                            var pagedOrders = Model.Orders
+                                .Skip((Model.CurrentPage - 1) * Model.PageSize)
+                                .Take(Model.PageSize)
+                                .ToList();
+                            <div class="order-list">
+                                @foreach (var order in pagedOrders)
+                                {
+                                    var statusClass = order.Status.ToString().ToLower() switch
+                                    {
+                                        "pending" => "status-pending",
+                                        "approved" => "status-approved",
+                                        "in_transit" => "status-in-transit",
+                                        "in_use" => "status-in-use",
+                                        "returned" => "status-returned",
+                                        "cancelled" => "status-cancelled",
+                                        "returned_with_issue" => "status-issue",
+                                        _ => "status-pending"
+                                    };
+
+                                    <div class="order-card">
+                                        <div class="order-header">
+                                            <div class="order-header-info">
+                                                <h3 class="order-id">Order #@order.OrderCode</h3>
+                                                <p class="order-date">Placed on: @order.CreatedAt.ToLocalTime().ToString("dd/M/yyyy")</p>
+                                            </div>
+                                            <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
+                                        </div>
+
+                                        @if (order.Item != null)
+                                        {
+                                            <div class="order-body">
+                                                <div class="order-item">
+                                                    <img src="@(order.Item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@order.Item.ProductName" class="order-item-image" />
+                                                    <div class="order-item-details">
+                                                        <h4 class="item-name">@order.Item.ProductName</h4>
+                                                        <p class="item-meta">Size: @order.Item.ProductSize</p>
+                                                        <p class="item-meta">
+                                                            Rental Period: @order.ScheduledDate.ToString("yyyy-MM-dd") to @order.ReturnDate?.ToString("yyyy-MM-dd") (@order.Item.RentalDays days)
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        <div class="order-footer">
+                                            <span class="order-total">
+                                                Total: @(order.TotalAmount > 0 ? order.TotalAmount.ToString("C0") : "N/A")
+                                            </span>
+                                            <div class="order-actions">
+                                                <a asp-page="/Order/Details" asp-route-id="@order.Id" class="btn btn-secondary">View Details</a>
+                                                @if (order.Status.ToString().ToLower() == "returned")
+                                                {
+                                                    <a href="#" class="btn btn-primary">Rent Again</a>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <p>You have no orders yet.</p>
+                            </div>
+                        }
+                    </div>
+                    <div class="pagination-controls">
+                        @{
+                            var prevDisabled = Model.CurrentPage <= 1 ? "disabled" : "";
+                            var nextDisabled = Model.CurrentPage >= Model.TotalPages ? "disabled" : "";
+                        }
+
+                        <a asp-page="/Profile"
+                           asp-route-pageNum="@(Model.CurrentPage - 1)"
+                           asp-route-tab="orders"
+                           class="btn btn-secondary @prevDisabled">
+                            &laquo; Previous
+                        </a>
+
+                        <div class="page-numbers">
+                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <a asp-page="/Profile"
+                                   asp-route-pageNum="@i"
+                                   asp-route-tab="orders"
+                                   class="btn @(i == Model.CurrentPage ? "btn-primary" : "btn-secondary")">@i</a>
+                            }
+                        </div>
+
+                        <a asp-page="/Profile"
+                           asp-route-pageNum="@(Model.CurrentPage + 1)"
+                           asp-route-tab="orders"
+                           class="btn btn-secondary @nextDisabled">
+                            Next &raquo;
+                        </a>
                     </div>
                 </div>
 
-                <div class="content-panel hidden" data-tab-content="favorites">
+                <div class="content-panel" data-tab-content="favorites">
                     <div class="card">
                         <h1 class="page-title">My Favorites</h1>
-                        <p class="text-gray-600">TODO: Load and display favorite items here.</p>
+
+                        @if (Model.Favorites.Any())
+                        {
+                            var pagedFavorites = Model.Favorites
+                                .Skip((Model.FavoritesPageNum - 1) * Model.FavoritesPageSize)
+                                .Take(Model.FavoritesPageSize)
+                                .ToList();
+
+                            <div class="favorites-grid">
+                                @foreach (var item in pagedFavorites)
+                                {
+                                    var product = item.Product;
+
+                                    <div class="favorite-card">
+                                        <img src="@(product?.Images?.FirstOrDefault(i => i.IsPrimary)?.ImageUrl ?? "/images/placeholder.jpg")"
+                                             alt="@product?.Name"
+                                             class="favorite-image" />
+
+                                        <h4 class="favorite-name">@product?.Name</h4>
+
+                                        <p class="favorite-price text-purple-600 font-semibold">
+                                            @((product?.PricePerDay ?? 0).ToString("C0"))/day
+                                        </p>
+
+                                        <div class="favorite-actions">
+                                            <a href="/products/details/@product?.Id" class="btn btn-primary">Rent Now</a>
+
+                                            <form method="post"
+                                                  asp-page-handler="RemoveFavorite"
+                                                  asp-route-productId="@product?.Id"
+                                                  asp-route-tab="favorites"
+                                                  asp-route-pageNum="@Model.CurrentPage"
+                                                  asp-route-favPage="@Model.FavoritesPageNum"
+                                                  onsubmit="return confirm('Remove from favorites?')"
+                                                  style="display:inline;">
+                                                <button type="submit" class="btn btn-outline-danger" title="Remove">&#10005;</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="pagination-controls mt-4">
+                                @{
+                                    var prevFavDisabled = Model.FavoritesPageNum <= 1 ? "disabled" : "";
+                                    var nextFavDisabled = Model.FavoritesPageNum >= Model.FavoritesTotalPages ? "disabled" : "";
+                                }
+
+                                <a asp-page="/Profile"
+                                   asp-route-pageNum="@Model.CurrentPage"
+                                   asp-route-favPage="@(Model.FavoritesPageNum - 1)"
+                                   asp-route-tab="favorites"
+                                   class="btn btn-secondary @prevFavDisabled">
+                                    &laquo; Previous
+                                </a>
+
+                                <div class="page-numbers">
+                                    @for (int i = 1; i <= Model.FavoritesTotalPages; i++)
+                                    {
+                                        <a asp-page="/Profile"
+                                           asp-route-pageNum="@Model.CurrentPage"
+                                           asp-route-favPage="@i"
+                                           asp-route-tab="favorites"
+                                           class="btn @(i == Model.FavoritesPageNum ? "btn-primary" : "btn-secondary")">@i</a>
+                                    }
+                                </div>
+
+                                <a asp-page="/Profile"
+                                   asp-route-pageNum="@Model.CurrentPage"
+                                   asp-route-favPage="@(Model.FavoritesPageNum + 1)"
+                                   asp-route-tab="favorites"
+                                   class="btn btn-secondary @nextFavDisabled">
+                                    Next &raquo;
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <p>You don’t have any favorite items yet.</p>
+                            </div>
+                        }
                     </div>
                 </div>
 
-                <div class="content-panel hidden" data-tab-content="settings">
+                <div class="content-panel" data-tab-content="settings">
                     <div class="card">
                         <h1 class="page-title">Settings</h1>
-                        <p class="text-gray-600">TODO: Show user settings options here.</p>
+
+                        <div class="settings-list">
+
+                            <!-- Security Section -->
+                            <div class="settings-section">
+                                <h3 class="section-title">Security & Login</h3>
+
+                                <!-- Change Password (Container) -->
+                                <div class="setting-item-wrapper">
+                                    <div class="setting-item">
+                                        <div class="setting-icon">
+                                            <!-- Icon ổ khóa -->
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                            </svg>
+                                        </div>
+                                        <div class="setting-text">
+                                            <h4>Change Password</h4>
+                                            <p>It's a good idea to use a strong password that you're not using elsewhere.</p>
+                                        </div>
+                                        <div class="setting-action">
+                                            <button type="button" id="change-password-toggle-btn" class="btn btn-secondary">Change</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Form đổi mật khẩu - ẩn ban đầu -->
+                                    <div id="change-password-form" class="mt-3 @(ViewData.ModelState.IsValid ? "d-none" : "")">
+                                        <form method="post" asp-page-handler="ChangePassword">
+                                            @Html.AntiForgeryToken()
+
+                                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                                            <!-- Current Password -->
+                                            <div class="form-group mb-3">
+                                                <label asp-for="ChangePassword.CurrentPassword">Current Password</label>
+                                                <div class="position-relative">
+                                                    <input asp-for="ChangePassword.CurrentPassword"
+                                                           type="password"
+                                                           class="form-control pe-5"
+                                                           autocomplete="current-password" />
+                                                    <i class="bi bi-eye-slash toggle-password position-absolute end-0 top-50 translate-middle-y me-3"
+                                                       style="cursor: pointer;"></i>
+                                                </div>
+                                                <span asp-validation-for="ChangePassword.CurrentPassword" class="text-danger"></span>
+                                            </div>
+
+                                            <!-- New Password -->
+                                            <div class="form-group mb-3">
+                                                <label asp-for="ChangePassword.NewPassword">New Password</label>
+                                                <div class="position-relative">
+                                                    <input asp-for="ChangePassword.NewPassword"
+                                                           type="password"
+                                                           class="form-control pe-5"
+                                                           autocomplete="new-password" />
+                                                    <i class="bi bi-eye-slash toggle-password position-absolute end-0 top-50 translate-middle-y me-3"
+                                                       style="cursor: pointer;"></i>
+                                                </div>
+                                                <span asp-validation-for="ChangePassword.NewPassword" class="text-danger"></span>
+                                            </div>
+
+                                            <!-- Confirm Password -->
+                                            <div class="form-group mb-3">
+                                                <label asp-for="ChangePassword.ConfirmPassword">Confirm New Password</label>
+                                                <div class="position-relative">
+                                                    <input asp-for="ChangePassword.ConfirmPassword"
+                                                           type="password"
+                                                           class="form-control pe-5"
+                                                           autocomplete="new-password" />
+                                                    <i class="bi bi-eye-slash toggle-password position-absolute end-0 top-50 translate-middle-y me-3"
+                                                       style="cursor: pointer;"></i>
+                                                </div>
+                                                <span asp-validation-for="ChangePassword.ConfirmPassword" class="text-danger"></span>
+                                            </div>
+
+                                            <button type="submit" class="btn btn-primary">Update Password</button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Two-Factor Authentication -->
+                                <div class="setting-item">
+                                    <div class="setting-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" /></svg>
+                                    </div>
+                                    <div class="setting-text">
+                                        <h4>Two-Factor Authentication (2FA)</h4>
+                                        <p>Add an extra layer of security to your account.</p>
+                                    </div>
+                                    <div class="setting-action">
+                                        <a href="#" class="btn btn-secondary">Manage</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payments Section -->
+                            <div class="settings-section">
+
+                                <h3 class="section-title">Payments</h3>
+
+
+
+                                <!-- Billing & Payment Methods -->
+
+                                <div class="setting-item">
+
+                                    <div class="setting-icon">
+
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 21z" /></svg>
+
+                                    </div>
+
+                                    <div class="setting-text">
+
+                                        <h4>Billing & Payment Methods</h4>
+
+                                        <p>Manage your payment methods and view your billing history.</p>
+
+                                    </div>
+
+                                    <div class="setting-action">
+
+                                        <a href="#" class="btn btn-secondary">Manage</a>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- Account Management Section -->
+
+                            <div class="settings-section danger-zone">
+
+                                <h3 class="section-title">Account Management</h3>
+
+
+
+                                <!-- Delete Account -->
+
+                                <div class="setting-item">
+
+                                    <div class="setting-icon text-danger">
+
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+
+                                    </div>
+
+                                    <div class="setting-text">
+
+                                        <h4>Delete Account</h4>
+
+                                        <p>Permanently delete your account and all of your content. This action is irreversible.</p>
+
+                                    </div>
+
+                                    <div class="setting-action">
+
+                                        <button type="button" class="btn btn-danger">Delete</button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
                     </div>
                 </div>
             </main>
@@ -193,11 +548,42 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const toast = document.getElementById('toast-success');
-            if (toast) {
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                }, 4000); // 4 giây rồi ẩn
+            // Ẩn toast sau 4 giây
+            const toastSuccess = document.getElementById('toast-success');
+            const toastError = document.getElementById('toast-error');
+
+            if (toastSuccess) {
+                setTimeout(() => { toastSuccess.style.display = 'none'; }, 4000);
+            }
+            if (toastError) {
+                setTimeout(() => { toastError.style.display = 'none'; }, 4000);
+            }
+
+            // Toggle hiển thị/ẩn mật khẩu
+            document.querySelectorAll('.toggle-password').forEach(icon => {
+                icon.addEventListener('click', () => {
+                    // Tìm input nằm trong cùng .position-relative (hoặc div cha)
+                    const wrapper = icon.closest('.position-relative');
+                    const input = wrapper ? wrapper.querySelector('input') : null;
+                    if (!input) return;
+
+                    const isPassword = input.type === 'password';
+                    input.type = isPassword ? 'text' : 'password';
+
+                    icon.classList.toggle('bi-eye');
+                    icon.classList.toggle('bi-eye-slash');
+                });
+            });
+
+            // Toggle hiển thị form đổi mật khẩu
+            const toggleBtn = document.getElementById('change-password-toggle-btn');
+            const passwordForm = document.getElementById('change-password-form');
+
+            if (toggleBtn && passwordForm) {
+                toggleBtn.addEventListener('click', () => {
+                    passwordForm.classList.toggle('d-none');
+                    toggleBtn.textContent = passwordForm.classList.contains('d-none') ? 'Change' : 'Cancel';
+                });
             }
         });
     </script>
