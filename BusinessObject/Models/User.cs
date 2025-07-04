@@ -56,6 +56,6 @@ namespace BusinessObject.Models
 
         public ICollection<Report> ReportsMade { get; set; } = new List<Report>();
         public ICollection<Report> ReportsReceived { get; set; } = new List<Report>();
-
+        public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
     }
 }

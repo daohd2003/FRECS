@@ -28,7 +28,7 @@ namespace DataAccess
         public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
-
+        public DbSet<Favorite> Favorites { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -199,7 +199,7 @@ namespace DataAccess
 
             modelBuilder.Entity<Order>()
                 .HasOne(o => o.Provider)
-                .WithMany(u => u.OrdersAsProvider) 
+                .WithMany(u => u.OrdersAsProvider)
                 .HasForeignKey(o => o.ProviderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -213,6 +213,21 @@ namespace DataAccess
                 .HasOne(oi => oi.Order)
                 .WithMany(o => o.Items)
                 .HasForeignKey(oi => oi.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Favorite>()
+                .HasKey(f => new { f.UserId, f.ProductId });
+
+            modelBuilder.Entity<Favorite>()
+                .HasOne(f => f.User)
+                .WithMany(u => u.Favorites)
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Favorite>()
+                .HasOne(f => f.Product)
+                .WithMany(p => p.Favorites)
+                .HasForeignKey(f => f.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);

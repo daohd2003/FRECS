@@ -62,5 +62,6 @@ namespace BusinessObject.Models
         public int RatingCount { get; set; } = 0;
 
         public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
+        public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
     }
 }

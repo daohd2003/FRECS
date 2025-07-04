@@ -45,22 +45,18 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] BankAccountDto dto)
+        public async Task<IActionResult> Create([FromBody] BankAccountCreateDto dto)
         {
-            if (!_userHelper.IsAdmin() && !_userHelper.IsOwner(dto.ProviderId))
-                throw new InvalidOperationException("You are not authorized to access these bank accounts.");
-
-            await _service.AddBankAccount(dto);
+            var providerId = _userHelper.GetCurrentUserId();
+            await _service.AddBankAccount(providerId, dto);
             return Ok(new ApiResponse<object>("Bank account added", null));
         }
 
         [HttpPut]
-        public async Task<IActionResult> Update([FromBody] BankAccountDto dto)
+        public async Task<IActionResult> Update([FromBody] BankAccountUpdateDto dto)
         {
-            if (!_userHelper.IsAdmin() && !_userHelper.IsOwner(dto.ProviderId))
-                throw new InvalidOperationException("You are not authorized to access these bank accounts.");
-
-            var success = await _service.UpdateBankAccount(dto);
+            var providerId = _userHelper.GetCurrentUserId();
+            var success = await _service.UpdateBankAccount(providerId, dto);
             if (!success)
                 return NotFound(new ApiResponse<object>("Bank account not found", null));
 

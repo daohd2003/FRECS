@@ -25,7 +25,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.Provider, opt => opt.Ignore());
 
             CreateMap<Order, OrderListDto>()
-                .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => $"DEL{src.Id.ToString().Substring(0, 3).ToUpper()}"))
+                .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => $"ORD{src.Id.ToString().Substring(0, 3).ToUpper()}"))
                 .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer.Profile.FullName))
                 .ForMember(dest => dest.CustomerEmail, opt => opt.MapFrom(src => src.Customer.Email))
                 .ForMember(dest => dest.Item, opt => opt.MapFrom(src => src.Items.FirstOrDefault()))

@@ -24,6 +24,7 @@ using Microsoft.OpenApi.Models;
 using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
 using Repositories.EmailRepositories;
+using Repositories.FavoriteRepositories;
 using Repositories.FeedbackRepositories;
 using Repositories.Logout;
 using Repositories.NotificationRepositories;
@@ -39,6 +40,7 @@ using Services.Authentication;
 using Services.CartServices;
 using Services.CloudServices;
 using Services.EmailServices;
+using Services.FavoriteServices;
 using Services.FeedbackServices;
 using Services.NotificationServices;
 using Services.OrderServices;
@@ -255,6 +257,9 @@ namespace ShareItAPI
 
             // Register CartServices
             builder.Services.AddScoped<ICartService, CartService>();
+
+            builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
+            builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 
             builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();
