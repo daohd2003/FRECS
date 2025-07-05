@@ -1,0 +1,276 @@
+﻿@page "/products/detail/{id:guid}"
+@model ShareItFE.Pages.Products.DetailModel
+@{
+    ViewData["Title"] = Model.Product?.Name ?? "Product Detail";
+}
+
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<div class="min-h-screen bg-white">
+    @if (Model.Product != null)
+    {
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <a href="/products" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors mb-8">
+                <i data-lucide="arrow-left" class="h-5 w-5"></i>
+                <span>Back to Products</span>
+            </a>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div class="space-y-4">
+                    <div class="aspect-w-3 aspect-h-4 bg-gray-100 rounded-lg overflow-hidden">
+                        <img id="mainProductImage" src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")" alt="@Model.Product.Name" class="w-full h-96 lg:h-[600px] object-cover" />
+                    </div>
+                    <div class="flex space-x-4">
+                        @if (Model.Product.Images != null)
+                        {
+                            @for (int i = 0; i < Model.Product.Images.Count; i++)
+                            {
+                                var image = Model.Product.Images[i];
+                                <button type="button" class="thumbnail-btn w-20 h-20 rounded-lg overflow-hidden border-2 @(i == 0 ? "border-purple-600" : "border-gray-200")" data-image-src="@image.ImageUrl">
+                                    <img src="@image.ImageUrl" alt="@($"{Model.Product.Name} {i + 1}")" class="w-full h-full object-cover" />
+                                </button>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <form method="post" id="addToCartForm" asp-page-handler="AddToCart" asp-route-id="@Model.Product.Id">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <button type="button" class="p-2 text-gray-400 hover:text-red-500 transition-colors"><i data-lucide="heart" class="h-5 w-5"></i></button>
+                                    <button type="button" class="p-2 text-gray-400 hover:text-gray-600 transition-colors"><i data-lucide="share-2" class="h-5 w-5"></i></button>
+                                </div>
+                            </div>
+                            <h1 class="text-3xl font-bold text-gray-900 mb-4">@Model.Product.Name</h1>
+                            <div class="flex items-center space-x-4 mb-4">
+                                <div class="flex items-center space-x-1">
+                                    <div class="flex">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                                        }
+                                    </div>
+                                    <span class="text-sm text-gray-600">@Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)</span>
+                                </div>
+                                <span class="text-sm text-gray-500">Rented @Model.Product.RentCount times</span>
+                            </div>
+                            <div class="text-3xl font-bold text-purple-600 mb-6">@Model.Product.PricePerDay.ToString("C0")/day</div>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Provided by</h4>
+                                    <p class="text-purple-600 font-semibold">@Model.Product.ProviderName</p>
+                                </div>
+                                <button type="button" onclick="alert('Message feature coming soon!')" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                    <i data-lucide="message-circle" class="h-4 w-4"></i>
+                                    <span>Message</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                                <p class="text-gray-600 leading-relaxed">@Model.Product.Description</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><span class="font-medium text-gray-900">Color:</span><span class="ml-2 text-gray-600">@Model.Product.Color</span></div>
+                                <div><span class="font-medium text-gray-900">Category:</span><span class="ml-2 text-gray-600 capitalize">@Model.Product.Category</span></div>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-6 space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-900 mb-3">Select Size</label>
+                                <div asp-validation-for="SelectedSize" class="text-red-500 text-sm mb-2"></div>
+                                <input type="hidden" id="selectedSizeInput" asp-for="SelectedSize" />
+                                <div class="flex space-x-3">
+                                    @foreach (var size in (Model.Product.Size?.Split(',') ?? Enumerable.Empty<string>()))
+                                    {
+                                        <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors border-gray-300 text-gray-700 hover:border-purple-600" data-size="@size.Trim()">@size.Trim()</button>
+                                    }
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-900 mb-3">Rental Period</label>
+                                <input type="hidden" id="rentalDaysInput" asp-for="RentalDays" />
+                                <div class="flex items-center space-x-4">
+                                    <button type="button" id="decreaseDaysBtn" class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"><i data-lucide="minus" class="h-4 w-4"></i></button>
+                                    <span id="rentalDaysDisplay" class="text-lg font-semibold min-w-[5rem] text-center">@Model.RentalDays days</span>
+                                    <button type="button" id="increaseDaysBtn" class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"><i data-lucide="plus" class="h-4 w-4"></i></button>
+                                </div>
+                            </div>
+                            <div>
+                                <label asp-for="StartDate" class="block text-sm font-medium text-gray-900 mb-3">Start Date</label>
+                                <div asp-validation-for="StartDate" class="text-red-500 text-sm mb-2"></div>
+                                <input type="date" asp-for="StartDate" min="@DateTime.Now.ToString("yyyy-MM-dd")" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-gray-600">Rental (<span id="totalDaysDisplay">@Model.RentalDays</span> days)</span>
+                                    <span id="pricePerPeriod" class="font-semibold"></span>
+                                </div>
+                                <div class="flex justify-between items-center text-lg font-bold">
+                                    <span>Total</span>
+                                    <span id="totalPrice" class="text-purple-600"></span>
+                                </div>
+                            </div>
+                            <button type="submit"
+                                    disabled="@(!string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase))"
+                                    class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+                                @(string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase) ? "Add to Cart" : "Not Available")
+                            </button>
+                            <div class="grid grid-cols-3 gap-4 pt-6 border-t">
+                                <div class="text-center"><i data-lucide="truck" class="h-8 w-8 text-purple-600 mx-auto mb-2"></i><div class="text-sm font-medium text-gray-900">Free Delivery</div><div class="text-xs text-gray-500">Both ways</div></div>
+                                <div class="text-center"><i data-lucide="calendar" class="h-8 w-8 text-purple-600 mx-auto mb-2"></i><div class="text-sm font-medium text-gray-900">Flexible Dates</div><div class="text-xs text-gray-500">Easy rescheduling</div></div>
+                                <div class="text-center"><i data-lucide="shield" class="h-8 w-8 text-purple-600 mx-auto mb-2"></i><div class="text-sm font-medium text-gray-900">Damage Protection</div><div class="text-xs text-gray-500">Worry-free rental</div></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            @if (Model.Feedbacks != null && Model.Feedbacks.Any())
+            {
+                <div class="mt-16 border-t pt-16">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-8">Customer Reviews</h2>
+                    <div class="space-y-6">
+                        @foreach (var feedback in Model.Feedbacks)
+                        {
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center"><span class="text-white font-semibold text-sm">@(!string.IsNullOrEmpty(feedback.UserName) ? feedback.UserName.First().ToString().ToUpper() : "U")</span></div>
+                                        <div>
+                                            <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.UserName</span></div>
+                                            <div class="flex items-center space-x-2">
+                                                <div class="flex">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <i data-lucide="star" class="h-4 w-4 @(i <= feedback.Rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                                                    }
+                                                </div>
+                                                <span class="text-sm text-gray-500">@feedback.CreatedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-gray-700">@feedback.Comment</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-20">
+            <h2 class="text-2xl font-bold">Product not found.</h2>
+            <p class="text-gray-600">The product you are looking for does not exist.</p>
+            <a href="/products" class="mt-4 inline-block text-purple-600 hover:underline">Return to collection</a>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        lucide.createIcons();
+
+        document.addEventListener('DOMContentLoaded', function () {
+        @if (Model.Product != null)
+        {
+            <text>
+                            // Các logic cũ cho gallery, size, +/-...
+                            const mainImage = document.getElementById('mainProductImage');
+                const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
+                thumbnailBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        mainImage.src = btn.dataset.imageSrc;
+                        thumbnailBtns.forEach(b => b.classList.remove('border-purple-600'));
+                        btn.classList.add('border-purple-600');
+                    });
+                });
+
+                const sizeBtns = document.querySelectorAll('.size-btn');
+                const selectedSizeInput = document.getElementById('selectedSizeInput');
+                sizeBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        selectedSizeInput.value = btn.dataset.size;
+                        sizeBtns.forEach(b => {
+                            b.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                        });
+                        btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                    });
+                });
+
+                const decreaseBtn = document.getElementById('decreaseDaysBtn');
+                const increaseBtn = document.getElementById('increaseDaysBtn');
+                const daysDisplay = document.getElementById('rentalDaysDisplay');
+                const daysInput = document.getElementById('rentalDaysInput');
+                const pricePerDay = @Model.Product.PricePerDay.ToString(System.Globalization.CultureInfo.InvariantCulture); // Dùng InvariantCulture để đảm bảo dấu chấm thập phân
+                const pricePerPeriodEl = document.getElementById('pricePerPeriod');
+                const totalDaysDisplayEl = document.getElementById('totalDaysDisplay');
+                const totalPriceEl = document.getElementById('totalPrice');
+
+                function formatCurrency(amount) {
+                    return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+                }
+
+                function updatePrice() {
+                    let currentDays = parseInt(daysInput.value, 10);
+                    daysDisplay.textContent = `${currentDays} ${currentDays === 1 ? 'day' : 'days'}`;
+                    const total = currentDays * pricePerDay;
+                    pricePerPeriodEl.textContent = formatCurrency(total);
+                    totalPriceEl.textContent = formatCurrency(total);
+                    totalDaysDisplayEl.textContent = currentDays;
+                }
+
+                decreaseBtn.addEventListener('click', () => {
+                    let currentDays = parseInt(daysInput.value, 10);
+                    if (currentDays > 1) {
+                        daysInput.value = currentDays - 1;
+                        updatePrice();
+                    }
+                });
+
+                increaseBtn.addEventListener('click', () => {
+                    let currentDays = parseInt(daysInput.value, 10);
+                    daysInput.value = currentDays + 1;
+                    updatePrice();
+                });
+
+                updatePrice(); // Gọi lần đầu khi tải trang
+
+                // --- PHẦN SỬA LỖI VALIDATION ---
+                const addToCartForm = document.getElementById('addToCartForm');
+                if (addToCartForm) {
+                    addToCartForm.addEventListener('submit', function (event) {
+                        // Lấy các element input ngay tại thời điểm submit
+                        const sizeValue = document.getElementById('selectedSizeInput').value;
+                        const dateValue = document.querySelector('input[name="StartDate"]').value;
+
+                        // Kiểm tra theo đúng thứ tự: SIZE trước, DATE sau
+                        if (!sizeValue) {
+                            event.preventDefault(); // Ngăn form gửi đi
+                            alert('Please select a size'); // Sử dụng alert tạm thời, nên dùng modal hoặc thông báo đẹp hơn
+                            return;
+                        }
+
+                        if (!dateValue) {
+                            event.preventDefault(); // Ngăn form gửi đi
+                            alert('Please select a start date'); // Sử dụng alert tạm thời
+                            return;
+                        }
+                    });
+                }
+            </text>
+        }
+                });
+    </script>
+}

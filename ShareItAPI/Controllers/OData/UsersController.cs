@@ -8,7 +8,7 @@ using Services.UserServices;
 
 namespace ShareItAPI.Controllers.OData
 {
-    [Route("odata/list/users")]
+    [Route("odata/users")]
     [ApiController]
     [AllowAnonymous]
     public class UsersController : ODataController

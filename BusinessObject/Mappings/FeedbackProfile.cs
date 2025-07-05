@@ -1,11 +1,6 @@
 ﻿using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BusinessObject.Mappings
 {
@@ -48,6 +43,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.OrderItemId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+            CreateMap<Feedback, FeedbackDto>().ReverseMap();
         }
     }
 }

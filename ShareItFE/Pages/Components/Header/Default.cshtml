@@ -21,7 +21,7 @@
         </div>
 
         <nav class="main-nav">
-            <a asp-page="/Products">Browse</a>
+            <a asp-page="/Products/Products">Browse</a>
             @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
             {
                 <a asp-page="/PostItem">List Item</a>
