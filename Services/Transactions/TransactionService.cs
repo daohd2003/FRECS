@@ -11,6 +11,8 @@ using BusinessObject.DTOs.BankQR;
 using Microsoft.Extensions.Options;
 using Services.NotificationServices;
 using Services.OrderServices;
+using Common.Utilities.VNPAY.Common.Utilities.VNPAY;
+using BusinessObject.Enums;
 
 namespace LibraryManagement.Services.Payments.Transactions
 {
@@ -60,58 +62,113 @@ namespace LibraryManagement.Services.Payments.Transactions
         // Xử lý webhook từ SEPay (dựa vào OrderId và Amount)
         public async Task<bool> ProcessSepayWebhookAsync(SepayWebhookRequest request)
         {
-            string expectedBankAccount = _bankQrConfig.AccountNumber;
-
-            if (request.BankAccount != expectedBankAccount)
+            // --- 1. Kiểm tra tài khoản ngân hàng hợp lệ ---
+            if (request.BankAccount != _bankQrConfig.AccountNumber)
             {
-                _logger.LogWarning("Invalid bank account: {BankAccount}", request.BankAccount);
+                _logger.LogWarning("Invalid bank account received in webhook: {BankAccount}", request.BankAccount);
                 return false;
             }
 
-            var orderId = ExtractOrderIdFromContent(request.Content);
-            if (orderId == null)
+            // --- 2. Parse danh sách OrderId từ request.Description ---
+            List<Guid> orderIds;
+            try
             {
-                _logger.LogWarning("OrderId not found in SEPay content: {Content}", request.Content);
+                if (request.Content.StartsWith("OIDS "))
+                {
+                    // Bỏ đi tiền tố "OIDS "
+                    string contentWithoutPrefix = request.Content.Substring(5);
+
+                    // Tách chuỗi thành các "từ" dựa trên dấu cách
+                    string[] words = contentWithoutPrefix.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    List<Guid> foundGuids = new List<Guid>();
+                    foreach (string word in words)
+                    {
+                        // Kiểm tra xem "từ" có phải là một GUID hợp lệ không
+                        if (Guid.TryParse(word, out Guid parsedGuid))
+                        {
+                            foundGuids.Add(parsedGuid);
+                        }
+                    }
+                    orderIds = foundGuids;
+                }
+                else
+                {
+                    _logger.LogWarning("Invalid description format: {Description}", request.Description);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse OrderIds from Description: {Description}", request.Description);
                 return false;
             }
 
-            var transaction = await _dbContext.Transactions
-                .FirstOrDefaultAsync(t => t.OrderId == orderId && t.Status != BusinessObject.Enums.TransactionStatus.completed);
-
-            if (transaction == null)
+            if (!orderIds.Any())
             {
-                _logger.LogWarning("Transaction not found for OrderId: {OrderId}", orderId);
+                _logger.LogWarning("No valid order IDs extracted from description: {Description}", request.Description);
                 return false;
             }
 
-            if (transaction.Amount != request.Amount)
+            // --- 3. Bắt đầu transaction DB ---
+            using (var dbTransaction = await _dbContext.Database.BeginTransactionAsync())
             {
-                _logger.LogWarning("Amount mismatch for OrderId {OrderId}: expected {Expected}, received {Received}",
-                    orderId, transaction.Amount, request.Amount);
-                return false;
-            }
+                try
+                {
+                    if (request.IsSuccess)
+                    {
+                        foreach (var orderId in orderIds)
+                        {
+                            var order = await _orderService.GetOrderDetailAsync(orderId);
+                            if (order == null)
+                            {
+                                _logger.LogWarning("Order not found: {OrderId}", orderId);
+                                continue;
+                            }
 
-            if (request.IsSuccess)
-            {
-                transaction.Status = BusinessObject.Enums.TransactionStatus.completed;
-                transaction.PaymentMethod = "Bank Transfer - SEPay";
-                transaction.TransactionDate = DateTime.UtcNow;
+                            // Tạo giao dịch cho từng đơn hàng
+                            var transaction = new Transaction
+                            {
+                                Id = Guid.NewGuid(),
+                                OrderId = order.Id,
+                                CustomerId = order.CustomerId,
+                                ProviderId = order.ProviderId,
+                                Amount = order.TotalAmount,
+                                Status = BusinessObject.Enums.TransactionStatus.completed,
+                                PaymentMethod = "Bank Transfer - SEPay",
+                                TransactionDate = DateTime.UtcNow,
+                                Content = $"Payment for order {order.Id}"
+                            };
 
-                _logger.LogInformation("Transaction for Order {OrderId} marked as Completed", orderId);
-                // TODO: Cập nhật trạng thái đơn hàng nếu cần
-                await _orderService.CompleteTransactionAsync(orderId.Value);
-            }
-            else
-            {
-                transaction.Status = BusinessObject.Enums.TransactionStatus.failed;
-                transaction.PaymentMethod = "Bank Transfer - SEPay";
-                transaction.TransactionDate = DateTime.UtcNow;
+                            await _dbContext.Transactions.AddAsync(transaction);
+                            await _orderService.ChangeOrderStatus(orderId, OrderStatus.approved);
+                            await _orderService.CompleteTransactionAsync(orderId);
+                        }
 
-                await _orderService.FailTransactionAsync(orderId.Value);
-                _logger.LogWarning("Transaction for Order {OrderId} marked as Failed", orderId);
+                        _logger.LogInformation("Webhook payment success. Orders: {OrderIds}", string.Join(", ", orderIds));
+                    }
+                    else
+                    {
+                        foreach (var orderId in orderIds)
+                        {
+                            await _orderService.FailTransactionAsync(orderId);
+                        }
+
+                        _logger.LogWarning("Webhook payment failed. Orders: {OrderIds}", string.Join(", ", orderIds));
+                    }
+
+                    await _dbContext.SaveChangesAsync();
+                    await dbTransaction.CommitAsync();
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing SEPay webhook. Rolling back.");
+                    await dbTransaction.RollbackAsync();
+                    return false;
+                }
             }
-            await _dbContext.SaveChangesAsync();
-            return true;
         }
 
         public async Task<Transaction?> GetTransactionByIdAsync(Guid transactionId)

@@ -1,15 +1,20 @@
 ﻿using Azure.Core;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.BankQR;
+using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.TransactionsDto;
+using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using QRCoder;
+using Services.OrderServices;
 using Services.ProfileServices;
 using Services.Transactions;
 using Services.UserServices;
 using System.Security.Claims;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ShareItAPI.Controllers
 {
@@ -22,13 +27,15 @@ namespace ShareItAPI.Controllers
         private readonly BankQrConfig _bankQrConfig;
         private readonly IUserService _userService;
         private readonly IProfileService _profileService;
+        private readonly IOrderService _orderService;
 
-        public TransactionController(ITransactionService transactionService, IOptions<BankQrConfig> bankQrOptions, IUserService userService, IProfileService profileService)
+        public TransactionController(ITransactionService transactionService, IOptions<BankQrConfig> bankQrOptions, IUserService userService, IProfileService profileService, IOrderService orderService)
         {
             _transactionService = transactionService;
             _userService = userService;
             _profileService = profileService;
             _bankQrConfig = bankQrOptions.Value;
+            _orderService = orderService;
         }
 
         [HttpGet("my")]
@@ -43,41 +50,47 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateTransaction([FromBody] CreateTransactionRequest request)
+        public async Task<IActionResult> CreateTransaction([FromBody] CreateTransactionRequest requestDto)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var customerId))
-                return Unauthorized(new ApiResponse<string>("Unable to identify user.", null));
+            if (requestDto.OrderIds == null || !requestDto.OrderIds.Any())
+                return BadRequest(new ApiResponse<object>("Order IDs are required.", null));
 
+            var customerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            double totalMoney = 0;
+            var validOrderIds = new List<Guid>();
             var profile = await _profileService.GetByUserIdAsync(customerId);
 
-            var transaction = new BusinessObject.Models.Transaction
+            foreach (var orderId in requestDto.OrderIds)
             {
-                Id = Guid.NewGuid(),
-                OrderId = request.OrderId,
-                ProviderId = request.ProviderId,
-                CustomerId = customerId,
-                Amount = request.Amount,
-                Status = BusinessObject.Enums.TransactionStatus.initiated,
-                PaymentMethod = "SEPAY",
-                TransactionDate = DateTime.UtcNow,
-                Content = $"PAY_ORDER_{request.OrderId}::{profile.FullName + request.Content ?? "Order payment"}"
-            };
+                var order = await _orderService.GetOrderDetailAsync(orderId);
+                if (order != null && order.CustomerId == customerId && order.Status == OrderStatus.pending)
+                {
+                    totalMoney += (double)order.TotalAmount;
+                    validOrderIds.Add(orderId);
+                }
+            }
 
-            await _transactionService.SaveTransactionAsync(transaction);
+            if (totalMoney == 0)
+                return BadRequest(new ApiResponse<object>("No valid orders found.", null));
 
-            var base64Image = await GenerateQrCodeBase64((double)transaction.Amount, transaction.Content);
+            // Mô tả kiểu giống VNPay
+            var orderIdsString = string.Join(" ", validOrderIds);
+            var fullName = string.IsNullOrWhiteSpace(profile.FullName) ? "Customer" : profile.FullName.Trim();
+            // Description gọn để hiển thị trong QR
+            var displayDescription = $"{fullName} chuyen tien";
 
-            var responseData = new
+            // Full description ẩn chứa orderIds, webhook sẽ dùng cái này để xử lý
+            var hiddenDescription = $"OIDS {orderIdsString}";
+
+            var QrImage = GenerateQrCodeUrl(totalMoney, hiddenDescription);
+
+            return Ok(new ApiResponse<object>("QR created successfully", new
             {
-                transaction.Id,
-                transaction.OrderId,
-                transaction.Status,
-                transaction.Amount,
-                QrImage = base64Image
-            };
-
-            return Ok(new ApiResponse<object>("Transaction created successfully", responseData));
+                amount = totalMoney,
+                orderIds = validOrderIds,
+                hiddenDescription,
+                QrImage
+            }));
         }
 
         [HttpPost("{transactionId}/pay")]
@@ -108,14 +121,16 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<object>("Payment QR code generated successfully", responseData));
         }
 
-        private async Task<string> GenerateQrCodeBase64(double amount, string description)
+        private async Task<string> GenerateQrCodeBase64FromUrl(double amount, string description)
         {
             string url = GenerateQrCodeUrl(amount, description);
 
             using var httpClient = new HttpClient();
-            var imageBytes = await httpClient.GetByteArrayAsync(url);
+            byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
+
             return $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
         }
+
 
         private string GenerateQrCodeUrl(double amount, string description)
         {
