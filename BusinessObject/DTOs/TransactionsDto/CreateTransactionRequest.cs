@@ -8,9 +8,7 @@ namespace BusinessObject.DTOs.TransactionsDto
 {
     public class CreateTransactionRequest
     {
-        public Guid OrderId { get; set; }
-        public Guid ProviderId { get; set; }
-        public decimal Amount { get; set; }
+        public List<Guid> OrderIds { get; set; }
         public string? Content { get; set; }
     }
 }

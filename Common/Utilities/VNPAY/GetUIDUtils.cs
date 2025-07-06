@@ -47,6 +47,25 @@ namespace Common.Utilities.VNPAY
 
                 return Guid.Empty;
             }
+
+            public static List<Guid> ExtractOrderIds(string orderDescription)
+            {
+                if (string.IsNullOrWhiteSpace(orderDescription))
+                    return new List<Guid>();
+
+                try
+                {
+                    var match = Regex.Match(orderDescription, @"OIDS:([a-fA-F0-9\-]{36}(?:,[a-fA-F0-9\-]{36})*)");
+                    if (match.Success)
+                    {
+                        string allIdsString = match.Groups[1].Value;
+                        return allIdsString.Split(',').Select(Guid.Parse).ToList();
+                    }
+                }
+                catch { }
+
+                return new List<Guid>();
+            }
         }
     }
 }

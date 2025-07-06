@@ -179,6 +179,53 @@ namespace ShareItFE.Pages
             return Page();
         }
 
+        public async Task<IActionResult> OnPostGoogleLoginAsync([FromForm] GoogleLoginRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.IdToken))
+            {
+                TempData["ErrorMessage"] = "Google token is invalid.";
+                return RedirectToPage();
+            }
+
+            try
+            {
+                // 1. Tạo request body để gửi đến API backend của bạn
+                var apiRequest = new { idToken = request.IdToken };
+                var content = new StringContent(JsonSerializer.Serialize(apiRequest), System.Text.Encoding.UTF8, "application/json");
+
+                // 2. Gọi đến API backend để xác thực token và đăng nhập
+                // Thay thế "/auth/google-login" bằng endpoint thực tế của bạn
+                var response = await _httpClient.PostAsync($"{ApiBaseUrl}/auth/google-login", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // 3. Xử lý khi đăng nhập thành công (tương tự như đăng nhập thường)
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<TokenResponseDto>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (apiResponse?.Data != null)
+                    {
+                        // Lưu AccessToken và RefreshToken vào cookie
+                        Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+                        Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+
+                        return RedirectToPage("/Index"); // Chuyển hướng đến trang chủ
+                    }
+                }
+
+                // 4. Xử lý khi đăng nhập thất bại
+                var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                TempData["ErrorMessage"] = errorResponse?.Message ?? "Google login failed.";
+                return RedirectToPage();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during Google login.");
+                TempData["ErrorMessage"] = "An unexpected error occurred.";
+                return RedirectToPage();
+            }
+        }
+
         public IActionResult OnPostLogout()
         {
             HttpContext.Response.Cookies.Delete("AccessToken");

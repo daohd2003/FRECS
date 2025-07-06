@@ -1,4 +1,5 @@
 ﻿@page
+@model ShareItFE.Pages.IndexModel   
 @{
     ViewData["Title"] = "ShareIT - Luxury Fashion Rentals | Designer Dresses & Suits";
 
@@ -23,14 +24,6 @@
             Text = "Perfect for special occasions! The traditional wear collection is beautiful and authentic. Highly recommend!",
             Image = "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
         }
-    };
-
-    var topRentals = new List<dynamic>
-{
-        new { Name = "Elegant Evening Gown", Price = "$85/day", Image = "https://images.pexels.com/photos/1021693/pexels-photo-1021693.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 4.9, Rented = 120 },
-        new { Name = "Classic Black Tuxedo", Price = "$65/day", Image = "https://images.pexels.com/photos/2036656/pexels-photo-2036656.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 4.8, Rented = 95 },
-        new { Name = "Boho Wedding Dress", Price = "$120/day", Image = "https://images.pexels.com/photos/1545590/pexels-photo-1545590.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 5.0, Rented = 78 },
-        new { Name = "Designer Cocktail Dress", Price = "$75/day", Image = "https://images.pexels.com/photos/1375849/pexels-photo-1375849.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop", Rating = 4.7, Rented = 156 }
     };
 
     var categories = new List<dynamic>
@@ -153,30 +146,28 @@
                     <p class="section-subtitle">See what everyone's raving about</p>
                 </div>
                 <div class="rental-grid">
-                    @foreach (var item in topRentals)
+                    @foreach (var item in Model.TopRentals)
                     {
                         <div class="rental-item-card">
                             <div class="rental-image-wrapper">
-                                <img src="@item.Image"
-                                     alt="@item.Name"
-                                     class="rental-image" />
+                                <img src="@item.Image" alt="@item.Name" class="rental-image" />
                                 <button class="fav-button">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="fav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="fav-icon" ...></svg>
                                 </button>
                             </div>
                             <div class="rental-details">
                                 <h3 class="rental-name">@item.Name</h3>
                                 <div class="rental-price-rating">
-                                    <span class="rental-price">@item.Price</span>
+                                    <span class="rental-price">@item.PricePerDay/day</span>
                                     <div class="rental-rating">
-                                        @for (int i = 0; i < Math.Floor((double)item.Rating); i++)
+                                        @for (int i = 0; i < Math.Floor((double)item.AverageRating); i++)
                                         {
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="star-icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="star-icon" ...></svg>
                                         }
-                                        <span class="rating-text">@item.Rating</span>
+                                        <span class="rating-text">@item.AverageRating</span>
                                     </div>
                                 </div>
-                                <p class="rented-times">Rented @item.Rented times</p>
+                                <p class="rented-times">Rented @item.RentCount times</p>
                             </div>
                         </div>
                     }
@@ -286,48 +277,48 @@
         </section>
 
         @*<section class="brands-section">
-            <div class="max-width-container">
-                <div class="section-header">
-                    <h2 class="section-title">Featured Designers & Brands</h2>
-                    <p class="section-subtitle">Curated selection from top fashion houses</p>
+                <div class="max-width-container">
+                    <div class="section-header">
+                        <h2 class="section-title">Featured Designers & Brands</h2>
+                        <p class="section-subtitle">Curated selection from top fashion houses</p>
+                    </div>
+                    <div class="brands-grid">
+                        @foreach (var brand in brands)
+                        {
+                            <div class="brand-item">
+                                <div class="brand-name-text">@brand</div>
+                            </div>
+                        }
+                    </div>
                 </div>
-                <div class="brands-grid">
-                    @foreach (var brand in brands)
-                    {
-                        <div class="brand-item">
-                            <div class="brand-name-text">@brand</div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </section>*@
+            </section>*@
 
         @*<section class="newsletter-section">
-            <div class="max-width-container">
-                <svg xmlns="http://www.w3.org/2000/svg" class="newsletter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                <h2 class="newsletter-title">Stay in Style</h2>
-                <p class="newsletter-subtitle">
-                    Get the latest fashion trends, exclusive offers, and styling tips delivered to your inbox.
-                </p>
-                <div class="newsletter-form-wrapper">
-                    <div class="newsletter-form-group">
-                        <input type="email"
-                               placeholder="Enter your email"
-                               class="newsletter-input" />
-                        <button class="newsletter-subscribe-btn">
-                            Subscribe
-                        </button>
+                    <div class="max-width-container">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="newsletter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        <h2 class="newsletter-title">Stay in Style</h2>
+                        <p class="newsletter-subtitle">
+                            Get the latest fashion trends, exclusive offers, and styling tips delivered to your inbox.
+                        </p>
+                        <div class="newsletter-form-wrapper">
+                            <div class="newsletter-form-group">
+                                <input type="email"
+                                       placeholder="Enter your email"
+                                       class="newsletter-input" />
+                                <button class="newsletter-subscribe-btn">
+                                    Subscribe
+                                </button>
+                            </div>
+                            <p class="newsletter-privacy-text">No spam, unsubscribe anytime.</p>
+                        </div>
                     </div>
-                    <p class="newsletter-privacy-text">No spam, unsubscribe anytime.</p>
-                </div>
-            </div>
-        </section>
-    </div>*@
+                </section>
+            </div>*@
 
-    @* Include the chatbot partial *@
-    @await Html.PartialAsync("_Chatbot")
+        @* Include the chatbot partial *@
+        @await Html.PartialAsync("_Chatbot")
 
-    <script>
+        <script>
         document.addEventListener('DOMContentLoaded', function () {
             const testimonialsData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(testimonials));
             let currentTestimonialIndex = 0;
@@ -399,10 +390,10 @@
             // Initial render
             renderTestimonial();
         });
-    </script>
+        </script>
 
-    @section Scripts {
-        @* Any page-specific scripts that need to run after global scripts *@
-    }
+        @section Scripts {
+            @* Any page-specific scripts that need to run after global scripts *@
+        }
 </body>
 </html>
