@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BusinessObject.Enums;
+using System.Text.Json.Serialization;
 
 namespace BusinessObject.Models
 {
@@ -14,16 +15,15 @@ namespace BusinessObject.Models
         [Key]
         public Guid Id { get; set; }  // ID duy nhất cho mỗi giao dịch
 
-        [Required]
+        /*[Required]
         public Guid OrderId { get; set; }  // Liên kết đến đơn hàng tương ứng
         [ForeignKey("OrderId")]
-        public Order Order { get; set; }   // Điều hướng tới đối tượng Order
+        public Order Order { get; set; }   // Điều hướng tới đối tượng Order*/
+
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
 
         [Required]
         public Guid CustomerId { get; set; }  // ID khách hàng thực hiện giao dịch
-
-        [Required]
-        public Guid ProviderId { get; set; }  // ID nhà cung cấp liên quan đến giao dịch
 
         [Required, Column(TypeName = "decimal(10,2)")]
         public decimal Amount { get; set; }  // Số tiền của giao dịch

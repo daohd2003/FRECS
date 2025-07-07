@@ -14,7 +14,7 @@ namespace Services.OrderServices
         Task UpdateOrderItemsAsync(Guid orderId, List<Guid> updatedItemIds, int rentalDays);
         Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
         Task<IEnumerable<OrderWithDetailsDto>> GetOrdersByStatusAsync(OrderStatus status);
-        Task<IEnumerable<Order>> GetAllAsync();
+        Task<IEnumerable<OrderFullDetailsDto>> GetAllAsync();
         Task<OrderWithDetailsDto> GetOrderDetailAsync(Guid orderId);
         Task MarkAsReceivedAsync(Guid orderId, bool paid);
         Task MarkAsReturnedAsync(Guid orderId);
@@ -33,5 +33,6 @@ namespace Services.OrderServices
         //New Updated Methods for Order List Display
         Task<IEnumerable<OrderListDto>> GetProviderOrdersForListDisplayAsync(Guid providerId);
         Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId);
+        Task<Order> GetOrderEntityByIdAsync(Guid orderId);
     }
 }

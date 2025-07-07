@@ -25,11 +25,18 @@ namespace BusinessObject.Models
         [ForeignKey(nameof(User2Id))]
         public User User2 { get; set; }
 
+        public Guid? ProductId { get; set; }
+
+        [ForeignKey(nameof(ProductId))]
+        public Product? Product { get; set; }
+
         public Guid? LastMessageId { get; set; }  // ID tin nhắn cuối cùng (nullable để tránh lỗi khi tạo lần đầu)
 
         [ForeignKey(nameof(LastMessageId))]
         public Message? LastMessage { get; set; }
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;  // Thời điểm cập nhật cuối (ví dụ: có tin mới)
+
+        public ICollection<Message> Messages { get; set; } = new List<Message>();
     }
 }

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BusinessObject.DTOs.OrdersDto;
+using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
@@ -41,6 +42,10 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ProductSize, opt => opt.MapFrom(src => src.Product.Size))
                 .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays));
+
+            CreateMap<Transaction, TransactionSummaryDto>();
+
+            CreateMap<Order, OrderFullDetailsDto>();
         }
     }
 }

@@ -1,4 +1,7 @@
-﻿using BusinessObject.Enums;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using BusinessObject.DTOs.TransactionsDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
@@ -13,26 +16,29 @@ namespace Repositories.TransactionRepositories
     public class TransactionRepository : ITransactionRepository
     {
         private readonly ShareItDbContext _context;
+        private readonly IMapper _mapper;
 
-        public TransactionRepository(ShareItDbContext context)
+        public TransactionRepository(ShareItDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
-        public async Task<IEnumerable<Transaction>> GetTransactionsByProviderAsync(Guid providerId)
+        public async Task<IEnumerable<TransactionSummaryDto>> GetTransactionsByProviderAsync(Guid providerId)
         {
             return await _context.Transactions
-                .Include(t => t.Order)
-                .Where(t => t.ProviderId == providerId && t.Status == TransactionStatus.completed)
+                .Where(t => t.Orders.Any(o => o.ProviderId == providerId) && t.Status == TransactionStatus.completed)
                 .OrderByDescending(t => t.TransactionDate)
+                .ProjectTo<TransactionSummaryDto>(_mapper.ConfigurationProvider)
                 .ToListAsync();
         }
 
         public async Task<decimal> GetTotalReceivedByProviderAsync(Guid providerId)
         {
-            return await _context.Transactions
-                .Where(t => t.ProviderId == providerId && t.Status == TransactionStatus.completed)
-                .SumAsync(t => t.Amount);
+            return await _context.Orders
+                .Where(o => o.ProviderId == providerId &&
+                             o.Transactions.Any(t => t.Status == TransactionStatus.completed))
+                .SumAsync(o => o.TotalAmount);
         }
     }
 }

@@ -23,6 +23,7 @@ using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
+using Repositories.ConversationRepositories;
 using Repositories.EmailRepositories;
 using Repositories.FavoriteRepositories;
 using Repositories.FeedbackRepositories;
@@ -39,6 +40,7 @@ using Services.AI;
 using Services.Authentication;
 using Services.CartServices;
 using Services.CloudServices;
+using Services.ConversationServices;
 using Services.EmailServices;
 using Services.FavoriteServices;
 using Services.FeedbackServices;
@@ -71,9 +73,10 @@ namespace ShareItAPI
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.AllowAnyOrigin()
+                    policy.WithOrigins("https://localhost:7045")
+                          .AllowAnyHeader()
                           .AllowAnyMethod()
-                          .AllowAnyHeader();
+                          .AllowCredentials();
                 });
             });
 
@@ -146,6 +149,27 @@ namespace ShareItAPI
                     ClockSkew = TimeSpan.Zero, // Không cho phép sai lệch thời gian
 
                     RoleClaimType = ClaimTypes.Role
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        // Lấy token từ query string
+                        var accessToken = context.Request.Query["access_token"];
+
+                        // Lấy đường dẫn của request
+                        var path = context.HttpContext.Request.Path;
+
+                        // Nếu có token và request đang hướng đến hub của chúng ta
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            (path.StartsWithSegments("/chathub")))
+                        {
+                            // Gán token này để middleware xác thực
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
@@ -261,6 +285,9 @@ namespace ShareItAPI
             builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
             builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 
+            builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
+            builder.Services.AddScoped<IConversationService, ConversationService>();
+
             builder.WebHost.UseUrls($"http://*:80");
             var app = builder.Build();
 
@@ -288,6 +315,7 @@ namespace ShareItAPI
 
             // Cấu hình endpoint
             app.MapHub<NotificationHub>("/notificationHub");
+            app.MapHub<ChatHub>("/chathub");
 
             app.MapControllers();
 

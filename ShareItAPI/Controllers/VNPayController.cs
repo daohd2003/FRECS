@@ -9,6 +9,7 @@ using DataAccess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.Transactions;
@@ -54,39 +55,50 @@ namespace ShareItAPI.Controllers
             try
             {
                 var customerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-                double totalMoney = 0;
-                var validOrderIds = new List<Guid>();
+                decimal totalMoney = 0;
+                var validOrders = new List<BusinessObject.Models.Order>();
 
-                // 1. Lặp qua các orderId để kiểm tra và tính tổng tiền
+                // 1. Lặp qua các orderId để lấy object và tính tổng tiền
                 foreach (var orderId in requestDto.OrderIds)
                 {
-                    var order = await _orderService.GetOrderDetailAsync(orderId);
-                    if (order == null || order.CustomerId != customerId || order.Status != OrderStatus.pending)
+                    var order = await _orderService.GetOrderEntityByIdAsync(orderId);
+                    if (order != null && order.CustomerId == customerId && order.Status == OrderStatus.pending)
                     {
-                        // Bỏ qua các đơn hàng không hợp lệ (không tồn tại, không phải của khách, hoặc đã xử lý)
-                        _logger.LogWarning("Invalid or processed order skipped: {OrderId}", orderId);
-                        continue;
+                        totalMoney += order.TotalAmount;
+                        validOrders.Add(order);
                     }
-                    totalMoney += (double)order.TotalAmount;
-                    validOrderIds.Add(orderId);
                 }
 
-                if (totalMoney == 0)
+                if (!validOrders.Any())
                 {
                     return BadRequest(new ApiResponse<string>("No valid orders to pay for.", null));
                 }
 
+                // 2. TẠO MỘT TRANSACTION DUY NHẤT ĐỂ NHÓM CÁC ĐƠN HÀNG
+                var transaction = new BusinessObject.Models.Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    CustomerId = customerId,
+                    Amount = totalMoney,
+                    Status = BusinessObject.Enums.TransactionStatus.initiated,
+                    TransactionDate = DateTime.UtcNow,
+                    Orders = validOrders,
+                    PaymentMethod = "VNPAY",
+                    Content = requestDto.Note
+                };
+
+                // 3. Lưu transaction mới này vào DB (bạn cần có service cho việc này)
+                await _transactionService.SaveTransactionAsync(transaction);
+
                 var ipAddress = NetworkHelper.GetIpAddress(HttpContext);
 
-                // 2. Tạo mô tả thanh toán chứa tất cả các Order ID hợp lệ
-                // Ví dụ: "OIDS:guid1,guid2-Thanh toan don hang"
-                var orderIdsString = string.Join(",", validOrderIds);
-                var description = $"OIDS:{orderIdsString}-{requestDto.Note}";
+                // 4. SỬ DỤNG ID CỦA TRANSACTION TỔNG làm nội dung thanh toán
+                var description = $"TID:{transaction.Id}";
 
                 var request = new PaymentRequest
                 {
                     PaymentId = DateTime.Now.Ticks,
-                    Money = totalMoney,
+                    Money = (double) totalMoney,
                     Description = description,
                     IpAddress = ipAddress,
                     BankCode = BankCode.ANY,
@@ -100,7 +112,7 @@ namespace ShareItAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating payment URL for orders.");
+                _logger.LogError(ex, "Error creating VNPay payment URL.");
                 return BadRequest(new ApiResponse<string>(ex.Message, null));
             }
         }
@@ -112,113 +124,95 @@ namespace ShareItAPI.Controllers
         [HttpPost("IpnAction")]
         public async Task<IActionResult> IpnAction()
         {
-            _logger.LogInformation("IpnAction endpoint was called at {Time}", DateTime.Now);
+            _logger.LogInformation("VNPay IPN endpoint was called at {Time}", DateTime.Now);
 
             if (!Request.QueryString.HasValue)
             {
-                _logger.LogWarning("IpnAction called but query string is empty");
-                return NotFound(new ApiResponse<string>("Payment information not found.", null));
+                return NotFound(); // Trả về mã lỗi chuẩn của VNPay
             }
 
             try
             {
                 var paymentResult = _vnpay.GetPaymentResult(Request.Query);
-                List<Guid> orderIds;
+                Guid transactionId;
 
-                // 1. Phân tích chuỗi description để lấy danh sách orderId
+                // 1. Phân tích chuỗi description để lấy transactionId duy nhất
                 string description = paymentResult.Description;
-                if (description.StartsWith("OIDS:"))
+                if (description != null && description.StartsWith("TID:"))
                 {
-                    // Tìm vị trí của dấu gạch nối CUỐI CÙNG trong chuỗi
-                    int lastHyphenIndex = description.LastIndexOf('-');
-
-                    // Nếu không tìm thấy dấu gạch nối, có thể chuỗi bị lỗi
-                    if (lastHyphenIndex == -1)
-                    {
-                        throw new FormatException("Description string is missing the note separator '-'.");
-                    }
-
-                    // Lấy phần chuỗi từ đầu đến vị trí dấu gạch nối cuối cùng
-                    // Kết quả: "OIDS:16f51b52-2558-46e2-88b7-40ad65fd9346,2c7243fc-f6c2-42fe-82db-bceea9e73124"
-                    string allIdsWithPrefix = description.Substring(0, lastHyphenIndex);
-
-                    // Bỏ đi 5 ký tự "OIDS:" ở đầu
-                    // Kết quả: "16f51b52-2558-46e2-88b7-40ad65fd9346,2c7243fc-f6c2-42fe-82db-bceea9e73124"
-                    string allIdsString = allIdsWithPrefix.Substring(5);
-
-                    // Tách chuỗi bằng dấu phẩy và parse từng Guid
-                    orderIds = allIdsString.Split(',').Select(Guid.Parse).ToList();
-                }
-                else if (description.StartsWith("OID:")) // Hỗ trợ định dạng cũ nếu cần
-                {
-                    orderIds = new List<Guid> { GetUIDUtils.ExtractOrderId(description) };
+                    transactionId = Guid.Parse(description.Substring(4));
                 }
                 else
                 {
-                    throw new Exception("Invalid order description format.");
+                    _logger.LogError("Invalid description format in IPN: {Description}", description);
+                    return BadRequest(new { RspCode = "01", Message = "Order not found" });
                 }
 
-                // 2. Sử dụng Database Transaction để đảm bảo tất cả các đơn hàng được cập nhật đồng bộ
+                // 2. Sử dụng Database Transaction để đảm bảo tính toàn vẹn
                 using (var dbTransaction = await _context.Database.BeginTransactionAsync())
                 {
                     try
                     {
+                        // Tìm transaction tổng và các order liên quan
+                        var transaction = await _context.Transactions
+                                                        .Include(t => t.Orders) // Nạp các Order liên quan
+                                                        .FirstOrDefaultAsync(t => t.Id == transactionId);
+
+                        if (transaction == null)
+                        {
+                            _logger.LogError("Transaction not found for IPN: {TransactionId}", transactionId);
+                            return Ok(new { RspCode = "01", Message = "Order not found" });
+                        }
+
+                        // Kiểm tra xem giao dịch đã được xử lý chưa
+                        if (transaction.Status != BusinessObject.Enums.TransactionStatus.initiated)
+                        {
+                            _logger.LogWarning("Transaction {TransactionId} already processed.", transactionId);
+                            return Ok(new { RspCode = "00", Message = "Confirm Success" }); // Báo thành công vì đã xử lý rồi
+                        }
+
                         if (paymentResult.IsSuccess)
                         {
-                            _logger.LogInformation("Payment success for PaymentId: {PaymentId}, handling Orders: {OrderIds}", paymentResult.PaymentId, string.Join(", ", orderIds));
+                            _logger.LogInformation("Payment success for Transaction: {TransactionId}", transactionId);
 
-                            foreach (var orderId in orderIds)
+                            // Cập nhật transaction tổng
+                            transaction.Status = BusinessObject.Enums.TransactionStatus.completed;
+
+                            // Cập nhật tất cả các order con
+                            foreach (var order in transaction.Orders)
                             {
-                                var order = await _orderService.GetOrderDetailAsync(orderId);
-                                if (order == null)
-                                {
-                                    _logger.LogError("Order not found during IPN processing: {OrderId}", orderId);
-                                    continue; // Bỏ qua nếu order không tồn tại
-                                }
-
-                                // Tạo transaction cho từng order
-                                var transaction = new Transaction
-                                {
-                                    Id = Guid.NewGuid(),
-                                    OrderId = orderId,
-                                    CustomerId = order.CustomerId,
-                                    ProviderId = order.ProviderId,
-                                    Amount = order.TotalAmount, // Lấy số tiền của từng order
-                                    Status = BusinessObject.Enums.TransactionStatus.completed,
-                                    PaymentMethod = paymentResult.PaymentMethod,
-                                    TransactionDate = paymentResult.Timestamp,
-                                    Content = $"Payment for order {orderId}"
-                                };
-
-                                await _transactionService.SaveTransactionAsync(transaction);
-                                await _orderService.ChangeOrderStatus(orderId, OrderStatus.approved); // Hoặc trạng thái phù hợp
+                                await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
                             }
-
-                            await dbTransaction.CommitAsync();
-                            return Ok(new ApiResponse<string>("All payments completed successfully", null));
                         }
                         else
                         {
-                            _logger.LogWarning("Payment failed for PaymentId: {PaymentId}, affecting Orders: {OrderIds}", paymentResult.PaymentId, string.Join(", ", orderIds));
-                            foreach (var orderId in orderIds)
+                            _logger.LogWarning("Payment failed for Transaction: {TransactionId}", transactionId);
+                            transaction.Status = BusinessObject.Enums.TransactionStatus.failed;
+                            // Cập nhật trạng thái thất bại cho các order con
+                            foreach (var order in transaction.Orders)
                             {
-                                await _orderService.FailTransactionAsync(orderId);
+                                await _orderService.FailTransactionAsync(order.Id);
                             }
-                            await dbTransaction.CommitAsync(); // Commit cả khi fail để ghi lại trạng thái
-                            return BadRequest(new ApiResponse<string>("Payment failed", null));
                         }
+
+                        await _context.SaveChangesAsync();
+                        await dbTransaction.CommitAsync();
+
+                        return Ok(new { RspCode = "00", Message = "Confirm Success" });
                     }
                     catch (Exception ex)
                     {
                         await dbTransaction.RollbackAsync();
-                        _logger.LogError(ex, "Error processing IPN for orders: {OrderIds}. Transaction rolled back.", string.Join(", ", orderIds));
-                        throw; // Ném lại lỗi để hệ thống ghi nhận
+                        _logger.LogError(ex, "Error processing IPN for Transaction: {TransactionId}. Rolled back.", transactionId);
+                        // Khi có lỗi phía server, không nên báo thành công cho VNPay
+                        return BadRequest(new { RspCode = "99", Message = "Input data required" });
                     }
                 }
             }
             catch (Exception ex)
             {
-                return BadRequest(new ApiResponse<string>(ex.Message, null));
+                _logger.LogError(ex, "General error in IpnAction.");
+                return BadRequest(new { RspCode = "99", Message = "Input data required" });
             }
         }
 

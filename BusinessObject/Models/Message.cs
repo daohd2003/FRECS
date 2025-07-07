@@ -14,6 +14,12 @@ namespace BusinessObject.Models
         public Guid Id { get; set; }  // ID duy nhất cho mỗi tin nhắn
 
         [Required]
+        public Guid ConversationId { get; set; }
+
+        [ForeignKey(nameof(ConversationId))]
+        public Conversation? Conversation { get; set; }
+
+        [Required]
         public Guid SenderId { get; set; }  // ID người gửi
 
         [Required]
