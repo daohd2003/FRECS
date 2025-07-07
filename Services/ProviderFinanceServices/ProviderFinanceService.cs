@@ -1,4 +1,5 @@
-﻿using BusinessObject.Models;
+﻿using BusinessObject.DTOs.TransactionsDto;
+using BusinessObject.Models;
 using Repositories.BankAccountRepositories;
 using Repositories.TransactionRepositories;
 using System;
@@ -30,7 +31,7 @@ namespace Services.ProviderFinanceServices
             return await _bankAccountRepo.GetPrimaryAccountByProviderAsync(providerId);
         }
 
-        public async Task<IEnumerable<Transaction>> GetTransactionDetails(Guid providerId)
+        public async Task<IEnumerable<TransactionSummaryDto>> GetTransactionDetails(Guid providerId)
         {
             return await _transactionRepo.GetTransactionsByProviderAsync(providerId);
         }

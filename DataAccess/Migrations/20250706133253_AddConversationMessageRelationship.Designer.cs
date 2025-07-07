@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250706133253_AddConversationMessageRelationship")]
+    partial class AddConversationMessageRelationship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -132,9 +135,6 @@ namespace DataAccess.Migrations
                     b.Property<Guid?>("LastMessageId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ProductId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -149,8 +149,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("LastMessageId")
                         .IsUnique()
                         .HasFilter("[LastMessageId] IS NOT NULL");
-
-                    b.HasIndex("ProductId");
 
                     b.HasIndex("User1Id");
 
@@ -556,9 +554,15 @@ namespace DataAccess.Migrations
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -568,6 +572,8 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
 
                     b.ToTable("Transactions");
                 });
@@ -633,21 +639,6 @@ namespace DataAccess.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("OrderTransaction", b =>
-                {
-                    b.Property<Guid>("OrdersId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("TransactionsId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("OrdersId", "TransactionsId");
-
-                    b.HasIndex("TransactionsId");
-
-                    b.ToTable("OrderTransaction");
-                });
-
             modelBuilder.Entity("BusinessObject.Models.BankAccount", b =>
                 {
                     b.HasOne("BusinessObject.Models.User", "Provider")
@@ -695,10 +686,6 @@ namespace DataAccess.Migrations
                         .WithOne()
                         .HasForeignKey("BusinessObject.Models.Conversation", "LastMessageId");
 
-                    b.HasOne("BusinessObject.Models.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId");
-
                     b.HasOne("BusinessObject.Models.User", "User1")
                         .WithMany()
                         .HasForeignKey("User1Id")
@@ -712,8 +699,6 @@ namespace DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("LastMessage");
-
-                    b.Navigation("Product");
 
                     b.Navigation("User1");
 
@@ -910,19 +895,15 @@ namespace DataAccess.Migrations
                     b.Navigation("Reporter");
                 });
 
-            modelBuilder.Entity("OrderTransaction", b =>
+            modelBuilder.Entity("BusinessObject.Models.Transaction", b =>
                 {
-                    b.HasOne("BusinessObject.Models.Order", null)
+                    b.HasOne("BusinessObject.Models.Order", "Order")
                         .WithMany()
-                        .HasForeignKey("OrdersId")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BusinessObject.Models.Transaction", null)
-                        .WithMany()
-                        .HasForeignKey("TransactionsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Cart", b =>

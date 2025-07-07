@@ -13,6 +13,10 @@ using Services.NotificationServices;
 using Services.OrderServices;
 using Common.Utilities.VNPAY.Common.Utilities.VNPAY;
 using BusinessObject.Enums;
+using BusinessObject.DTOs.TransactionsDto;
+using AutoMapper.QueryableExtensions;
+using AutoMapper;
+using BusinessObject.DTOs.OrdersDto;
 
 namespace LibraryManagement.Services.Payments.Transactions
 {
@@ -23,22 +27,39 @@ namespace LibraryManagement.Services.Payments.Transactions
         private readonly INotificationService _notificationService;
         private readonly IOrderService _orderService;
         private readonly BankQrConfig _bankQrConfig;
+        private readonly IMapper _mapper;
 
-        public TransactionService(ShareItDbContext dbContext, ILogger<TransactionService> logger, IOptions<BankQrConfig> bankQrOptions, INotificationService notificationService, IOrderService orderService)
+        public TransactionService(ShareItDbContext dbContext, ILogger<TransactionService> logger, IOptions<BankQrConfig> bankQrOptions, INotificationService notificationService, IOrderService orderService, IMapper mapper)
         {
             _dbContext = dbContext;
             _logger = logger;
             _notificationService = notificationService;
             _orderService = orderService;
             _bankQrConfig = bankQrOptions.Value;
+            _mapper = mapper;
         }
 
         // Lấy danh sách giao dịch của 1 user (Customer)
-        public async Task<IEnumerable<Transaction>> GetUserTransactionsAsync(Guid customerId)
+        public async Task<IEnumerable<TransactionSummaryDto>> GetUserTransactionsAsync(Guid customerId)
         {
             return await _dbContext.Transactions
                 .Where(t => t.CustomerId == customerId)
                 .OrderByDescending(t => t.TransactionDate)
+                // Dùng ProjectTo để map hiệu quả và tránh tải dữ liệu thừa
+                .Select(t => new TransactionSummaryDto
+                {
+                    Id = t.Id,
+                    Amount = t.Amount,
+                    Status = t.Status,
+                    PaymentMethod = t.PaymentMethod,
+                    TransactionDate = t.TransactionDate,
+                    Orders = t.Orders.Select(o => new OrderProviderPairDto
+                    {
+                        OrderId = o.Id,
+                        ProviderId = o.ProviderId,
+                        OrderAmount = o.TotalAmount
+                    }).ToList()
+                })
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -70,31 +91,23 @@ namespace LibraryManagement.Services.Payments.Transactions
             }
 
             // --- 2. Parse danh sách OrderId từ request.Description ---
-            List<Guid> orderIds;
+            Guid transactionId;
             try
             {
-                if (request.Content.StartsWith("OIDS "))
+                if (request.Content != null && request.Content.StartsWith("TID "))
                 {
-                    // Bỏ đi tiền tố "OIDS "
-                    string contentWithoutPrefix = request.Content.Substring(5);
-
-                    // Tách chuỗi thành các "từ" dựa trên dấu cách
-                    string[] words = contentWithoutPrefix.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-                    List<Guid> foundGuids = new List<Guid>();
-                    foreach (string word in words)
+                    string contentWithoutPrefix = request.Content.Substring(4).Trim();
+                    string[] parts = contentWithoutPrefix.Split(' ');
+                    string idString = parts.FirstOrDefault();
+                    if (!Guid.TryParse(idString, out transactionId))
                     {
-                        // Kiểm tra xem "từ" có phải là một GUID hợp lệ không
-                        if (Guid.TryParse(word, out Guid parsedGuid))
-                        {
-                            foundGuids.Add(parsedGuid);
-                        }
+                        _logger.LogWarning("Invalid GUID format in webhook content: {Content}", request.Content);
+                        return false;
                     }
-                    orderIds = foundGuids;
                 }
                 else
                 {
-                    _logger.LogWarning("Invalid description format: {Description}", request.Description);
+                    _logger.LogWarning("Invalid content format. Expected 'TID <GUID>'. Received: {Content}", request.Content);
                     return false;
                 }
             }
@@ -104,57 +117,55 @@ namespace LibraryManagement.Services.Payments.Transactions
                 return false;
             }
 
-            if (!orderIds.Any())
-            {
-                _logger.LogWarning("No valid order IDs extracted from description: {Description}", request.Description);
-                return false;
-            }
-
             // --- 3. Bắt đầu transaction DB ---
             using (var dbTransaction = await _dbContext.Database.BeginTransactionAsync())
             {
                 try
                 {
+                    // Tìm Transaction và các Order liên quan
+                    var transaction = await _dbContext.Transactions
+                                                      .Include(t => t.Orders) // Quan trọng: Nạp các Order liên quan
+                                                      .FirstOrDefaultAsync(t => t.Id == transactionId);
+
+                    if (transaction == null)
+                    {
+                        _logger.LogWarning("Transaction not found: {TransactionId}", transactionId);
+                        await dbTransaction.RollbackAsync();
+                        return false;
+                    }
+
+                    if (transaction.Status != BusinessObject.Enums.TransactionStatus.initiated)
+                    {
+                        _logger.LogWarning("Transaction {TransactionId} has already been processed.", transactionId);
+                        await dbTransaction.CommitAsync(); // Giao dịch đã được xử lý, coi như thành công
+                        return true;
+                    }
+
+                    // Lấy danh sách các Order ID để log
+                    var orderIds = transaction.Orders.Select(o => o.Id).ToList();
+
                     if (request.IsSuccess)
                     {
-                        foreach (var orderId in orderIds)
+                        // Cập nhật trạng thái transaction tổng
+                        transaction.Status = BusinessObject.Enums.TransactionStatus.completed;
+                        transaction.Content = $"Paid successfully via webhook. Ref: {request.ReferenceCode}";
+
+                        // Cập nhật trạng thái cho từng order
+                        foreach (var order in transaction.Orders)
                         {
-                            var order = await _orderService.GetOrderDetailAsync(orderId);
-                            if (order == null)
-                            {
-                                _logger.LogWarning("Order not found: {OrderId}", orderId);
-                                continue;
-                            }
-
-                            // Tạo giao dịch cho từng đơn hàng
-                            var transaction = new Transaction
-                            {
-                                Id = Guid.NewGuid(),
-                                OrderId = order.Id,
-                                CustomerId = order.CustomerId,
-                                ProviderId = order.ProviderId,
-                                Amount = order.TotalAmount,
-                                Status = BusinessObject.Enums.TransactionStatus.completed,
-                                PaymentMethod = "Bank Transfer - SEPay",
-                                TransactionDate = DateTime.UtcNow,
-                                Content = $"Payment for order {order.Id}"
-                            };
-
-                            await _dbContext.Transactions.AddAsync(transaction);
-                            await _orderService.ChangeOrderStatus(orderId, OrderStatus.approved);
-                            await _orderService.CompleteTransactionAsync(orderId);
+                            await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
                         }
-
-                        _logger.LogInformation("Webhook payment success. Orders: {OrderIds}", string.Join(", ", orderIds));
+                        _logger.LogInformation("Webhook payment success for Transaction {TransactionId}. Orders: {OrderIds}", transaction.Id, string.Join(", ", orderIds));
                     }
                     else
                     {
+                        transaction.Status = BusinessObject.Enums.TransactionStatus.failed;
+                        _logger.LogWarning("Webhook payment failed for Transaction {TransactionId}. Orders: {OrderIds}", transaction.Id, string.Join(", ", orderIds));
+
                         foreach (var orderId in orderIds)
                         {
                             await _orderService.FailTransactionAsync(orderId);
                         }
-
-                        _logger.LogWarning("Webhook payment failed. Orders: {OrderIds}", string.Join(", ", orderIds));
                     }
 
                     await _dbContext.SaveChangesAsync();
@@ -164,16 +175,21 @@ namespace LibraryManagement.Services.Payments.Transactions
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing SEPay webhook. Rolling back.");
+                    _logger.LogError(ex, "Error processing SEPay webhook for TID {TransactionId}. Rolling back.", transactionId);
                     await dbTransaction.RollbackAsync();
                     return false;
                 }
             }
         }
 
-        public async Task<Transaction?> GetTransactionByIdAsync(Guid transactionId)
+        public async Task<TransactionSummaryDto?> GetTransactionByIdAsync(Guid transactionId)
         {
-            return await _dbContext.Transactions.FindAsync(transactionId);
+            var dto = await _dbContext.Transactions
+                .Where(t => t.Id == transactionId)
+                .ProjectTo<TransactionSummaryDto>(_mapper.ConfigurationProvider)
+                .FirstOrDefaultAsync();
+
+            return dto;
         }
 
         private Guid? ExtractOrderIdFromContent(string content)

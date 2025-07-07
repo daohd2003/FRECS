@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace ShareItFE.Pages.Products
@@ -14,12 +15,14 @@ namespace ShareItFE.Pages.Products
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly IConfiguration _configuration;
 
-        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor)
+        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory;
             _httpContextAccessor = httpContextAccessor;
             _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            _configuration = configuration;
         }
 
         // Dữ liệu từ 2 API call khác nhau
@@ -36,16 +39,20 @@ namespace ShareItFE.Pages.Products
         [BindProperty]
         public int RentalDays { get; set; } = 3; // Mặc định là 3 ngày
 
+        public Guid? CurrentUserId { get; set; }
+        public string ApiBaseUrl { get; private set; }
+        public string SignalRRootUrl { get; private set; }
+        public string? AccessToken { get; private set; }
+
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
+            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
+            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
+
             if (id == Guid.Empty) return BadRequest("Invalid product ID.");
 
             var client = _httpClientFactory.CreateClient("BackendApi");
-            /*var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
-            if (!string.IsNullOrEmpty(authToken))
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
-            }*/
+            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
 
             try
             {
@@ -85,6 +92,11 @@ namespace ShareItFE.Pages.Products
                 return StatusCode(500, "An internal error occurred.");
             }
 
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdString))
+            {
+                CurrentUserId = Guid.Parse(userIdString);
+            }
             return Page();
         }
 

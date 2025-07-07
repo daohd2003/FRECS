@@ -177,11 +177,11 @@ namespace Services.OrderServices
             return orderDtos;
         }
 
-        public async Task<IEnumerable<Order>> GetAllAsync()
+        public async Task<IEnumerable<OrderFullDetailsDto>> GetAllAsync()
         {
             var order = await _orderRepo.GetAllAsync();
 
-            return order;
+            return _mapper.Map<IEnumerable<OrderFullDetailsDto>>(order);
         }
 
         public async Task<IEnumerable<OrderWithDetailsDto>> GetOrdersByStatusAsync(OrderStatus status)
@@ -502,7 +502,7 @@ namespace Services.OrderServices
 
         public async Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId)
         {
-            var orders = await _orderRepo.GetAll() 
+            var orders = await _orderRepo.GetAll()
                                          .Where(o => o.CustomerId == customerId)
                                          .Include(o => o.Customer)
                                              .ThenInclude(c => c.Profile)
@@ -512,6 +512,11 @@ namespace Services.OrderServices
                                          .ToListAsync();
 
             return _mapper.Map<IEnumerable<OrderListDto>>(orders);
+        }
+
+        public async Task<Order> GetOrderEntityByIdAsync(Guid orderId)
+        {
+            return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
         }
     }
 }

@@ -56,40 +56,49 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new ApiResponse<object>("Order IDs are required.", null));
 
             var customerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            double totalMoney = 0;
-            var validOrderIds = new List<Guid>();
-            var profile = await _profileService.GetByUserIdAsync(customerId);
+            decimal totalMoney = 0;
+            var validOrders = new List<BusinessObject.Models.Order>();
 
+            // 1. Lấy và xác thực các đơn hàng
             foreach (var orderId in requestDto.OrderIds)
             {
-                var order = await _orderService.GetOrderDetailAsync(orderId);
+                var order = await _orderService.GetOrderEntityByIdAsync(orderId);
                 if (order != null && order.CustomerId == customerId && order.Status == OrderStatus.pending)
                 {
-                    totalMoney += (double)order.TotalAmount;
-                    validOrderIds.Add(orderId);
+                    totalMoney += order.TotalAmount;
+                    validOrders.Add(order);
                 }
             }
 
-            if (totalMoney == 0)
+            if (!validOrders.Any())
                 return BadRequest(new ApiResponse<object>("No valid orders found.", null));
 
-            // Mô tả kiểu giống VNPay
-            var orderIdsString = string.Join(" ", validOrderIds);
-            var fullName = string.IsNullOrWhiteSpace(profile.FullName) ? "Customer" : profile.FullName.Trim();
-            // Description gọn để hiển thị trong QR
-            var displayDescription = $"{fullName} chuyen tien";
+            // 2. Tạo một bản ghi Transaction DUY NHẤT để nhóm các đơn hàng
+            var transaction = new BusinessObject.Models.Transaction
+            {
+                Id = Guid.NewGuid(),
+                CustomerId = customerId,
+                Amount = totalMoney,
+                Status = BusinessObject.Enums.TransactionStatus.initiated,
+                TransactionDate = DateTime.UtcNow,
+                Orders = validOrders,
+                PaymentMethod = "Bank Transfer - SEPay"
+            };
 
-            // Full description ẩn chứa orderIds, webhook sẽ dùng cái này để xử lý
-            var hiddenDescription = $"OIDS {orderIdsString}";
+            // 3. Lưu transaction mới này vào DB
+            await _transactionService.SaveTransactionAsync(transaction);
 
-            var QrImage = GenerateQrCodeUrl(totalMoney, hiddenDescription);
+            // 4. Sử dụng ID của transaction VỪA TẠO để nhúng vào QR
+            var hiddenDescription = $"TID {transaction.Id}";
+
+            var qrImageUrl = GenerateQrCodeUrl((double)transaction.Amount, hiddenDescription);
 
             return Ok(new ApiResponse<object>("QR created successfully", new
             {
-                amount = totalMoney,
-                orderIds = validOrderIds,
-                hiddenDescription,
-                QrImage
+                amount = transaction.Amount,
+                transactionId = transaction.Id,
+                orderIds = validOrders.Select(o => o.Id),
+                qrImageUrl
             }));
         }
 
@@ -112,7 +121,6 @@ namespace ShareItAPI.Controllers
             var responseData = new
             {
                 transaction.Id,
-                transaction.OrderId,
                 transaction.Status,
                 transaction.Amount,
                 QrImageUrl = qrImageUrl

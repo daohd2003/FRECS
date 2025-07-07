@@ -1,4 +1,5 @@
-﻿using BusinessObject.Models;
+﻿using BusinessObject.DTOs.TransactionsDto;
+using BusinessObject.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace Repositories.TransactionRepositories
 {
     public interface ITransactionRepository
     {
-        Task<IEnumerable<Transaction>> GetTransactionsByProviderAsync(Guid providerId);
+        Task<IEnumerable<TransactionSummaryDto>> GetTransactionsByProviderAsync(Guid providerId);
         Task<decimal> GetTotalReceivedByProviderAsync(Guid providerId);
     }
 }

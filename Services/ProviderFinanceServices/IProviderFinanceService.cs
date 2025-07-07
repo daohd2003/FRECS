@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.BankAccounts;
+using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.Models;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,6 @@ namespace Services.ProviderFinanceServices
     {
         Task<decimal> GetTotalRevenue(Guid providerId);
         Task<BankAccount?> GetPrimaryBankAccount(Guid providerId);
-        Task<IEnumerable<Transaction>> GetTransactionDetails(Guid providerId);
+        Task<IEnumerable<TransactionSummaryDto>> GetTransactionDetails(Guid providerId);
     }
 }
