@@ -12,6 +12,7 @@ namespace BusinessObject.DTOs.ConversationDtos
         public ParticipantDto OtherParticipant { get; set; }
         public string LastMessageContent { get; set; }
         public DateTime UpdatedAt { get; set; }
-        public bool IsRead { get; set; } // Trạng thái của tin nhắn cuối
+        public bool IsRead { get; set; }
+        public ProductContextDto? ProductContext { get; set; }
     }
 }

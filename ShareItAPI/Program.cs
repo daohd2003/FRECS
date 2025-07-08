@@ -105,7 +105,8 @@ namespace ShareItAPI
 
             // Add DbContext with SQL Server
             builder.Services.AddDbContext<ShareItDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")),
+                ServiceLifetime.Scoped);
 
             builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             builder.Services.AddScoped<IUserRepository, UserRepository>();

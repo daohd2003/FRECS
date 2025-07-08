@@ -19,6 +19,9 @@ namespace BusinessObject.Models
         [ForeignKey(nameof(ConversationId))]
         public Conversation? Conversation { get; set; }
 
+        public Guid? ProductId { get; set; }
+        public virtual Product? Product { get; set; }
+
         [Required]
         public Guid SenderId { get; set; }  // ID người gửi
 

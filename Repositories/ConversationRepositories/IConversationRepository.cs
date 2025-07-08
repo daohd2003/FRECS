@@ -11,7 +11,7 @@ namespace Repositories.ConversationRepositories
     {
         Task<IEnumerable<Conversation>> GetConversationsByUserIdAsync(Guid userId);
         Task<IEnumerable<Message>> GetMessagesByConversationIdAsync(Guid conversationId, int pageNumber, int pageSize);
-        Task<Conversation> FindAsync(Guid user1Id, Guid user2Id, Guid? productId);
+        Task<Conversation> FindAsync(Guid user1Id, Guid user2Id);
         Task<Conversation> CreateAsync(Conversation conversation);
     }
 }

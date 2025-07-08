@@ -149,12 +149,9 @@
                     @foreach (var item in Model.TopRentals)
                     {
                         <div class="rental-item-card">
-                            <div class="rental-image-wrapper">
+                            <a href="/products/detail/@item.Id" class="rental-image-wrapper">
                                 <img src="@item.Image" alt="@item.Name" class="rental-image" />
-                                <button class="fav-button">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="fav-icon" ...></svg>
-                                </button>
-                            </div>
+                            </a>
                             <div class="rental-details">
                                 <h3 class="rental-name">@item.Name</h3>
                                 <div class="rental-price-rating">
@@ -272,7 +269,7 @@
                 <h2 class="offer-title">Limited Time Offer!</h2>
                 <p class="offer-subtitle">Rent 2 Outfits, Get 1 FREE</p>
                 <p class="offer-description">Perfect for multi-day events or trying different looks. Valid until end of month.</p>
-                <button class="offer-button">Claim Offer Now</button>
+                <a href="/products" class="offer-button">Claim Offer Now</a>
             </div>
         </section>
 

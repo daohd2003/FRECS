@@ -28,7 +28,7 @@ namespace ShareItFE.Pages
                              "?$filter=IsPromoted eq true and AverageRating gt 4.0" +
                              "&$orderby=RentCount desc" +
                              "&$expand=Images($filter=IsPrimary eq true)" +
-                             "&$select=Name,PricePerDay,AverageRating,RentCount,Images";
+                             "&$select=Id,Name,PricePerDay,AverageRating,RentCount,Images";
 
             await FetchAndProcessProducts(client, topTierUrl);
 
@@ -42,7 +42,7 @@ namespace ShareItFE.Pages
                                      "&$orderby=RentCount desc" +
                                      $"&$top={needed}" +
                                      "&$expand=Images($filter=IsPrimary eq true)" +
-                                     "&$select=Name,PricePerDay,AverageRating,RentCount,Images";
+                                     "&$select=Id,Name,PricePerDay,AverageRating,RentCount,Images";
 
                 await FetchAndProcessProducts(client, regularTierUrl);
             }
@@ -76,6 +76,7 @@ namespace ShareItFE.Pages
                             rental.PricePerDay = productNode["PricePerDay"]?.GetValue<decimal>();
                             rental.AverageRating = productNode["AverageRating"]?.GetValue<decimal>();
                             rental.RentCount = productNode["RentCount"]?.GetValue<int>();
+                            rental.Id = productNode["Id"]?.GetValue<Guid>() ?? Guid.Empty;
 
                             // Lấy ảnh chính từ mảng Images lồng nhau
                             rental.Image = productNode["Images"]?

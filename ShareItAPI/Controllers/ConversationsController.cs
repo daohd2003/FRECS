@@ -54,7 +54,20 @@ namespace ShareItAPI.Controllers
                 return BadRequest("Cannot create a conversation with yourself.");
             }
 
-            var conversationDto = await _conversationService.FindOrCreateConversationAsync(currentUserId, request.RecipientId, request.ProductId);
+            var conversationDto = await _conversationService.FindOrCreateConversationAsync(currentUserId, request.RecipientId);
+
+            return Ok(conversationDto);
+        }
+
+        [HttpGet("find-by-users")]
+        public async Task<IActionResult> FindConversationByUsers([FromQuery] Guid user1Id, [FromQuery] Guid user2Id)
+        {
+            var conversationDto = await _conversationService.FindConversationAsync(user1Id, user2Id);
+
+            if (conversationDto == null)
+            {
+                return NotFound("No conversation found between the two users.");
+            }
 
             return Ok(conversationDto);
         }

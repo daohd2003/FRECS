@@ -1,0 +1,276 @@
+﻿@page "/provider/messages"
+@model ShareItFE.Pages.Provider.MessagesModel
+@{
+    ViewData["Title"] = "My Messages";
+}
+
+
+<link rel="stylesheet" href="~/css/chat.css" />
+
+<div class="chat-container">
+    <div class="conversation-list">
+        <div class="conversation-list-header">
+            <h2>Messages</h2>
+        </div>
+        <div id="conversation-list-body" class="conversation-list-body">
+            <p class="loading-text">Loading conversations...</p>
+        </div>
+    </div>
+
+    <div class="chat-view">
+        <div id="chat-placeholder" class="chat-placeholder">
+            <p>Select a conversation to begin</p>
+        </div>
+
+        <div id="chat-window" class="chat-window hidden">
+            <div id="chat-header" class="chat-header">
+                <h3 id="chat-user-name" class="name"></h3>
+            </div>
+
+            <div id="product-context-banner" class="product-context-banner hidden">
+                <img id="product-image" src="" alt="Product" />
+                <div>
+                    <p class="topic-text">Topic:</p>
+                    <p id="product-name" class="product-name"></p>
+                </div>
+            </div>
+
+            <div id="messages-container" class="messages-container"></div>
+
+            <form id="send-message-form" class="message-form">
+                <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" disabled>
+                <button type="submit" id="send-btn" disabled>Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script src="~/js/dist/browser/signalr.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const conversationListEl = document.getElementById('conversation-list-body');
+            const chatPlaceholderEl = document.getElementById('chat-placeholder');
+            const chatWindowEl = document.getElementById('chat-window');
+            const chatUserNameEl = document.getElementById('chat-user-name');
+            const messagesContainerEl = document.getElementById('messages-container');
+            const sendMessageForm = document.getElementById('send-message-form');
+            const messageInput = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const productBannerEl = document.getElementById('product-context-banner');
+            const productImageEl = document.getElementById('product-image');
+            const productNameEl = document.getElementById('product-name');
+
+            const currentUserId = '@Model.CurrentUserId';
+            const accessToken = '@Model.AccessToken';
+            const apiUrl = '@Model.ApiBaseUrl';
+            const signalRUrl = '@Model.SignalRRootUrl';
+
+            let conversations = [];
+            let currentPage = 1;
+            const pageSize = 15;
+            let selectedConversation = null;
+            let signalRConnection = null;
+            let isLoadingMore = false;
+
+            function createMessageElement(message, isMe) {
+                const messageRow = document.createElement('div');
+                messageRow.className = isMe ? 'message-row me' : 'message-row them';
+
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = 'message-bubble';
+                bubbleDiv.textContent = message.content;
+
+                messageRow.appendChild(bubbleDiv);
+                return messageRow;
+            }
+
+            function renderConversationList() {
+                conversationListEl.innerHTML = '';
+                conversations
+                    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+                    .forEach(convo => {
+                        const convoEl = document.createElement('div');
+                        convoEl.className = 'conversation-item';
+                        if (selectedConversation && convo.id === selectedConversation.id) {
+                            convoEl.classList.add('selected');
+                        }
+                        convoEl.dataset.conversationId = convo.id;
+
+                        const unreadDot = convo.unreadMessageCount > 0 ? `<div class="unread-dot"></div>` : '';
+
+                        const productTopicHtml = convo.productContext
+                            ? `<p class="product-topic">Topic: ${convo.productContext.name}</p>`
+                            : '';
+
+                        convoEl.innerHTML = `
+                        <div class="avatar">
+                            <img src="${convo.otherParticipant.profilePictureUrl || 'https://via.placeholder.com/100'}" />
+                        </div>
+                        <div class="details">
+                            <div class="header">
+                                <p class="name">${convo.otherParticipant.fullName}</p>
+                                ${unreadDot}
+                            </div>
+                            ${productTopicHtml}
+                            <p class="last-message">${convo.lastMessageContent || 'No messages yet'}</p>
+                        </div>
+                    `;
+
+                        convoEl.addEventListener('click', () => selectConversation(convo.id));
+                        conversationListEl.appendChild(convoEl);
+                    });
+            }
+
+            async function loadConversations() {
+                try {
+                    const response = await fetch(`${apiUrl}/conversations`, {
+                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    });
+                    if (!response.ok) throw new Error("Failed to load conversations");
+                    conversations = await response.json();
+                    renderConversationList();
+                } catch (error) {
+                    conversationListEl.innerHTML = `<p class="loading-text" style="color: red;">${error.message}</p>`;
+                }
+            }
+
+            async function loadMessages(conversationId, page) {
+                try {
+                    const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages?pageNumber=${page}&pageSize=${pageSize}`, {
+                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    });
+                    if (!response.ok) throw new Error("Failed to load messages");
+
+                    const messages = await response.json();
+
+                    // Thêm vào đầu (cũ nhất trên đầu)
+                    messages.reverse().forEach(msg => {
+                        const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                        const el = createMessageElement(msg, isMe);
+                        messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
+                    });
+
+                    return messages.length;
+                } catch (err) {
+                    console.error(err);
+                    return 0;
+                }
+            }
+
+            async function selectConversation(conversationId) {
+                selectedConversation = conversations.find(c => c.id === conversationId);
+                if (!selectedConversation) return;
+
+                renderConversationList();
+
+                chatPlaceholderEl.classList.add('hidden');
+                chatWindowEl.classList.remove('hidden');
+                chatUserNameEl.textContent = selectedConversation.otherParticipant.fullName;
+
+                if (selectedConversation.productContext) {
+                    productImageEl.src = selectedConversation.productContext.imageUrl || 'https://via.placeholder.com/100';
+                    productNameEl.textContent = selectedConversation.productContext.name;
+                    productBannerEl.classList.remove('hidden');
+                } else {
+                    productBannerEl.classList.add('hidden');
+                }
+
+                messagesContainerEl.innerHTML = '<p style="text-align: center; color: #6b7280;">Đang tải tin nhắn...</p>';
+                messagesContainerEl.innerHTML = '';
+                currentPage = 1;
+                await loadMessages(conversationId, currentPage);
+                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+            }
+
+            sendMessageForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!selectedConversation) return;
+
+                const messageText = messageInput.value.trim();
+                if (messageText && signalRConnection) {
+                    const recipientId = selectedConversation.otherParticipant.userId;
+
+                    signalRConnection.invoke("SendMessageAsync", selectedConversation.id, recipientId, messageText, null) // Thêm `null` ở cuối
+                        .then(() => {
+                            messageInput.value = '';
+                        })
+                        .catch(err => {
+                            console.error("Failed to send message:", err);
+                            alert("Could not send message. Please try again.");
+                        });
+                }
+            });
+
+            messagesContainerEl.addEventListener('scroll', async () => {
+                if (messagesContainerEl.scrollTop <= 50 && !isLoadingMore) {
+                    isLoadingMore = true;
+                    const prevHeight = messagesContainerEl.scrollHeight;
+                    currentPage++;
+                    const loaded = await loadMessages(selectedConversation.id, currentPage);
+                    if (loaded > 0) {
+                        const newHeight = messagesContainerEl.scrollHeight;
+                        messagesContainerEl.scrollTop = newHeight - prevHeight;
+                    }
+                    isLoadingMore = false;
+                }
+            });
+
+            async function init() {
+                if (!accessToken) {
+                    conversationListEl.innerHTML = '<p class="loading-text">Please login to view messages.</p>';
+                    return;
+                }
+
+                await loadConversations();
+
+                if (!signalRConnection) {
+                    signalRConnection = new signalR.HubConnectionBuilder()
+                        .withUrl(`${signalRUrl}/chathub?access_token=${accessToken}`)
+                        .withAutomaticReconnect()
+                        .build();
+
+                    signalRConnection.on("ReceiveMessage", (message) => {
+                        const convoToUpdate = conversations.find(c => c.id === message.conversationId);
+                        if (convoToUpdate) {
+                            convoToUpdate.lastMessageContent = message.content;
+                            convoToUpdate.updatedAt = message.sentAt;
+                            convoToUpdate.productContext = message.productContext;
+                            if (!selectedConversation || message.conversationId !== selectedConversation.id) {
+                                convoToUpdate.unreadMessageCount = (convoToUpdate.unreadMessageCount || 0) + 1;
+                            }
+                            renderConversationList();
+                        }
+
+                        if (selectedConversation && message.conversationId === selectedConversation.id) {
+                            const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(message, isMe);
+                            messagesContainerEl.appendChild(el);
+                            messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                            // QUAN TRỌNG: Cập nhật banner sản phẩm ngay lập tức
+                            if (message.productContext) {
+                                productImageEl.src = message.productContext.imageUrl || 'https://www.shutterstock.com/image-vector/image-icon-trendy-flat-style-600nw-643080895.jpg';
+                                productNameEl.textContent = message.productContext.name;
+                                productBannerEl.classList.remove('hidden');
+                            } else {
+                                // Nếu tin nhắn mới không có context, có thể chọn ẩn banner đi hoặc giữ nguyên
+                                // productBannerEl.classList.add('hidden');
+                            }
+                        }
+                    });
+
+                    try {
+                        await signalRConnection.start();
+                        console.log("SignalR Connected.");
+                    } catch (err) {
+                        console.error("SignalR Connection Error: ", err);
+                    }
+                }
+            }
+
+            init();
+        });
+    </script>
+}
