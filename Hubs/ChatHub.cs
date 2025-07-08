@@ -17,62 +17,77 @@ namespace Hubs
     public class ChatHub : Hub
     {
         private static readonly Dictionary<string, string> UserConnections = new Dictionary<string, string>();
-        private readonly ShareItDbContext _context; // Your DbContext
+        private readonly ShareItDbContext _context;
 
         public ChatHub(ShareItDbContext context)
         {
             _context = context;
         }
-
-        // OnConnectedAsync and OnDisconnectedAsync remain the same...
-
-        public async Task SendMessageAsync(string conversationId, string receiverId, string content)
+        public override async Task OnConnectedAsync()
         {
-            var senderIdString = Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(senderIdString) || string.IsNullOrEmpty(receiverId) || string.IsNullOrEmpty(content))
+            var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
             {
-                return; // Invalid request
+                lock (UserConnections)
+                {
+                    UserConnections[userId] = Context.ConnectionId;
+                }
             }
 
+            await base.OnConnectedAsync();
+        }
+
+        public async Task SendMessageAsync(string conversationId, string receiverId, string content, string? productId)
+        {
+            var senderIdString = Context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(senderIdString) || string.IsNullOrEmpty(conversationId) || string.IsNullOrEmpty(content))
+            {
+                return; // Dữ liệu không hợp lệ
+            }
+            Guid? productGuid = !string.IsNullOrEmpty(productId) ? Guid.Parse(productId) : null;
             var senderId = Guid.Parse(senderIdString);
             var conversationGuid = Guid.Parse(conversationId);
             var receiverGuid = Guid.Parse(receiverId);
 
-            // 1. Find or create the conversation
-            var conversation = await _context.Conversations
-                .FirstOrDefaultAsync(c =>
-                    (c.User1Id == senderId && c.User2Id == receiverGuid) ||
-                    (c.User1Id == receiverGuid && c.User2Id == senderId));
-
-            if (conversation == null)
-            {
-                conversation = new Conversation
-                {
-                    User1Id = senderId,
-                    User2Id = receiverGuid,
-                };
-                _context.Conversations.Add(conversation);
-                await _context.SaveChangesAsync(); // Save to get the new Conversation ID
-            }
-
-            // 2. Create the message and link it to the conversation
+            // 1. Tạo tin nhắn mới và gán trực tiếp vào đúng ConversationId
             var message = new Message
             {
                 ConversationId = conversationGuid,
                 SenderId = senderId,
                 ReceiverId = receiverGuid,
                 Content = content,
-                SentAt = DateTime.UtcNow
+                ProductId = productGuid,
+                SentAt = DateTime.UtcNow,
+                IsRead = false
             };
-            _context.Messages.Add(message);
-            await _context.SaveChangesAsync(); // Save to get the new Message ID
 
-            // 3. Update the conversation with the last message details
-            conversation.LastMessageId = message.Id;
-            conversation.UpdatedAt = message.SentAt;
+            Product productWithImages = null;
+            if (productGuid.HasValue)
+            {
+                productWithImages = await _context.Products
+                    .Include(p => p.Images)
+                    .FirstOrDefaultAsync(p => p.Id == productGuid.Value);
+            }
+
+            message.Product = productWithImages;
+
+            _context.Messages.Add(message);
+            await _context.Entry(message).Reference(m => m.Product).LoadAsync();
             await _context.SaveChangesAsync();
 
-            // 4. Tạo một DTO từ đối tượng Message vừa lưu
+            // 2. Cập nhật Conversation tương ứng
+            var conversation = await _context.Conversations.FindAsync(conversationGuid);
+            if (conversation != null)
+            {
+                conversation.LastMessageId = message.Id;
+                conversation.UpdatedAt = message.SentAt;
+                await _context.SaveChangesAsync();
+            }
+
+            // 3. Tạo DTO để gửi đi
+            var images = message.Product?.Images;
+            var displayImage = images?.FirstOrDefault(i => i.IsPrimary) ?? images?.FirstOrDefault();
             var messageDto = new MessageDto
             {
                 Id = message.Id,
@@ -80,15 +95,20 @@ namespace Hubs
                 SenderId = message.SenderId,
                 Content = message.Content,
                 SentAt = message.SentAt,
-                IsRead = message.IsRead
+                IsRead = message.IsRead,
+                ProductContext = message.Product == null ? null : new ProductContextDto
+                {
+                    Id = message.Product.Id,
+                    Name = message.Product.Name,
+                    ImageUrl = displayImage?.ImageUrl
+                }
             };
 
-            // 5. Gửi DTO đi thay vì đối tượng EF gốc
+            // 4. Gửi DTO đến người nhận và người gửi (Caller)
             if (UserConnections.TryGetValue(receiverId, out var receiverConnectionId))
             {
                 await Clients.Client(receiverConnectionId).SendAsync("ReceiveMessage", messageDto);
             }
-
             await Clients.Caller.SendAsync("ReceiveMessage", messageDto);
         }
     }

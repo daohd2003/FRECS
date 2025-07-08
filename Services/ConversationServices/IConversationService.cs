@@ -12,6 +12,7 @@ namespace Services.ConversationServices
     {
         Task<IEnumerable<ConversationDto>> GetConversationsForUserAsync(Guid userId);
         Task<IEnumerable<MessageDto>> GetMessagesForConversationAsync(Guid conversationId, int pageNumber, int pageSize);
-        Task<ConversationDto> FindOrCreateConversationAsync(Guid user1Id, Guid user2Id, Guid? productId);
+        Task<ConversationDto> FindOrCreateConversationAsync(Guid user1Id, Guid user2Id);
+        Task<ConversationDto> FindConversationAsync(Guid user1Id, Guid user2Id);
     }
 }

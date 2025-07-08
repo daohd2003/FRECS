@@ -203,195 +203,263 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/dist/browser/signalr.js"></script>
     <script>
         lucide.createIcons();
 
         document.addEventListener('DOMContentLoaded', function () {
-            @if (Model.Product != null)
+
+            // --- PHẦN 1: LOGIC CHO TRANG SẢN PHẨM (CHỌN SIZE, ẢNH,...) ---
+
+            const mainImage = document.getElementById('mainProductImage');
+            const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
+            thumbnailBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (mainImage) mainImage.src = btn.dataset.imageSrc;
+                    thumbnailBtns.forEach(b => b.classList.remove('border-purple-600'));
+                    btn.classList.add('border-purple-600');
+                });
+            });
+
+            const sizeBtns = document.querySelectorAll('.size-btn');
+            const selectedSizeInput = document.getElementById('selectedSizeInput');
+            sizeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if(selectedSizeInput) selectedSizeInput.value = btn.dataset.size;
+                    sizeBtns.forEach(b => {
+                        b.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                    });
+                    btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                });
+            });
+
+            const decreaseBtn = document.getElementById('decreaseDaysBtn');
+            const increaseBtn = document.getElementById('increaseDaysBtn');
+            const daysDisplay = document.getElementById('rentalDaysDisplay');
+            const daysInput = document.getElementById('rentalDaysInput');
+            const pricePerDay = @(Model.Product?.PricePerDay.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0");
+            const pricePerPeriodEl = document.getElementById('pricePerPeriod');
+            const totalDaysDisplayEl = document.getElementById('totalDaysDisplay');
+            const totalPriceEl = document.getElementById('totalPrice');
+
+            function formatCurrency(amount) {
+                return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+            }
+
+            function updatePrice() {
+                if (!daysInput || !daysDisplay) return;
+                let currentDays = parseInt(daysInput.value, 10);
+                daysDisplay.textContent = `${currentDays} ${currentDays === 1 ? 'day' : 'days'}`;
+                const total = currentDays * pricePerDay;
+                if(pricePerPeriodEl) pricePerPeriodEl.textContent = formatCurrency(total);
+                if(totalPriceEl) totalPriceEl.textContent = formatCurrency(total);
+                if(totalDaysDisplayEl) totalDaysDisplayEl.textContent = currentDays;
+            }
+
+            if(decreaseBtn) decreaseBtn.addEventListener('click', () => {
+                let currentDays = parseInt(daysInput.value, 10);
+                if (currentDays > 1) {
+                    daysInput.value = currentDays - 1;
+                    updatePrice();
+                }
+            });
+
+            if(increaseBtn) increaseBtn.addEventListener('click', () => {
+                let currentDays = parseInt(daysInput.value, 10);
+                daysInput.value = currentDays + 1;
+                updatePrice();
+            });
+
+            // --- PHẦN SỬA LỖI VALIDATION ---
+            const addToCartForm = document.getElementById('addToCartForm');
+            if (addToCartForm) {
+                addToCartForm.addEventListener('submit', function (event) {
+                    // Lấy các element input ngay tại thời điểm submit
+                    const sizeValue = document.getElementById('selectedSizeInput').value;
+                    const dateValue = document.querySelector('input[name="StartDate"]').value;
+
+                    // Kiểm tra theo đúng thứ tự: SIZE trước, DATE sau
+                    if (!sizeValue) {
+                        event.preventDefault(); // Ngăn form gửi đi
+                        alert('Please select a size'); // Sử dụng alert tạm thời, nên dùng modal hoặc thông báo đẹp hơn
+                        return;
+                    }
+
+                    if (!dateValue) {
+                        event.preventDefault(); // Ngăn form gửi đi
+                        alert('Please select a start date'); // Sử dụng alert tạm thời
+                        return;
+                    }
+                });
+            }
+
+            updatePrice();
+
+
+            // --- PHẦN 2: LOGIC CHO CHAT MODAL ---
+            // Chỉ chạy code chat nếu có Model.Product
+            if (@(Model.Product != null ? "true" : "false"))
             {
-                <text>
-                    // ================= BIẾN TOÀN CỤC VÀ DOM ELEMENTS =================
-                    const openChatBtn = document.getElementById('openChatBtn');
-                    const closeChatBtn = document.getElementById('closeChatBtn');
-                    const chatModal = document.getElementById('chatModal');
-                    const messagesContainer = document.getElementById('chat-messages');
-                    const messageForm = document.getElementById('sendMessageForm');
-                    const messageInput = document.getElementById('chat-message-input');
-                    const sendBtn = document.getElementById('chat-send-btn');
-                    const providerNameEl = document.getElementById('chat-provider-name');
+                // DOM Elements
+                const openChatBtn = document.getElementById('openChatBtn');
+                const closeChatBtn = document.getElementById('closeChatBtn');
+                const chatModal = document.getElementById('chatModal');
+                const messagesContainer = document.getElementById('chat-messages');
+                const messageForm = document.getElementById('sendMessageForm');
+                const messageInput = document.getElementById('chat-message-input');
+                const sendBtn = document.getElementById('chat-send-btn');
+                const providerNameEl = document.getElementById('chat-provider-name');
 
-                    const providerId = '@Model.Product.ProviderId';
-                    const currentUserId = '@Model.CurrentUserId';
-                    const productId = '@Model.Product.Id';
-                    const apiUrl = '@Model.ApiBaseUrl';
-                    const signalRUrl = '@Model.SignalRRootUrl';
-                    const accessToken = '@Model.AccessToken';
+                // Dữ liệu từ Model
+                const providerId = '@Model.Product.ProviderId';
+                const currentUserId = '@Model.CurrentUserId';
+                const productId = '@Model.Product.Id';
+                const apiUrl = '@Model.ApiBaseUrl';
+                const signalRUrl = '@Model.SignalRRootUrl';
+                const accessToken = '@Model.AccessToken';
 
-                    let signalRConnection = null;
-                    let currentConversationId = null;
-                    let currentPage = 1;
-                    const pageSize = 10;
-                    let isLoadingMessages = false;
-                    let allMessagesLoaded = false;
+                // Biến trạng thái
+                let signalRConnection = null;
+                let currentConversationId = null;
+                let currentPage = 1;
+                const pageSize = 15;
+                let isLoadingMessages = false;
+                let allMessagesLoaded = false;
 
-                    // ================= CÁC HÀM HELPER =================
+                // --- CÁC HÀM HELPER (ĐÃ SỬA LỖI) ---
 
-                    // --- Hàm mới: Chỉ tạo element cho tin nhắn ---
-                    function createMessageElement(message, isMe) {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.classList.add('flex', 'mb-2', isMe ? 'justify-end' : 'justify-start');
+                function createMessageElement(message, isMe) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('flex', 'mb-2', isMe ? 'justify-end' : 'justify-start');
+                    const bubbleDiv = document.createElement('div');
+                    bubbleDiv.classList.add('px-4', 'py-2', 'rounded-lg', 'max-w-xs', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    bubbleDiv.textContent = message.content;
+                    messageDiv.appendChild(bubbleDiv);
+                    return messageDiv;
+                }
 
-                        const bubbleDiv = document.createElement('div');
-                        bubbleDiv.classList.add('px-4', 'py-2', 'rounded-lg', 'max-w-xs', 'break-words');
-                        if (isMe) {
-                            bubbleDiv.classList.add('bg-purple-600', 'text-white');
-                        } else {
-                            bubbleDiv.classList.add('bg-gray-200', 'text-gray-800');
-                        }
-                        bubbleDiv.textContent = message.content;
-                        messageDiv.appendChild(bubbleDiv);
-                        return messageDiv;
-                    }
+                // Hàm để thêm tin nhắn mới vào cuối và cuộn xuống
+                function appendNewMessage(message) {
+                    const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
+                    const el = createMessageElement(message, isMe);
+                    messagesContainer.appendChild(el);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
 
-                    // --- Hàm này dùng để thêm tin nhắn mới vào cuối ---
-                    function appendMessage(message, isMe) {
-                        const messageElement = createMessageElement(message, isMe);
-                        messagesContainer.appendChild(messageElement);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
+                // Hàm để thêm tin nhắn cũ vào đầu
+                function prependOldMessage(message) {
+                    const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
+                    const el = createMessageElement(message, isMe);
+                    messagesContainer.prepend(el);
+                }
 
-                    async function loadMessageHistory() {
-                        if (isLoadingMessages || allMessagesLoaded) return;
-                        isLoadingMessages = true;
+                // --- CÁC HÀM LOGIC CHÍNH (ĐÃ SỬA LỖI) ---
 
-                        if (currentPage === 1) {
-                            messagesContainer.innerHTML = '';
-                        }
+                loadMessageHistory
 
-                        const oldScrollHeight = messagesContainer.scrollHeight;
+                async function setupSignalRConnection() {
+                    if (signalRConnection) await signalRConnection.stop();
 
-                        const response = await fetch(`${apiUrl}/conversations/${currentConversationId}/messages?pageNumber=${currentPage}&pageSize=${pageSize}`, {
-                            headers: { 'Authorization': 'Bearer ' + accessToken }
-                        });
-                        const newMessages = await response.json();
+                    signalRConnection = new signalR.HubConnectionBuilder()
+                        .withUrl(`${signalRUrl}/chathub?access_token=${accessToken}`)
+                        .withAutomaticReconnect().build();
 
-                        if (newMessages.length < pageSize) {
-                            allMessagesLoaded = true;
-                        }
-
-                        // Thêm tin nhắn mới vào đầu
-                        newMessages.reverse().forEach(msg => {
-                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
-                            const messageElement = createMessageElement(msg, isMe);
-                            messagesContainer.prepend(messageElement);
-                        });
-
-                        if (currentPage === 1) {
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        } else {
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
-                        }
-
-                        currentPage++;
-                        isLoadingMessages = false;
-                    }
-
-                    async function setupSignalRConnection() {
-                        if (signalRConnection) await signalRConnection.stop();
-
-                        signalRConnection = new signalR.HubConnectionBuilder()
-                            .withUrl(`${signalRUrl}/chathub?access_token=${encodeURIComponent(accessToken)}`)
-                            .withAutomaticReconnect()
-                            .build();
-
-                        signalRConnection.on("ReceiveMessage", (message) => {
-                            if (message.conversationId.toLowerCase() === currentConversationId.toLowerCase()) {
-                                const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
-                                appendMessage(message, isMe);
+                    signalRConnection.on("ReceiveMessage", (message) => {
+                        // Chỉ hiển thị nếu tin nhắn thuộc về cuộc hội thoại này
+                        if (message.conversationId.toLowerCase() === currentConversationId.toLowerCase()) {
+                            // Bỏ qua tin nhắn do chính mình gửi đi (vì đã tự thêm vào lúc nhấn send)
+                            const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            if (!isMe) {
+                                appendNewMessage(message);
                             }
-                        });
-
-                        await signalRConnection.start();
-                        messageInput.disabled = false;
-                        sendBtn.disabled = false;
-                    }
-
-                    async function initializeChat() {
-                        // Reset trạng thái cho cuộc hội thoại mới
-                        currentPage = 1;
-                        isLoadingMessages = false;
-                        allMessagesLoaded = false;
-                        messagesContainer.innerHTML = '<div class="text-center text-gray-400">Initializing...</div>';
-
-                        try {
-                            const response = await fetch(`${apiUrl}/conversations/find-or-create`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': 'Bearer ' + accessToken
-                                },
-                                body: JSON.stringify({ recipientId: providerId, productId: productId })
-                            });
-
-                            if (!response.ok) throw new Error(`Failed to start conversation. Status: ${response.status}`);
-
-                            const conversation = await response.json();
-                            currentConversationId = conversation.id;
-                            providerNameEl.textContent = `Chat with ${conversation.otherParticipant.fullName}`;
-
-                            await setupSignalRConnection();
-                            await loadMessageHistory();
-
-                        } catch (error) {
-                            console.error(error);
-                            messagesContainer.innerHTML = `<div class="text-center text-red-500">${error.message}</div>`;
                         }
-                    }
+                    });
 
-                    // ================= EVENT LISTENERS =================
+                    await signalRConnection.start();
+                    messageInput.disabled = false;
+                    sendBtn.disabled = false;
+                }
 
-                    if (openChatBtn) {
-                        openChatBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            // Kiểm tra đăng nhập ngay khi bấm nút
-                            if (!accessToken) {
-                                alert("Please log in to chat.");
-                                return;
-                            }
-                            chatModal.classList.remove('hidden');
-                            document.body.classList.add('overflow-hidden');
-                            initializeChat();
+                async function initializeChat() {
+                    currentPage = 1;
+                    isLoadingMessages = false;
+                    allMessagesLoaded = false;
+                    messagesContainer.innerHTML = '<div class="text-center text-gray-400">Initializing...</div>';
+
+                    try {
+                        const response = await fetch(`${apiUrl}/conversations/find-or-create`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
+                            // Chỉ cần recipientId theo logic backend mới nhất
+                            body: JSON.stringify({ recipientId: providerId })
                         });
-                    }
 
+                        if (!response.ok) throw new Error(`Failed to start conversation. Status: ${response.status}`);
+
+                        const conversation = await response.json();
+                        currentConversationId = conversation.id;
+                        providerNameEl.textContent = `Chat with ${conversation.otherParticipant.fullName}`;
+
+                        messagesContainer.innerHTML = '';
+                        await setupSignalRConnection();
+                        await loadMessageHistory();
+                    } catch (error) {
+                        console.error(error);
+                        messagesContainer.innerHTML = `<div class="text-center text-red-500">${error.message}</div>`;
+                    }
+                }
+
+                // --- EVENT LISTENERS (ĐÃ SỬA LỖI) ---
+
+                if (openChatBtn) {
+                    openChatBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (!accessToken) {
+                            alert("Please log in to chat.");
+                            return;
+                        }
+                        chatModal.classList.remove('hidden');
+                        document.body.classList.add('overflow-hidden');
+                        initializeChat();
+                    });
+                }
+
+                if(closeChatBtn) {
                     closeChatBtn.addEventListener('click', () => {
                         chatModal.classList.add('hidden');
                         document.body.classList.remove('overflow-hidden');
                         if (signalRConnection) {
-                            signalRConnection.stop();
-                            signalRConnection = null;
+                            signalRConnection.stop().then(() => signalRConnection = null);
                         }
                     });
+                }
 
-                    messageForm.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        const message = messageInput.value.trim();
-                        if (message && signalRConnection && currentConversationId) {
-                            signalRConnection.invoke("SendMessageAsync", currentConversationId, providerId, message)
-                                .catch(err => console.error(err.toString()));
-                            messageInput.value = '';
-                        }
-                    });
+                messageForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const messageContent = messageInput.value.trim();
+                    if (messageContent && signalRConnection && currentConversationId) {
+                        // Tự thêm tin nhắn của mình vào giao diện để phản hồi tức thì
+                        const tempMessage = { content: messageContent, senderId: currentUserId };
+                        appendNewMessage(tempMessage);
 
-                    messagesContainer.addEventListener('scroll', () => {
-                        if (messagesContainer.scrollTop === 0 && currentConversationId) {
-                            loadMessageHistory();
-                        }
-                    });
+                        // Gửi tin nhắn lên server với đầy đủ tham số
+                        signalRConnection.invoke("SendMessageAsync", currentConversationId, providerId, messageContent, productId)
+                            .catch(err => {
+                                console.error("Failed to send message:", err);
+                                alert("Could not send message. Please try again.");
+                                // (Tùy chọn) Xóa tin nhắn tạm nếu gửi thất bại
+                            });
+                        messageInput.value = '';
+                    }
+                });
 
-                </text>
+                messagesContainer.addEventListener('scroll', () => {
+                    // Tải thêm tin nhắn khi cuộn lên trên cùng
+                    if (messagesContainer.scrollTop === 0 && currentConversationId) {
+                        loadMessageHistory();
+                    }
+                });
             }
         });
     </script>
-    <script src="~/js/dist/browser/signalr.js"></script>
 }

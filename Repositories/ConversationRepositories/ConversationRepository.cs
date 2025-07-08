@@ -22,7 +22,12 @@ namespace Repositories.ConversationRepositories
         {
             return await _context.Conversations
                 .Where(c => c.User1Id == userId || c.User2Id == userId)
+
+                // Sửa lại chuỗi Include ở đây
                 .Include(c => c.LastMessage)
+                    .ThenInclude(lm => lm.Product)
+                        .ThenInclude(p => p.Images)
+
                 .Include(c => c.User1).ThenInclude(u => u.Profile)
                 .Include(c => c.User2).ThenInclude(u => u.Profile)
                 .OrderByDescending(c => c.UpdatedAt)
@@ -33,6 +38,11 @@ namespace Repositories.ConversationRepositories
         {
             return await _context.Messages
                 .Where(m => m.ConversationId == conversationId)
+
+                // Tải các dữ liệu liên quan
+                .Include(m => m.Product)
+                    .ThenInclude(p => p.Images)
+
                 .OrderByDescending(m => m.SentAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -40,24 +50,32 @@ namespace Repositories.ConversationRepositories
                 .ToListAsync();
         }
 
-        public async Task<Conversation> FindAsync(Guid user1Id, Guid user2Id, Guid? productId)
+        public async Task<Conversation> FindAsync(Guid user1Id, Guid user2Id)
         {
+            var (u1, u2) = user1Id.CompareTo(user2Id) < 0 ? (user1Id, user2Id) : (user2Id, user1Id);
+
             return await _context.Conversations
                 .Include(c => c.User1).ThenInclude(u => u.Profile)
                 .Include(c => c.User2).ThenInclude(u => u.Profile)
                 .Include(c => c.LastMessage)
-                .FirstOrDefaultAsync(c =>
-                    // Điều kiện tìm kiếm bây giờ bao gồm cả ProductId
-                    (c.User1Id == user1Id && c.User2Id == user2Id && c.ProductId == productId) ||
-                    (c.User1Id == user2Id && c.User2Id == user1Id && c.ProductId == productId));
+                    .ThenInclude(lm => lm.Product)
+                        .ThenInclude(p => p.Images)
+                .FirstOrDefaultAsync(c => c.User1Id == u1 && c.User2Id == u2);
         }
 
         public async Task<Conversation> CreateAsync(Conversation conversation)
         {
-            _context.Conversations.Add(conversation);
+            await _context.Conversations.AddAsync(conversation);
             await _context.SaveChangesAsync();
-            // Sau khi lưu, ta cần load lại thông tin User để trả về đầy đủ
-            return await FindAsync(conversation.User1Id, conversation.User2Id, conversation.ProductId);
+
+
+            await _context.Entry(conversation).Reference(c => c.User1).Query().Include(u => u.Profile).LoadAsync();
+            await _context.Entry(conversation).Reference(c => c.User2).Query().Include(u => u.Profile).LoadAsync();
+            // LastMessage sẽ là null, nhưng gọi LoadAsync vẫn an toàn
+            await _context.Entry(conversation).Reference(c => c.LastMessage).LoadAsync();
+
+            return conversation;
+            /*return await FindAsync(conversation.User1Id, conversation.User2Id);*/
         }
     }
 }

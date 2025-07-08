@@ -14,5 +14,6 @@ namespace BusinessObject.DTOs.ConversationDtos
         public string Content { get; set; }
         public DateTime SentAt { get; set; }
         public bool IsRead { get; set; }
+        public ProductContextDto? ProductContext { get; set; }
     }
 }
