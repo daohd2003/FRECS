@@ -1,12 +1,11 @@
-﻿using BusinessObject.Models;
-using BusinessObject.DTOs.ApiResponses;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ProfileDtos;
+using BusinessObject.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Services.CloudServices;
 using Services.ProfileServices;
 using System.Security.Claims;
-using BusinessObject.DTOs.ProfileDtos;
 
 namespace ShareItAPI.Controllers
 {
@@ -26,6 +25,7 @@ namespace ShareItAPI.Controllers
 
         // GET: api/profile/{userId}
         [HttpGet("{userId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetProfile(Guid userId)
         {
             var profile = await _profileService.GetByUserIdAsync(userId);

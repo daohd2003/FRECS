@@ -1,11 +1,7 @@
-﻿using BusinessObject.Enums;
+﻿using BusinessObject.DTOs.FeedbackDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using Repositories.RepositoryBase;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Repositories.FeedbackRepositories
 {
@@ -16,5 +12,6 @@ namespace Repositories.FeedbackRepositories
         Task<IEnumerable<Feedback>> GetFeedbacksByProviderIdAsync(Guid providerId);
         Task<bool> HasUserFeedbackedOrderItemAsync(Guid customerId, Guid orderItemId);
         Task<bool> HasUserFeedbackedOrderAsync(Guid customerId, Guid orderId);
+        Task<PaginatedResponse<Feedback>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize);
     }
 }
