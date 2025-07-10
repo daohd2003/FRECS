@@ -2,7 +2,6 @@
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Services.FeedbackServices;
 using System.Security.Claims;
@@ -43,7 +42,7 @@ namespace ShareItAPI.Controllers
 
         // GET - Get all feedback submitted by the current user
         [HttpGet]
-        [Authorize(Roles = "customer")] 
+        [Authorize(Roles = "customer")]
         public async Task<IActionResult> GetMyFeedbacks()
         {
             var customerId = GetCurrentUserId();
@@ -112,6 +111,16 @@ namespace ShareItAPI.Controllers
             var currentUserId = GetCurrentUserId();
             await _feedbackService.SubmitProviderResponseAsync(feedbackId, dto, currentUserId);
             return Ok(new ApiResponse<string>("Provider response submitted successfully.", null));
+        }
+        [HttpGet("product/{productId}")]
+        public async Task<IActionResult> GetFeedbacksByProduct(Guid productId, [FromQuery] int page = 1, [FromQuery] int pageSize = 5)
+        {
+            var response = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize);
+            if (response.Data == null)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
         }
     }
 }

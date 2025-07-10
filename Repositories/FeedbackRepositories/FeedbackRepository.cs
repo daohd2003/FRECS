@@ -1,14 +1,10 @@
 ﻿using AutoMapper;
+using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Repositories.FeedbackRepositories
 {
@@ -19,11 +15,11 @@ namespace Repositories.FeedbackRepositories
         public override async Task<Feedback?> GetByIdAsync(Guid id)
         {
             return await _context.Feedbacks
-                .Include(f => f.Customer).ThenInclude(c => c.Profile) 
+                .Include(f => f.Customer).ThenInclude(c => c.Profile)
                 .Include(f => f.Product)
                 .Include(f => f.Order)
                 .Include(f => f.OrderItem)
-                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile) 
+                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile)
                 .FirstOrDefaultAsync(f => f.Id == id);
         }
 
@@ -41,7 +37,7 @@ namespace Repositories.FeedbackRepositories
             }
 
             return await query
-                .Include(f => f.Customer).ThenInclude(c => c.Profile) 
+                .Include(f => f.Customer).ThenInclude(c => c.Profile)
                 .Include(f => f.Product)
                 .Include(f => f.Order)
                 .Include(f => f.OrderItem)
@@ -58,7 +54,7 @@ namespace Repositories.FeedbackRepositories
                 .Include(f => f.Product)
                 .Include(f => f.Order)
                 .Include(f => f.OrderItem)
-                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile) 
+                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
@@ -86,6 +82,29 @@ namespace Repositories.FeedbackRepositories
                 .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
+        }
+        public async Task<PaginatedResponse<Feedback>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize)
+        {
+            var query = _context.Feedbacks
+                .Where(f => f.ProductId == productId)
+                .Include(f => f.Customer).ThenInclude(c => c.Profile) // Include để mapping CustomerName
+                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile) // Include để mapping ProviderResponderName
+                .OrderByDescending(f => f.CreatedAt);
+
+            var totalItems = await query.CountAsync();
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResponse<Feedback>
+            {
+                Items = items,
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalItems
+            };
         }
     }
 }

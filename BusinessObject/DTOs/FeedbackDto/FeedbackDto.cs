@@ -21,9 +21,7 @@ namespace BusinessObject.DTOs.FeedbackDto
 
         [JsonPropertyName("submittedAt")]
         public DateTime CreatedAt { get; set; }
-
-        // Bạn có thể thêm các trường khác nếu cần
-        // [JsonPropertyName("providerResponse")]
-        // public string ProviderResponse { get; set; }
+        public string ProfilePictureUrl { get; set; }
+        public Guid CustomerId { get; set; }
     }
 }

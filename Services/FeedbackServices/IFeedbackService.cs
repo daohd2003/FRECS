@@ -1,10 +1,6 @@
-﻿using BusinessObject.DTOs.FeedbackDto;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.FeedbackServices
 {
@@ -21,5 +17,6 @@ namespace Services.FeedbackServices
         Task SubmitProviderResponseAsync(Guid feedbackId, SubmitProviderResponseDto responseDto, Guid providerOrAdminId);
 
         Task RecalculateProductRatingAsync(Guid productId);
+        Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize);
     }
 }
