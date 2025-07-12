@@ -1,4 +1,5 @@
-﻿using BusinessObject.Enums;
+﻿using BusinessObject.DTOs.NotificationDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using Hubs;
 using Microsoft.AspNetCore.SignalR;
@@ -20,14 +21,38 @@ namespace Services.NotificationServices
             _hubContext = hubContext;
         }
 
-        public async Task<IEnumerable<Notification>> GetUserNotifications(Guid userId, bool unreadOnly = false)
+        public async Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false)
         {
+            // 1. Lấy danh sách các đối tượng Notification gốc từ repository
+            IEnumerable<Notification> notifications;
             if (unreadOnly)
             {
-                return await _notificationRepository.GetUnreadByUserIdAsync(userId);
+                notifications = await _notificationRepository.GetUnreadByUserIdAsync(userId);
+            }
+            else
+            {
+                notifications = await _notificationRepository.GetByUserIdAsync(userId);
             }
 
-            return await _notificationRepository.GetByUserIdAsync(userId);
+            if (notifications == null || !notifications.Any())
+            {
+                return Enumerable.Empty<NotificationResponse>();
+            }
+
+            // 2. Chuyển đổi (Map) từ Notification sang NotificationResponse
+            var notificationResponses = notifications.Select(n => new NotificationResponse
+            {
+                Id = n.Id,
+                Message = n.Message,
+                IsRead = n.IsRead,
+                CreatedAt = n.CreatedAt,
+                Type = n.Type,
+                OrderId = n.OrderId
+                // Tạo link URL động dựa trên loại thông báo và OrderId
+                /*LinkUrl = GenerateNotificationLink(n.Type, n.OrderId)*/
+            });
+
+            return notificationResponses;
         }
 
         public async Task SendNotification(Guid userId, string message, NotificationType type)
@@ -183,5 +208,29 @@ namespace Services.NotificationServices
                 UserId = userId
             });
         }
+
+        /*/// <summary>
+        /// Hàm trợ giúp để tạo link điều hướng cho thông báo.
+        /// </summary>
+        private string? GenerateNotificationLink(NotificationType type, Guid? orderId)
+        {
+            // Bạn có thể mở rộng switch case này cho các loại thông báo khác
+            switch (type)
+            {
+                case NotificationType.system:
+                case NotificationType.message:
+                case NotificationType.order:
+                    return orderId.HasValue ? $"/MyOrders/Details/{orderId.Value}" : null;
+
+                case NotificationType.NewMessage:
+                    return "/Messages"; // Hoặc "/Messages/{conversationId}" nếu có
+
+                case NotificationType.Promotion:
+                    return "/Promotions";
+
+                default:
+                    return null; // Không có link cho các loại thông báo chung
+            }
+        }*/
     }
 }

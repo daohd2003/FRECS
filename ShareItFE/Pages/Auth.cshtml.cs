@@ -149,7 +149,7 @@ namespace ShareItFE.Pages
                     var apiResponse = JsonSerializer.Deserialize<ApiResponse<TokenResponseDto>>(responseContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    TempData["SuccessMessage"] = apiResponse?.Message ?? "Registration successful!";
+                    TempData["SuccessMessage"] = apiResponse?.Message ?? "Registration successful! Please check your email to verify your account.";
                     TempData["IsLoginState"] = true;
                     return RedirectToPage("/Auth");
                 }

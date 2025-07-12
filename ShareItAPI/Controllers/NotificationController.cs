@@ -7,6 +7,7 @@ using Services.NotificationServices;
 namespace ShareItAPI.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class NotificationController : ControllerBase
     {

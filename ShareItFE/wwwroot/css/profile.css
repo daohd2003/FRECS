@@ -797,3 +797,62 @@ input::-ms-clear {
 input[type="password"]::-webkit-credentials-auto-fill-button {
     visibility: hidden;
 }
+
+.order-item-multi {
+    display: flex;
+    align-items: center;
+    gap: 16px; /* Khoảng cách giữa cụm ảnh và phần text */
+}
+
+.order-item-images {
+    display: flex;
+    align-items: center;
+}
+
+.order-item-image-stacked {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    border: 2px solid #fff;
+    object-fit: cover;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+    /* Dùng margin âm để tạo hiệu ứng xếp chồng */
+    .order-item-image-stacked:not(:first-child) {
+        margin-left: -20px;
+    }
+
+/* Kiểu cho ô "+N" (nếu có nhiều hơn 2 sản phẩm) */
+.order-item-more {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    border: 2px solid #fff;
+    background-color: #f3f4f6; /* Màu xám nhạt */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: -20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+}
+
+.order-item-summary {
+    flex: 1;
+}
+
+    .order-item-summary .item-count {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 2px;
+    }
+
+    .order-item-summary .item-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+    }

@@ -154,5 +154,27 @@ namespace ShareItAPI.Controllers
             var orders = await _orderService.GetCustomerOrdersForListDisplayAsync(customerId);
             return Ok(new ApiResponse<object>($"Orders for customer {customerId} list display retrieved", orders));
         }
+
+        // NEW: Endpoint to get orders for list display (by customer)
+        [HttpGet("customer/{customerId:guid}/list-orders")]
+        public async Task<IActionResult> GetCustomerOrders(Guid customerId)
+        {
+            var orders = await _orderService.GetCustomerOrdersAsync(customerId);
+            return Ok(new ApiResponse<object>($"Orders for customer {customerId} list display retrieved", orders));
+        }
+
+        // GET: api/orders/{orderId}/details
+        [HttpGet("{orderId:guid}/details")]
+        public async Task<IActionResult> GetOrderDetails(Guid orderId)
+        {
+            var orderDetails = await _orderService.GetOrderDetailsAsync(orderId);
+
+            if (orderDetails == null)
+            {
+                return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            return Ok(new ApiResponse<OrderDetailsDto>("Order details retrieved successfully.", orderDetails));
+        }
     }
 }

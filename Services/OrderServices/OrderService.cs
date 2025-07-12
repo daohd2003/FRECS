@@ -500,6 +500,93 @@ namespace Services.OrderServices
             return _mapper.Map<IEnumerable<OrderListDto>>(orders);
         }
 
+        public async Task<IEnumerable<OrderListDto>> GetCustomerOrdersAsync(Guid customerId)
+        {
+            // 1. Lấy tất cả đơn hàng của khách hàng, sắp xếp theo thời gian tạo TĂNG DẦN
+            var allCustomerOrders = await _context.Orders
+                                            .Where(o => o.CustomerId == customerId)
+                                            .Include(o => o.Customer.Profile)
+                                            .Include(o => o.Items)
+                                                .ThenInclude(oi => oi.Product)
+                                                    .ThenInclude(p => p.Images)
+                                            .OrderBy(o => o.CreatedAt) // Sắp xếp tăng dần là bắt buộc
+                                            .ToListAsync();
+
+            if (!allCustomerOrders.Any())
+            {
+                return new List<OrderListDto>();
+            }
+
+            var resultList = new List<OrderListDto>();
+            var currentGroup = new List<Order>();
+
+            // Bắt đầu nhóm đầu tiên với đơn hàng đầu tiên
+            currentGroup.Add(allCustomerOrders.First());
+
+            // 2. Lặp qua các đơn hàng còn lại để gom nhóm
+            for (int i = 1; i < allCustomerOrders.Count; i++)
+            {
+                var currentOrder = allCustomerOrders[i];
+                var previousOrderInGroup = currentGroup.Last(); // So sánh với đơn hàng cuối cùng trong nhóm hiện tại
+
+                // 3. Kiểm tra xem thời gian tạo có gần nhau không (ví dụ: dưới 5 giây)
+                var timeDifferenceInSeconds = (currentOrder.CreatedAt - previousOrderInGroup.CreatedAt).TotalSeconds;
+
+                if (timeDifferenceInSeconds < 5)
+                {
+                    // Nếu gần nhau, thêm vào nhóm hiện tại
+                    currentGroup.Add(currentOrder);
+                }
+                else
+                {
+                    // Nếu không, đây là một lần thanh toán mới.
+                    // Xử lý và đóng gói nhóm cũ...
+                    resultList.Add(CombineOrderGroup(currentGroup));
+
+                    // ...và bắt đầu một nhóm hoàn toàn mới với đơn hàng hiện tại
+                    currentGroup = new List<Order> { currentOrder };
+                }
+            }
+
+            // 4. Xử lý nhóm cuối cùng còn lại trong danh sách sau khi vòng lặp kết thúc
+            if (currentGroup.Any())
+            {
+                resultList.Add(CombineOrderGroup(currentGroup));
+            }
+
+            // Sắp xếp lại kết quả cuối cùng theo thứ tự mới nhất lên đầu để hiển thị
+            return resultList.OrderByDescending(o => o.CreatedAt);
+        }
+
+        // Thêm hàm pomocniczy (helper method) này vào trong cùng class OrderService
+        private OrderListDto CombineOrderGroup(List<Order> orderGroup)
+        {
+            if (orderGroup == null || !orderGroup.Any()) return null;
+
+            // Lấy đơn hàng đầu tiên trong nhóm làm thông tin đại diện
+            var representativeOrder = orderGroup.First();
+
+            // Gộp tất cả sản phẩm từ các đơn hàng trong nhóm lại
+            var allItemsInGroup = orderGroup.SelectMany(o => o.Items).ToList();
+
+            // Tính tổng số tiền của cả nhóm
+            var groupTotalAmount = orderGroup.Sum(o => o.TotalAmount);
+
+            // Dùng AutoMapper để map các thông tin chung từ đơn hàng đại diện
+            var combinedOrderDto = _mapper.Map<OrderListDto>(representativeOrder);
+
+            // Ghi đè các thông tin đã được gộp
+            combinedOrderDto.Items = _mapper.Map<List<OrderItemListDto>>(allItemsInGroup);
+            combinedOrderDto.TotalAmount = groupTotalAmount;
+
+            // Tạo một mã định danh chung cho "lần thanh toán" này
+            // Bạn có thể dùng Id của đơn hàng đầu tiên hoặc TransactionId nếu có
+            combinedOrderDto.Id = representativeOrder.Id;
+            combinedOrderDto.OrderCode = $"{representativeOrder.CreatedAt:yyMMddHHmm}";
+
+            return combinedOrderDto;
+        }
+
         public async Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId)
         {
             var orders = await _orderRepo.GetAll()
@@ -509,6 +596,7 @@ namespace Services.OrderServices
                                          .Include(o => o.Items)
                                              .ThenInclude(oi => oi.Product)
                                                  .ThenInclude(p => p.Images)
+                                         .OrderByDescending(o => o.CreatedAt)
                                          .ToListAsync();
 
             return _mapper.Map<IEnumerable<OrderListDto>>(orders);
@@ -517,6 +605,27 @@ namespace Services.OrderServices
         public async Task<Order> GetOrderEntityByIdAsync(Guid orderId)
         {
             return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+        }
+
+        public async Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId)
+        {
+            var order = await _context.Orders
+                .Where(o => o.Id == orderId)
+                .Include(o => o.Items)
+                    .ThenInclude(oi => oi.Product)
+                        .ThenInclude(p => p.Images)
+                .Include(o => o.Customer)
+                    .ThenInclude(c => c.Profile)
+                .FirstOrDefaultAsync();
+
+            if (order == null)
+            {
+                return null;
+            }
+
+            var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
+
+            return orderDetailsDto;
         }
     }
 }

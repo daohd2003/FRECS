@@ -203,17 +203,35 @@
                                             <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
                                         </div>
 
-                                        @if (order.Item != null)
+                                        @if (order.Items != null && order.Items.Any())
                                         {
+                                            var firstItem = order.Items.First();
+                                            var totalItems = order.Items.Count();
+                                            var remainingCount = totalItems - 1;
+
                                             <div class="order-body">
-                                                <div class="order-item">
-                                                    <img src="@(order.Item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@order.Item.ProductName" class="order-item-image" />
-                                                    <div class="order-item-details">
-                                                        <h4 class="item-name">@order.Item.ProductName</h4>
-                                                        <p class="item-meta">Size: @order.Item.ProductSize</p>
-                                                        <p class="item-meta">
-                                                            Rental Period: @order.ScheduledDate.ToString("yyyy-MM-dd") to @order.ReturnDate?.ToString("yyyy-MM-dd") (@order.Item.RentalDays days)
-                                                        </p>
+                                                <div class="order-item-multi">
+                                                    <div class="order-item-images">
+                                                        @foreach (var item in order.Items.Take(2))
+                                                        {
+                                                            <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@item.ProductName" class="order-item-image-stacked" />
+                                                        }
+                                                        @if (totalItems > 2)
+                                                        {
+                                                            <div class="order-item-more">
+                                                                <span>+@(totalItems - 2)</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div class="order-item-summary">
+                                                        <p class="item-count">@totalItems item@(totalItems > 1 ? "s" : "")</p>
+                                                        <h4 class="item-name">
+                                                            @firstItem.ProductName
+                                                            @if (remainingCount > 0)
+                                                            {
+                                                                <span> and @remainingCount more</span>
+                                                            }
+                                                        </h4>
                                                     </div>
                                                 </div>
                                             </div>

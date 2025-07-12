@@ -96,7 +96,7 @@ namespace Services.AI
 
             var lines = products.Select(p =>
             {
-                string link = $"{_baseAppUrl}/api/products/{p.Id}";
+                string link = $"https://localhost:7045/products/detail/{p.Id}";
                 return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color} | Price: {p.PricePerDay} VND\n  Description: {p.Description}\n  [Xem chi tiết]({link})";
             });
 

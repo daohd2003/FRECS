@@ -392,7 +392,7 @@
                     isLoadingMessages = true;
 
                     try {
-                        const response = await fetch(`${apiUrl}/messages/${currentConversationId}?page=${currentPage}&pageSize=${pageSize}`, {
+                        const response = await fetch(`${apiUrl}/conversations/${currentConversationId}/messages?page=${currentPage}&pageSize=${pageSize}`, {
                             headers: { 'Authorization': 'Bearer ' + accessToken }
                         });
                         if (!response.ok) throw new Error('Failed to load messages.');
