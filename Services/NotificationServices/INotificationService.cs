@@ -1,4 +1,5 @@
-﻿using BusinessObject.Enums;
+﻿using BusinessObject.DTOs.NotificationDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace Services.NotificationServices
 {
     public interface INotificationService
     {
-        Task<IEnumerable<Notification>> GetUserNotifications(Guid userId, bool unreadOnly = false);
+        Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false);
         Task MarkAsRead(Guid notificationId);
         Task MarkAllAsRead(Guid userId);
         Task SendNotification(Guid userId, string message, NotificationType type);

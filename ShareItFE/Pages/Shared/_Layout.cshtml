@@ -1,10 +1,15 @@
-﻿@RenderSection("Styles", required: false)
+﻿@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@RenderSection("Styles", required: false)
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ShareIt</title>
+    <script>
+        const apiRootUrl = '@Configuration["ApiSettings:RootUrl"]';
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ShareItFE.styles.css" asp-append-version="true" />
@@ -83,7 +88,9 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/notification.js" asp-append-version="true"></script>
 
+    <script src="~/js/dist/browser/signalr.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Xử lý menu người dùng
@@ -121,6 +128,58 @@
                     }
                 }
             });
+
+            // START: Thêm code cho SignalR Real-time Notification
+            // Logic này sẽ được thực thi sau khi trang đã tải xong
+            const notificationMenu = document.querySelector('.notification-menu');
+            if (notificationMenu) {
+                const userId = notificationMenu.getAttribute('data-userid');
+
+                if (userId) {
+                    // 1. Khởi tạo kết nối đến SignalR Hub
+                    const connection = new signalR.HubConnectionBuilder()
+                        .withUrl(apiRootUrl + "/notificationHub")
+                        .withAutomaticReconnect()
+                        .build();
+
+                    // 2. Lắng nghe sự kiện 'ReceiveNotification' từ server
+                    connection.on("ReceiveNotification", (message) => {
+                        console.log("Real-time notification received: ", message);
+
+                        // Đây là nơi bạn cập nhật giao diện
+                        // Ví dụ: làm cho biểu tượng chuông hiện số thông báo mới
+                        const notificationCountSpan = document.getElementById('notificationCount');
+                        if (notificationCountSpan) {
+                            notificationCountSpan.style.display = 'flex';
+                            let currentCount = parseInt(notificationCountSpan.innerText) || 0;
+                            notificationCountSpan.innerText = currentCount + 1;
+                        }
+
+                        // Bạn cũng có thể gọi một hàm từ notification.js để tải lại danh sách thông báo
+                        if (window.loadNotifications) {
+                            window.loadNotifications(userId);
+                        }
+                    });
+
+                    // 3. Bắt đầu kết nối và tham gia vào nhóm của người dùng
+                    async function startSignalR() {
+                        try {
+                            await connection.start();
+                            console.log("SignalR Connected.");
+                            // Gọi phương thức trên Hub để tham gia nhóm thông báo riêng
+                            await connection.invoke("JoinCustomerNotificationGroup", userId);
+                            console.log(`User ${userId} has joined their notification group.`);
+                        } catch (err) {
+                            console.error("SignalR Connection Error: ", err);
+                            // Thử lại sau 5 giây nếu kết nối thất bại
+                            setTimeout(startSignalR, 5000);
+                        }
+                    }
+
+                    startSignalR();
+                }
+            }
+            // END: Thêm code cho SignalR Real-time Notification
         });
     </script>
 

@@ -33,6 +33,8 @@ namespace Services.OrderServices
         //New Updated Methods for Order List Display
         Task<IEnumerable<OrderListDto>> GetProviderOrdersForListDisplayAsync(Guid providerId);
         Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId);
+        Task<IEnumerable<OrderListDto>> GetCustomerOrdersAsync(Guid customerId);
         Task<Order> GetOrderEntityByIdAsync(Guid orderId);
+        Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId);
     }
 }

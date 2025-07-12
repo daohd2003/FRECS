@@ -14,7 +14,7 @@ namespace BusinessObject.DTOs.OrdersDto
         public string OrderCode { get; set; } // Map from Id for display like DEL001, ORD001
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
-        public OrderItemListDto Item { get; set; } // Assuming one primary item for display
+        public List <OrderItemListDto> Items { get; set; }
         public string DeliveryAddress { get; set; }
         public string Phone { get; set; }
         public OrderStatus Status { get; set; }

@@ -7,15 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="wwwroot\js\notification.js" />
     <Content Remove="wwwroot\js\profile.js" />
   </ItemGroup>
 
   <ItemGroup>
     <_ContentIncludedByDefault Remove="wwwroot\css\chatbot.css" />
+    <_ContentIncludedByDefault Remove="wwwroot\js\notification.js" />
     <_ContentIncludedByDefault Remove="wwwroot\js\profile.js" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="wwwroot\js\notification.js" />
     <None Include="wwwroot\js\profile.js" />
   </ItemGroup>
 
