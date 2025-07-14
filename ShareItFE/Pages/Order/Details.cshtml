@@ -22,8 +22,8 @@
     {
         return method?.ToLower() switch
         {
-            "vnpay" => "Thanh toán qua VNPay",
-            "sepay" => "Thanh toán qua SEPay",
+            "vnpay" => "Payment via VNPay",
+            "sepay" => "Payment via SEPay",
             _ => method ?? "Không xác định"
         };
     };

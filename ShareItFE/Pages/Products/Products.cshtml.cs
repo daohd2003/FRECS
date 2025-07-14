@@ -255,6 +255,33 @@ namespace ShareItFE.Pages.Products
                 }
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authToken);
 
+                var favoriteCheckUri = $"api/favorites/check?userId={userId}&productId={productId}";
+                var checkResponse = await client.GetAsync(favoriteCheckUri);
+
+                if (checkResponse.IsSuccessStatusCode)
+                {
+                    var isFavoritedResponse = await checkResponse.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+                    if (isFavoritedResponse != null && isFavoritedResponse.Data)
+                    {
+                        // Đoạn này gọi API để xóa sản phẩm khỏi danh sách yêu thích
+                        var deleteFavoriteUri = $"api/favorites?userId={userId}&productId={productId}";
+                        var deleteResponse = await client.DeleteAsync(deleteFavoriteUri);
+
+                        if (deleteResponse.IsSuccessStatusCode)
+                        {
+                            TempData["FavoriteAction"] = "removed";
+                            TempData["LastActionProductId"] = productId;
+                            return RedirectToPage();
+                        }
+                        else
+                        {
+                            var errorContent = await deleteResponse.Content.ReadAsStringAsync();
+                            TempData["ErrorMessage"] = $"Error removing from favorites: {errorContent}";
+                            return RedirectToPage();
+                        }
+                    }
+                }
+
                 var favoriteData = new { UserId = userId, ProductId = productId };
                 var content = new StringContent(JsonSerializer.Serialize(favoriteData), Encoding.UTF8, "application/json");
                 var favoriteAddUri = "api/favorites";
