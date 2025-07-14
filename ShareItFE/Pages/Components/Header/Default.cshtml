@@ -35,7 +35,7 @@
             {
                 @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
                 {
-                    <a asp-page="/Cart" class="cart-link">
+                    <a asp-page="/CartPage/Cart" class="cart-link" style="position: relative; display: flex; align-items: center;">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -43,7 +43,7 @@
                         </svg>
                         @if (Model.CartItemCount > 0)
                         {
-                            <span class="cart-count">@Model.CartItemCount</span>
+                            <span class="cart-count" style="position: absolute; top: -5px; right: -5px; background-color: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.4rem; font-size: 0.75rem; line-height: 1;">@Model.CartItemCount</span>
                         }
                     </a>
                 }

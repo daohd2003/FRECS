@@ -182,6 +182,8 @@ namespace ShareItAPI.Controllers
                             foreach (var order in transaction.Orders)
                             {
                                 await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
+
+                                await _orderService.ClearCartItemsForOrderAsync(order);
                             }
                         }
                         else
@@ -215,14 +217,21 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new { RspCode = "99", Message = "Input data required" });
             }
         }
-
         /// <summary>
         /// Return payment result to user
         /// </summary>
         [HttpGet("Callback")]
-        public ActionResult<ApiResponse<PaymentResult>> Callback()
+        public IActionResult Callback() // Thay đổi kiểu trả về thành IActionResult
         {
             _logger.LogInformation("Callback endpoint was called at {Time}", DateTime.Now);
+
+            // Lấy URL frontend từ cấu hình
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
+            if (string.IsNullOrEmpty(frontendBaseUrl))
+            {
+                _logger.LogError("Frontend:BaseUrl is not configured.");
+                return BadRequest(new { RspCode = "99", Message = "Frontend base URL not configured." });
+            }
 
             if (Request.QueryString.HasValue)
             {
@@ -233,21 +242,61 @@ namespace ShareItAPI.Controllers
                     if (paymentResult.IsSuccess)
                     {
                         _logger.LogInformation("Payment success for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                        return Ok(new ApiResponse<PaymentResult>("Payment succeeded", paymentResult));
+                        // Chuyển hướng về trang chủ hoặc trang xác nhận thanh toán thành công của bạn
+                        // Bạn có thể truyền các tham số qua URL để frontend xử lý (ví dụ: trạng thái, transactionId)
+                        return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=success&vnp_TxnRef={paymentResult.PaymentId}");
                     }
-
-                    _logger.LogWarning("Payment failed for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                    return BadRequest(new ApiResponse<PaymentResult>("Payment failed", paymentResult));
+                    else
+                    {
+                        _logger.LogWarning("Payment failed for PaymentId: {PaymentId}", paymentResult.PaymentId);
+                        // Chuyển hướng về trang lỗi thanh toán của bạn
+                        return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=failed&vnp_TxnRef={paymentResult.PaymentId}&vnp_Message={paymentResult.PaymentResponse?.Description ?? "Lỗi không xác định"}");
+                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing Callback");
-                    return BadRequest(new ApiResponse<string>(ex.Message, null));
+                    // Chuyển hướng về trang lỗi chung hoặc trang ban đầu
+                    return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=error&errorMessage={Uri.EscapeDataString(ex.Message)}");
                 }
             }
 
             _logger.LogWarning("Callback called but query string is empty");
-            return NotFound(new ApiResponse<string>("Payment information not found.", null));
+            // Nếu không có query string, cũng chuyển hướng về một trang với thông báo lỗi
+            return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=error&errorMessage={Uri.EscapeDataString("Payment information not found.")}");
         }
+        ///// <summary>
+        ///// Return payment result to user
+        ///// </summary>
+        //[HttpGet("Callback")]
+        //public ActionResult<ApiResponse<PaymentResult>> Callback()
+        //{
+        //    _logger.LogInformation("Callback endpoint was called at {Time}", DateTime.Now);
+
+        //    if (Request.QueryString.HasValue)
+        //    {
+        //        try
+        //        {
+        //            var paymentResult = _vnpay.GetPaymentResult(Request.Query);
+
+        //            if (paymentResult.IsSuccess)
+        //            {
+        //                _logger.LogInformation("Payment success for PaymentId: {PaymentId}", paymentResult.PaymentId);
+        //                return Ok(new ApiResponse<PaymentResult>("Payment succeeded", paymentResult));
+        //            }
+
+        //            _logger.LogWarning("Payment failed for PaymentId: {PaymentId}", paymentResult.PaymentId);
+        //            return BadRequest(new ApiResponse<PaymentResult>("Payment failed", paymentResult));
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _logger.LogError(ex, "Error processing Callback");
+        //            return BadRequest(new ApiResponse<string>(ex.Message, null));
+        //        }
+        //    }
+
+        //    _logger.LogWarning("Callback called but query string is empty");
+        //    return NotFound(new ApiResponse<string>("Payment information not found.", null));
+        //}
     }
 }

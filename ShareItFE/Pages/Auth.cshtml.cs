@@ -206,8 +206,8 @@ namespace ShareItFE.Pages
                     if (apiResponse?.Data != null)
                     {
                         // Lưu AccessToken và RefreshToken vào cookie
-                        Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
-                        Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+                        Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.None });
+                        Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.None });
 
                         return RedirectToPage("/Index"); // Chuyển hướng đến trang chủ
                     }

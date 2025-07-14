@@ -94,5 +94,38 @@ namespace ShareItAPI.Controllers
 
             return Ok(headerInfo);
         }
+        [HttpGet("my-profile-for-checkout")] // Định nghĩa route mới
+        public async Task<IActionResult> GetMyProfileForCheckout()
+        {
+            Console.WriteLine($"User authenticated: {User.Identity?.IsAuthenticated}");
+            Console.WriteLine($"User claims: {string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"))}");
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new ApiResponse<string>("Unable to identify user.", null));
+            }
+
+
+            var profile = await _profileService.GetByUserIdAsync(userId);
+
+            if (profile == null)
+            {
+                // Trả về NotFound nếu không tìm thấy profile, để frontend biết không có dữ liệu để điền
+                return NotFound(new ApiResponse<string>("Profile not found for this user.", null));
+            }
+
+            // Ánh xạ Profile entity sang ProfileDetailDto
+            var profileDetailDto = new ProfileDetailDto
+            {
+                UserId = profile.UserId,
+                FullName = profile.FullName,
+                PhoneNumber = profile.Phone, 
+                Address = profile.Address,
+                ProfilePictureUrl = profile.ProfilePictureUrl,
+                Email = profile.User?.Email
+            };
+
+            return Ok(new ApiResponse<ProfileDetailDto>("Profile retrieved successfully", profileDetailDto));
+        }
     }
 }

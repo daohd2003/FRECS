@@ -67,7 +67,7 @@ namespace Services.Payments.VNPay
             //Sửa lại mỗi lần chạy ngrok
             /*helper.AddRequestData("vnp_IpAddr", request.IpAddress);*/
             /*helper.AddRequestData("vnp_IpAddr", "https://localhost:7021/api/payment/Vnpay/IpnAction");*/
-            helper.AddRequestData("vnp_IpAddr", "https://cece-2402-800-6236-bdf7-3c8b-c34-27c7-f5d8.ngrok-free.app/api/payment/Vnpay/IpnAction");
+            helper.AddRequestData("vnp_IpAddr", "https://d3cb78a28797.ngrok-free.app/api/payment/Vnpay/IpnAction");
             helper.AddRequestData("vnp_Locale", EnumHelper.GetDescription(request.Language));
             helper.AddRequestData("vnp_BankCode", request.BankCode == BankCode.ANY ? string.Empty : request.BankCode.ToString());
             helper.AddRequestData("vnp_OrderInfo", request.Description.Trim());
@@ -75,7 +75,7 @@ namespace Services.Payments.VNPay
             //Sửa lại mỗi lần chạy ngrok
             /*helper.AddRequestData("vnp_ReturnUrl", _callbackUrl);*/
             /*helper.AddRequestData("vnp_ReturnUrl", "https://localhost:7021/api/payment/Vnpay/Callback");*/
-            helper.AddRequestData("vnp_ReturnUrl", "https://cece-2402-800-6236-bdf7-3c8b-c34-27c7-f5d8.ngrok-free.app/api/payment/Vnpay/Callback");
+            helper.AddRequestData("vnp_ReturnUrl", "https://d3cb78a28797.ngrok-free.app/api/payment/Vnpay/Callback");
             helper.AddRequestData("vnp_TxnRef", request.PaymentId.ToString());
 
             return helper.GetPaymentUrl(_baseUrl, _hashSecret);

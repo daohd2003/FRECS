@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
@@ -14,6 +13,7 @@ using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Services.NotificationServices;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace Services.OrderServices
 {
@@ -369,6 +369,9 @@ namespace Services.OrderServices
                         decimal totalAmount = 0;
                         var orderItems = new List<OrderItem>();
 
+                        DateTime? minRentalStart = null;
+                        DateTime? maxRentalEnd = null;
+
                         foreach (var cartItem in providerGroup)
                         {
                             var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
@@ -390,6 +393,8 @@ namespace Services.OrderServices
                             orderItems.Add(orderItem);
                             totalAmount += orderItem.DailyRate * orderItem.RentalDays * orderItem.Quantity;
                         }
+                        var rentalStart = providerGroup.Min(ci => ci.StartDate);
+                        var rentalEnd = providerGroup.Max(ci => ci.EndDate);
 
                         var newOrder = new Order
                         {
@@ -398,18 +403,22 @@ namespace Services.OrderServices
                             ProviderId = providerId,
                             Status = OrderStatus.pending,
                             TotalAmount = totalAmount,
-                            RentalStart = checkoutRequestDto.RentalStart,
-                            RentalEnd = checkoutRequestDto.RentalEnd,
-                            Items = orderItems
+                            RentalStart = rentalStart,
+                            RentalEnd = rentalEnd,
+                            Items = orderItems,
+                            CustomerFullName = checkoutRequestDto.CustomerFullName,
+                            CustomerEmail = checkoutRequestDto.CustomerEmail,
+                            CustomerPhoneNumber = checkoutRequestDto.CustomerPhoneNumber,
+                            DeliveryAddress = checkoutRequestDto.DeliveryAddress
                         };
 
                         await _orderRepo.AddAsync(newOrder);
                         createdOrders.Add(newOrder);
 
-                        foreach (var cartItem in providerGroup)
-                        {
-                            await _cartRepository.DeleteCartItemAsync(cartItem);
-                        }
+                        //foreach (var cartItem in providerGroup)
+                        //{
+                        //    await _cartRepository.DeleteCartItemAsync(cartItem);
+                        //}
 
                         // Gửi thông báo
                         await _notificationService.NotifyNewOrderCreated(newOrder.Id);
@@ -616,6 +625,7 @@ namespace Services.OrderServices
                         .ThenInclude(p => p.Images)
                 .Include(o => o.Customer)
                     .ThenInclude(c => c.Profile)
+                    .Include(o => o.Transactions) // Add this to load transaction data
                 .FirstOrDefaultAsync();
 
             if (order == null)
@@ -624,8 +634,40 @@ namespace Services.OrderServices
             }
 
             var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-
+            if (order.Transactions.Any())
+            {
+                orderDetailsDto.PaymentMethod = order.Transactions.OrderByDescending(t => t.TransactionDate).First().PaymentMethod;
+            }
             return orderDetailsDto;
         }
+        public async Task ClearCartItemsForOrderAsync(Order order)
+{
+    if (order == null || order.Items == null || !order.Items.Any())
+    {
+        return;
+    }
+
+    var customerId = order.CustomerId;
+    var productIdsInOrder = order.Items.Select(i => i.ProductId).ToList();
+
+    var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+    if (cart == null || !cart.Items.Any())
+    {
+        return;
+    }
+
+    var cartItemsToRemove = cart.Items
+        .Where(ci => productIdsInOrder.Contains(ci.ProductId))
+        .ToList();
+
+    if (cartItemsToRemove.Any())
+    {
+        foreach (var item in cartItemsToRemove)
+        {
+            // Giả sử _cartRepository có phương thức xóa dựa trên CartItem entity
+            await _cartRepository.DeleteCartItemAsync(item);
+        }
+    }
+}
     }
 }
