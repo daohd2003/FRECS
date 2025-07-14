@@ -35,5 +35,12 @@ namespace BusinessObject.Models
         [Required]
         [Range(1, int.MaxValue, ErrorMessage = "RentalDays must be at least 1.")]
         public int RentalDays { get; set; }
+
+        [Required(ErrorMessage = "Start Date is required for a cart item.")]
+        public DateTime StartDate { get; set; }
+
+        [Required(ErrorMessage = "End Date is required for a cart item.")]
+        public DateTime EndDate { get; set; }
+
     }
 }

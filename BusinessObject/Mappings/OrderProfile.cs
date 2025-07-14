@@ -32,7 +32,7 @@ namespace BusinessObject.Mappings
 
                 .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.Customer.Profile.Address))
                 .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Customer.Profile.Phone))
-                .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.MinValue))
+                .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.UtcNow))
                 .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src => src.Status == OrderStatus.in_use ? src.UpdatedAt : (DateTime?)null))
                 .ForMember(dest => dest.ReturnDate, opt => opt.MapFrom(src => src.RentalEnd));
 

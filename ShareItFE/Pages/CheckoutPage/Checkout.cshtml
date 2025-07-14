@@ -1,0 +1,305 @@
+﻿@page
+@model ShareItFE.Pages.CheckoutPage.CheckoutModel
+@{
+    ViewData["Title"] = "Thanh toán";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/cart.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="~/css/checkout-modal.css" asp-append-version="true" />
+}
+
+@if (!string.IsNullOrEmpty(Model.QrCodeUrl))
+{
+    <div id="qr-modal-container">
+        <div class="modal-overlay" id="modal-overlay-close"></div>
+        <div class="modal-content">
+            <button class="modal-close-btn" id="modal-icon-close">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Quét mã để thanh toán</h2>
+            <div class="marquee-container mb-6">
+                <div class="marquee-content">
+                    SEPay chỉ hỗ trợ thanh toán qua: Vietcombank, VPBank, VIB, VietinBank, MBBank, ACB, Sacombank, TPBank, Eximbank, HDBank, BIDV, Techcombank, MSB, Shinhan Bank, Agribank, Public Bank (PublicBank Việt Nam) và các ngân hàng như OCB, KienlongBank, ABBANK, LPBank, Bac A Bank, SeaBank, SHB, NCB, Woori Bank, VietABank, Vietbank, Nam A Bank, PGBank
+                </div>
+            </div>
+
+            <div class="p-2 border border-gray-200 rounded-lg inline-block mb-4">
+                <img src="@Model.QrCodeUrl" alt="Mã QR thanh toán" class="mx-auto w-64 h-64" />
+            </div>
+
+            <p class="text-xl font-bold">Tổng tiền: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
+            <p class="text-sm text-gray-500 mt-4 max-w-sm mx-auto">Sau khi thanh toán thành công, trạng thái đơn hàng sẽ được cập nhật. Bạn không cần thực hiện thêm thao tác nào.</p>
+
+            <a href="/OrderHistory" class="mt-6 inline-block w-full bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                Kiểm tra lịch sử đơn hàng
+            </a>
+        </div>
+    </div>
+}
+
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        @* Toast Messages *@
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div id="toast-success" class="toast-message bg-success text-white p-3 position-fixed top-0 end-0 m-3 rounded">
+                @Model.SuccessMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div id="toast-error" class="toast-message bg-danger text-white p-3 position-fixed top-0 end-0 m-3 rounded">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        @* Header *@
+        <div class="flex items-center space-x-4 mb-8">
+            <a asp-page="/CartPage/Cart" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+                <span>Trở về giỏ hàng</span>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            @* Checkout Form *@
+            <div class="lg:col-span-2 space-y-6">
+                <form method="post" asp-page-handler="Checkout" class="space-y-6">
+                    @Html.AntiForgeryToken()
+
+                    @* Contact & Delivery Information (Combined) *@
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                            <i class="bi bi-person h-5 w-5 mr-2"></i>
+                            Thông tin liên hệ & Giao hàng
+                        </h2>
+
+                        <div class="mb-4 flex items-center">
+                            <input type="checkbox" id="useSameProfile" name="Input.UseSameProfile" value="true"
+                                   checked="@Model.Input.UseSameProfile" onchange="toggleInputMethod(this.checked);"
+                                   class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                            <label for="useSameProfile" class="ml-2 text-sm text-gray-700">Sử dụng thông tin từ hồ sơ của tôi</label>
+                        </div>
+
+                        <div id="manualInputFields" style="display: @(Model.Input.UseSameProfile ? "none" : "block");">
+                            <div class="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Họ và tên</label>
+                                    <input type="text" name="Input.CustomerFullName" value="@Model.Input.CustomerFullName"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                    <input type="email" name="Input.Email" value="@Model.Input.Email"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                                    <input type="tel" name="Input.PhoneNumber" value="@Model.Input.PhoneNumber"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
+                                    <input type="text" name="Input.Address" value="@Model.Input.Address"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Payment Method *@
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                            <i class="bi bi-credit-card h-5 w-5 mr-2"></i>
+                            Phương thức thanh toán
+                        </h2>
+                        <div class="space-y-4">
+                            <div class="flex space-x-4">
+                                <label class="flex items-center p-3 border rounded-lg has-[:checked]:bg-purple-50 has-[:checked]:border-purple-500 transition-all cursor-pointer">
+                                    <input type="radio" name="Input.PaymentMethod" value="qr"
+                                           checked="@(Model.Input.PaymentMethod == "qr" || string.IsNullOrEmpty(Model.Input.PaymentMethod))"
+                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500" />
+                                    <span class="ml-3">Mã QR (Chuyển khoản)</span>
+                                </label>
+                                <label class="flex items-center p-3 border rounded-lg has-[:checked]:bg-purple-50 has-[:checked]:border-purple-500 transition-all cursor-pointer">
+                                    <input type="radio" name="Input.PaymentMethod" value="vnpay"
+                                           checked="@(Model.Input.PaymentMethod == "vnpay")"
+                                           class="h-4 w-4 text-purple-600 focus:ring-purple-500" />
+                                    <span class="ml-3">VNPay</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full bg-purple-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2">
+                        <i class="bi bi-lock-fill h-5 w-5"></i>
+                        <span>Hoàn tất đơn hàng - @Model.Total.ToString("N0") VND</span>
+                    </button>
+                </form>
+            </div>
+
+            @* Order Summary *@
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Tóm tắt đơn hàng</h2>
+                    <div class="space-y-4 mb-6">
+                        @if (Model.Cart != null && Model.Cart.Items.Any())
+                        {
+                            @foreach (var item in Model.Cart.Items)
+                            {
+                                <div class="flex space-x-3">
+                                    <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
+                                         alt="@item.ProductName"
+                                         class="w-16 h-20 object-cover rounded-lg" />
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="text-sm font-medium text-gray-900 truncate">@item.ProductName</h4>
+                                        <p class="text-sm text-gray-500">Size: @item.ProductSize</p>
+                                        <p class="text-sm text-gray-500">@item.RentalDays ngày</p>
+                                        <p class="text-sm font-semibold text-purple-600">@((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <div class="space-y-3 mb-6 border-t pt-4">
+                        <div class="flex justify-between"><span class="text-gray-600">Tạm tính</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
+                        <div class="flex justify-between"><span class="text-gray-600">Phí giao hàng</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
+                        <div class="border-t pt-3">
+                            <div class="flex justify-between text-lg font-bold"><span>Tổng cộng</span><span class="text-purple-600">@Model.Total.ToString("N0") VND</span></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 text-sm text-gray-600">
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill h-4 w-4 text-green-500"></i><span>Thanh toán mã hóa SSL</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill h-4 w-4 text-green-500"></i><span>Đảm bảo hoàn tiền</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill h-4 w-4 text-green-500"></i><span>Hỗ trợ khách hàng 24/7</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Logic cho toast messages
+            const toastSuccess = document.getElementById('toast-success');
+            if (toastSuccess) setTimeout(() => { toastSuccess.style.display = 'none'; }, 4000);
+
+            const toastError = document.getElementById('toast-error');
+            if (toastError) setTimeout(() => { toastError.style.display = 'none'; }, 4000);
+
+            // Logic cho checkbox "dùng thông tin hồ sơ"
+            const useSameProfileCheckbox = document.getElementById('useSameProfile');
+            if (useSameProfileCheckbox) {
+                useSameProfileCheckbox.addEventListener('change', () => toggleInputMethod(useSameProfileCheckbox.checked));
+                toggleInputMethod(useSameProfileCheckbox.checked);
+            }
+
+            // --- PHẦN SCRIPT MỚI CHO MODAL ---
+            const qrModalContainer = document.getElementById('qr-modal-container');
+            const transactionId = "@TempData["TransactionId"]";
+
+            // Nếu modal tồn tại trong DOM (tức là có QrCodeUrl)
+            if (qrModalContainer) {
+                const closeBtnIcon = document.getElementById('modal-icon-close');
+                const closeBtnOverlay = document.getElementById('modal-overlay-close');
+
+                const openQrModal = () => qrModalContainer.classList.add('open');
+                const closeQrModal = () => qrModalContainer.classList.remove('open');
+
+                // Gán sự kiện đóng modal
+                closeBtnIcon.addEventListener('click', closeQrModal);
+                closeBtnOverlay.addEventListener('click', closeQrModal);
+
+                // Tự động mở modal khi trang tải xong
+                // Dùng setTimeout nhỏ để đảm bảo trình duyệt đã render xong và animation mượt hơn
+                setTimeout(openQrModal, 100);
+
+                    if (transactionId) {
+            const checkStatusInterval = setInterval(async () => {
+                try {
+                            const response = await fetch(`https://localhost:7256/api/transactions/${transactionId}/status`, {
+            credentials: "include"
+        });
+
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            console.error('Transaction not found.');
+                            clearInterval(checkStatusInterval);
+                            alert('Không tìm thấy giao dịch.');
+                        } else if (response.status === 500) {
+                            console.error('Server error while checking transaction status:', response.statusText);
+                            clearInterval(checkStatusInterval);
+                            alert('Đã xảy ra lỗi trên server. Vui lòng thử lại sau.');
+                        } else {
+                            console.error('Error checking transaction status:', response.statusText);
+                        }
+                        return;
+                    }
+                    const apiResponse = await response.json();
+                    const status = apiResponse.data.status;
+
+                    if (status === "completed") {
+                        clearInterval(checkStatusInterval);
+                        alert("Thanh toán thành công!");
+                        window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
+                    } else {
+                        console.log(`Transaction ${transactionId} status: ${status}. Checking again...`);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch transaction status:', error);
+                    clearInterval(checkStatusInterval);
+                    alert('Đã xảy ra lỗi khi kiểm tra trạng thái giao dịch.');
+                }
+            }, 3000);
+
+            // Dừng interval khi đóng modal
+            document.getElementById('modal-icon-close').addEventListener('click', () => {
+                clearInterval(checkStatusInterval);
+                console.log('Payment status check stopped due to modal close.');
+            });
+            document.getElementById('modal-overlay-close').addEventListener('click', () => {
+                clearInterval(checkStatusInterval);
+                console.log('Payment status check stopped due to modal overlay click.');
+            });
+        }
+            }
+        });
+
+        function toggleInputMethod(isChecked) {
+            const manualInputFields = document.getElementById('manualInputFields');
+            const inputs = manualInputFields.querySelectorAll('input, select');
+
+            if (isChecked) {
+                // Khi chọn "Same as profile"
+                manualInputFields.style.display = 'none';
+                inputs.forEach(input => {
+                    input.setAttribute('disabled', 'disabled');
+                    input.removeAttribute('required');
+                });
+            } else {
+                // Khi bỏ chọn
+                manualInputFields.style.display = 'block';
+                inputs.forEach(input => input.removeAttribute('disabled'));
+            }
+        }
+
+        // Khởi tạo trạng thái ban đầu
+        document.addEventListener('DOMContentLoaded', () => {
+            const useSameProfileCheckbox = document.getElementById('useSameProfile');
+            if (useSameProfileCheckbox) {
+                toggleInputMethod(useSameProfileCheckbox.checked);
+            }
+        });
+    </script>
+}

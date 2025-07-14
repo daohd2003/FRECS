@@ -18,6 +18,16 @@
         };
     };
     var totalRentalDays = (Model.Order.RentalEndDate - Model.Order.RentalStartDate).Days + 1;
+    Func<string, string> FormatPaymentMethod = method =>
+    {
+        return method?.ToLower() switch
+        {
+            "vnpay" => "Thanh toán qua VNPay",
+            "sepay" => "Thanh toán qua SEPay",
+            _ => method ?? "Không xác định"
+        };
+    };
+
 }
 
 @section Styles {
@@ -130,7 +140,7 @@
 
             <div class="card">
                 <h3 class="card-title"><i class="bi bi-credit-card"></i> Payment Method</h3>
-                <p>@Model.Order.PaymentMethod</p>
+                <p>@FormatPaymentMethod(Model.Order.PaymentMethod)</p>
             </div>
         </aside>
     </div>

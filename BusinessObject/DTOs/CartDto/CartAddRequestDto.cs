@@ -19,5 +19,11 @@ namespace BusinessObject.DTOs.CartDto
         [Required(ErrorMessage = "Rental Days is required.")]
         [Range(1, int.MaxValue, ErrorMessage = "Rental Days must be at least 1.")]
         public int RentalDays { get; set; }
+
+        [Required(ErrorMessage = "Start Date is required when adding to cart.")]
+        public DateTime StartDate { get; set; }
+
+        [Required(ErrorMessage = "Size is required when adding to cart.")]
+        public string Size { get; set; }
     }
 }

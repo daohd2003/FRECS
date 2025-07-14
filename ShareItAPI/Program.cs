@@ -286,10 +286,13 @@ namespace ShareItAPI
             builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
             builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 
+
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
 
-            builder.WebHost.UseUrls($"http://*:80");
+
+            //builder.WebHost.UseUrls($"http://*:80");
+
             var app = builder.Build();
 
             app.UseCors("AllowAll");

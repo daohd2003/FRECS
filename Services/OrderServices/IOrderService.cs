@@ -36,5 +36,7 @@ namespace Services.OrderServices
         Task<IEnumerable<OrderListDto>> GetCustomerOrdersAsync(Guid customerId);
         Task<Order> GetOrderEntityByIdAsync(Guid orderId);
         Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId);
+
+        Task ClearCartItemsForOrderAsync(Order order);
     }
 }

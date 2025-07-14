@@ -173,7 +173,7 @@
                     <div class="card">
                         <h1 class="page-title">My Orders</h1>
 
-                        @if (Model.TotalPages > 1)
+                        @if (Model.TotalPages >= 1)
                         {
                             var pagedOrders = Model.Orders
                                 .Skip((Model.CurrentPage - 1) * Model.PageSize)

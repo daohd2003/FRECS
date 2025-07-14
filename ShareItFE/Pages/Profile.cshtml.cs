@@ -79,6 +79,7 @@ namespace ShareItFE.Pages
             if (ordersResponse.IsSuccessStatusCode)
             {
                 var ordersContent = await ordersResponse.Content.ReadAsStringAsync();
+                Console.WriteLine(ordersContent);
                 var ordersApiResponse = JsonSerializer.Deserialize<ApiResponse<List<OrderListDto>>>(ordersContent, options);
 
                 // Gán dữ liệu hoặc một list DTO rỗng nếu data là null

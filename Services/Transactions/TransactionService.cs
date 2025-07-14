@@ -154,6 +154,7 @@ namespace LibraryManagement.Services.Payments.Transactions
                         foreach (var order in transaction.Orders)
                         {
                             await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
+                            await _orderService.ClearCartItemsForOrderAsync(order);
                         }
                         _logger.LogInformation("Webhook payment success for Transaction {TransactionId}. Orders: {OrderIds}", transaction.Id, string.Join(", ", orderIds));
                     }
