@@ -220,7 +220,12 @@ namespace ShareItAPI.Controllers
 
             var count = await _cartService.GetCartItemCountAsync(userId);
 
-            return Ok(new { count = count });
+            var response = new CartCountResponse
+            {
+                Count = count
+            };
+
+            return Ok(response);
         }
     }
 }

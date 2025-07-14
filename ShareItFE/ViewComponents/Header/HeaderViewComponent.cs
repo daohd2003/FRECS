@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.NotificationDto;
 using BusinessObject.DTOs.ProfileDtos;
 using Microsoft.AspNetCore.Mvc;
@@ -101,11 +102,10 @@ namespace ShareItFE.ViewComponents.Header
                         var cartResponse = await client.GetAsync("api/cart/count");
                         if (cartResponse.IsSuccessStatusCode)
                         {
-                            // Giả sử API trả về ApiResponse<int> thay vì JsonElement để đồng bộ
-                            var apiResponse = await cartResponse.Content.ReadFromJsonAsync<ApiResponse<int>>();
+                            var apiResponse = await cartResponse.Content.ReadFromJsonAsync<CartCountResponse>();
                             if (apiResponse != null)
                             {
-                                model.CartItemCount = apiResponse.Data;
+                                model.CartItemCount = apiResponse.Count;
                             }
                         }
                     }

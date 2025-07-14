@@ -32,10 +32,10 @@
             <div class="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div class="text-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24 text-gray-300 mx-auto mb-6"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Giỏ hàng của bạn đang trống</h2>
-                    <p class="text-gray-600 mb-8">Khám phá những bộ trang phục tuyệt vời cho các dịp đặc biệt của bạn</p>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Continue shopping</h2>
+                    <p class="text-gray-600 mb-8">Discover great outfits for your special occasions</p>
                     <a asp-page="/Products/Index" class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                        Duyệt bộ sưu tập
+                        Browse Collection
                     </a>
                 </div>
             </div>
@@ -46,7 +46,7 @@
             <div class="flex items-center space-x-4 mb-8">
                 <a asp-page="/Products/Products" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-                    <span>Tiếp tục mua sắm</span>
+                    <span>Continue shopping</span>
                 </a>
             </div>
 
@@ -55,8 +55,8 @@
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white rounded-lg shadow-sm">
                         <div class="p-6 border-b border-gray-200">
-                            <h1 class="text-2xl font-bold text-gray-900">Giỏ hàng</h1>
-                            <p class="text-gray-600">@Model.Cart.Items.Count @(Model.Cart.Items.Count == 1 ? "sản phẩm" : "sản phẩm")</p>
+                            <h1 class="text-2xl font-bold text-gray-900">Shopping Cart</h1>
+                            <p class="text-gray-600">@Model.Cart.Items.Count @(Model.Cart.Items.Count == 1 ? "product" : "products")</p>
                         </div>
 
                         <div class="divide-y divide-gray-200">
@@ -72,15 +72,15 @@
                                             <h3 class="text-lg font-semibold text-gray-900 mb-1">
                                                 @item.ProductName
                                             </h3>
-                                            <p class="text-gray-600 mb-2">Kích cỡ: @item.ProductSize</p>
+                                            <p class="text-gray-600 mb-2">Size: @item.ProductSize</p>
                                             <p class="text-sm text-gray-500 mb-3">
-                                                Từ @item.StartDate.ToString("dd-MM-yyyy") đến @item.EndDate.ToString("dd-MM-yyyy")
+                                                From @item.StartDate.ToString("dd-MM-yyyy") To @item.EndDate.ToString("dd-MM-yyyy")
                                             </p>
 
                                             <div class="flex items-center"> @* Added a flex container for controls ************ NEW ************ *@
                                                 @* Controls for Quantity *@
                                                 <div class="flex flex-col">
-                                                    <label class="text-xs text-gray-500 mb-1">Số lượng</label>
+                                                    <label class="text-xs text-gray-500 mb-1">Quantity</label>
                                                     <form method="post" asp-page-handler="UpdateQuantity" class="inline-flex items-center space-x-2">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="itemId" value="@item.ItemId" />
@@ -101,7 +101,7 @@
 
                                                 @* Controls for Rental Days *@
                                                 <div class="flex flex-col">
-                                                    <label class="text-xs text-gray-500 mb-1">Số ngày thuê</label>
+                                                    <label class="text-xs text-gray-500 mb-1">Number of rental days</label>
                                                     <form method="post" asp-page-handler="UpdateRentalDays" class="inline-flex items-center space-x-2"> @* Removed ml-4 ************ CHANGED ************ *@
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="itemId" value="@item.ItemId" />
@@ -110,7 +110,7 @@
                                                             <i class="bi bi-dash-lg w-4 h-4"></i>
                                                         </button>
                                                         <span class="text-sm font-medium min-w-[3rem] text-center">
-                                                            @item.RentalDays ngày
+                                                            @item.RentalDays
                                                         </span>
                                                         <button type="submit" name="action" value="increase" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Tăng số ngày thuê">
                                                             <i class="bi bi-plus-lg w-4 h-4"></i>
@@ -124,7 +124,7 @@
                                                         <input type="hidden" name="itemId" value="@item.ItemId" />
                                                         <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Xóa sản phẩm">
                                                             <i class="bi bi-trash-fill h-5 w-5"></i>
-                                                            <span class="text-sm">Xóa</span>
+                                                            <span class="text-sm">Delete</span>
                                                         </button>
                                                     </form>
                                             </div> @* End of new flex container for controls ************ NEW ************ *@
@@ -136,7 +136,7 @@
                                                 @((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND
                                             </div>
                                             <div class="text-sm text-gray-500">
-                                                @item.PricePerUnit.ToString("N0") VND/ngày
+                                                @item.PricePerUnit.ToString("N0") VND/day
                                             </div>
                                         </div>
                                     </div>
@@ -147,12 +147,12 @@
 
                     @* Promo Code Section *@
                     <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Mã khuyến mãi</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Promo code</h3>
                         <div class="flex space-x-4">
-                            <input type="text" placeholder="Nhập mã khuyến mãi"
+                            <input type="text" placeholder="Enter promo code"
                                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
                             <button type="button" class="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-                                Áp dụng
+                                Apply
                             </button>
                         </div>
                     </div>
@@ -161,11 +161,11 @@
                 @* Order Summary Section *@
                 <div class="lg:col-span-1">
                     <div class="bg-white rounded-lg shadow-sm p-6 sticky top-8">
-                        <h2 class="text-xl font-bold text-gray-900 mb-6">Tóm tắt đơn hàng</h2>
+                        <h2 class="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
 
                         <div class="space-y-4 mb-6">
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Tổng phụ</span>
+                                <span class="text-gray-600">Subtotal</span>
                                 <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
                             </div>
 
@@ -178,7 +178,7 @@
 
                             <div class="border-t pt-4">
                                 <div class="flex justify-between text-lg font-bold">
-                                    <span>Tổng cộng</span>
+                                    <span>Total</span>
                                     <span class="text-purple-600">@Model.Total.ToString("N0") VND</span>
                                 </div>
                             </div>
@@ -196,7 +196,7 @@
                         <a asp-page="/CheckoutPage/Checkout"
                            class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-center block mb-4 flex items-center justify-center space-x-2">
                             <i class="bi bi-lock-fill h-5 w-5"></i>
-                            <span>Tiến hành thanh toán</span>
+                            <span>Make payment</span>
                         </a>
 
                         @* Security Features *@
@@ -204,15 +204,15 @@
                             <div class="space-y-3 text-sm text-gray-600">
                                 <div class="flex items-center space-x-2">
                                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Thanh toán an toàn</span>
+                                    <span>Secure Payment</span>
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Đổi trả miễn phí trong vòng 24 giờ</span>
+                                    <span>Free returns within 24 hours</span>
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Bao gồm dịch vụ vệ sinh chuyên nghiệp</span>
+                                    <span>Includes professional cleaning service</span>
                                 </div>
                             </div>
                         </div>

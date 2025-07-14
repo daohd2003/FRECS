@@ -37,7 +37,7 @@ namespace ShareItFE.Pages.Products
         public string SelectedSize { get; set; }
 
         [BindProperty, Required(ErrorMessage = "Please select a start date")]
-        public DateTime StartDate { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.Today;
 
         [BindProperty]
         public int RentalDays { get; set; } = 3;
@@ -55,6 +55,11 @@ namespace ShareItFE.Pages.Products
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
+            if (StartDate == DateTime.MinValue)
+            {
+                StartDate = DateTime.Today;
+            }
+
             ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
             SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
 

@@ -244,3 +244,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.product-context-banner a {
+    text-decoration: none; /* Bỏ gạch chân */
+    color: inherit; /* Giữ màu chữ mặc định của phần tử cha */
+}
