@@ -22,7 +22,8 @@ namespace Repositories.CartRepositories
         {
             return await _context.Carts
                 .Include(c => c.Items)
-                    .ThenInclude(ci => ci.Product) // Include product details for cart items
+                    .ThenInclude(ci => ci.Product)
+                    .ThenInclude(p => p.Images)// Include product details for cart items
                 .FirstOrDefaultAsync(c => c.CustomerId == customerId);
         }
 
@@ -54,7 +55,8 @@ namespace Repositories.CartRepositories
         {
             return await _context.CartItems
                 .Include(ci => ci.Cart)
-                .Include(ci => ci.Product) // Include product details
+                .Include(ci => ci.Product)
+                .ThenInclude(p => p.Images)// Include product details
                 .FirstOrDefaultAsync(ci => ci.Id == cartItemId);
         }
 
