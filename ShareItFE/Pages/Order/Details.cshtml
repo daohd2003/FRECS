@@ -129,6 +129,9 @@
             <div class="card">
                 <h3 class="card-title"><i class="bi bi-geo-alt"></i> Shipping Address</h3>
                 <div class="address-details">
+                    <div class="address-email">
+                        <i class="bi bi-envelope"></i> <span>@Model.Order.ShippingAddress.Email</span>
+                    </div>
                     <p><strong>@Model.Order.ShippingAddress.FullName</strong></p>
                     <p>@Model.Order.ShippingAddress.Address</p>
                     <div class="address-phone">

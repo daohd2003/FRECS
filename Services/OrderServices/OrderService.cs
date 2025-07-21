@@ -13,6 +13,9 @@ using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Services.NotificationServices;
 using Microsoft.EntityFrameworkCore;
+using Repositories.ProductRepositories;
+using CloudinaryDotNet.Actions;
+using BusinessObject.DTOs.ApiResponses;
 
 
 namespace Services.OrderServices
@@ -20,6 +23,7 @@ namespace Services.OrderServices
     public class OrderService : IOrderService
     {
         private readonly IOrderRepository _orderRepo;
+        private readonly IProductRepository _productRepo;
         private readonly INotificationService _notificationService;
         private readonly IRepository<Product> _productRepository;
         private readonly IRepository<OrderItem> _orderItemRepository;
@@ -39,7 +43,8 @@ namespace Services.OrderServices
             ICartRepository cartRepository,
             IUserRepository userRepository,
             ShareItDbContext context,
-            IEmailRepository emailRepository)
+            IEmailRepository emailRepository,
+            IProductRepository productRepo)
         {
             _orderRepo = orderRepo;
             _notificationService = notificationService;
@@ -51,6 +56,7 @@ namespace Services.OrderServices
             _userRepository = userRepository;
             _context = context;
             _emailRepository = emailRepository;
+            _productRepo = productRepo;
         }
 
         public async Task CreateOrderAsync(CreateOrderDto dto)
@@ -409,7 +415,8 @@ namespace Services.OrderServices
                             CustomerFullName = checkoutRequestDto.CustomerFullName,
                             CustomerEmail = checkoutRequestDto.CustomerEmail,
                             CustomerPhoneNumber = checkoutRequestDto.CustomerPhoneNumber,
-                            DeliveryAddress = checkoutRequestDto.DeliveryAddress
+                            DeliveryAddress = checkoutRequestDto.DeliveryAddress,
+                            HasAgreedToPolicies = checkoutRequestDto.HasAgreedToPolicies
                         };
 
                         await _orderRepo.AddAsync(newOrder);
@@ -641,33 +648,148 @@ namespace Services.OrderServices
             return orderDetailsDto;
         }
         public async Task ClearCartItemsForOrderAsync(Order order)
-{
-    if (order == null || order.Items == null || !order.Items.Any())
-    {
-        return;
-    }
-
-    var customerId = order.CustomerId;
-    var productIdsInOrder = order.Items.Select(i => i.ProductId).ToList();
-
-    var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
-    if (cart == null || !cart.Items.Any())
-    {
-        return;
-    }
-
-    var cartItemsToRemove = cart.Items
-        .Where(ci => productIdsInOrder.Contains(ci.ProductId))
-        .ToList();
-
-    if (cartItemsToRemove.Any())
-    {
-        foreach (var item in cartItemsToRemove)
         {
-            // Giả sử _cartRepository có phương thức xóa dựa trên CartItem entity
-            await _cartRepository.DeleteCartItemAsync(item);
+            if (order == null || order.Items == null || !order.Items.Any())
+            {
+                return;
+            }
+
+            var customerId = order.CustomerId;
+            var productIdsInOrder = order.Items.Select(i => i.ProductId).ToList();
+
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null || !cart.Items.Any())
+            {
+                return;
+            }
+
+            var cartItemsToRemove = cart.Items
+                .Where(ci => productIdsInOrder.Contains(ci.ProductId))
+                .ToList();
+
+            if (cartItemsToRemove.Any())
+            {
+                foreach (var item in cartItemsToRemove)
+                {
+                    // Giả sử _cartRepository có phương thức xóa dựa trên CartItem entity
+                    await _cartRepository.DeleteCartItemAsync(item);
+                }
+            }
         }
-    }
-}
+
+        public async Task<Guid> RentAgainOrderAsync(Guid customerId, RentAgainRequestDto requestDto)
+        {
+            var originalOrder = await _orderRepo.GetOrderWithItemsAsync(requestDto.OriginalOrderId);
+
+            if (originalOrder == null)
+            {
+                throw new Exception("Original order not found.");
+            }
+
+            if (originalOrder.CustomerId != customerId)
+            {
+                throw new UnauthorizedAccessException("You are not authorized to rent this order again.");
+            }
+
+            if (originalOrder.Status != OrderStatus.returned)
+            {
+                throw new InvalidOperationException("Only returned orders can be rented again.");
+            }
+
+            if (requestDto.NewRentalStartDate >= requestDto.NewRentalEndDate)
+            {
+                throw new ArgumentException("New rental end date must be after start date.");
+            }
+
+            // Check product availability for new dates
+            foreach (var item in originalOrder.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null)
+                {
+                    throw new Exception($"Product with ID {item.ProductId} not found.");
+                }
+
+                var isAvailable = await _productRepo.IsProductAvailable(item.ProductId, requestDto.NewRentalStartDate, requestDto.NewRentalEndDate);
+                if (!isAvailable)
+                {
+                    throw new InvalidOperationException($"Product '{product.Name}' is not available for the selected dates.");
+                }
+            }
+
+            // Create a new order based on the old one
+            var newOrder = new Order
+            {
+                Id = Guid.NewGuid(),
+                CustomerId = originalOrder.CustomerId,
+                ProviderId = originalOrder.ProviderId,
+                Status = OrderStatus.pending,
+                RentalStart = requestDto.NewRentalStartDate,
+                RentalEnd = requestDto.NewRentalEndDate,
+                TotalAmount = 0,
+            };
+
+            int calculatedRentalDays = (int)(requestDto.NewRentalEndDate - requestDto.NewRentalStartDate).TotalDays + 1;
+
+            foreach (var originalItem in originalOrder.Items)
+            {
+                var newItem = new OrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = newOrder.Id,
+                    ProductId = originalItem.ProductId,
+                    Quantity = originalItem.Quantity,
+                    DailyRate = originalItem.DailyRate,
+                    RentalDays = calculatedRentalDays
+                };
+                newOrder.Items.Add(newItem);
+            }
+
+            newOrder.TotalAmount = newOrder.Items.Sum(item =>
+                item.DailyRate * item.Quantity * calculatedRentalDays);
+
+            await _orderRepo.AddAsync(newOrder);
+
+            await _notificationService.NotifyNewOrderCreated(newOrder.Id);
+
+            // Send notifications to both parties
+            await _hubContext.Clients.Group($"notifications-{newOrder.CustomerId}")
+            .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} created (Status: {newOrder.Status})");
+
+            await _hubContext.Clients.Group($"notifications-{newOrder.ProviderId}")
+                .SendAsync("ReceiveNotification", $"New order #{newOrder.Id} received (Status: {newOrder.Status})");
+
+            return newOrder.Id;
+        }
+
+        public async Task<bool> UpdateOrderContactInfoAsync(Guid customerId, UpdateOrderContactInfoDto dto)
+        {
+            var order = await _orderRepo.GetByIdAsync(dto.OrderId);
+
+            if (order == null)
+            {
+                return false;
+            }
+
+            if (order.CustomerId != customerId)
+            {
+                return false;
+            }
+
+            // Chỉ cho cập nhật nếu đơn hàng đang ở trạng thái "pending"
+            if (order.Status != OrderStatus.pending)
+            {
+                return false;
+            }
+
+            order.CustomerFullName = dto.CustomerFullName;
+            order.CustomerEmail = dto.CustomerEmail;
+            order.CustomerPhoneNumber = dto.CustomerPhoneNumber;
+            order.DeliveryAddress = dto.DeliveryAddress;
+            order.HasAgreedToPolicies = dto.HasAgreedToPolicies;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            return await _orderRepo.UpdateOrderContactInfoAsync(order);
+        }
     }
 }

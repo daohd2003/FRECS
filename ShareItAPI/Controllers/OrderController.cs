@@ -4,6 +4,7 @@ using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.OrderServices;
+using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
 {
@@ -175,6 +176,88 @@ namespace ShareItAPI.Controllers
             }
 
             return Ok(new ApiResponse<OrderDetailsDto>("Order details retrieved successfully.", orderDetails));
+        }
+
+        [HttpPost("rent-again")]
+        public async Task<IActionResult> RentAgain([FromBody] RentAgainRequestDto requestDto)
+        {
+            var customerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (customerIdClaim == null || !Guid.TryParse(customerIdClaim.Value, out var customerId))
+            {
+                return Unauthorized(new ApiResponse<string>("Invalid user ID. Please log in again.", null));
+            }
+
+            try
+            {
+                Guid newOrderId = await _orderService.RentAgainOrderAsync(customerId, requestDto);
+
+                return Ok(new ApiResponse<Guid>("Order successfully created for rent again!", newOrderId));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"An unexpected server error occurred: {ex.Message}", null));
+            }
+        }
+
+        [HttpPut("update-contact-info")]
+        public async Task<IActionResult> UpdateOrderContactInfo([FromBody] UpdateOrderContactInfoDto requestDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Message = "Invalid data provided.",
+                    Data = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()
+                });
+            }
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized(new ApiResponse<object>
+                {
+                    Message = "User not authenticated.",
+                    Data = null
+                });
+            }
+
+            var customerId = Guid.Parse(userIdClaim);
+
+            try
+            {
+                var isSuccess = await _orderService.UpdateOrderContactInfoAsync(customerId, requestDto);
+
+                if (!isSuccess)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Message = "Failed to update contact information. The order may not exist, may not belong to you, or may not be in the 'pending' status.",
+                        Data = null
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Message = "Contact information updated successfully.",
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Message = "An internal server error occurred.",
+                    Data = null
+                });
+            }
         }
     }
 }

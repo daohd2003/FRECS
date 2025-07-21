@@ -20,5 +20,7 @@ namespace BusinessObject.DTOs.OrdersDto
         public string? CustomerPhoneNumber { get; set; }
         public string? DeliveryAddress { get; set; }
         public bool UseSameProfile { get; set; } = true;
+
+        public bool HasAgreedToPolicies { get; set; } = false;
     }
 }

@@ -47,5 +47,7 @@ namespace BusinessObject.Models
         public string? CustomerEmail { get; set; } 
         public string? CustomerPhoneNumber { get; set; }
         public string? DeliveryAddress { get; set; }
+
+        public bool HasAgreedToPolicies { get; set; } = false;
     }
 }
