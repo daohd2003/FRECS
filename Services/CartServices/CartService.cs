@@ -62,7 +62,6 @@ namespace Services.CartServices
             }
 
             // Lấy CartItem hiện có (nếu có cùng ProductId, StartDate, RentalDays)
-            // Nếu bạn muốn cùng một sản phẩm có thể thêm nhiều lần với StartDate khác nhau, cần logic phức tạp hơn
             var existingCartItem = cart.Items.FirstOrDefault(ci =>
                 ci.ProductId == cartAddRequestDto.ProductId &&
                 ci.StartDate.Date == cartAddRequestDto.StartDate.Date && // So sánh ngày
@@ -71,7 +70,6 @@ namespace Services.CartServices
             if (existingCartItem != null)
             {
                 existingCartItem.Quantity += cartAddRequestDto.Quantity; // Cộng thêm số lượng
-                // existingCartItem.RentalDays = Math.Max(existingCartItem.RentalDays, cartAddRequestDto.RentalDays); // Giữ số ngày thuê lớn nhất (hoặc không đổi nếu đã khớp)
                 existingCartItem.EndDate = existingCartItem.StartDate.AddDays(existingCartItem.RentalDays); // Cập nhật lại EndDate
                 await _cartRepository.UpdateCartItemAsync(existingCartItem);
             }
@@ -115,10 +113,7 @@ namespace Services.CartServices
                     return await RemoveCartItemAsync(customerId, cartItemId); // Xóa item nếu Quantity về 0
                 }
             }
-            // else: Nếu updateDto.Quantity là null (không được cung cấp), giữ nguyên cartItem.Quantity hiện tại
-
-            // Cập nhật RentalDays nếu updateDto.RentalDays có giá trị
-            if (updateDto.RentalDays.HasValue) // Chỉ kiểm tra HasValue
+            if (updateDto.RentalDays.HasValue)
             {
                 if (updateDto.RentalDays.Value >= 1)
                 {
@@ -128,19 +123,11 @@ namespace Services.CartServices
                 }
                 else
                 {
-                    // Nếu RentalDays được gửi với giá trị < 1, báo lỗi
+                    
                     throw new ArgumentException("Rental Days must be at least 1.");
-                    // Hoặc có thể đặt lại là 1: cartItem.RentalDays = 1; cartItem.EndDate = cartItem.StartDate.AddDays(1);
+                   
                 }
             }
-            // else: Nếu updateDto.RentalDays là null (không được cung cấp), giữ nguyên cartItem.RentalDays hiện tại
-
-
-            // Nếu không có bất kỳ giá trị nào được cung cấp trong updateDto (cả Quantity và RentalDays đều là null),
-            // thì không có gì để cập nhật, có thể trả về false hoặc true (tùy định nghĩa "cập nhật thành công")
-            // Tuy nhiên, với logic hiện tại, nếu cả 2 đều null thì code sẽ chạy qua mà không thay đổi gì
-            // và vẫn sẽ thực hiện SaveChangesAsync.
-            // Để rõ ràng hơn, bạn có thể kiểm tra xem có ít nhất một trường được cung cấp hay không:
             if (!updateDto.Quantity.HasValue && !updateDto.RentalDays.HasValue)
             {
                 return false; // Không có dữ liệu nào để cập nhật
@@ -150,56 +137,6 @@ namespace Services.CartServices
             await _cartRepository.UpdateCartItemAsync(cartItem);
             return true; // Luôn trả về true nếu không có lỗi và đã có ít nhất 1 giá trị được gửi để cập nhật (hoặc xóa)
         }
-        //public async Task<bool> UpdateCartItemAsync(Guid customerId, Guid cartItemId, CartUpdateRequestDto updateDto)
-        //{
-        //    var cartItem = await _cartRepository.GetCartItemByIdAsync(cartItemId);
-        //    // Repository phải bao gồm Cart cha để kiểm tra customerId
-        //    // Example: .Include(ci => ci.Cart)
-
-        //    if (cartItem == null || cartItem.Cart.CustomerId != customerId)
-        //    {
-        //        return false; // Không tìm thấy mục giỏ hàng hoặc không thuộc về người dùng hiện tại
-        //    }
-
-        //    bool updated = false;
-
-        //    // Cập nhật Quantity nếu updateDto.Quantity có giá trị
-        //    if (updateDto.Quantity.HasValue && updateDto.Quantity.Value >= 1)
-        //    {
-        //        cartItem.Quantity = updateDto.Quantity.Value;
-        //        updated = true;
-        //    }
-        //    // Nếu Quantity được gửi với giá trị < 1, chúng ta nên xóa item đó
-        //    else if (updateDto.Quantity.HasValue && updateDto.Quantity.Value < 1)
-        //    {
-        //        return await RemoveCartItemAsync(customerId, cartItemId); // Xóa item nếu Quantity về 0
-        //    }
-
-
-        //    // Cập nhật RentalDays nếu updateDto.RentalDays có giá trị
-        //    if (updateDto.RentalDays.HasValue && updateDto.RentalDays.Value >= 1)
-        //    {
-        //        cartItem.RentalDays = updateDto.RentalDays.Value;
-        //        // Tính toán lại EndDate khi RentalDays thay đổi
-        //        cartItem.EndDate = cartItem.StartDate.AddDays(cartItem.RentalDays);
-        //        updated = true;
-        //    }
-        //    // Nếu RentalDays được gửi với giá trị < 1, chúng ta có thể đặt lại là 1 hoặc báo lỗi
-        //    else if (updateDto.RentalDays.HasValue && updateDto.RentalDays.Value < 1)
-        //    {
-        //        // Tùy chọn: đặt lại là 1 hoặc báo lỗi, không xóa cả item
-        //        // cartItem.RentalDays = 1;
-        //        // updated = true;
-        //        return false; // Báo lỗi là không cho phép RentalDays < 1
-        //    }
-
-        //    if (updated)
-        //    {
-        //        await _cartRepository.UpdateCartItemAsync(cartItem);
-        //        return true;
-        //    }
-        //    return false; // Không có cập nhật hợp lệ nào được cung cấp
-        //}
 
         public async Task<bool> RemoveCartItemAsync(Guid customerId, Guid cartItemId)
         {

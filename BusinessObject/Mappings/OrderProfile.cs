@@ -55,7 +55,12 @@ namespace BusinessObject.Mappings
             // AutoMapper sẽ tự động map List<OrderItem> sang List<OrderItemDetailsDto> nếu bạn đã định nghĩa mapping cho item
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
             // Map từ thông tin Profile của Customer
-            .ForMember(dest => dest.ShippingAddress, opt => opt.MapFrom(src => src.Customer.Profile))
+            .ForMember(dest => dest.ShippingAddress, opt => opt.MapFrom(src => new ShippingAddressDto
+            {
+                FullName = src.CustomerFullName,
+                Phone = src.CustomerPhoneNumber,
+                Address = src.DeliveryAddress
+            }))
             // Map từ Transaction liên quan (lấy cái đầu tiên làm đại diện)
             .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => src.Transactions.FirstOrDefault().PaymentMethod))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Transactions.FirstOrDefault().Content));
