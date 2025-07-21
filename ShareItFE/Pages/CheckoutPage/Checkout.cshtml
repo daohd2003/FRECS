@@ -29,7 +29,7 @@
             </div>
 
             <div class="p-2 border border-gray-200 rounded-lg inline-block mb-4">
-                <img src="@Model.QrCodeUrl" alt="Mã QR thanh toán" class="mx-auto w-64 h-64" />
+                <img src="@Model.QrCodeUrl" alt="Mã QR thanh toán" class="mx-auto w-32 h-64" />
             </div>
 
             <p class="text-xl font-bold">Tổng tiền: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
@@ -73,6 +73,11 @@
                 <form method="post" asp-page-handler="Checkout" class="space-y-6">
                     @Html.AntiForgeryToken()
 
+                    @if (Model.OrderId.HasValue && Model.OrderId.Value != Guid.Empty)
+                    {
+                        <input type="hidden" asp-for="OrderId" />
+                    }
+
                     @* Contact & Delivery Information (Combined) *@
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
@@ -82,7 +87,7 @@
 
                         <div class="mb-4 flex items-center">
                             <input type="checkbox" id="useSameProfile" name="Input.UseSameProfile" value="true"
-                                   checked="@Model.Input.UseSameProfile" onchange="toggleInputMethod(this.checked);"
+                                   checked="@(Model.Input.UseSameProfile)" onchange="toggleInputMethod(this.checked);"
                                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
                             <label for="useSameProfile" class="ml-2 text-sm text-gray-700">Sử dụng thông tin từ hồ sơ của tôi</label>
                         </div>
@@ -137,7 +142,17 @@
                         </div>
                     </div>
 
+                    <div class="mb-6">
+                        <input type="checkbox" id="hasAgreedToPolicies" name="Input.HasAgreedToPolicies" value="true"
+                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                        <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
+                            I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
+                        </label>
+                        <span asp-validation-for="Input.HasAgreedToPolicies" class="text-danger text-sm mt-1 block"></span>
+                    </div>
+
                     <button type="submit"
+                            id="checkoutButton"
                             class="w-full bg-purple-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2">
                         <i class="bi bi-lock-fill h-5 w-5"></i>
                         <span>Hoàn tất đơn hàng - @Model.Total.ToString("N0") VND</span>
@@ -149,38 +164,44 @@
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-sm p-6 sticky top-8">
                     <h2 class="text-xl font-bold text-gray-900 mb-6">Tóm tắt đơn hàng</h2>
-                    <div class="space-y-4 mb-6">
+
+                    <div class="space-y-8 mb-6">
                         @if (Model.Cart != null && Model.Cart.Items.Any())
                         {
                             @foreach (var item in Model.Cart.Items)
                             {
-                                <div class="flex space-x-3">
+                                <div class="space-y-2">
+                                    <!-- Ảnh sản phẩm lớn -->
                                     <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
                                          alt="@item.ProductName"
-                                         class="w-16 h-20 object-cover rounded-lg" />
-                                    <div class="flex-1 min-w-0">
-                                        <h4 class="text-sm font-medium text-gray-900 truncate">@item.ProductName</h4>
-                                        <p class="text-sm text-gray-500">Size: @item.ProductSize</p>
-                                        <p class="text-sm text-gray-500">@item.RentalDays ngày</p>
-                                        <p class="text-sm font-semibold text-purple-600">@((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
+                                         class="w-full h-auto rounded-lg object-cover" />
+
+                                    <!-- Thông tin sản phẩm -->
+                                    <div class="text-sm text-gray-800 leading-5">
+                                        <p class="font-semibold">@item.ProductName</p>
+                                        <p>Size: <span class="font-medium">@item.ProductSize</span></p>
+                                        <p>@item.RentalDays ngày</p>
+                                        <p class="text-purple-600 font-bold text-base mt-1">@((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
                                     </div>
                                 </div>
                             }
                         }
                     </div>
 
+                    <!-- Tổng kết giá -->
                     <div class="space-y-3 mb-6 border-t pt-4">
-                        <div class="flex justify-between"><span class="text-gray-600">Tạm tính</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
-                        <div class="flex justify-between"><span class="text-gray-600">Phí giao hàng</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">Tạm tính</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">Phí giao hàng</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
                         <div class="border-t pt-3">
                             <div class="flex justify-between text-lg font-bold"><span>Tổng cộng</span><span class="text-purple-600">@Model.Total.ToString("N0") VND</span></div>
                         </div>
                     </div>
 
+                    <!-- Cam kết -->
                     <div class="space-y-3 text-sm text-gray-600">
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill h-4 w-4 text-green-500"></i><span>Thanh toán mã hóa SSL</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill h-4 w-4 text-green-500"></i><span>Đảm bảo hoàn tiền</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill h-4 w-4 text-green-500"></i><span>Hỗ trợ khách hàng 24/7</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Thanh toán mã hóa SSL</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Đảm bảo hoàn tiền</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Hỗ trợ khách hàng 24/7</span></div>
                     </div>
                 </div>
             </div>
@@ -191,114 +212,121 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Logic cho toast messages
+            // --- 1. Logic cho Toast Messages ---
             const toastSuccess = document.getElementById('toast-success');
-            if (toastSuccess) setTimeout(() => { toastSuccess.style.display = 'none'; }, 4000);
+            if (toastSuccess) {
+                setTimeout(() => { toastSuccess.style.display = 'none'; }, 4000);
+            }
 
             const toastError = document.getElementById('toast-error');
-            if (toastError) setTimeout(() => { toastError.style.display = 'none'; }, 4000);
+            if (toastError) {
+                setTimeout(() => { toastError.style.display = 'none'; }, 4000);
+            }
 
-            // Logic cho checkbox "dùng thông tin hồ sơ"
+            // --- 2. Logic cho Checkbox "Sử dụng thông tin hồ sơ của tôi" ---
             const useSameProfileCheckbox = document.getElementById('useSameProfile');
+            const manualInputFields = document.getElementById('manualInputFields');
+
+            // Hàm này sẽ điều khiển việc hiển thị/vô hiệu hóa các trường nhập liệu thủ công
+            function toggleInputMethod(isChecked) {
+                const inputs = manualInputFields.querySelectorAll('input, select');
+
+                if (isChecked) {
+                    manualInputFields.style.display = 'none';
+                    inputs.forEach(input => {
+                        input.setAttribute('disabled', 'disabled');
+                    });
+                } else {
+                    manualInputFields.style.display = 'block';
+                    inputs.forEach(input => {
+                        input.removeAttribute('disabled');
+                    });
+                }
+            }
+
             if (useSameProfileCheckbox) {
                 useSameProfileCheckbox.addEventListener('change', () => toggleInputMethod(useSameProfileCheckbox.checked));
+                // Khởi tạo trạng thái ban đầu khi trang tải dựa trên giá trị Razor Model
                 toggleInputMethod(useSameProfileCheckbox.checked);
             }
 
-            // --- PHẦN SCRIPT MỚI CHO MODAL ---
+            // --- 3. Logic cho Modal QR Code ---
             const qrModalContainer = document.getElementById('qr-modal-container');
-            const transactionId = "@TempData["TransactionId"]";
+            const transactionId = "@TempData["TransactionId"]"; // Lấy transactionId từ TempData Razor Pages
 
-            // Nếu modal tồn tại trong DOM (tức là có QrCodeUrl)
-            if (qrModalContainer) {
+            if (qrModalContainer) { // Chỉ chạy logic modal nếu modal HTML tồn tại trên trang
                 const closeBtnIcon = document.getElementById('modal-icon-close');
                 const closeBtnOverlay = document.getElementById('modal-overlay-close');
 
                 const openQrModal = () => qrModalContainer.classList.add('open');
                 const closeQrModal = () => qrModalContainer.classList.remove('open');
 
-                // Gán sự kiện đóng modal
                 closeBtnIcon.addEventListener('click', closeQrModal);
                 closeBtnOverlay.addEventListener('click', closeQrModal);
 
-                // Tự động mở modal khi trang tải xong
-                // Dùng setTimeout nhỏ để đảm bảo trình duyệt đã render xong và animation mượt hơn
+                // Tự động mở modal khi trang tải xong (nếu có QrCodeUrl)
                 setTimeout(openQrModal, 100);
 
-                    if (transactionId) {
-            const checkStatusInterval = setInterval(async () => {
-                try {
+                // Nếu có transactionId, bắt đầu kiểm tra trạng thái thanh toán định kỳ
+                if (transactionId) {
+                    let checkStatusInterval = setInterval(async () => { // Changed to 'let' to allow reassigning
+                        try {
                             const response = await fetch(`https://localhost:7256/api/transactions/${transactionId}/status`, {
-            credentials: "include"
-        });
+                                credentials: "include" // Giữ nguyên nếu cần gửi cookie/token
+                            });
 
-                    if (!response.ok) {
-                        if (response.status === 404) {
-                            console.error('Transaction not found.');
+                            if (!response.ok) {
+                                console.error(`Error checking transaction status: ${response.status} - ${response.statusText}`);
+                                clearInterval(checkStatusInterval);
+                                alert('Đã xảy ra lỗi khi kiểm tra trạng thái giao dịch.');
+                                return;
+                            }
+
+                            const apiResponse = await response.json();
+                            const status = apiResponse.data?.status; // Đảm bảo truy cập an toàn
+
+                            if (status === "completed") {
+                                clearInterval(checkStatusInterval);
+                                alert("Thanh toán thành công!");
+                                // Chuyển hướng đến trang lịch sử đơn hàng sau khi thanh toán thành công
+                                window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
+                            } else {
+                                console.log(`Transaction ${transactionId} status: ${status}. Checking again...`);
+                            }
+                        } catch (error) {
+                            console.error('Failed to fetch transaction status:', error);
                             clearInterval(checkStatusInterval);
-                            alert('Không tìm thấy giao dịch.');
-                        } else if (response.status === 500) {
-                            console.error('Server error while checking transaction status:', response.statusText);
-                            clearInterval(checkStatusInterval);
-                            alert('Đã xảy ra lỗi trên server. Vui lòng thử lại sau.');
-                        } else {
-                            console.error('Error checking transaction status:', response.statusText);
+                            alert('Đã xảy ra lỗi khi kiểm tra trạng thái giao dịch.');
                         }
-                        return;
-                    }
-                    const apiResponse = await response.json();
-                    const status = apiResponse.data.status;
+                    }, 3000); // Kiểm tra mỗi 3 giây
 
-                    if (status === "completed") {
-                        clearInterval(checkStatusInterval);
-                        alert("Thanh toán thành công!");
-                        window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
-                    } else {
-                        console.log(`Transaction ${transactionId} status: ${status}. Checking again...`);
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch transaction status:', error);
-                    clearInterval(checkStatusInterval);
-                    alert('Đã xảy ra lỗi khi kiểm tra trạng thái giao dịch.');
+                    // Dừng interval khi người dùng đóng modal thủ công
+                    closeBtnIcon.addEventListener('click', () => { clearInterval(checkStatusInterval); console.log('Payment status check stopped due to modal close.'); });
+                    closeBtnOverlay.addEventListener('click', () => { clearInterval(checkStatusInterval); console.log('Payment status check stopped due to modal overlay click.'); });
                 }
-            }, 3000);
-
-            // Dừng interval khi đóng modal
-            document.getElementById('modal-icon-close').addEventListener('click', () => {
-                clearInterval(checkStatusInterval);
-                console.log('Payment status check stopped due to modal close.');
-            });
-            document.getElementById('modal-overlay-close').addEventListener('click', () => {
-                clearInterval(checkStatusInterval);
-                console.log('Payment status check stopped due to modal overlay click.');
-            });
-        }
             }
-        });
 
-        function toggleInputMethod(isChecked) {
-            const manualInputFields = document.getElementById('manualInputFields');
-            const inputs = manualInputFields.querySelectorAll('input, select');
+            // --- 4. Logic cho Checkbox "Đồng ý chính sách" và nút Thanh toán ---
+            const hasAgreedCheckbox = document.getElementById('hasAgreedToPolicies');
+            const checkoutButton = document.getElementById('checkoutButton');
 
-            if (isChecked) {
-                // Khi chọn "Same as profile"
-                manualInputFields.style.display = 'none';
-                inputs.forEach(input => {
-                    input.setAttribute('disabled', 'disabled');
-                    input.removeAttribute('required');
-                });
-            } else {
-                // Khi bỏ chọn
-                manualInputFields.style.display = 'block';
-                inputs.forEach(input => input.removeAttribute('disabled'));
+            // Hàm này sẽ cập nhật trạng thái của nút thanh toán
+            function updateCheckoutButtonState() {
+                if (hasAgreedCheckbox.checked) {
+                    checkoutButton.disabled = false;
+                    checkoutButton.classList.remove('bg-purple-400', 'cursor-not-allowed');
+                    checkoutButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                } else {
+                    checkoutButton.disabled = true;
+                    checkoutButton.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                    checkoutButton.classList.add('bg-purple-400', 'cursor-not-allowed');
+                }
             }
-        }
 
-        // Khởi tạo trạng thái ban đầu
-        document.addEventListener('DOMContentLoaded', () => {
-            const useSameProfileCheckbox = document.getElementById('useSameProfile');
-            if (useSameProfileCheckbox) {
-                toggleInputMethod(useSameProfileCheckbox.checked);
+            if (hasAgreedCheckbox && checkoutButton) {
+                hasAgreedCheckbox.addEventListener('change', updateCheckoutButtonState);
+                // Khởi tạo trạng thái ban đầu của nút khi trang tải
+                updateCheckoutButtonState();
             }
         });
     </script>

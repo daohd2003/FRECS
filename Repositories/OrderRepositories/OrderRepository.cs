@@ -106,5 +106,22 @@ namespace Repositories.OrderRepositories
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task<Order> GetOrderWithItemsAsync(Guid orderId)
+        {
+            return await _context.Orders
+                                 .Include(o => o.Items)
+                                 .FirstOrDefaultAsync(o => o.Id == orderId);
+        }
+
+        public async Task<bool> UpdateOrderContactInfoAsync(Order orderToUpdate)
+        {
+            if (orderToUpdate == null) return false;
+
+            _context.Orders.Update(orderToUpdate);
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

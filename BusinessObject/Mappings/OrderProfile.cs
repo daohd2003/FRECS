@@ -57,6 +57,7 @@ namespace BusinessObject.Mappings
             // Map từ thông tin Profile của Customer
             .ForMember(dest => dest.ShippingAddress, opt => opt.MapFrom(src => new ShippingAddressDto
             {
+                Email = src.CustomerEmail,
                 FullName = src.CustomerFullName,
                 Phone = src.CustomerPhoneNumber,
                 Address = src.DeliveryAddress

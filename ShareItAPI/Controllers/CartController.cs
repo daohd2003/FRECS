@@ -184,6 +184,14 @@ namespace ShareItAPI.Controllers
         {
             try
             {
+                if (!checkoutRequestDto.HasAgreedToPolicies)
+                {
+                    return BadRequest(new ApiResponse<object>(
+                "You must read and agree to the Rental and Sales Policy to proceed with payment.",
+                null
+            ));
+                }
+
                 var customerId = GetCustomerId();
                 var createdOrders = await _orderService.CreateOrderFromCartAsync(customerId, checkoutRequestDto);
 
