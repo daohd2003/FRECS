@@ -1,15 +1,10 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using BusinessObject.DTOs.ProductDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
-using Repositories.ProductRepositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.ProductServices
 {
@@ -41,7 +36,7 @@ namespace Services.ProductServices
             return product == null ? null : _mapper.Map<ProductDTO>(product);
         }
 
-        public async Task<ProductDTO> AddAsync(ProductDTO productDto)
+        /*public async Task<ProductDTO> AddAsync(ProductDTO productDto)
         {
             var product = _mapper.Map<Product>(productDto);
             product.Id = Guid.NewGuid();
@@ -51,6 +46,70 @@ namespace Services.ProductServices
             await _context.SaveChangesAsync();
 
             return _mapper.Map<ProductDTO>(product);
+        }*/
+        public async Task<ProductDTO> AddAsync(ProductRequestDTO dto)
+        {
+            // Bắt đầu transaction để đảm bảo toàn vẹn dữ liệu
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Bước 1: Tạo đối tượng Product Entity từ DTO
+                var newProduct = new Product
+                {
+                    ProviderId = dto.ProviderId,
+                    Name = dto.Name,
+                    Description = dto.Description,
+                    Category = dto.Category,
+                    Size = dto.Size,
+                    Color = dto.Color,
+                    PricePerDay = dto.PricePerDay,
+                    // Sẽ được gán từ Controller
+
+                    // Các giá trị mặc định khi tạo mới
+                    CreatedAt = DateTime.UtcNow,
+                    AvailabilityStatus = AvailabilityStatus.available,
+                    RentCount = 0,
+                    AverageRating = 0,
+                    RatingCount = 0,
+                    IsPromoted = true
+                    // Lưu ý: Không có PrimaryImagesUrl ở đây vì bảng Products không có cột này
+                };
+
+                // Bước 2: Thêm Product vào DbContext và Lưu để lấy Id
+                _context.Products.Add(newProduct);
+                await _context.SaveChangesAsync(); // <-- DB sẽ sinh ra Id cho newProduct tại đây
+
+                // Bước 3: Dùng newProduct.Id để tạo các bản ghi ProductImage
+                if (dto.Images != null && dto.Images.Any())
+                {
+                    foreach (var imageDto in dto.Images)
+                    {
+                        var productImage = new ProductImage
+                        {
+                            ProductId = newProduct.Id, // <-- Dùng Id vừa được tạo
+                            ImageUrl = imageDto.ImageUrl,
+                            IsPrimary = imageDto.IsPrimary,
+                            // Nếu bạn đã thêm cột PublicId, hãy gán nó ở đây
+                            // PublicId = imageDto.PublicId 
+                        };
+                        _context.ProductImages.Add(productImage);
+                    }
+
+                    // Lưu tất cả các ảnh vào DB
+                    await _context.SaveChangesAsync();
+                }
+
+                // Bước 4: Nếu mọi thứ thành công, commit transaction
+                await transaction.CommitAsync();
+
+                return _mapper.Map<ProductDTO>(newProduct);
+            }
+            catch (Exception)
+            {
+                // Nếu có lỗi, rollback tất cả
+                await transaction.RollbackAsync();
+                throw; // Ném lại lỗi để Controller bắt và xử lý
+            }
         }
 
         public async Task<bool> UpdateAsync(ProductDTO productDto)

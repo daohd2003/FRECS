@@ -82,6 +82,12 @@ namespace ShareItFE.Pages.Products
                 if (productResponse.IsSuccessStatusCode)
                 {
                     Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
+                    if (Product != null && Product.Images != null)
+                    {
+                        Product.Images = Product.Images
+                            .OrderByDescending(i => i.IsPrimary) // ảnh chính lên đầu
+                            .ToList();
+                    }
                     if (Product == null) return NotFound();
                 }
                 else
@@ -311,6 +317,12 @@ namespace ShareItFE.Pages.Products
                 if (productResponse.IsSuccessStatusCode)
                 {
                     Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
+                    if (Product != null && Product.Images != null)
+                    {
+                        Product.Images = Product.Images
+                            .OrderByDescending(i => i.IsPrimary) // ảnh chính lên đầu
+                            .ToList();
+                    }
                     if (Product == null) Product = new ProductDTO(); // Khởi tạo Product để tránh null reference
                 }
                 else
