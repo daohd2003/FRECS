@@ -1,10 +1,4 @@
 ﻿using BusinessObject.DTOs.ProductDto;
-using BusinessObject.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.ProductServices
 {
@@ -12,7 +6,8 @@ namespace Services.ProductServices
     {
         IQueryable<ProductDTO> GetAll();
         Task<ProductDTO?> GetByIdAsync(Guid id);
-        Task<ProductDTO> AddAsync(ProductDTO productDto);
+        /*Task<ProductDTO> AddAsync(ProductDTO productDto);*/
+        Task<ProductDTO> AddAsync(ProductRequestDTO productDto);
         Task<bool> UpdateAsync(ProductDTO productDto);
         Task<bool> DeleteAsync(Guid id);
     }

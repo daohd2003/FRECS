@@ -1,13 +1,12 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Services.UserServices;
+﻿using BusinessObject.DTOs.CloudinarySetting;
+using BusinessObject.Models;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using BusinessObject.DTOs.CloudinarySetting;
 using Microsoft.AspNetCore.Http;
-using BusinessObject.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Services.ProfileServices;
-using Services.Utilities;
+using Services.UserServices;
 
 namespace Services.CloudServices
 {
@@ -100,6 +99,67 @@ namespace Services.CloudServices
             await _profileService.UpdateAsync(profile);
 
             return imageUrl;
+        }
+        public async Task<BusinessObject.DTOs.ProductDto.ImageUploadResult> UploadSingleImageAsync(IFormFile file, Guid userId, string projectName, string folderType)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("No file selected.");
+
+            // Validation (có thể thêm kiểm tra size, loại file...)
+
+            var publicId = $"product_{userId}_{Path.GetRandomFileName()}";
+
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream()),
+                PublicId = publicId,
+                Folder = $"{projectName}/{folderType}/{userId}",
+                Overwrite = false,
+                Transformation = new Transformation().Quality("auto").FetchFormat("auto")
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            if (uploadResult.Error != null)
+            {
+                _logger.LogError($"Cloudinary upload failed: {uploadResult.Error.Message}");
+                throw new Exception($"Upload failed: {uploadResult.Error.Message}");
+            }
+
+            return new BusinessObject.DTOs.ProductDto.ImageUploadResult
+            {
+                ImageUrl = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId
+            };
+        }
+
+        // --- PHƯƠNG THỨC UPLOAD NHIỀU ẢNH ---
+        public async Task<List<BusinessObject.DTOs.ProductDto.ImageUploadResult>> UploadMultipleImagesAsync(IFormFileCollection files, Guid userId, string projectName, string folderType)
+        {
+            if (files == null || files.Count == 0)
+                throw new ArgumentException("No files selected.");
+
+            var uploadResults = new List<BusinessObject.DTOs.ProductDto.ImageUploadResult>();
+
+            foreach (var file in files)
+            {
+                if (file.Length == 0) continue;
+
+                // Có thể gọi lại hàm upload 1 ảnh để tránh lặp code
+                var result = await UploadSingleImageAsync(file, userId, projectName, folderType);
+                uploadResults.Add(result);
+            }
+
+            return uploadResults;
+        }
+        public async Task<bool> DeleteImageAsync(string publicId)
+        {
+            if (string.IsNullOrEmpty(publicId)) return false;
+
+            var deletionParams = new DeletionParams(publicId);
+            var result = await _cloudinary.DestroyAsync(deletionParams);
+
+            // "ok" nghĩa là xóa thành công, "not found" cũng có thể coi là thành công
+            return result.Result.ToLower() == "ok" || result.Result.ToLower() == "not found";
         }
     }
 }
