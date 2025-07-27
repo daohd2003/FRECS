@@ -24,7 +24,7 @@
             <a asp-page="/Products/Products">Browse</a>
             @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
             {
-                <a asp-page="/PostItem">List Item</a>
+                <a asp-page="/Provider/PostItem">List Item</a>
             }
             <a href="/Index#how-it-works">How it Works</a>
             <a asp-page="/Contact">Contact</a>
@@ -35,7 +35,7 @@
             {
                 @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
                 {
-                    <a asp-page="/Cart" class="cart-link">
+                    <a asp-page="/CartPage/Cart" class="cart-link" style="position: relative; display: flex; align-items: center;">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -43,10 +43,74 @@
                         </svg>
                         @if (Model.CartItemCount > 0)
                         {
-                            <span class="cart-count">@Model.CartItemCount</span>
+                            <span class="cart-count" style="position: absolute; top: -5px; right: -5px; background-color: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.4rem; font-size: 0.75rem; line-height: 1;">@Model.CartItemCount</span>
                         }
                     </a>
                 }
+
+                <div class="notification-menu" data-userid="@Model.UserId" data-token="@Model.AccessToken">
+                    <button id="notificationButton" class="notification-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        @if (Model.UnreadNotificationCount > 0)
+                        {
+                            <span id="notificationCount" class="notification-count">@Model.UnreadNotificationCount</span>
+                        }
+                        else
+                        {
+                            <span id="notificationCount" class="notification-count" style="display: none;"></span>
+                        }
+                    </button>
+                    <div id="notificationDropdown" class="notification-dropdown">
+                        <div class="notification-header">
+                            <span>Notifications</span>
+                            <button id="markAllReadBtn" class="mark-all-read-btn">Mark all as read</button>
+                        </div>
+                        <div id="notificationList" class="notification-list">
+                            @if (Model.Notifications != null && Model.Notifications.Any())
+                            {
+                                @foreach (var notification in Model.Notifications)
+                                {
+                                    @if (notification.OrderId.HasValue && notification.OrderId != Guid.Empty)
+                                    {
+                                        <a href="/Order/Details/@notification.OrderId" class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
+                                            <div class="notification-content">
+                                                <p class="notification-message">@notification.Message</p>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("g")</span>
+                                            </div>
+                                            @if (!notification.IsRead)
+                                            {
+                                                <div class="unread-dot"></div>
+                                            }
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <div class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
+                                            <div class="notification-content">
+                                                <p class="notification-message">@notification.Message</p>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("g")</span>
+                                            </div>
+                                            @if (!notification.IsRead)
+                                            {
+                                                <div class="unread-dot"></div>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <p class="no-notifications">You have no notifications.</p>
+                            }
+                        </div>
+                        <div class="notification-footer">
+                            <a href="/Notifications">View all notifications</a>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="user-menu">
                     <button id="userMenuButton" class="user-menu-button">
@@ -71,6 +135,13 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                             <span>My Orders</span>
                         </a>
+                        @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Customer/Messages">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                <span>Messages</span>
+                            </a>
+                        }
 
                         @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                         {
@@ -78,7 +149,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                                 <span>My Listings</span>
                             </a>
-                            <a asp-page="/PostItem">
+                            <a asp-page="/Provider/PostItem">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                 <span>List New Item</span>
                             </a>
@@ -132,7 +203,7 @@
                 <a asp-page="/Products">Browse</a>
                 @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                 {
-                    <a asp-page="/PostItem">List Item</a>
+                    <a asp-page="/Provider/PostItem">List Item</a>
                 }
                 <a href="/Index#how-it-works">How it Works</a>
                 <a asp-page="/Contact">Contact</a>

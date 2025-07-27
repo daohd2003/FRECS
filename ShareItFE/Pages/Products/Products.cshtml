@@ -4,7 +4,6 @@
 @{
     ViewData["Title"] = "Browse Collection";
 
-    // Dữ liệu tĩnh cho các bộ lọc
     var categories = new List<SelectListItem>
     {
         new SelectListItem { Value = "", Text = "All Categories" },
@@ -57,8 +56,8 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <div class="min-h-screen bg-gray-50">
+    @Html.AntiForgeryToken()
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
         <div class="mb-8">
             <h1 class="text-4xl font-bold text-gray-900 mb-4">Browse Collection</h1>
             <p class="text-xl text-gray-600">Discover the perfect outfit for your special occasion</p>
@@ -67,6 +66,8 @@
         <div class="bg-white p-6 rounded-lg shadow-sm mb-8">
             <form id="filterForm" method="get">
                 <input type="hidden" name="IsFilterOpen" id="isFilterOpenInput" value="@Model.IsFilterOpen.ToString().ToLower()" />
+                <input type="hidden" name="CurrentPage" id="currentPageInput" value="@Model.CurrentPage" />
+                <input type="hidden" name="PageSize" id="pageSizeInput" value="@Model.PageSize" />
 
                 <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div class="relative w-full md:w-auto md:flex-grow">
@@ -74,7 +75,7 @@
                             <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
                         </div>
                         <input type="text" name="SearchQuery" value="@Model.SearchQuery" placeholder="Search products..."
-                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" onchange="this.form.submit()" />
                     </div>
 
                     <div class="flex items-center gap-2 sm:gap-4 w-full md:w-auto">
@@ -104,7 +105,6 @@
 
                 <div id="filterPanel" class="@(Model.IsFilterOpen ? "" : "hidden") pt-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
                         <div>
                             <label for="CategoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
                             <select id="CategoryFilter" name="CategoryFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
@@ -144,7 +144,6 @@
                                 }
                             </select>
                         </div>
-
                     </div>
                 </div>
             </form>
@@ -158,7 +157,7 @@
 
         @if (Model.Products != null && Model.Products.Any())
         {
-            <div class="@(Model.ViewMode == "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-6")">
+            <div class="@(Model.ViewMode == "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-6")" id="productList">
                 @foreach (var product in Model.Products)
                 {
                     <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
@@ -166,9 +165,13 @@
                             <a href="/products/detail/@product.Id">
                                 <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" alt="@product.Name" class="object-cover w-full h-80 hover:scale-105 transition-transform duration-300" />
                             </a>
-                            <button class="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
-                                <i data-lucide="heart" class="h-5 w-5 text-gray-600 hover:text-red-500"></i>
-                            </button>
+                            <form method="post" action="/products?handler=AddFavorite" class="favorite-form" data-product-id="@product.Id">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="productId" value="@product.Id" />
+                                <button type="submit" class="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors favorite-btn" data-product-id="@product.Id">
+                                    <i data-lucide="heart" class="h-5 w-5 text-gray-600 hover:text-red-500 favorite-icon" data-initial-color="gray-600"></i>
+                                </button>
+                            </form>
                         </div>
                         <div class="p-4 flex flex-col flex-grow">
                             <a href="/products/detail/@product.Id" class="flex-grow">
@@ -191,6 +194,41 @@
                     </div>
                 }
             </div>
+
+            <div class="mt-8 flex justify-center items-center gap-4">
+                <form method="get" id="paginationForm" class="flex items-center gap-2">
+                    <input type="hidden" name="SearchQuery" value="@Model.SearchQuery" />
+                    <input type="hidden" name="SortBy" value="@Model.SortBy" />
+                    <input type="hidden" name="ViewMode" value="@Model.ViewMode" />
+                    <input type="hidden" name="CategoryFilter" value="@Model.CategoryFilter" />
+                    <input type="hidden" name="PriceRangeFilter" value="@Model.PriceRangeFilter" />
+                    <input type="hidden" name="SizeFilter" value="@Model.SizeFilter" />
+                    <input type="hidden" name="RatingFilter" value="@Model.RatingFilter" />
+                    <input type="hidden" name="IsFilterOpen" value="@Model.IsFilterOpen.ToString().ToLower()" />
+                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                    <input type="hidden" name="CurrentPage" id="paginationPageInput" value="@Model.CurrentPage" />
+
+                    <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage - 1))"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled="@(Model.CurrentPage <= 1)">
+                        Previous
+                    </button>
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@i)"
+                                class="px-4 py-2 rounded-lg @(i == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
+                            @i
+                        </button>
+                    }
+
+                    <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage + 1))"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled="@(Model.CurrentPage >= Model.TotalPages)">
+                        Next
+                    </button>
+                </form>
+            </div>
         }
         else
         {
@@ -205,10 +243,59 @@
 
 @section Scripts {
     <script>
-        // Khởi tạo các icon
         lucide.createIcons();
 
-        // Logic cho nút bật/tắt panel filter
+        document.addEventListener('DOMContentLoaded', () => {
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <text>
+                    alert('Added to favorites successfully');
+                const productId = '@TempData["LastAddedProductId"]';
+                if (productId) {
+                    const heartIcon = document.querySelector(`.favorite-form[data-product-id="${productId}"] .favorite-icon`);
+                    if (heartIcon) {
+                        heartIcon.classList.remove('text-gray-600', 'hover:text-red-500');
+                        heartIcon.classList.add('text-red-500', 'fill-red-500');
+                    }
+                }
+            </text>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <text>
+                    alert('@TempData["ErrorMessage"]');
+            </text>
+        }
+
+                // Kiểm tra trạng thái yêu thích từ model khi load trang
+        @if (Model.FavoriteProductIds != null && Model.FavoriteProductIds.Any())
+        {
+            <text>
+                                            const favoriteIds = @Html.Raw(Json.Serialize(Model.FavoriteProductIds));
+                favoriteIds.forEach(id => {
+                    const heartIcon = document.querySelector(`.favorite-form[data-product-id="${id}"] .favorite-icon`);
+                    if (heartIcon) {
+                        heartIcon.classList.remove('text-gray-600', 'hover:text-red-500');
+                        heartIcon.classList.add('text-red-500', 'fill-red-500');
+                    }
+                });
+            </text>
+        }
+                        });
+
+        document.querySelectorAll('.favorite-form').forEach(form => {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const productId = form.querySelector('input[name="productId"]').value;
+                console.log('Submitting form for productId:', productId);
+                if (productId) {
+                    form.submit();
+                } else {
+                    console.error('productId is invalid or missing:', productId);
+                }
+            });
+        });
+
         const filterBtn = document.getElementById('filterBtn');
         const isFilterOpenInput = document.getElementById('isFilterOpenInput');
         const form = document.getElementById('filterForm');
@@ -222,7 +309,6 @@
             });
         }
 
-        // Logic cho các nút chuyển đổi view (grid/list)
         const viewModeInput = document.getElementById('viewModeInput');
         const gridViewBtn = document.getElementById('gridViewBtn');
         const listViewBtn = document.getElementById('listViewBtn');
@@ -244,5 +330,15 @@
                 }
             });
         }
+
+        window.ShareItFE = window.ShareItFE || {};
+        window.ShareItFE.Pages = window.ShareItFE.Pages || {};
+        window.ShareItFE.Pages.Products = window.ShareItFE.Pages.Products || {};
+        window.ShareItFE.Pages.Products.ProductsModel = {
+            setPage: function (page) {
+                document.getElementById('paginationPageInput').value = page;
+                document.getElementById('paginationForm').submit();
+            }
+        };
     </script>
 }

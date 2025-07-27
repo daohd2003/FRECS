@@ -173,7 +173,7 @@
                     <div class="card">
                         <h1 class="page-title">My Orders</h1>
 
-                        @if (Model.TotalPages > 1)
+                        @if (Model.TotalPages >= 1)
                         {
                             var pagedOrders = Model.Orders
                                 .Skip((Model.CurrentPage - 1) * Model.PageSize)
@@ -203,17 +203,35 @@
                                             <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
                                         </div>
 
-                                        @if (order.Item != null)
+                                        @if (order.Items != null && order.Items.Any())
                                         {
+                                            var firstItem = order.Items.First();
+                                            var totalItems = order.Items.Count();
+                                            var remainingCount = totalItems - 1;
+
                                             <div class="order-body">
-                                                <div class="order-item">
-                                                    <img src="@(order.Item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@order.Item.ProductName" class="order-item-image" />
-                                                    <div class="order-item-details">
-                                                        <h4 class="item-name">@order.Item.ProductName</h4>
-                                                        <p class="item-meta">Size: @order.Item.ProductSize</p>
-                                                        <p class="item-meta">
-                                                            Rental Period: @order.ScheduledDate.ToString("yyyy-MM-dd") to @order.ReturnDate?.ToString("yyyy-MM-dd") (@order.Item.RentalDays days)
-                                                        </p>
+                                                <div class="order-item-multi">
+                                                    <div class="order-item-images">
+                                                        @foreach (var item in order.Items.Take(2))
+                                                        {
+                                                            <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@item.ProductName" class="order-item-image-stacked" />
+                                                        }
+                                                        @if (totalItems > 2)
+                                                        {
+                                                            <div class="order-item-more">
+                                                                <span>+@(totalItems - 2)</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div class="order-item-summary">
+                                                        <p class="item-count">@totalItems item@(totalItems > 1 ? "s" : "")</p>
+                                                        <h4 class="item-name">
+                                                            @firstItem.ProductName
+                                                            @if (remainingCount > 0)
+                                                            {
+                                                                <span> and @remainingCount more</span>
+                                                            }
+                                                        </h4>
                                                     </div>
                                                 </div>
                                             </div>
@@ -227,7 +245,7 @@
                                                 <a asp-page="/Order/Details" asp-route-id="@order.Id" class="btn btn-secondary">View Details</a>
                                                 @if (order.Status.ToString().ToLower() == "returned")
                                                 {
-                                                    <a href="#" class="btn btn-primary">Rent Again</a>
+                                                    <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@order.Id">Rent Again</button>
                                                 }
                                             </div>
                                         </div>
@@ -545,8 +563,38 @@
     }
 </div>
 
+<div id="rent-again-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Rent Item(s) Again</h3>
+            <button id="rent-again-close-btn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="rent-again-form">
+                @Html.AntiForgeryToken() @* THÊM: Anti-forgery token cho form AJAX *@
+                <input type="hidden" id="rent-again-original-order-id" name="OriginalOrderId" />
+
+                <div class="form-group mb-3">
+                    <label for="new-rental-start-date" class="form-label">Rental Start Date</label>
+                    <input type="date" id="new-rental-start-date" class="form-input" required />
+                </div>
+                <div class="form-group mb-3">
+                    <label for="new-rental-end-date" class="form-label">Rental End Date</label>
+                    <input type="date" id="new-rental-end-date" class="form-input" required />
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button id="rent-again-cancel-btn" class="btn btn-secondary">Cancel</button>
+            <button id="rent-again-save-btn" class="btn btn-primary">Confirm Rent</button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
+        const backendBaseUrl = "@Model.ApiBaseUrl";
+        const accessToken = "@Model.AccessToken";
         document.addEventListener('DOMContentLoaded', () => {
             // Ẩn toast sau 4 giây
             const toastSuccess = document.getElementById('toast-success');
@@ -583,6 +631,115 @@
                 toggleBtn.addEventListener('click', () => {
                     passwordForm.classList.toggle('d-none');
                     toggleBtn.textContent = passwordForm.classList.contains('d-none') ? 'Change' : 'Cancel';
+                });
+            }
+
+            // Logic cho chức năng "Rent Again"
+            const rentAgainModal = document.getElementById('rent-again-modal');
+            const rentAgainCloseBtn = document.getElementById('rent-again-close-btn');
+            const rentAgainCancelBtn = document.getElementById('rent-again-cancel-btn');
+            const rentAgainSaveBtn = document.getElementById('rent-again-save-btn');
+            const originalOrderIdInput = document.getElementById('rent-again-original-order-id');
+            const newRentalStartDateInput = document.getElementById('new-rental-start-date');
+            const newRentalEndDateInput = document.getElementById('new-rental-end-date');
+
+            // Bắt sự kiện click vào nút "Rent Again" trên mỗi thẻ đơn hàng
+            document.querySelectorAll('.rent-again-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const orderId = button.dataset.orderId;
+                    originalOrderIdInput.value = orderId;
+
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+
+                    newRentalStartDateInput.min = tomorrow.toISOString().split('T')[0];
+                    newRentalStartDateInput.value = tomorrow.toISOString().split('T')[0];
+
+                    const defaultEndDate = new Date(tomorrow);
+                    defaultEndDate.setDate(tomorrow.getDate() + 7);
+                    newRentalEndDateInput.min = defaultEndDate.toISOString().split('T')[0];
+                    newRentalEndDateInput.value = defaultEndDate.toISOString().split('T')[0];
+
+                    rentAgainModal.classList.remove('hidden');
+                });
+            });
+
+            newRentalStartDateInput.addEventListener('change', () => {
+                const startDate = new Date(newRentalStartDateInput.value);
+                const minEndDate = new Date(startDate);
+                minEndDate.setDate(startDate.getDate() + 1);
+
+                newRentalEndDateInput.min = minEndDate.toISOString().split('T')[0];
+                if (new Date(newRentalEndDateInput.value) < minEndDate) {
+                    newRentalEndDateInput.value = minEndDate.toISOString().split('T')[0];
+                }
+            });
+
+            const closeModal = () => {
+                rentAgainModal.classList.add('hidden');
+            };
+
+            if (rentAgainCloseBtn) {
+                rentAgainCloseBtn.addEventListener('click', closeModal);
+            }
+            if (rentAgainCancelBtn) {
+                rentAgainCancelBtn.addEventListener('click', closeModal);
+            }
+
+            if (rentAgainSaveBtn) {
+                rentAgainSaveBtn.addEventListener('click', async () => {
+                    const originalOrderId = originalOrderIdInput.value;
+                    const newRentalStartDate = newRentalStartDateInput.value;
+                    const newRentalEndDate = newRentalEndDateInput.value;
+
+                    if (!originalOrderId || !newRentalStartDate || !newRentalEndDate) {
+                        alert('Vui lòng cung cấp đầy đủ thông tin ngày thuê.');
+                        return;
+                    }
+
+                    try {
+                        const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                        const headers = {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': antiForgeryToken
+                        };
+
+                        if (accessToken) {
+                            headers['Authorization'] = `Bearer ${accessToken}`;
+                        }
+
+                        const response = await fetch(`${backendBaseUrl}/orders/rent-again`, {
+                            method: 'POST',
+                            headers: headers,
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                OriginalOrderId: originalOrderId,
+                                NewRentalStartDate: newRentalStartDate,
+                                NewRentalEndDate: newRentalEndDate
+                            })
+                        });
+
+                        const apiResponse = await response.json();
+
+                        if (response.ok) {
+                            const newOrderId = apiResponse.data;
+                            if (newOrderId) {
+                                alert(apiResponse.message || "Đơn hàng mới đã được tạo thành công! Đang chuyển hướng đến trang thanh toán.");
+                                window.location.href = `/CheckoutPage/Checkout?orderId=${newOrderId}`;
+                            } else {
+                                alert("Không thể lấy ID đơn hàng mới từ phản hồi API. Vui lòng thử lại.");
+                            }
+                        } else {
+                            alert(apiResponse.message || "Không thể thuê lại. Đã xảy ra lỗi.");
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        console.error('Lỗi khi thực hiện thuê lại:', error);
+                        alert('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.');
+                    }
+                    closeModal();
                 });
             }
         });

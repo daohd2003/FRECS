@@ -1,15 +1,11 @@
 ﻿using AutoMapper;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using Repositories.FeedbackRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Services.FeedbackServices
 {
@@ -96,7 +92,7 @@ namespace Services.FeedbackServices
             }
 
             // --- Create Feedback Entity ---
-            var feedback = _mapper.Map<Feedback>(dto); 
+            var feedback = _mapper.Map<Feedback>(dto);
 
             feedback.TargetType = dto.TargetType;
             feedback.Id = Guid.NewGuid();
@@ -229,7 +225,7 @@ namespace Services.FeedbackServices
         // --- BỔ SUNG: SUBMIT PROVIDER RESPONSE ---
         public async Task SubmitProviderResponseAsync(Guid feedbackId, SubmitProviderResponseDto responseDto, Guid providerOrAdminId)
         {
-            var feedback = await _feedbackRepo.GetByIdAsync(feedbackId); 
+            var feedback = await _feedbackRepo.GetByIdAsync(feedbackId);
             if (feedback == null)
             {
                 throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found.");
@@ -293,6 +289,27 @@ namespace Services.FeedbackServices
         {
             var user = await _userRepo.GetByIdAsync(userId);
             return user?.Role == UserRole.admin;
+        }
+        public async Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize)
+        {
+            if (page < 1 || pageSize < 1)
+            {
+                return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Invalid page or pageSize", null);
+            }
+
+            var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize);
+
+            var responseDtos = _mapper.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items);
+
+            var paginatedDtoResponse = new PaginatedResponse<FeedbackResponseDto>
+            {
+                Items = responseDtos,
+                Page = paginatedFeedbacks.Page,
+                PageSize = paginatedFeedbacks.PageSize,
+                TotalItems = paginatedFeedbacks.TotalItems
+            };
+
+            return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Success", paginatedDtoResponse);
         }
     }
 }

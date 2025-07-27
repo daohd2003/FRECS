@@ -12,5 +12,6 @@ namespace Repositories.ProductRepositories
     {
         Task<IEnumerable<Product>> GetProductsWithImagesAsync();
         Task<Product?> GetProductWithImagesByIdAsync(Guid id);
+        Task<bool> IsProductAvailable(Guid productId, DateTime startDate, DateTime endDate);
     }
 }

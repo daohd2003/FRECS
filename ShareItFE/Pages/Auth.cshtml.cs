@@ -149,7 +149,7 @@ namespace ShareItFE.Pages
                     var apiResponse = JsonSerializer.Deserialize<ApiResponse<TokenResponseDto>>(responseContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    TempData["SuccessMessage"] = apiResponse?.Message ?? "Registration successful!";
+                    TempData["SuccessMessage"] = apiResponse?.Message ?? "Registration successful! Please check your email to verify your account.";
                     TempData["IsLoginState"] = true;
                     return RedirectToPage("/Auth");
                 }
@@ -206,8 +206,8 @@ namespace ShareItFE.Pages
                     if (apiResponse?.Data != null)
                     {
                         // Lưu AccessToken và RefreshToken vào cookie
-                        Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
-                        Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+                        Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.None });
+                        Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.None });
 
                         return RedirectToPage("/Index"); // Chuyển hướng đến trang chủ
                     }

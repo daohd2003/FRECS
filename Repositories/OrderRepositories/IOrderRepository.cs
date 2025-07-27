@@ -11,6 +11,7 @@ namespace Repositories.OrderRepositories
         Task<IEnumerable<Order>> GetByProviderIdAsync(Guid providerId);
         Task<IEnumerable<OrderDto>> GetOrdersDetailAsync();
         Task UpdateOnlyStatusAndTimeAsync(Order order);
-
+        Task<Order> GetOrderWithItemsAsync(Guid orderId);
+        Task<bool> UpdateOrderContactInfoAsync(Order order);
     }
 }

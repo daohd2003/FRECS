@@ -1,7 +1,13 @@
-﻿using BusinessObject.DTOs.ProductDto;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.FavoriteDtos;
+using BusinessObject.DTOs.ProductDto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Globalization;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Products
@@ -28,8 +34,17 @@ namespace ShareItFE.Pages.Products
 
         public List<ProductDTO> Products { get; set; } = new List<ProductDTO>();
         public int TotalProductsCount { get; set; }
+        public List<string> FavoriteProductIds { get; set; } = new List<string>(); // Thêm thuộc tính để lưu danh sách productId yêu thích
 
-        // --- SỬA ĐỔI: Dọn dẹp thuộc tính, chỉ giữ lại các thuộc tính đang được form sử dụng ---
+        // Pagination properties
+        [BindProperty(SupportsGet = true)]
+        public int CurrentPage { get; set; } = 1;
+
+        [BindProperty(SupportsGet = true)]
+        public int PageSize { get; set; } = 8;
+
+        public int TotalPages => (int)Math.Ceiling((double)TotalProductsCount / PageSize);
+
         [BindProperty(SupportsGet = true)]
         public string? SearchQuery { get; set; }
 
@@ -39,7 +54,6 @@ namespace ShareItFE.Pages.Products
         [BindProperty(SupportsGet = true)]
         public string ViewMode { get; set; } = "grid";
 
-        // Các thuộc tính mới cho bộ lọc chi tiết
         [BindProperty(SupportsGet = true)]
         public string? CategoryFilter { get; set; }
 
@@ -55,49 +69,54 @@ namespace ShareItFE.Pages.Products
         [BindProperty(SupportsGet = true)]
         public bool IsFilterOpen { get; set; }
 
-
         public async Task<IActionResult> OnGetAsync()
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("BackendApi");
-                /*
-                var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
-                if (!string.IsNullOrEmpty(authToken))
+                var previousFilterState = TempData["FilterState"]?.ToString();
+                var currentFilterState = JsonSerializer.Serialize(new
                 {
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
-                }
-                */
+                    SearchQuery,
+                    SortBy,
+                    CategoryFilter,
+                    PriceRangeFilter,
+                    SizeFilter,
+                    RatingFilter
+                });
 
+                if (previousFilterState != currentFilterState)
+                {
+                    CurrentPage = 1;
+                }
+
+                TempData["FilterState"] = currentFilterState;
+
+                var client = _httpClientFactory.CreateClient("BackendApi");
                 var queryOptions = new List<string> { "$count=true" };
                 var filters = new List<string>();
 
-                // --- SỬA ĐỔI HOÀN TOÀN LOGIC XÂY DỰNG FILTER ---
-                // 1. Filter theo SearchQuery
+                Console.WriteLine($"SearchQuery: {SearchQuery}, CategoryFilter: {CategoryFilter}, PriceRangeFilter: {PriceRangeFilter}, SizeFilter: {SizeFilter}, RatingFilter: {RatingFilter}");
+
                 if (!string.IsNullOrEmpty(SearchQuery))
                 {
                     filters.Add($"(contains(tolower(Name), '{SearchQuery.ToLower()}') or contains(tolower(Description), '{SearchQuery.ToLower()}'))");
                 }
 
-                // 2. Filter theo Category chi tiết
                 if (!string.IsNullOrEmpty(CategoryFilter))
                 {
                     filters.Add($"Category eq '{CategoryFilter}'");
                 }
 
-                // 3. Filter theo Size chi tiết
                 if (!string.IsNullOrEmpty(SizeFilter))
                 {
                     filters.Add($"contains(Size, '{SizeFilter}')");
                 }
 
-                // 4. Filter theo Rating chi tiết
                 if (!string.IsNullOrEmpty(RatingFilter) && decimal.TryParse(RatingFilter, NumberStyles.Any, CultureInfo.InvariantCulture, out var minRating))
                 {
                     filters.Add($"AverageRating ge {minRating}");
                 }
 
-                // 5. Filter theo Price Range chi tiết
                 if (!string.IsNullOrEmpty(PriceRangeFilter))
                 {
                     if (PriceRangeFilter.Contains('-'))
@@ -108,7 +127,7 @@ namespace ShareItFE.Pages.Products
                             filters.Add($"PricePerDay ge {minPrice} and PricePerDay le {maxPrice}");
                         }
                     }
-                    else if (int.TryParse(PriceRangeFilter, out var startPrice)) // Xử lý cho trường hợp "40+"
+                    else if (int.TryParse(PriceRangeFilter, out var startPrice))
                     {
                         filters.Add($"PricePerDay ge {startPrice}");
                     }
@@ -119,7 +138,6 @@ namespace ShareItFE.Pages.Products
                     queryOptions.Add($"$filter={string.Join(" and ", filters)}");
                 }
 
-                // Logic sắp xếp (giữ nguyên, đã đúng)
                 if (!string.IsNullOrEmpty(SortBy))
                 {
                     switch (SortBy)
@@ -140,8 +158,12 @@ namespace ShareItFE.Pages.Products
                     }
                 }
 
+                queryOptions.Add($"$top={PageSize}");
+                queryOptions.Add($"$skip={(CurrentPage - 1) * PageSize}");
+
                 string queryString = string.Join("&", queryOptions);
                 var requestUri = $"odata/products?{queryString}";
+                Console.WriteLine($"Request URI: {requestUri}");
 
                 var response = await client.GetAsync(requestUri);
 
@@ -152,21 +174,137 @@ namespace ShareItFE.Pages.Products
                     {
                         Products = odataResponse.Value ?? new List<ProductDTO>();
                         TotalProductsCount = odataResponse.Count;
+                        Console.WriteLine($"Fetched {Products.Count} products, Total Count: {TotalProductsCount}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("OData response is null");
+                        TempData["ErrorMessage"] = "Unable to read data from API.";
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Error fetching products. Status code: {response.StatusCode}");
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Error content: {errorContent}");
+                    Console.WriteLine($"Error fetching products. Status code: {response.StatusCode}, Content: {errorContent}");
+                    TempData["ErrorMessage"] = $"Error loading products: {errorContent}";
+                }
+
+                // Kiểm tra danh sách yêu thích từ API
+                if (User.Identity.IsAuthenticated)
+                {
+                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+                        if (!string.IsNullOrEmpty(authToken))
+                        {
+                            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+                            var favoriteUri = $"api/favorites/{userId}"; // Sử dụng path parameter
+                            var favoriteResponse = await client.GetAsync(favoriteUri);
+                            if (favoriteResponse.IsSuccessStatusCode)
+                            {
+                                var apiResponse = await favoriteResponse.Content.ReadFromJsonAsync<ApiResponse<List<FavoriteCreateDto>>>();
+                                if (apiResponse != null && apiResponse.Data != null)
+                                {
+                                    FavoriteProductIds = apiResponse.Data.Select(f => f.ProductId.ToString()).ToList();
+                                }
+                            }
+                            else
+                            {
+                                var errorContent = await favoriteResponse.Content.ReadAsStringAsync();
+                                TempData["ErrorMessage"] = $"Error loading favorites: {errorContent}";
+                            }
+                        }
+                        else
+                        {
+                            TempData["ErrorMessage"] = "Authentication token not found.";
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An exception occurred while fetching products: {ex.Message}");
+                TempData["ErrorMessage"] = $"Server error: {ex.Message}";
             }
 
             return Page();
+        }
+
+        public async Task<IActionResult> OnPostAddFavoriteAsync(string productId)
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return RedirectToPage("/Auth", new { returnUrl = "/products" });
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                TempData["ErrorMessage"] = "User is not logged in.";
+                return RedirectToPage();
+            }
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient("BackendApi");
+                var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+                if (string.IsNullOrEmpty(authToken))
+                {
+                    TempData["ErrorMessage"] = "Authentication token not found.";
+                    return RedirectToPage();
+                }
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authToken);
+
+                var favoriteCheckUri = $"api/favorites/check?userId={userId}&productId={productId}";
+                var checkResponse = await client.GetAsync(favoriteCheckUri);
+
+                if (checkResponse.IsSuccessStatusCode)
+                {
+                    var isFavoritedResponse = await checkResponse.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+                    if (isFavoritedResponse != null && isFavoritedResponse.Data)
+                    {
+                        // Đoạn này gọi API để xóa sản phẩm khỏi danh sách yêu thích
+                        var deleteFavoriteUri = $"api/favorites?userId={userId}&productId={productId}";
+                        var deleteResponse = await client.DeleteAsync(deleteFavoriteUri);
+
+                        if (deleteResponse.IsSuccessStatusCode)
+                        {
+                            TempData["FavoriteAction"] = "removed";
+                            TempData["LastActionProductId"] = productId;
+                            return RedirectToPage();
+                        }
+                        else
+                        {
+                            var errorContent = await deleteResponse.Content.ReadAsStringAsync();
+                            TempData["ErrorMessage"] = $"Error removing from favorites: {errorContent}";
+                            return RedirectToPage();
+                        }
+                    }
+                }
+
+                var favoriteData = new { UserId = userId, ProductId = productId };
+                var content = new StringContent(JsonSerializer.Serialize(favoriteData), Encoding.UTF8, "application/json");
+                var favoriteAddUri = "api/favorites";
+                var addResponse = await client.PostAsync(favoriteAddUri, content);
+
+                if (addResponse.IsSuccessStatusCode)
+                {/*
+                    TempData["SuccessMessage"] = "Added to favorites successfully.";*/
+                    TempData["LastAddedProductId"] = productId.ToString();
+                    return RedirectToPage();
+                }
+                else
+                {
+                    var errorContent = await addResponse.Content.ReadAsStringAsync();
+                    /* TempData["ErrorMessage"] = $"This product has been added to Favorites";*/
+                    return RedirectToPage();
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Server error: {ex.Message}";
+                return RedirectToPage();
+            }
         }
     }
 }

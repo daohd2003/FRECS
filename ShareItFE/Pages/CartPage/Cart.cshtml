@@ -1,0 +1,240 @@
+﻿@page
+@model ShareItFE.Pages.CartPage.CartModel
+@{
+    ViewData["Title"] = "Giỏ hàng của tôi";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/cart.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+}
+
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        @* Toast Messages *@
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div id="toast-success" class="toast-message bg-success text-white p-3 position-fixed top-0 end-0 m-3 rounded">
+                @Model.SuccessMessage
+            </div>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div id="toast-error" class="toast-message bg-danger text-white p-3 position-fixed top-0 end-0 m-3 rounded">
+                @TempData["ErrorMessage"]
+            </div>
+        }
+
+        @* Empty Cart State *@
+        @if (Model.Cart == null || !Model.Cart.Items.Any())
+        {
+            <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div class="text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24 text-gray-300 mx-auto mb-6"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Continue shopping</h2>
+                    <p class="text-gray-600 mb-8">Discover great outfits for your special occasions</p>
+                    <a asp-page="/Products/Index" class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                        Browse Collection
+                    </a>
+                </div>
+            </div>
+        }
+        @* Cart Content *@
+        else
+        {
+            <div class="flex items-center space-x-4 mb-8">
+                <a asp-page="/Products/Products" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                    <span>Continue shopping</span>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                @* Cart Items List *@
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white rounded-lg shadow-sm">
+                        <div class="p-6 border-b border-gray-200">
+                            <h1 class="text-2xl font-bold text-gray-900">Shopping Cart</h1>
+                            <p class="text-gray-600">@Model.Cart.Items.Count @(Model.Cart.Items.Count == 1 ? "product" : "products")</p>
+                        </div>
+
+                        <div class="divide-y divide-gray-200">
+                            @foreach (var item in Model.Cart.Items)
+                            {
+                                <div class="p-6">
+                                    <div class="flex items-start space-x-4">
+                                        <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
+                                             alt="@item.ProductName"
+                                             class="w-24 h-32 object-cover rounded-lg" />
+
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="text-lg font-semibold text-gray-900 mb-1">
+                                                @item.ProductName
+                                            </h3>
+                                            <p class="text-gray-600 mb-2">Size: @item.ProductSize</p>
+                                            <p class="text-sm text-gray-500 mb-3">
+                                                From @item.StartDate.ToString("dd-MM-yyyy") To @item.EndDate.ToString("dd-MM-yyyy")
+                                            </p>
+
+                                            <div class="flex items-center"> @* Added a flex container for controls ************ NEW ************ *@
+                                                @* Controls for Quantity *@
+                                                <div class="flex flex-col">
+                                                    <label class="text-xs text-gray-500 mb-1">Quantity</label>
+                                                    <form method="post" asp-page-handler="UpdateQuantity" class="inline-flex items-center space-x-2">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="itemId" value="@item.ItemId" />
+                                                        <input type="hidden" name="currentQuantity" value="@item.Quantity" />
+                                                        <button type="submit" name="action" value="decrease" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Giảm số lượng">
+                                                            <i class="bi bi-dash-lg w-4 h-4"></i>
+                                                        </button>
+                                                        <span class="text-sm font-medium w-12 text-center">
+                                                            @item.Quantity
+                                                        </span>
+                                                        <button type="submit" name="action" value="increase" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Tăng số lượng">
+                                                            <i class="bi bi-plus-lg w-4 h-4"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+
+                                                <div class="vertical-divider"></div> @************ NEW ************
+
+                                                @* Controls for Rental Days *@
+                                                <div class="flex flex-col">
+                                                    <label class="text-xs text-gray-500 mb-1">Number of rental days</label>
+                                                    <form method="post" asp-page-handler="UpdateRentalDays" class="inline-flex items-center space-x-2"> @* Removed ml-4 ************ CHANGED ************ *@
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="itemId" value="@item.ItemId" />
+                                                        <input type="hidden" name="currentRentalDays" value="@item.RentalDays" />
+                                                        <button type="submit" name="action" value="decrease" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Giảm số ngày thuê">
+                                                            <i class="bi bi-dash-lg w-4 h-4"></i>
+                                                        </button>
+                                                        <span class="text-sm font-medium min-w-[3rem] text-center">
+                                                            @item.RentalDays
+                                                        </span>
+                                                        <button type="submit" name="action" value="increase" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Tăng số ngày thuê">
+                                                            <i class="bi bi-plus-lg w-4 h-4"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+
+                                                @* Remove Button *@
+                                                    <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?');" class="ml-auto-remove-btn">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="itemId" value="@item.ItemId" />
+                                                        <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Xóa sản phẩm">
+                                                            <i class="bi bi-trash-fill h-5 w-5"></i>
+                                                            <span class="text-sm">Delete</span>
+                                                        </button>
+                                                    </form>
+                                            </div> @* End of new flex container for controls ************ NEW ************ *@
+                                        </div>
+
+                                        @* Item Total Price Display *@
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold text-purple-600">
+                                                @((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                @item.PricePerUnit.ToString("N0") VND/day
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Promo Code Section *@
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Promo code</h3>
+                        <div class="flex space-x-4">
+                            <input type="text" placeholder="Enter promo code"
+                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                            <button type="button" class="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                @* Order Summary Section *@
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+                        <h2 class="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
+
+                        <div class="space-y-4 mb-6">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Subtotal</span>
+                                <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
+                            </div>
+
+                            @* <div class="flex justify-between">
+                                <span class="text-gray-600">Giao hàng</span>
+                                <span class="font-semibold">
+                                    @(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")
+                                </span>
+                            </div> *@
+
+                            <div class="border-t pt-4">
+                                <div class="flex justify-between text-lg font-bold">
+                                    <span>Total</span>
+                                    <span class="text-purple-600">@Model.Total.ToString("N0") VND</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* @if (Model.DeliveryFee > 0)
+                        {
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <p class="text-sm text-blue-800">
+                                    Thêm @((100000 - Model.Subtotal).ToString("N0")) VND nữa để được miễn phí giao hàng!
+                                </p>
+                            </div>
+                        } *@
+
+                        <a asp-page="/CheckoutPage/Checkout"
+                           class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-center block mb-4 flex items-center justify-center space-x-2">
+                            <i class="bi bi-lock-fill h-5 w-5"></i>
+                            <span>Make payment</span>
+                        </a>
+
+                        @* Security Features *@
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <div class="space-y-3 text-sm text-gray-600">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>Secure Payment</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>Free returns within 24 hours</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>Includes professional cleaning service</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toastSuccess = document.getElementById('toast-success');
+            const toastError = document.getElementById('toast-error');
+
+            if (toastSuccess) {
+                setTimeout(() => { toastSuccess.style.display = 'none'; }, 4000);
+            }
+            if (toastError) {
+                setTimeout(() => { toastError.style.display = 'none'; }, 4000);
+            }
+        });
+    </script>
+}

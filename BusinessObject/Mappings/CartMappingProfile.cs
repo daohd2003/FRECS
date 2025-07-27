@@ -25,7 +25,9 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.PricePerUnit, opt => opt.MapFrom(src => src.Product.PricePerDay))
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
-                .ForMember(dest => dest.TotalItemPrice, opt => opt.MapFrom(src => src.Product.PricePerDay * src.Quantity * src.RentalDays));
+                .ForMember(dest => dest.TotalItemPrice, opt => opt.MapFrom(src => src.Product.PricePerDay * src.Quantity * src.RentalDays))
+                .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl));
+
 
             CreateMap<CartAddRequestDto, CartItem>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore()) // Id sẽ được tạo tự động khi thêm vào DB

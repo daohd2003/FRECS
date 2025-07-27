@@ -82,7 +82,7 @@ namespace ShareItAPI.Controllers
                 Status = BusinessObject.Enums.TransactionStatus.initiated,
                 TransactionDate = DateTime.UtcNow,
                 Orders = validOrders,
-                PaymentMethod = "Bank Transfer - SEPay"
+                PaymentMethod = "SEPay"
             };
 
             // 3. Lưu transaction mới này vào DB
@@ -148,6 +148,28 @@ namespace ShareItAPI.Controllers
             string des = Uri.EscapeDataString(description);
 
             return $"https://qr.sepay.vn/img?bank={bankCode}&acc={acc}&template={template}&amount={amount}&des={des}";
+        }
+        [HttpGet("{transactionId}/status")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetTransactionStatus(Guid transactionId)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting to fetch transaction with ID: {transactionId}");
+                var transaction = await _transactionService.GetTransactionByIdAsync(transactionId);
+                if (transaction == null)
+                {
+                    Console.WriteLine($"Transaction with ID {transactionId} not found.");
+                    return NotFound(new ApiResponse<object>("Transaction not found.", null));
+                }
+                Console.WriteLine($"Transaction found. Status: {transaction.Status}");
+                return Ok(new ApiResponse<object>("Success", new { status = transaction.Status.ToString() }));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetTransactionStatus for transaction {transactionId}: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                return StatusCode(500, new ApiResponse<object>(ex.Message, null));
+            }
         }
     }
 }

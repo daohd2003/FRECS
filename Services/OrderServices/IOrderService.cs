@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.CartDto;
+﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
@@ -33,6 +34,12 @@ namespace Services.OrderServices
         //New Updated Methods for Order List Display
         Task<IEnumerable<OrderListDto>> GetProviderOrdersForListDisplayAsync(Guid providerId);
         Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId);
+        Task<IEnumerable<OrderListDto>> GetCustomerOrdersAsync(Guid customerId);
         Task<Order> GetOrderEntityByIdAsync(Guid orderId);
+        Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId);
+
+        Task ClearCartItemsForOrderAsync(Order order);
+        Task<Guid> RentAgainOrderAsync(Guid customerId, RentAgainRequestDto requestDto);
+        Task<bool> UpdateOrderContactInfoAsync(Guid customerId, UpdateOrderContactInfoDto dto);
     }
 }

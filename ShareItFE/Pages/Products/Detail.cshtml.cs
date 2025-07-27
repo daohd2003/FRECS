@@ -1,11 +1,15 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.CartDto;
+using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.ProfileDtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 
 namespace ShareItFE.Pages.Products
@@ -25,27 +29,37 @@ namespace ShareItFE.Pages.Products
             _configuration = configuration;
         }
 
-        // Dữ liệu từ 2 API call khác nhau
         public ProductDTO Product { get; set; }
         public List<FeedbackDto> Feedbacks { get; set; } = new List<FeedbackDto>();
+        public bool IsFavorite { get; set; }
 
-        // Các thuộc tính cho form, có validation
         [BindProperty, Required(ErrorMessage = "Please select a size")]
         public string SelectedSize { get; set; }
 
         [BindProperty, Required(ErrorMessage = "Please select a start date")]
-        public string StartDate { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.Today;
 
         [BindProperty]
-        public int RentalDays { get; set; } = 3; // Mặc định là 3 ngày
+        public int RentalDays { get; set; } = 3;
 
         public Guid? CurrentUserId { get; set; }
         public string ApiBaseUrl { get; private set; }
         public string SignalRRootUrl { get; private set; }
         public string? AccessToken { get; private set; }
 
+        [TempData] // Dùng TempData để hiển thị thông báo sau khi chuyển hướng
+        public string? SuccessMessage { get; set; }
+
+        [TempData] // Dùng TempData để hiển thị thông báo lỗi
+        public string? ErrorMessage { get; set; }
+
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
+            if (StartDate == DateTime.MinValue)
+            {
+                StartDate = DateTime.Today;
+            }
+
             ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
             SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
 
@@ -53,16 +67,27 @@ namespace ShareItFE.Pages.Products
 
             var client = _httpClientFactory.CreateClient("BackendApi");
             AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
+            var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+            if (!string.IsNullOrEmpty(authToken))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            }
 
             try
             {
-                // --- CALL API 1: LẤY THÔNG TIN SẢN PHẨM ---
+                // Fetch product details
                 var productRequestUri = $"api/products/{id}";
                 var productResponse = await client.GetAsync(productRequestUri);
 
                 if (productResponse.IsSuccessStatusCode)
                 {
                     Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
+                    if (Product != null && Product.Images != null)
+                    {
+                        Product.Images = Product.Images
+                            .OrderByDescending(i => i.IsPrimary) // ảnh chính lên đầu
+                            .ToList();
+                    }
                     if (Product == null) return NotFound();
                 }
                 else
@@ -72,7 +97,7 @@ namespace ShareItFE.Pages.Products
                     return NotFound();
                 }
 
-                // --- CALL API 2: LẤY DANH SÁCH FEEDBACK ---
+                // Fetch feedbacks
                 var feedbacksRequestUri = $"api/feedbacks/0/{id}";
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
@@ -80,10 +105,45 @@ namespace ShareItFE.Pages.Products
                 {
                     var apiResponse = await feedbacksResponse.Content.ReadFromJsonAsync<ApiResponse<List<FeedbackDto>>>(_jsonOptions);
                     Feedbacks = apiResponse?.Data ?? new List<FeedbackDto>();
+
+                    foreach (var feedback in Feedbacks)
+                    {
+                        var profileRequestUri = $"api/profile/{feedback.CustomerId}";
+                        var profileResponse = await client.GetAsync(profileRequestUri);
+                        if (profileResponse.IsSuccessStatusCode)
+                        {
+                            var apiResponseProfile = await profileResponse.Content.ReadFromJsonAsync<ApiResponse<UserHeaderInfoDto>>(_jsonOptions);
+                            var profile = apiResponseProfile?.Data;
+                            feedback.ProfilePictureUrl = profile?.ProfilePictureUrl ?? "https://via.placeholder.com/40.png?text=No+Image";
+                        }
+                        else
+                        {
+                            feedback.ProfilePictureUrl = "https://via.placeholder.com/40.png?text=No+Image";
+                        }
+                    }
                 }
                 else
                 {
                     Console.WriteLine($"Could not fetch feedbacks. Status: {feedbacksResponse.StatusCode}");
+                }
+
+                // Check favorite status
+                if (User.Identity.IsAuthenticated)
+                {
+                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        var favoriteUri = $"api/favorites/{userId}";
+                        var favoriteResponse = await client.GetAsync(favoriteUri);
+                        if (favoriteResponse.IsSuccessStatusCode)
+                        {
+                            var apiResponse = await favoriteResponse.Content.ReadFromJsonAsync<ApiResponse<List<FavoriteCreateDto>>>(_jsonOptions);
+                            if (apiResponse != null && apiResponse.Data != null)
+                            {
+                                IsFavorite = apiResponse.Data.Any(f => f.ProductId == id);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -102,40 +162,239 @@ namespace ShareItFE.Pages.Products
 
         public async Task<IActionResult> OnPostAddToCartAsync(Guid id)
         {
-            // Tải lại thông tin sản phẩm để đảm bảo tính toàn vẹn
+            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
+
+            // 1. Kiểm tra xác thực người dùng
+            if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
+            {
+                ErrorMessage = "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.";
+                await LoadInitialData(id); // Tải lại dữ liệu để giữ trạng thái trang
+                return Page();
+            }
+
+            // 2. Kiểm tra ModelState.IsValid (Validation từ thuộc tính)
+            if (!ModelState.IsValid)
+            {
+                ErrorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại kích thước và ngày thuê.";
+                await LoadInitialData(id); // Tải lại dữ liệu để hiển thị trang
+                return Page();
+            }
+
+            // 3. Chuẩn bị dữ liệu và gọi API
+            var cartAddRequestDto = new CartAddRequestDto
+            {
+                ProductId = id,
+                Size = SelectedSize,
+                RentalDays = RentalDays,
+                StartDate = StartDate,
+                Quantity = 1 // Mặc định số lượng là 1 từ trang chi tiết
+            };
+            Console.WriteLine($"Adding to cart: ProductId={id}, StartDate={StartDate}, RentalDays={RentalDays}");
             var client = _httpClientFactory.CreateClient("BackendApi");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
+
+            try
+            {
+                var response = await client.PostAsJsonAsync("api/cart", cartAddRequestDto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Sản phẩm đã được thêm vào giỏ hàng!";
+                    return RedirectToPage("/CartPage/Cart");
+                }
+                else
+                {
+                    // Đọc lỗi từ API để hiển thị thông báo chính xác hơn
+                    var errorContent = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
+                    ErrorMessage = errorContent?.Message ?? "Không thể thêm vào giỏ hàng. Vui lòng thử lại.";
+                    await LoadInitialData(id);
+                    return Page();
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Đã có lỗi xảy ra: {ex.Message}";
+                await LoadInitialData(id);
+                return Page();
+            }
+        }
+
+        public async Task<IActionResult> OnPostAddFavoriteAsync(string productId)
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return RedirectToPage("/Auth", new { returnUrl = $"/products/detail/{productId}" });
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                TempData["ErrorMessage"] = "User is not logged in.";
+                return RedirectToPage(new { id = productId });
+            }
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient("BackendApi");
+                var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+                if (string.IsNullOrEmpty(authToken))
+                {
+                    TempData["ErrorMessage"] = "Authentication token not found.";
+                    return RedirectToPage(new { id = productId });
+                }
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+
+                // Kiểm tra xem sản phẩm đã được yêu thích chưa
+                var checkUri = $"api/favorites/check?userId={userId}&productId={productId}";
+                var checkResponse = await client.GetAsync(checkUri);
+
+                if (checkResponse.IsSuccessStatusCode)
+                {
+                    var responseContent = await checkResponse.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<ApiResponse<bool>>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                    var isFavorite = result?.Data == true;
+
+                    if (isFavorite)
+                    {
+                        // Nếu đã yêu thích → gửi DELETE để gỡ khỏi danh sách
+                        var deleteUri = $"api/favorites?userId={userId}&productId={productId}";
+                        var deleteResponse = await client.DeleteAsync(deleteUri);
+                        if (deleteResponse.IsSuccessStatusCode)
+                        {
+                            IsFavorite = false;
+                        }
+                    }
+                    else
+                    {
+                        // Nếu chưa yêu thích → gửi POST để thêm vào danh sách
+                        var favoriteData = new { UserId = userId, ProductId = productId };
+                        var content = new StringContent(JsonSerializer.Serialize(favoriteData), Encoding.UTF8, "application/json");
+                        var addResponse = await client.PostAsync("api/favorites", content);
+
+                        if (addResponse.IsSuccessStatusCode)
+                        {
+                            IsFavorite = true;
+                        }
+                    }
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Unable to check favorite status.";
+                }
+
+                return RedirectToPage(new { id = productId });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error server: {ex.Message}";
+                return RedirectToPage(new { id = productId });
+            }
+        }
+        private async Task LoadInitialData(Guid id)
+        {
+            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
+            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
+
+            if (id == Guid.Empty) return; // Không cần xử lý BadRequest ở đây, nó đã được xử lý ở OnGetAsync
+
+            var client = _httpClientFactory.CreateClient("BackendApi");
+            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
             var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
             if (!string.IsNullOrEmpty(authToken))
             {
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
             }
 
-            var productRequestUri = $"api/products/{id}";
-            var productResponse = await client.GetAsync(productRequestUri);
-
-            if (!productResponse.IsSuccessStatusCode) return NotFound();
-
-            Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
-            if (Product == null) return NotFound();
-
-            // Kiểm tra validation từ server
-            if (!ModelState.IsValid)
+            try
             {
-                // Nếu có lỗi, cần lấy lại feedbacks để hiển thị lại trang cho đúng
-                var feedbacksResponse = await client.GetAsync($"api/feedbacks/0/{id}");
+                // Fetch product details
+                var productRequestUri = $"api/products/{id}";
+                var productResponse = await client.GetAsync(productRequestUri);
+
+                if (productResponse.IsSuccessStatusCode)
+                {
+                    Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
+                    if (Product != null && Product.Images != null)
+                    {
+                        Product.Images = Product.Images
+                            .OrderByDescending(i => i.IsPrimary) // ảnh chính lên đầu
+                            .ToList();
+                    }
+                    if (Product == null) Product = new ProductDTO(); // Khởi tạo Product để tránh null reference
+                }
+                else
+                {
+                    // Xử lý lỗi nếu không tải được sản phẩm
+                    var errorContent = await productResponse.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Error fetching product. Status: {productResponse.StatusCode}. URI: {productRequestUri}. Content: {errorContent}");
+                    Product = new ProductDTO(); // Khởi tạo Product rỗng để tránh null
+                }
+
+                // Fetch feedbacks
+                var feedbacksRequestUri = $"api/feedbacks/0/{id}";
+                var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
+
                 if (feedbacksResponse.IsSuccessStatusCode)
                 {
                     var apiResponse = await feedbacksResponse.Content.ReadFromJsonAsync<ApiResponse<List<FeedbackDto>>>(_jsonOptions);
                     Feedbacks = apiResponse?.Data ?? new List<FeedbackDto>();
+
+                    foreach (var feedback in Feedbacks)
+                    {
+                        var profileRequestUri = $"api/profile/{feedback.CustomerId}";
+                        var profileResponse = await client.GetAsync(profileRequestUri);
+                        if (profileResponse.IsSuccessStatusCode)
+                        {
+                            var apiResponseProfile = await profileResponse.Content.ReadFromJsonAsync<ApiResponse<UserHeaderInfoDto>>(_jsonOptions);
+                            var profile = apiResponseProfile?.Data;
+                            feedback.ProfilePictureUrl = profile?.ProfilePictureUrl ?? "https://via.placeholder.com/40.png?text=No+Image";
+                        }
+                        else
+                        {
+                            feedback.ProfilePictureUrl = "https://via.placeholder.com/40.png?text=No+Image";
+                        }
+                    }
                 }
-                return Page();
+                else
+                {
+                    Console.WriteLine($"Could not fetch feedbacks. Status: {feedbacksResponse.StatusCode}");
+                }
+
+                // Check favorite status
+                if (User.Identity.IsAuthenticated)
+                {
+                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        var favoriteUri = $"api/favorites/{userId}";
+                        var favoriteResponse = await client.GetAsync(favoriteUri);
+                        if (favoriteResponse.IsSuccessStatusCode)
+                        {
+                            var apiResponse = await favoriteResponse.Content.ReadFromJsonAsync<ApiResponse<List<FavoriteCreateDto>>>(_jsonOptions);
+                            if (apiResponse != null && apiResponse.Data != null)
+                            {
+                                IsFavorite = apiResponse.Data.Any(f => f.ProductId == id);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in LoadInitialData: {ex.Message}");
+                // Không return StatusCode ở đây, chỉ set ErrorMessage để hiển thị trên trang
+                ErrorMessage = "Đã có lỗi xảy ra khi tải dữ liệu sản phẩm.";
             }
 
-            // TODO: Xử lý logic thêm vào giỏ hàng của bạn tại đây
-            // Ví dụ: Lưu vào session hoặc database
-            // ...
-
-            return RedirectToPage("/Cart");
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userIdString))
+            {
+                CurrentUserId = Guid.Parse(userIdString);
+            }
         }
     }
 }
+

@@ -1,4 +1,5 @@
-﻿using BusinessObject.Models;
+﻿using BusinessObject.Enums;
+using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
@@ -32,6 +33,31 @@ namespace Repositories.ProductRepositories
                 .Include(p => p.Provider)
                     .ThenInclude(u => u.Profile)
                 .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
+        public async Task<bool> IsProductAvailable(Guid productId, DateTime startDate, DateTime endDate)
+        {
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null || product.AvailabilityStatus != AvailabilityStatus.available)
+            {
+                return false;
+            }
+
+            var conflictingOrders = await _context.Orders
+                .Where(o =>
+                    o.Items.Any(oi => oi.ProductId == productId) &&
+                    (
+                        // Check for overlapping date ranges
+                        (startDate < o.RentalEnd && endDate > o.RentalStart)
+                    ) &&
+                    (
+                        o.Status != OrderStatus.cancelled &&
+                        o.Status != OrderStatus.returned
+                    )
+                )
+                .AnyAsync();
+
+            return !conflictingOrders;
         }
     }
 }

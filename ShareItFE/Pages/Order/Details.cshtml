@@ -1,0 +1,150 @@
+﻿@page "{id:guid}"
+@model ShareItFE.Pages.Order.DetailsModel
+@{
+    ViewData["Title"] = $"Order Details - {Model.Order.OrderCode}";
+
+    // --- Helper functions ---
+    Func<BusinessObject.Enums.OrderStatus, string> GetStatusColor = status =>
+    {
+        return status switch
+        {
+            BusinessObject.Enums.OrderStatus.pending => "status-pending",
+            BusinessObject.Enums.OrderStatus.approved => "status-approved",
+            BusinessObject.Enums.OrderStatus.in_transit => "status-in-transit",
+            BusinessObject.Enums.OrderStatus.in_use => "status-in-use",
+            BusinessObject.Enums.OrderStatus.returned => "status-returned",
+            BusinessObject.Enums.OrderStatus.cancelled => "status-cancelled",
+            _ => "status-default"
+        };
+    };
+    var totalRentalDays = (Model.Order.RentalEndDate - Model.Order.RentalStartDate).Days + 1;
+    Func<string, string> FormatPaymentMethod = method =>
+    {
+        return method?.ToLower() switch
+        {
+            "vnpay" => "Payment via VNPay",
+            "sepay" => "Payment via SEPay",
+            _ => method ?? "Không xác định"
+        };
+    };
+
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/order-details.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+}
+
+<div class="page-container">
+    <div class="page-header">
+        <a asp-page="/Profile" asp-route-tab="orders" class="back-link">
+            <i class="bi bi-arrow-left"></i>
+            <span>Back to Orders</span>
+        </a>
+    </div>
+
+    <div class="order-detail-grid">
+        <div class="main-content">
+            <div class="card">
+                <div class="order-title">
+                    <div>
+                        <h1>Order @Model.Order.OrderCode</h1>
+                        <p>Placed on @Model.Order.OrderDate.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                    </div>
+                    <span class="status-badge @GetStatusColor(Model.Order.Status)">
+                        @Model.Order.Status.ToString().Replace("_", " ")
+                    </span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Order Items (@Model.Order.Items.Count)</h2>
+                <div class="item-list">
+                    @foreach (var item in Model.Order.Items)
+                    {
+                        <div class="item-card">
+                            <a asp-page="/Products/Details" asp-route-id="@item.ProductId" title="View product details">
+                                <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@item.ProductName" class="item-image" />
+                            </a>
+                            <div class="item-details">
+                                <h3>
+                                    <a asp-page="/Products/Details" asp-route-id="@item.ProductId" class="product-link">
+                                        @item.ProductName
+                                    </a>
+                                </h3>
+                                <div class="item-meta">
+                                    @if (!string.IsNullOrEmpty(item.Size))
+                                    {<span>Size: @item.Size</span>}
+                                    @if (!string.IsNullOrEmpty(item.Color))
+                                    {<span>Color: @item.Color</span>}
+                                    <span>Quantity: @item.Quantity</span>
+                                </div>
+                            </div>
+                            <div class="item-price">
+                                <span>@item.PricePerDay.ToString("C") / day</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Order Actions</h2>
+                <div class="actions-grid">
+                    <button class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</button>
+                    @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
+                    {
+                        <button class="btn btn-success"><i class="bi bi-star"></i> Leave Review</button>
+                    }
+                    @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending || Model.Order.Status == BusinessObject.Enums.OrderStatus.approved)
+                    {
+                        <button class="btn btn-danger"><i class="bi bi-x-circle"></i> Cancel Order</button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <aside class="sidebar">
+            <div class="card">
+                <h3 class="card-title">Order Summary</h3>
+                <div class="summary-list">
+                    <div class="summary-item">
+                        <span>Subtotal</span>
+                        <span>@Model.Order.Subtotal.ToString("C")</span>
+                    </div>
+                    <div class="summary-item rental-period">
+                        <span>Rental Period</span>
+                        <span>
+                            @Model.Order.RentalStartDate.ToString("dd/MM/yyyy") - @Model.Order.RentalEndDate.ToString("dd/MM/yyyy")
+                        </span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Shipping</span>
+                        <span>@(Model.Order.Shipping == 0 ? "FREE" : Model.Order.Shipping.ToString("C"))</span>
+                    </div>
+                    <div class="summary-total"><span>Total</span><span>@Model.Order.TotalAmount.ToString("C")</span></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><i class="bi bi-geo-alt"></i> Shipping Address</h3>
+                <div class="address-details">
+                    <div class="address-email">
+                        <i class="bi bi-envelope"></i> <span>@Model.Order.ShippingAddress.Email</span>
+                    </div>
+                    <p><strong>@Model.Order.ShippingAddress.FullName</strong></p>
+                    <p>@Model.Order.ShippingAddress.Address</p>
+                    <div class="address-phone">
+                        <i class="bi bi-telephone"></i>
+                        <span>@Model.Order.ShippingAddress.Phone</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-title"><i class="bi bi-credit-card"></i> Payment Method</h3>
+                <p>@FormatPaymentMethod(Model.Order.PaymentMethod)</p>
+            </div>
+        </aside>
+    </div>
+</div>

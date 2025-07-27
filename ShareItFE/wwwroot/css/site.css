@@ -436,3 +436,153 @@ body {
         grid-template-columns: repeat(4, 1fr);
     }
 }
+
+/* --- Notification Menu Styles --- */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Tạo khoảng cách giữa các icon */
+}
+
+.notification-menu {
+    position: relative;
+}
+
+.notification-button {
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #333; /* Màu icon */
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+    .notification-button .icon {
+        width: 24px;
+        height: 24px;
+    }
+
+.notification-count {
+    position: absolute;
+    top: -5px;
+    right: -8px;
+    background-color: #ef4444; /* red-500 */
+    color: white;
+    border-radius: 9999px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+    border: 2px solid white; /* Giúp nổi bật trên nền header */
+}
+
+.notification-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 360px;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    border: 1px solid #e5e7eb; /* gray-200 */
+    z-index: 50;
+    overflow: hidden;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+}
+
+.mark-all-read-btn {
+    background: none;
+    border: none;
+    color: #6366f1; /* indigo-500 */
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+    .mark-all-read-btn:hover {
+        text-decoration: underline;
+    }
+
+.notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Apply styles directly to the .notification-item if it's an <a> tag */
+.notification-item.unread,
+.notification-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f3f4f6; /* gray-100 */
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none; /* Remove underline for all notification items */
+    color: inherit; /* Inherit color from parent for all notification items */
+}
+
+
+    .notification-item:hover {
+        background-color: #f9fafb; /* gray-50 */
+    }
+
+    .notification-item.unread {
+        background-color: #eff6ff; /* blue-50 */
+    }
+
+.notification-content {
+    flex-grow: 1;
+}
+
+.notification-message {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #111827; /* gray-900 */
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: #6b7280; /* gray-500 */
+}
+
+.unread-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #3b82f6; /* blue-500 */
+    border-radius: 50%;
+    margin-left: 1rem;
+    flex-shrink: 0;
+}
+
+.no-notifications {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6b7280;
+}
+
+.notification-footer {
+    text-align: center;
+    padding: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+    .notification-footer a {
+        color: #6366f1;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+        .notification-footer a:hover {
+            text-decoration: underline;
+        }

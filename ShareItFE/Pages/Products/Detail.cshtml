@@ -36,14 +36,23 @@
                 </div>
 
                 <div class="space-y-6">
+                    <!-- Di chuyển favorite và share ra ngoài form addToCartForm -->
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex-grow"></div>
+                        <div class="flex items-center space-x-2">
+                            <form method="post" action="/products/detail/@Model.Product.Id?handler=AddFavorite" class="favorite-form" data-product-id="@Model.Product.Id">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="productId" value="@Model.Product.Id" />
+                                <button type="submit" class="p-2 text-gray-400 hover:text-red-500 transition-colors favorite-btn" data-product-id="@Model.Product.Id">
+                                    <i data-lucide="heart" class="h-5 w-5 favorite-icon @(Model.IsFavorite ? "text-red-500 fill-red-500" : "text-gray-400 hover:text-red-500")"></i>
+                                </button>
+                            </form>
+                            <button type="button" class="p-2 text-gray-400 hover:text-gray-600 transition-colors"><i data-lucide="share-2" class="h-5 w-5"></i></button>
+                        </div>
+                    </div>
+
                     <form method="post" id="addToCartForm" asp-page-handler="AddToCart" asp-route-id="@Model.Product.Id">
                         <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center space-x-2">
-                                    <button type="button" class="p-2 text-gray-400 hover:text-red-500 transition-colors"><i data-lucide="heart" class="h-5 w-5"></i></button>
-                                    <button type="button" class="p-2 text-gray-400 hover:text-gray-600 transition-colors"><i data-lucide="share-2" class="h-5 w-5"></i></button>
-                                </div>
-                            </div>
                             <h1 class="text-3xl font-bold text-gray-900 mb-4">@Model.Product.Name</h1>
                             <div class="flex items-center space-x-4 mb-4">
                                 <div class="flex items-center space-x-1">
@@ -53,7 +62,9 @@
                                             <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
                                         }
                                     </div>
-                                    <span class="text-sm text-gray-600">@Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)</span>
+                                    <span class="text-sm text-gray-600">
+                                        @Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)
+                                    </span>
                                 </div>
                                 <span class="text-sm text-gray-500">Rented @Model.Product.RentCount times</span>
                             </div>
@@ -138,14 +149,27 @@
             @if (Model.Feedbacks != null && Model.Feedbacks.Any())
             {
                 <div class="mt-16 border-t pt-16">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-8">Customer Reviews</h2>
+                    <div class="flex items-center justify-between mb-8">
+                        <h2 class="text-2xl font-bold text-gray-900">Customer Reviews</h2>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                                }
+                            </div>
+                            <span class="text-lg font-semibold">@Model.Product.AverageRating.ToString("F1")</span>
+                            <span class="text-gray-500">(@(Model.Feedbacks?.Count ?? 0) reviews)</span>
+                        </div>
+                    </div>
+
                     <div class="space-y-6">
                         @foreach (var feedback in Model.Feedbacks)
                         {
                             <div class="bg-gray-50 rounded-lg p-6">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center"><span class="text-white font-semibold text-sm">@(!string.IsNullOrEmpty(feedback.UserName) ? feedback.UserName.First().ToString().ToUpper() : "U")</span></div>
+                                        <img src="@feedback.ProfilePictureUrl" alt="@feedback.UserName's avatar" class="w-10 h-10 rounded-full object-cover" />
                                         <div>
                                             <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.UserName</span></div>
                                             <div class="flex items-center space-x-2">
@@ -209,97 +233,109 @@
 
         document.addEventListener('DOMContentLoaded', function () {
 
-            // --- PHẦN 1: LOGIC CHO TRANG SẢN PHẨM (CHỌN SIZE, ẢNH,...) ---
+            // Chỉ thực thi JavaScript nếu Model.Product tồn tại
+        @if (Model.Product != null)
+        {
+            <text>
+                                // --- PHẦN 1: LOGIC CHO TRANG SẢN PHẨM ---
 
-            const mainImage = document.getElementById('mainProductImage');
-            const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
-            thumbnailBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (mainImage) mainImage.src = btn.dataset.imageSrc;
-                    thumbnailBtns.forEach(b => b.classList.remove('border-purple-600'));
-                    btn.classList.add('border-purple-600');
-                });
-            });
-
-            const sizeBtns = document.querySelectorAll('.size-btn');
-            const selectedSizeInput = document.getElementById('selectedSizeInput');
-            sizeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if(selectedSizeInput) selectedSizeInput.value = btn.dataset.size;
-                    sizeBtns.forEach(b => {
-                        b.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                                // Image gallery logic
+                                const mainImage = document.getElementById('mainProductImage');
+                const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
+                thumbnailBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        mainImage.src = btn.dataset.imageSrc;
+                        thumbnailBtns.forEach(b => b.classList.remove('border-purple-600', 'border-gray-200'));
+                        btn.classList.add('border-purple-600');
                     });
-                    btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
                 });
-            });
 
-            const decreaseBtn = document.getElementById('decreaseDaysBtn');
-            const increaseBtn = document.getElementById('increaseDaysBtn');
-            const daysDisplay = document.getElementById('rentalDaysDisplay');
-            const daysInput = document.getElementById('rentalDaysInput');
-            const pricePerDay = @(Model.Product?.PricePerDay.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0");
-            const pricePerPeriodEl = document.getElementById('pricePerPeriod');
-            const totalDaysDisplayEl = document.getElementById('totalDaysDisplay');
-            const totalPriceEl = document.getElementById('totalPrice');
+                // Size selection logic
+                const sizeBtns = document.querySelectorAll('.size-btn');
+                const selectedSizeInput = document.getElementById('selectedSizeInput');
+                sizeBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        selectedSizeInput.value = btn.dataset.size;
+                        sizeBtns.forEach(b => {
+                            b.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                        });
+                        btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                    });
+                });
 
-            function formatCurrency(amount) {
-                return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
-            }
+                // Rental days and price logic
+                const decreaseBtn = document.getElementById('decreaseDaysBtn');
+                const increaseBtn = document.getElementById('increaseDaysBtn');
+                const daysDisplay = document.getElementById('rentalDaysDisplay');
+                const daysInput = document.getElementById('rentalDaysInput');
+                const pricePerDay = @Model.Product.PricePerDay.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                const pricePerPeriodEl = document.getElementById('pricePerPeriod');
+                const totalDaysDisplayEl = document.getElementById('totalDaysDisplay');
+                const totalPriceEl = document.getElementById('totalPrice');
 
-            function updatePrice() {
-                if (!daysInput || !daysDisplay) return;
-                let currentDays = parseInt(daysInput.value, 10);
-                daysDisplay.textContent = `${currentDays} ${currentDays === 1 ? 'day' : 'days'}`;
-                const total = currentDays * pricePerDay;
-                if(pricePerPeriodEl) pricePerPeriodEl.textContent = formatCurrency(total);
-                if(totalPriceEl) totalPriceEl.textContent = formatCurrency(total);
-                if(totalDaysDisplayEl) totalDaysDisplayEl.textContent = currentDays;
-            }
-
-            if(decreaseBtn) decreaseBtn.addEventListener('click', () => {
-                let currentDays = parseInt(daysInput.value, 10);
-                if (currentDays > 1) {
-                    daysInput.value = currentDays - 1;
-                    updatePrice();
+                function formatCurrency(amount) {
+                    return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
                 }
-            });
 
-            if(increaseBtn) increaseBtn.addEventListener('click', () => {
-                let currentDays = parseInt(daysInput.value, 10);
-                daysInput.value = currentDays + 1;
-                updatePrice();
-            });
+                function updatePrice() {
+                    let currentDays = parseInt(daysInput.value, 10);
+                    daysDisplay.textContent = `${currentDays} ${currentDays === 1 ? 'day' : 'days'}`;
+                    const total = currentDays * pricePerDay;
+                    pricePerPeriodEl.textContent = formatCurrency(total);
+                    totalPriceEl.textContent = formatCurrency(total);
+                    totalDaysDisplayEl.textContent = currentDays;
+                }
 
-            // --- PHẦN SỬA LỖI VALIDATION ---
-            const addToCartForm = document.getElementById('addToCartForm');
-            if (addToCartForm) {
-                addToCartForm.addEventListener('submit', function (event) {
-                    // Lấy các element input ngay tại thời điểm submit
-                    const sizeValue = document.getElementById('selectedSizeInput').value;
-                    const dateValue = document.querySelector('input[name="StartDate"]').value;
-
-                    // Kiểm tra theo đúng thứ tự: SIZE trước, DATE sau
-                    if (!sizeValue) {
-                        event.preventDefault(); // Ngăn form gửi đi
-                        alert('Please select a size'); // Sử dụng alert tạm thời, nên dùng modal hoặc thông báo đẹp hơn
-                        return;
-                    }
-
-                    if (!dateValue) {
-                        event.preventDefault(); // Ngăn form gửi đi
-                        alert('Please select a start date'); // Sử dụng alert tạm thời
-                        return;
+                decreaseBtn.addEventListener('click', () => {
+                    let currentDays = parseInt(daysInput.value, 10);
+                    if (currentDays > 1) {
+                        daysInput.value = currentDays - 1;
+                        updatePrice();
                     }
                 });
-            }
 
-            updatePrice();
+                increaseBtn.addEventListener('click', () => {
+                    let currentDays = parseInt(daysInput.value, 10);
+                    daysInput.value = currentDays + 1;
+                    updatePrice();
+                });
 
+                updatePrice(); // Initial price calculation
 
-            // --- PHẦN 2: LOGIC CHO CHAT MODAL ---
-            // Chỉ chạy code chat nếu có Model.Product
-            if (@(Model.Product != null ? "true" : "false"))
-            {
+                // Form validation
+                const addToCartForm = document.getElementById('addToCartForm');
+                if (addToCartForm) {
+                    addToCartForm.addEventListener('submit', function (event) {
+                        const sizeValue = document.getElementById('selectedSizeInput').value;
+                        const dateValue = document.querySelector('input[name="StartDate"]').value;
+
+                        if (!sizeValue) {
+                            event.preventDefault();
+                            alert('Please select a size');
+                            return;
+                        }
+                        if (!dateValue) {
+                            event.preventDefault();
+                            alert('Please select a start date');
+                            return;
+                        }
+                    });
+                }
+
+                // Favorite button logic
+                const favoriteForm = document.querySelector('.favorite-form');
+                if (favoriteForm) {
+                    favoriteForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const productId = favoriteForm.querySelector('input[name="productId"]').value;
+                        if (productId) {
+                            favoriteForm.submit();
+                        }
+                    });
+                }
+
+                // --- PHẦN 2: LOGIC CHO CHAT MODAL ---
+
                 // DOM Elements
                 const openChatBtn = document.getElementById('openChatBtn');
                 const closeChatBtn = document.getElementById('closeChatBtn');
@@ -310,7 +346,7 @@
                 const sendBtn = document.getElementById('chat-send-btn');
                 const providerNameEl = document.getElementById('chat-provider-name');
 
-                // Dữ liệu từ Model
+                // Data from Model
                 const providerId = '@Model.Product.ProviderId';
                 const currentUserId = '@Model.CurrentUserId';
                 const productId = '@Model.Product.Id';
@@ -318,7 +354,7 @@
                 const signalRUrl = '@Model.SignalRRootUrl';
                 const accessToken = '@Model.AccessToken';
 
-                // Biến trạng thái
+                // State variables
                 let signalRConnection = null;
                 let currentConversationId = null;
                 let currentPage = 1;
@@ -326,8 +362,7 @@
                 let isLoadingMessages = false;
                 let allMessagesLoaded = false;
 
-                // --- CÁC HÀM HELPER (ĐÃ SỬA LỖI) ---
-
+                // Helper Functions
                 function createMessageElement(message, isMe) {
                     const messageDiv = document.createElement('div');
                     messageDiv.classList.add('flex', 'mb-2', isMe ? 'justify-end' : 'justify-start');
@@ -338,7 +373,6 @@
                     return messageDiv;
                 }
 
-                // Hàm để thêm tin nhắn mới vào cuối và cuộn xuống
                 function appendNewMessage(message) {
                     const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
                     const el = createMessageElement(message, isMe);
@@ -346,16 +380,39 @@
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
 
-                // Hàm để thêm tin nhắn cũ vào đầu
                 function prependOldMessage(message) {
                     const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
                     const el = createMessageElement(message, isMe);
                     messagesContainer.prepend(el);
                 }
 
-                // --- CÁC HÀM LOGIC CHÍNH (ĐÃ SỬA LỖI) ---
+                // Main Logic Functions
+                async function loadMessageHistory() {
+                    if (isLoadingMessages || allMessagesLoaded || !currentConversationId) return;
+                    isLoadingMessages = true;
 
-                loadMessageHistory
+                    try {
+                        const response = await fetch(`${apiUrl}/conversations/${currentConversationId}/messages?page=${currentPage}&pageSize=${pageSize}`, {
+                            headers: { 'Authorization': 'Bearer ' + accessToken }
+                        });
+                        if (!response.ok) throw new Error('Failed to load messages.');
+
+                        const messages = await response.json();
+                        const oldScrollHeight = messagesContainer.scrollHeight;
+
+                        if (messages.length > 0) {
+                            messages.reverse().forEach(prependOldMessage);
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
+                            currentPage++;
+                        } else {
+                            allMessagesLoaded = true;
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    } finally {
+                        isLoadingMessages = false;
+                    }
+                }
 
                 async function setupSignalRConnection() {
                     if (signalRConnection) await signalRConnection.stop();
@@ -365,9 +422,7 @@
                         .withAutomaticReconnect().build();
 
                     signalRConnection.on("ReceiveMessage", (message) => {
-                        // Chỉ hiển thị nếu tin nhắn thuộc về cuộc hội thoại này
                         if (message.conversationId.toLowerCase() === currentConversationId.toLowerCase()) {
-                            // Bỏ qua tin nhắn do chính mình gửi đi (vì đã tự thêm vào lúc nhấn send)
                             const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
                             if (!isMe) {
                                 appendNewMessage(message);
@@ -389,8 +444,7 @@
                     try {
                         const response = await fetch(`${apiUrl}/conversations/find-or-create`, {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
-                            // Chỉ cần recipientId theo logic backend mới nhất
+                            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
                             body: JSON.stringify({ recipientId: providerId })
                         });
 
@@ -409,8 +463,7 @@
                     }
                 }
 
-                // --- EVENT LISTENERS (ĐÃ SỬA LỖI) ---
-
+                // Event Listeners
                 if (openChatBtn) {
                     openChatBtn.addEventListener('click', (e) => {
                         e.preventDefault();
@@ -424,7 +477,7 @@
                     });
                 }
 
-                if(closeChatBtn) {
+                if (closeChatBtn) {
                     closeChatBtn.addEventListener('click', () => {
                         chatModal.classList.add('hidden');
                         document.body.classList.remove('overflow-hidden');
@@ -438,28 +491,26 @@
                     e.preventDefault();
                     const messageContent = messageInput.value.trim();
                     if (messageContent && signalRConnection && currentConversationId) {
-                        // Tự thêm tin nhắn của mình vào giao diện để phản hồi tức thì
                         const tempMessage = { content: messageContent, senderId: currentUserId };
                         appendNewMessage(tempMessage);
 
-                        // Gửi tin nhắn lên server với đầy đủ tham số
                         signalRConnection.invoke("SendMessageAsync", currentConversationId, providerId, messageContent, productId)
                             .catch(err => {
                                 console.error("Failed to send message:", err);
                                 alert("Could not send message. Please try again.");
-                                // (Tùy chọn) Xóa tin nhắn tạm nếu gửi thất bại
                             });
                         messageInput.value = '';
                     }
                 });
 
                 messagesContainer.addEventListener('scroll', () => {
-                    // Tải thêm tin nhắn khi cuộn lên trên cùng
                     if (messagesContainer.scrollTop === 0 && currentConversationId) {
                         loadMessageHistory();
                     }
                 });
-            }
-        });
+            </text>
+        }
+                });
     </script>
 }
+

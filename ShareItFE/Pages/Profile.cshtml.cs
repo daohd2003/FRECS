@@ -15,10 +15,12 @@ namespace ShareItFE.Pages
     public class ProfileModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
+        private readonly IConfiguration _configuration;
 
-        public ProfileModel(AuthenticatedHttpClientHelper clientHelper)
+        public ProfileModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
         {
             _clientHelper = clientHelper;
+            _configuration = configuration;
         }
 
         public bool IsPostBack { get; set; } = false;
@@ -46,6 +48,9 @@ namespace ShareItFE.Pages
         [BindProperty]
         public ChangePasswordRequest ChangePassword { get; set; }
 
+        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+        public string AccessToken { get; set; }
+
         public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile")
         {
             CurrentPage = pageNum;
@@ -53,6 +58,8 @@ namespace ShareItFE.Pages
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null) return RedirectToPage("/Auth");
+
+            AccessToken = Request.Cookies["AccessToken"];
 
             var client = await _clientHelper.GetAuthenticatedClientAsync();
             var userId = Guid.Parse(userIdClaim.Value);
@@ -79,6 +86,7 @@ namespace ShareItFE.Pages
             if (ordersResponse.IsSuccessStatusCode)
             {
                 var ordersContent = await ordersResponse.Content.ReadAsStringAsync();
+                Console.WriteLine(ordersContent);
                 var ordersApiResponse = JsonSerializer.Deserialize<ApiResponse<List<OrderListDto>>>(ordersContent, options);
 
                 // Gán dữ liệu hoặc một list DTO rỗng nếu data là null

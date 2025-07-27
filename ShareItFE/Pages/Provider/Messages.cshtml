@@ -28,11 +28,13 @@
             </div>
 
             <div id="product-context-banner" class="product-context-banner hidden">
-                <img id="product-image" src="" alt="Product" />
-                <div>
-                    <p class="topic-text">Topic:</p>
-                    <p id="product-name" class="product-name"></p>
-                </div>
+                <a id="product-link" href="#" target="_blank" rel="noopener noreferrer">
+                    <img id="product-image" src="" alt="Product" />
+                    <div>
+                        <p class="topic-text">Topic:</p>
+                        <p id="product-name" class="product-name"></p>
+                    </div>
+                </a>
             </div>
 
             <div id="messages-container" class="messages-container"></div>
@@ -59,6 +61,7 @@
             const productBannerEl = document.getElementById('product-context-banner');
             const productImageEl = document.getElementById('product-image');
             const productNameEl = document.getElementById('product-name');
+            const productLinkEl = document.getElementById('product-link');
 
             const currentUserId = '@Model.CurrentUserId';
             const accessToken = '@Model.AccessToken';
@@ -170,6 +173,7 @@
                 if (selectedConversation.productContext) {
                     productImageEl.src = selectedConversation.productContext.imageUrl || 'https://via.placeholder.com/100';
                     productNameEl.textContent = selectedConversation.productContext.name;
+                    productLinkEl.href = `https://localhost:7045/products/detail/${selectedConversation.productContext.id}`;
                     productBannerEl.classList.remove('hidden');
                 } else {
                     productBannerEl.classList.add('hidden');
@@ -253,6 +257,7 @@
                             if (message.productContext) {
                                 productImageEl.src = message.productContext.imageUrl || 'https://www.shutterstock.com/image-vector/image-icon-trendy-flat-style-600nw-643080895.jpg';
                                 productNameEl.textContent = message.productContext.name;
+                                productLinkEl.href = `https://localhost:7045/products/detail/${message.productContext.id}`;
                                 productBannerEl.classList.remove('hidden');
                             } else {
                                 // Nếu tin nhắn mới không có context, có thể chọn ẩn banner đi hoặc giữ nguyên

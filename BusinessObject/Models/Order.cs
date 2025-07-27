@@ -40,8 +40,14 @@ namespace BusinessObject.Models
         public DateTime? UpdatedAt { get; set; }
 
         public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
-
         [JsonIgnore]
         public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+
+        public string? CustomerFullName { get; set; }
+        public string? CustomerEmail { get; set; } 
+        public string? CustomerPhoneNumber { get; set; }
+        public string? DeliveryAddress { get; set; }
+
+        public bool HasAgreedToPolicies { get; set; } = false;
     }
 }

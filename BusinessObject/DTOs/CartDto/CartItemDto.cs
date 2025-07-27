@@ -16,5 +16,9 @@ namespace BusinessObject.DTOs.CartDto
         public int RentalDays { get; set; }
         public decimal PricePerUnit { get; set; }
         public decimal TotalItemPrice { get; set; }
+
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string PrimaryImageUrl { get; set; }
     }
 }
