@@ -35,7 +35,7 @@ namespace ShareItFE.Pages.CartPage
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
             {
-                throw new UnauthorizedAccessException("Không tìm thấy ID người dùng.");
+                throw new UnauthorizedAccessException("User ID not found.");
             }
             return Guid.Parse(userIdClaim);
         }
@@ -80,7 +80,7 @@ namespace ShareItFE.Pages.CartPage
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    ErrorMessage = $"Không thể tải giỏ hàng: {errorContent}";
+                    ErrorMessage = $"Could not load cart: {errorContent}";
                 }
             }
             catch (UnauthorizedAccessException)
@@ -89,7 +89,7 @@ namespace ShareItFE.Pages.CartPage
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Đã xảy ra lỗi không mong muốn: {ex.Message}";
+                ErrorMessage = $"An unexpected error occurred: {ex.Message}";
             }
             return Page();
         }
@@ -99,7 +99,7 @@ namespace ShareItFE.Pages.CartPage
         {
             if (itemId == Guid.Empty)
             {
-                ErrorMessage = "ID sản phẩm không hợp lệ.";
+                ErrorMessage = "Invalid product ID.";
                 return RedirectToPage();
             }
 
@@ -118,7 +118,7 @@ namespace ShareItFE.Pages.CartPage
             }
             else
             {
-                ErrorMessage = "Hành động cập nhật số lượng không hợp lệ.";
+                ErrorMessage = "Invalid quantity update action.";
                 return RedirectToPage();
             }
 
@@ -133,12 +133,12 @@ namespace ShareItFE.Pages.CartPage
 
             if (response.IsSuccessStatusCode)
             {
-                SuccessMessage = "Số lượng sản phẩm trong giỏ hàng đã được cập nhật thành công.";
+                SuccessMessage = "Product quantity in cart has been updated successfully.";
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Không thể cập nhật số lượng: {errorContent}";
+                ErrorMessage = $"Could not update quantity: {errorContent}";
             }
             return RedirectToPage();
         }
@@ -148,7 +148,7 @@ namespace ShareItFE.Pages.CartPage
         {
             if (itemId == Guid.Empty)
             {
-                ErrorMessage = "ID sản phẩm không hợp lệ.";
+                ErrorMessage = "Invalid product ID.";
                 return RedirectToPage();
             }
 
@@ -164,12 +164,12 @@ namespace ShareItFE.Pages.CartPage
                 {
                     // Nếu số ngày thuê về 0 hoặc nhỏ hơn, có thể đặt lại là 1 hoặc xóa item
                     newRentalDays = 1; // Đặt lại về 1 ngày tối thiểu
-                    ErrorMessage = "Số ngày thuê phải ít nhất là 1.";
+                    ErrorMessage = "Rental days must be at least 1.";
                 }
             }
             else
             {
-                ErrorMessage = "Hành động cập nhật số ngày thuê không hợp lệ.";
+                ErrorMessage = "Invalid rental days update action.";
                 return RedirectToPage();
             }
 
@@ -184,12 +184,12 @@ namespace ShareItFE.Pages.CartPage
 
             if (response.IsSuccessStatusCode)
             {
-                SuccessMessage = "Số ngày thuê của sản phẩm trong giỏ hàng đã được cập nhật thành công.";
+                SuccessMessage = "Product rental days in cart have been updated successfully.";
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Không thể cập nhật số ngày thuê: {errorContent}";
+                ErrorMessage = $"Could not update rental days: {errorContent}";
             }
             return RedirectToPage();
         }
@@ -202,12 +202,12 @@ namespace ShareItFE.Pages.CartPage
 
             if (response.IsSuccessStatusCode)
             {
-                SuccessMessage = "Sản phẩm đã được xóa khỏi giỏ hàng thành công.";
+                SuccessMessage = "Product has been removed from cart successfully.";
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Không thể xóa sản phẩm: {errorContent}";
+                ErrorMessage = $"Could not remove product: {errorContent}";
             }
             return RedirectToPage();
         }
