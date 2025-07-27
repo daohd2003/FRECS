@@ -1,7 +1,7 @@
 ﻿@page
 @model ShareItFE.Pages.CheckoutPage.CheckoutModel
 @{
-    ViewData["Title"] = "Thanh toán";
+    ViewData["Title"] = "Checkout";
 }
 
 @section Styles {
@@ -21,22 +21,22 @@
                 </svg>
             </button>
 
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">Quét mã để thanh toán</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Scan QR code to pay</h2>
             <div class="marquee-container mb-6">
                 <div class="marquee-content">
-                    SEPay chỉ hỗ trợ thanh toán qua: Vietcombank, VPBank, VIB, VietinBank, MBBank, ACB, Sacombank, TPBank, Eximbank, HDBank, BIDV, Techcombank, MSB, Shinhan Bank, Agribank, Public Bank (PublicBank Việt Nam) và các ngân hàng như OCB, KienlongBank, ABBANK, LPBank, Bac A Bank, SeaBank, SHB, NCB, Woori Bank, VietABank, Vietbank, Nam A Bank, PGBank
+                    SEPay only supports payments via: Vietcombank, VPBank, VIB, VietinBank, MBBank, ACB, Sacombank, TPBank, Eximbank, HDBank, BIDV, Techcombank, MSB, Shinhan Bank, Agribank, Public Bank (PublicBank Vietnam) and other banks such as OCB, KienlongBank, ABBANK, LPBank, Bac A Bank, SeaBank, SHB, NCB, Woori Bank, VietABank, Vietbank, Nam A Bank, PGBank
                 </div>
             </div>
 
             <div class="p-2 border border-gray-200 rounded-lg inline-block mb-4">
-                <img src="@Model.QrCodeUrl" alt="Mã QR thanh toán" class="mx-auto w-32 h-64" />
+                <img src="@Model.QrCodeUrl" alt="Payment QR code" class="mx-auto w-32 h-64" />
             </div>
 
-            <p class="text-xl font-bold">Tổng tiền: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
-            <p class="text-sm text-gray-500 mt-4 max-w-sm mx-auto">Sau khi thanh toán thành công, trạng thái đơn hàng sẽ được cập nhật. Bạn không cần thực hiện thêm thao tác nào.</p>
+            <p class="text-xl font-bold">Total amount: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
+            <p class="text-sm text-gray-500 mt-4 max-w-sm mx-auto">After successful payment, the order status will be updated. You don't need to perform any additional actions.</p>
 
             <a href="/OrderHistory" class="mt-6 inline-block w-full bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                Kiểm tra lịch sử đơn hàng
+                Check order history
             </a>
         </div>
     </div>
@@ -63,7 +63,7 @@
         <div class="flex items-center space-x-4 mb-8">
             <a asp-page="/CartPage/Cart" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
-                <span>Trở về giỏ hàng</span>
+                <span>Back to cart</span>
             </a>
         </div>
 
@@ -82,20 +82,20 @@
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
                             <i class="bi bi-person h-5 w-5 mr-2"></i>
-                            Thông tin liên hệ & Giao hàng
+                            Contact & Delivery Information
                         </h2>
 
                         <div class="mb-4 flex items-center">
                             <input type="checkbox" id="useSameProfile" name="Input.UseSameProfile" value="true"
                                    checked="@(Model.Input.UseSameProfile)" onchange="toggleInputMethod(this.checked);"
                                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                            <label for="useSameProfile" class="ml-2 text-sm text-gray-700">Sử dụng thông tin từ hồ sơ của tôi</label>
+                            <label for="useSameProfile" class="ml-2 text-sm text-gray-700">Use information from my profile</label>
                         </div>
 
                         <div id="manualInputFields" style="display: @(Model.Input.UseSameProfile ? "none" : "block");">
                             <div class="grid grid-cols-1 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Họ và tên</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Full name</label>
                                     <input type="text" name="Input.CustomerFullName" value="@Model.Input.CustomerFullName"
                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
                                 </div>
@@ -105,12 +105,12 @@
                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone number</label>
                                     <input type="tel" name="Input.PhoneNumber" value="@Model.Input.PhoneNumber"
                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
                                     <input type="text" name="Input.Address" value="@Model.Input.Address"
                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
                                 </div>
@@ -122,7 +122,7 @@
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
                             <i class="bi bi-credit-card h-5 w-5 mr-2"></i>
-                            Phương thức thanh toán
+                            Payment Method
                         </h2>
                         <div class="space-y-4">
                             <div class="flex space-x-4">
@@ -130,7 +130,7 @@
                                     <input type="radio" name="Input.PaymentMethod" value="qr"
                                            checked="@(Model.Input.PaymentMethod == "qr" || string.IsNullOrEmpty(Model.Input.PaymentMethod))"
                                            class="h-4 w-4 text-purple-600 focus:ring-purple-500" />
-                                    <span class="ml-3">Mã QR (Chuyển khoản)</span>
+                                    <span class="ml-3">QR Code (Bank Transfer)</span>
                                 </label>
                                 <label class="flex items-center p-3 border rounded-lg has-[:checked]:bg-purple-50 has-[:checked]:border-purple-500 transition-all cursor-pointer">
                                     <input type="radio" name="Input.PaymentMethod" value="vnpay"
@@ -155,7 +155,7 @@
                             id="checkoutButton"
                             class="w-full bg-purple-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2">
                         <i class="bi bi-lock-fill h-5 w-5"></i>
-                        <span>Hoàn tất đơn hàng - @Model.Total.ToString("N0") VND</span>
+                        <span>Complete order - @Model.Total.ToString("N0") VND</span>
                     </button>
                 </form>
             </div>
@@ -163,7 +163,7 @@
             @* Order Summary *@
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-sm p-6 sticky top-8">
-                    <h2 class="text-xl font-bold text-gray-900 mb-6">Tóm tắt đơn hàng</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
 
                     <div class="space-y-8 mb-6">
                         @if (Model.Cart != null && Model.Cart.Items.Any())
@@ -171,16 +171,16 @@
                             @foreach (var item in Model.Cart.Items)
                             {
                                 <div class="space-y-2">
-                                    <!-- Ảnh sản phẩm lớn -->
+                                    <!-- Large product image -->
                                     <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
                                          alt="@item.ProductName"
                                          class="w-full h-auto rounded-lg object-cover" />
 
-                                    <!-- Thông tin sản phẩm -->
+                                    <!-- Product information -->
                                     <div class="text-sm text-gray-800 leading-5">
                                         <p class="font-semibold">@item.ProductName</p>
                                         <p>Size: <span class="font-medium">@item.ProductSize</span></p>
-                                        <p>@item.RentalDays ngày</p>
+                                        <p>@item.RentalDays days</p>
                                         <p class="text-purple-600 font-bold text-base mt-1">@((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
                                     </div>
                                 </div>
@@ -188,20 +188,20 @@
                         }
                     </div>
 
-                    <!-- Tổng kết giá -->
+                    <!-- Price summary -->
                     <div class="space-y-3 mb-6 border-t pt-4">
-                        <div class="flex justify-between text-sm"><span class="text-gray-600">Tạm tính</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
-                        <div class="flex justify-between text-sm"><span class="text-gray-600">Phí giao hàng</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping fee</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "FREE" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
                         <div class="border-t pt-3">
-                            <div class="flex justify-between text-lg font-bold"><span>Tổng cộng</span><span class="text-purple-600">@Model.Total.ToString("N0") VND</span></div>
+                            <div class="flex justify-between text-lg font-bold"><span>Total</span><span class="text-purple-600">@Model.Total.ToString("N0") VND</span></div>
                         </div>
                     </div>
 
-                    <!-- Cam kết -->
+                    <!-- Commitments -->
                     <div class="space-y-3 text-sm text-gray-600">
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Thanh toán mã hóa SSL</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Đảm bảo hoàn tiền</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Hỗ trợ khách hàng 24/7</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>SSL encrypted payment</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Money back guarantee</span></div>
+                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>24/7 customer support</span></div>
                     </div>
                 </div>
             </div>
@@ -278,7 +278,7 @@
                             if (!response.ok) {
                                 console.error(`Error checking transaction status: ${response.status} - ${response.statusText}`);
                                 clearInterval(checkStatusInterval);
-                                alert('Đã xảy ra lỗi khi kiểm tra trạng thái giao dịch.');
+                                alert('An error occurred while checking transaction status.');
                                 return;
                             }
 
@@ -287,7 +287,7 @@
 
                             if (status === "completed") {
                                 clearInterval(checkStatusInterval);
-                                alert("Thanh toán thành công!");
+                                alert("Payment successful!");
                                 // Chuyển hướng đến trang lịch sử đơn hàng sau khi thanh toán thành công
                                 window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
                             } else {
@@ -296,7 +296,7 @@
                         } catch (error) {
                             console.error('Failed to fetch transaction status:', error);
                             clearInterval(checkStatusInterval);
-                            alert('Đã xảy ra lỗi khi kiểm tra trạng thái giao dịch.');
+                            alert('An error occurred while checking transaction status.');
                         }
                     }, 3000); // Kiểm tra mỗi 3 giây
 

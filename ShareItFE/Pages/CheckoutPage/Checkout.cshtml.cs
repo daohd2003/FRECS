@@ -54,7 +54,7 @@ namespace ShareItFE.Pages.CheckoutPage
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
             {
-                throw new UnauthorizedAccessException("Không tìm thấy ID người dùng.");
+                throw new UnauthorizedAccessException("User ID not found.");
             }
             return Guid.Parse(userIdClaim);
         }
@@ -87,7 +87,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (SingleOrder == null || SingleOrder.Id == Guid.Empty) // Kiểm tra thêm SingleOrder có hợp lệ không
                         {
-                            ErrorMessage = $"Không tìm thấy chi tiết đơn hàng với ID: {OrderId.Value} hoặc đơn hàng không hợp lệ.";
+                            ErrorMessage = $"Order details not found for ID: {OrderId.Value} or order is invalid.";
                             // Nếu không tìm thấy đơn hàng cụ thể, chuyển hướng về trang Profile Orders để tránh kẹt
                             return RedirectToPage("/Profile", new { tab = "orders" });
                         }
@@ -95,7 +95,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         // Kiểm tra trạng thái đơn hàng: Chỉ cho phép thanh toán đơn pending
                         if (SingleOrder.Status != BusinessObject.Enums.OrderStatus.pending)
                         {
-                            ErrorMessage = $"Đơn hàng {SingleOrder.OrderCode} không ở trạng thái chờ thanh toán. Trạng thái hiện tại là: {SingleOrder.Status.ToString().Replace("_", " ")}.";
+                            ErrorMessage = $"Order {SingleOrder.OrderCode} is not in pending payment status. Current status is: {SingleOrder.Status.ToString().Replace("_", " ")}.";
                             return RedirectToPage("/Profile", new { tab = "orders" });
                         }
 
@@ -109,7 +109,7 @@ namespace ShareItFE.Pages.CheckoutPage
                     else
                     {
                         var errorContent = await orderResponse.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Không thể tải thông tin đơn hàng {OrderId.Value}: {orderResponse.StatusCode} - {errorContent}";
+                        ErrorMessage = $"Could not load order information {OrderId.Value}: {orderResponse.StatusCode} - {errorContent}";
                         return RedirectToPage("/Profile", new { tab = "orders" });
                     }
                 }
@@ -124,7 +124,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (Cart == null || !Cart.Items.Any())
                         {
-                            ErrorMessage = "Giỏ hàng của bạn đang trống. Vui lòng thêm sản phẩm trước khi thanh toán.";
+                            ErrorMessage = "Your cart is empty. Please add products before checkout.";
                             return RedirectToPage("/CartPage/Cart");
                         }
                         else
@@ -139,7 +139,7 @@ namespace ShareItFE.Pages.CheckoutPage
                     else
                     {
                         var errorContent = await cartResponse.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Không thể tải giỏ hàng: {errorContent}";
+                        ErrorMessage = $"Could not load cart: {errorContent}";
                         return RedirectToPage("/CartPage/Cart");
                     }
 
@@ -168,14 +168,14 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
                         else if (profileResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                         {
-                            Console.WriteLine("Không tìm thấy hồ sơ cho người dùng này. Yêu cầu nhập thủ công.");
+                            Console.WriteLine("No profile found for this user. Manual input required.");
                             // Nếu không tìm thấy profile, mặc định bỏ chọn "UseSameProfile"
                             Input.UseSameProfile = false;
                         }
                         else
                         {
                             var errorContent = await profileResponse.Content.ReadAsStringAsync();
-                            ErrorMessage = $"Không thể tải hồ sơ người dùng: {errorContent}";
+                            ErrorMessage = $"Could not load user profile: {errorContent}";
                             // Mặc định bỏ chọn "UseSameProfile" nếu có lỗi khi tải profile
                             Input.UseSameProfile = false;
                         }
@@ -189,7 +189,7 @@ namespace ShareItFE.Pages.CheckoutPage
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Đã xảy ra lỗi không mong muốn: {ex.Message}";
+                ErrorMessage = $"An unexpected error occurred: {ex.Message}";
             }
             return Page();
         }
@@ -264,7 +264,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (SingleOrder == null || SingleOrder.Status != BusinessObject.Enums.OrderStatus.pending)
                         {
-                            ErrorMessage = "Đơn hàng không hợp lệ hoặc không ở trạng thái chờ thanh toán.";
+                            ErrorMessage = "Invalid order or order not in pending payment status.";
                             return RedirectToPage("/Profile", new { tab = "orders" });
                         }
                         totalAmountForPayment = SingleOrder.TotalAmount; // Use the total from the fetched order
@@ -285,7 +285,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         {
                             var errorContent = await updateInfoResponse.Content.ReadAsStringAsync();
                             var apiErrorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, options);
-                            ErrorMessage = apiErrorResponse?.Message ?? $"Không thể cập nhật thông tin liên hệ cho đơn hàng: {updateInfoResponse.StatusCode}.";
+                            ErrorMessage = apiErrorResponse?.Message ?? $"Could not update contact information for order: {updateInfoResponse.StatusCode}.";
                             Input = new CheckoutInputModel();
                             await OnGetAsync();
                             return Page();
@@ -294,7 +294,7 @@ namespace ShareItFE.Pages.CheckoutPage
                     else
                     {
                         var errorContent = await orderResponse.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Không thể tải thông tin đơn hàng để thanh toán: {orderResponse.StatusCode} - {errorContent}";
+                        ErrorMessage = $"Could not load order information for payment: {orderResponse.StatusCode} - {errorContent}";
                         return RedirectToPage("/Profile", new { tab = "orders" });
                     }
                 }
@@ -318,7 +318,7 @@ namespace ShareItFE.Pages.CheckoutPage
                     {
                         var errorContent = await cartCheckoutResponse.Content.ReadAsStringAsync();
                         var apiErrorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        ErrorMessage = $"Không thể tạo đơn hàng từ giỏ hàng: {apiErrorResponse.Message}";
+                        ErrorMessage = $"Could not create orders from cart: {apiErrorResponse.Message}";
                         Input = new CheckoutInputModel();
                         await OnGetAsync();
                         return Page();
@@ -330,7 +330,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                     if (createdOrdersFromCart == null || !createdOrdersFromCart.Any())
                     {
-                        ErrorMessage = "Không có đơn hàng nào được tạo từ giỏ hàng.";
+                        ErrorMessage = "No orders were created from the cart.";
                         await OnGetAsync();
                         return Page();
                     }
@@ -341,7 +341,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 // Proceed with payment for the order(s) identified in orderIdsToProcess
                 if (!orderIdsToProcess.Any())
                 {
-                    ErrorMessage = "Không có đơn hàng nào để xử lý thanh toán.";
+                    ErrorMessage = "No orders to process payment for.";
 
                     Input = new CheckoutInputModel();
                     await OnGetAsync();
@@ -355,7 +355,7 @@ namespace ShareItFE.Pages.CheckoutPage
                     var vnpayRequest = new CreatePaymentRequestDto
                     {
                         OrderIds = orderIdsToProcess,
-                        Note = $"Thanh toán cho các đơn hàng: {string.Join(", ", orderIdsToProcess.Select(id => id.ToString().Substring(0, 8)))}"
+                        Note = $"Payment for orders: {string.Join(", ", orderIdsToProcess.Select(id => id.ToString().Substring(0, 8)))}"
                     };
 
                     var vnpayResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/payment/Vnpay/CreatePaymentUrl", vnpayRequest);
@@ -368,18 +368,18 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (!string.IsNullOrEmpty(paymentUrl))
                         {
-                            SuccessMessage = "Đang chuyển hướng đến VNPay để thanh toán...";
+                            SuccessMessage = "Redirecting to VNPay for payment...";
                             return Redirect(paymentUrl);
                         }
                         else
                         {
-                            ErrorMessage = "Không thể lấy URL thanh toán VNPay.";
+                            ErrorMessage = "Could not get VNPay payment URL.";
                         }
                     }
                     else
                     {
                         var errorContent = await vnpayResponse.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Không thể khởi tạo thanh toán VNPay: {errorContent}";
+                        ErrorMessage = $"Could not initialize VNPay payment: {errorContent}";
                     }
                 }
                 else if (Input.PaymentMethod == "qr")
@@ -398,7 +398,7 @@ namespace ShareItFE.Pages.CheckoutPage
                             QrCodeUrl = qrApiResponse.Data.GetProperty("qrImageUrl").GetString();
                             var transactionIdFromApi = qrApiResponse.Data.GetProperty("transactionId").GetString();
                             TempData["TransactionId"] = transactionIdFromApi;
-                            SuccessMessage = "Đã tạo mã QR thành công. Vui lòng quét mã để hoàn tất thanh toán.";
+                            SuccessMessage = "QR code created successfully. Please scan to complete payment.";
 
                             Input = new CheckoutInputModel();
                             await OnGetAsync();
@@ -406,18 +406,18 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
                         else
                         {
-                            ErrorMessage = "Không thể lấy dữ liệu mã QR từ phản hồi của API.";
+                            ErrorMessage = "Could not get QR code data from API response.";
                         }
                     }
                     else
                     {
                         var errorContent = await qrResponse.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Tạo mã QR thất bại: {errorContent}";
+                        ErrorMessage = $"Failed to create QR code: {errorContent}";
                     }
                 }
                 else
                 {
-                    ErrorMessage = "Phương thức thanh toán đã chọn không hợp lệ.";
+                    ErrorMessage = "Invalid payment method selected.";
                 }
             }
             catch (UnauthorizedAccessException)
@@ -426,7 +426,7 @@ namespace ShareItFE.Pages.CheckoutPage
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Đã xảy ra lỗi không mong muốn: {ex.Message}";
+                ErrorMessage = $"An unexpected error occurred: {ex.Message}";
             }
 
             // If any error occurred that didn't result in a redirect, reload the page
