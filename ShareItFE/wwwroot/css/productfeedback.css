@@ -1,0 +1,538 @@
+﻿/* Basic Reset & Body Styles */
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Open Modal Button */
+.open-modal-button {
+    background-color: #8B5CF6; /* Purple-600 */
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+    border: none;
+    cursor: pointer;
+}
+
+    .open-modal-button:hover {
+        background-color: #7C3AED; /* Purple-700 */
+    }
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5); /* Black with 50% opacity */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem; /* p-4 */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+    .modal-overlay.open {
+        opacity: 1;
+        visibility: visible;
+    }
+
+/* Modal Content */
+.modal-content {
+    background-color: white;
+    border-radius: 1rem; /* rounded-2xl */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+    width: 100%;
+    max-width: 48rem; /* max-w-2xl (768px) */
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative; /* For success state positioning */
+}
+
+/* Success State */
+.success-state {
+    position: absolute;
+    inset: 0;
+    background-color: white;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+    .success-state.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+.success-icon-wrapper {
+    width: 5rem; /* w-20 */
+    height: 5rem; /* h-20 */
+    background-color: #D1FAE5; /* Green-100 */
+    border-radius: 9999px; /* rounded-full */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 1rem; /* mb-4 */
+}
+
+.success-icon {
+    height: 2.5rem; /* h-10 */
+    width: 2.5rem; /* w-10 */
+    color: #10B981; /* Green-600 */
+}
+
+.success-title {
+    font-size: 1.5rem; /* text-2xl */
+    font-weight: 700; /* font-bold */
+    color: #1F2937; /* Gray-900 */
+    margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.success-message {
+    color: #4B5563; /* Gray-600 */
+}
+
+/* Modal Header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem; /* p-6 */
+    border-bottom: 1px solid #E5E7EB; /* border-b border-gray-200 */
+}
+
+.product-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* space-x-4 */
+}
+
+.product-image {
+    width: 4rem; /* w-16 */
+    height: 5rem; /* h-20 */
+    object-fit: cover;
+    border-radius: 0.5rem; /* rounded-lg */
+}
+
+.modal-title {
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 700; /* font-bold */
+    color: #1F2937; /* Gray-900 */
+}
+
+.product-name {
+    color: #4B5563; /* Gray-600 */
+    font-weight: 500; /* font-medium */
+}
+
+.product-rental-period {
+    font-size: 0.875rem; /* text-sm */
+    color: #6B7280; /* Gray-500 */
+}
+
+.close-button {
+    padding: 0.5rem; /* p-2 */
+    transition: background-color 0.2s ease-in-out;
+    border-radius: 0.5rem; /* rounded-lg */
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+    .close-button:hover {
+        background-color: #F3F4F6; /* Gray-100 */
+    }
+
+.close-icon {
+    height: 1.5rem; /* h-6 */
+    width: 1.5rem; /* w-6 */
+    color: #6B7280; /* Gray-500 */
+}
+
+/* Feedback Form */
+.feedback-form {
+    padding: 1.5rem; /* p-6 */
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* space-y-8 */
+}
+
+.section-container {
+    text-align: center; /* For overall rating */
+}
+
+.section-title {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 600; /* font-semibold */
+    color: #1F2937; /* Gray-900 */
+    margin-bottom: 1rem; /* mb-4 */
+}
+
+/* Star Rating */
+.star-rating-overall, .star-rating-aspect {
+    display: flex;
+    justify-content: center; /* For overall */
+    gap: 0.5rem; /* space-x-2 */
+    margin-bottom: 0.75rem; /* mb-3 */
+}
+
+.star-rating-aspect {
+    justify-content: flex-start; /* For aspects */
+    gap: 0.25rem; /* space-x-1 */
+}
+
+.star-button {
+    background: none;
+    border: none;
+    padding: 0.25rem; /* p-1 */
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+
+    .star-button:hover {
+        transform: scale(1.1);
+    }
+
+    .star-button svg {
+        height: 2.5rem; /* h-10 */
+        width: 2.5rem; /* w-10 */
+        color: #D1D5DB; /* Gray-300 */
+        fill: none;
+        transition: all 0.2s ease-in-out;
+    }
+
+.star-rating-aspect .star-button svg {
+    height: 1.25rem; /* h-5 */
+    width: 1.25rem; /* w-5 */
+}
+
+/* Filled Star */
+.star-button.filled svg {
+    fill: #FACC15; /* Yellow-400 */
+    color: #FACC15; /* Yellow-400 */
+}
+
+/* Hovered Star */
+.star-button:hover svg,
+.star-button.hovered svg {
+    color: #FACC15; /* Yellow-400 */
+    fill: #FACC15; /* Yellow-400 */
+}
+
+
+.rating-text {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 500; /* font-medium */
+    color: #8B5CF6; /* Purple-600 */
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Detailed Aspects Grid */
+.aspects-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem; /* gap-4 */
+}
+
+@media (min-width: 768px) { /* md */
+    .aspects-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.aspect-item {
+    background-color: #F9FAFB; /* Gray-50 */
+    border-radius: 0.5rem; /* rounded-lg */
+    padding: 1rem; /* p-4 */
+}
+
+/* Textarea */
+.block-label {
+    display: block;
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 600; /* font-semibold */
+    color: #1F2937; /* Gray-900 */
+    margin-bottom: 0.75rem; /* mb-3 */
+}
+
+.text-area {
+    width: 100%;
+    padding: 0.75rem 1rem; /* px-4 py-3 */
+    border: 1px solid #D1D5DB; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    outline: none;
+    resize: vertical; /* resize-none, changed for better UX */
+    transition: all 0.2s ease-in-out;
+}
+
+    .text-area:focus {
+        border-color: transparent;
+        box-shadow: 0 0 0 2px #8B5CF6; /* focus:ring-2 focus:ring-purple-500 */
+    }
+
+.char-count {
+    font-size: 0.875rem; /* text-sm */
+    color: #6B7280; /* Gray-500 */
+    margin-top: 0.5rem; /* mt-2 */
+}
+
+/* Photo Upload */
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem; /* gap-3 */
+}
+
+@media (min-width: 768px) { /* md */
+    .photo-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.photo-preview-wrapper {
+    position: relative;
+    group: relative; /* Simulating Tailwind's group */
+}
+
+    .photo-preview-wrapper img {
+        width: 100%;
+        height: 5rem; /* h-20 */
+        object-fit: cover;
+        border-radius: 0.5rem; /* rounded-lg */
+    }
+
+.remove-photo-button {
+    position: absolute;
+    top: 0.25rem; /* top-1 */
+    right: 0.25rem; /* right-1 */
+    background-color: #DC2626; /* Red-600 */
+    color: white;
+    padding: 0.25rem; /* p-1 */
+    border-radius: 9999px; /* rounded-full */
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    border: none;
+    cursor: pointer;
+}
+
+.photo-preview-wrapper:hover .remove-photo-button {
+    opacity: 1;
+}
+
+.remove-photo-button svg {
+    height: 0.75rem; /* h-3 */
+    width: 0.75rem; /* w-3 */
+}
+
+.photo-upload-placeholder {
+    border: 2px dashed #D1D5DB; /* border-2 border-dashed border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    height: 5rem; /* h-20 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+    .photo-upload-placeholder:hover {
+        border-color: #8B5CF6; /* hover:border-purple-500 */
+        background-color: #F5F3FF; /* hover:bg-purple-50 */
+    }
+
+.hidden-input {
+    display: none;
+}
+
+.photo-upload-icon {
+    height: 1.5rem; /* h-6 */
+    width: 1.5rem; /* w-6 */
+    color: #9CA3AF; /* Gray-400 */
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 0.25rem; /* mb-1 */
+}
+
+/* Recommendation Toggle */
+.recommendation-container {
+    background: linear-gradient(to right, #EDE9FE, #EEF2FF); /* from-purple-50 to-indigo-50 */
+    border-radius: 0.5rem; /* rounded-lg */
+    padding: 1rem; /* p-4 */
+}
+
+.thumbs-up-icon {
+    height: 1.5rem; /* h-6 */
+    width: 1.5rem; /* w-6 */
+    color: #8B5CF6; /* Purple-600 */
+}
+
+.recommendation-title {
+    font-weight: 600; /* font-semibold */
+    color: #1F2937; /* Gray-900 */
+}
+
+.recommendation-subtitle {
+    font-size: 0.875rem; /* text-sm */
+    color: #4B5563; /* Gray-600 */
+}
+
+.toggle-button {
+    position: relative;
+    display: inline-flex;
+    height: 1.5rem; /* h-6 */
+    width: 2.75rem; /* w-11 */
+    align-items: center;
+    border-radius: 9999px; /* rounded-full */
+    transition: background-color 0.2s ease-in-out;
+    border: none;
+    cursor: pointer;
+    background-color: #D1D5DB; /* bg-gray-300 */
+}
+
+    .toggle-button.active {
+        background-color: #8B5CF6; /* bg-purple-600 */
+    }
+
+.toggle-circle {
+    display: inline-block;
+    height: 1rem; /* h-4 */
+    width: 1rem; /* w-4 */
+    transform: translateX(0.25rem); /* translate-x-1 */
+    border-radius: 9999px; /* rounded-full */
+    background-color: white;
+    transition: transform 0.2s ease-in-out;
+}
+
+.toggle-button.active .toggle-circle {
+    transform: translateX(1.5rem); /* translate-x-6 */
+}
+
+/* Submit Buttons */
+.button-group {
+    display: flex;
+    gap: 1rem; /* space-x-4 */
+    padding-top: 1rem; /* pt-4 */
+}
+
+.cancel-button {
+    flex: 1; /* flex-1 */
+    border: 1px solid #D1D5DB; /* border border-gray-300 */
+    color: #374151; /* Gray-700 */
+    padding: 0.75rem 1.5rem; /* py-3 px-6 */
+    border-radius: 0.5rem; /* rounded-lg */
+    transition: background-color 0.2s ease-in-out;
+    font-weight: 500; /* font-medium */
+    background: none;
+    cursor: pointer;
+}
+
+    .cancel-button:hover {
+        background-color: #F9FAFB; /* hover:bg-gray-50 */
+    }
+
+.submit-button {
+    flex: 1; /* flex-1 */
+    background-color: #8B5CF6; /* Purple-600 */
+    color: white;
+    padding: 0.75rem 1.5rem; /* py-3 px-6 */
+    border-radius: 0.5rem; /* rounded-lg */
+    transition: background-color 0.2s ease-in-out;
+    font-weight: 500; /* font-medium */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem; /* space-x-2 */
+    border: none;
+    cursor: pointer;
+}
+
+    .submit-button:hover {
+        background-color: #7C3AED; /* hover:bg-purple-700 */
+    }
+
+    .submit-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+.button-icon {
+    height: 1.25rem; /* h-5 */
+    width: 1.25rem; /* w-5 */
+}
+
+/* Spinner for submitting state */
+.spinner {
+    width: 1.25rem; /* w-5 */
+    height: 1.25rem; /* h-5 */
+    border: 2px solid white;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* --- Star Rating Styles --- */
+
+/* Default unfilled state for all star SVGs */
+.star-rating-overall .star-button svg {
+    fill: none; /* Ensure no default fill */
+    stroke: currentColor; /* Use stroke for outlines */
+    color: #cbd5e1; /* slate-300 - This will be the color of the stroke when not filled */
+    transition: fill 0.2s ease, color 0.2s ease, stroke 0.2s ease; /* Smooth transition */
+}
+
+/* Filled state: When a star button has the 'filled' class */
+.star-rating-overall .star-button.filled svg {
+    fill: #FACC15 !important; /* Yellow-400 */
+    color: #FACC15 !important; /* Yellow-400 */
+    stroke: #FACC15 !important; /* Ensure stroke also turns yellow */
+}
+
+/* Hover state: When the mouse is over a star OR over any star that comes BEFORE it */
+/* This creates the interactive hover fill effect */
+.star-rating-overall .star-button:hover svg,
+.star-rating-overall .star-button:hover ~ .star-button svg {
+    fill: #FACC15; /* Yellow-400 */
+    color: #FACC15; /* Yellow-400 */
+    stroke: #FACC15; /* Yellow-400 */
+}
+
+/* Ensure that stars that are NOT filled and NOT hovered remain in their default state */
+.star-rating-overall .star-button:not(.filled):not(:hover) svg {
+    fill: none;
+    stroke: currentColor;
+    color: #cbd5e1; /* slate-300 */
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

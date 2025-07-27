@@ -1,0 +1,202 @@
+﻿@page "/ProductFeedback/{id:guid?}"
+@using BusinessObject.Enums
+@model ShareItFE.Pages.ProductFeedbackModel // Make sure this namespace is correct
+@{
+    ViewData["Title"] = "Product Feedback";
+    Layout = "_Layout"; // Assuming you use a _Layout.cshtml
+}
+
+@section Styles {
+    <link rel="stylesheet" href="/css/productfeedback.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+}
+
+<button id="openModalBtn" class="open-modal-button">Open Feedback Modal</button>
+
+<div id="productFeedbackModal" class="modal-overlay">
+    <div class="modal-content">
+        <div id="successState" class="success-state">
+            <div class="text-center">
+                <div class="success-icon-wrapper">
+                    <svg class="lucide-check success-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                </div>
+                <h3 class="success-title">Thank You!</h3>
+                <p class="success-message">Your feedback has been submitted successfully.</p>
+            </div>
+        </div>
+
+        <div class="modal-header">
+            <div class="product-info">
+                <img src="@Model.Product?.PrimaryImagesUrl" alt="@Model.Product?.Name" class="product-image">
+                <div>
+                    <h2 class="modal-title">Rate Your Experience</h2>
+                    <p class="product-name">@Model.Product?.Name</p>
+                    <p class="product-rental-period">
+                        Rental Period: @Model.Order.RentalStart.ToString("MMMM dd, yyyy") &ndash; @Model.Order.RentalEnd.ToString("MMMM dd, yyyy")
+                    </p>
+                </div>
+            </div>
+            <button id="closeModalBtn" class="close-button">
+                <svg class="lucide-x close-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+        </div>
+
+        <form method="post" id="feedbackForm" class="feedback-form">
+            <input type="hidden" asp-for="FeedbackInput.TargetId" />
+            <input type="hidden" asp-for="FeedbackInput.TargetType" value="@FeedbackTargetType.Product" />
+            <input type="hidden" asp-for="FeedbackInput.OrderItemId" /> @* Assuming not needed for Product feedback directly, but included if API expects it *@
+
+            <div class="section-container text-center">
+                <h3 class="section-title">How would you rate this rental overall?</h3>
+                <div class="star-rating-overall" data-rating="@Model.FeedbackInput.Rating">
+                </div>
+                <p id="overallRatingText" class="rating-text"></p>
+                <span asp-validation-for="FeedbackInput.Rating" class="text-danger"></span>
+            </div>
+
+            <div class="section-container">
+                <label for="comment" class="block-label">Share your experience</label>
+                <textarea id="comment" asp-for="FeedbackInput.Comment" placeholder="Tell others about your experience with this rental. What did you love? Any tips for future renters?" rows="4" class="text-area"></textarea>
+                <p class="char-count"><span id="commentCharCount">0</span>/1000 characters</p>
+                <span asp-validation-for="FeedbackInput.Comment" class="text-danger"></span>
+            </div>
+
+            @* Photos will be purely client-side display for now, as FeedbackRequestDto doesn't handle images directly *@
+            @* <div class="section-container">
+                <label class="block-label">Add photos (optional)</label>
+                <div id="photoPreviewContainer" class="photo-grid">
+                    <label class="photo-upload-placeholder">
+                        <input type="file" id="photoUpload" multiple accept="image/*" class="hidden-input">
+                        <div class="text-center">
+                            <svg class="lucide-camera photo-upload-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg>
+                            <span class="text-xs text-gray-500">Add Photo</span>
+                        </div>
+                    </label>
+                </div>
+            </div> *@
+
+            <div class="button-group">
+                <button type="button" id="cancelBtn" class="cancel-button">
+                    Cancel
+                </button>
+                <button type="submit" id="submitBtn" class="submit-button" disabled>
+                    <svg class="lucide-send button-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7Z" /><path d="M22 2 11 13" /></svg>
+                    <span>Submit Review</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="~/js/productfeedback.js"></script>
+    <script>
+        // Initialize Lucide icons on page load
+        lucide.createIcons();
+
+        // Pass any necessary model data to the productfeedback.js script
+        // by setting global variables or data attributes before it runs.
+        // For example, if productfeedback.js needs to know the initial rating:
+        // document.getElementById('overallRatingContainer').dataset.initialRating = '@Model.FeedbackInput.Rating';
+
+        // Check for API errors after a server-side postback
+        const apiErrorMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ApiErrorMessage));
+        if (apiErrorMessage && apiErrorMessage.length > 0) {
+            // Display the server-side error after the modal has been initialized by productfeedback.js
+            document.addEventListener('DOMContentLoaded', () => {
+                alert(apiErrorMessage); // Display the server-side error
+            });
+        }
+
+        const apiSuccessMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ApiSuccessMessage));
+        if (apiSuccessMessage && apiSuccessMessage.length > 0) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const modalOverlay = document.getElementById('productFeedbackModal');
+                const successState = document.getElementById('successState');
+                if (modalOverlay && successState) {
+                    successState.classList.add('show');
+                    modalOverlay.classList.add('open'); // Make sure modal is open to see success
+                    setTimeout(() => {
+                        modalOverlay.classList.remove('open');
+                        successState.classList.remove('show');
+                    }, 2000);
+                }
+            });
+        }
+
+        // Move event listeners and other logic that depends on `getElementById`
+        // or other DOM elements, but NOT on Razor Model properties, into the external JS.
+        // Any logic that *does* depend on Model properties must remain here or be passed as data.
+        document.addEventListener('DOMContentLoaded', () => {
+            const feedbackForm = document.getElementById('feedbackForm');
+            const overallRatingContainer = document.querySelector('.star-rating-overall');
+            const hiddenRatingInput = document.getElementById('FeedbackInput_Rating'); // Hardcode ID for safety if asp-for doesn't render it immediately
+
+            // Ensure the hidden rating input exists and is appended
+            if (!hiddenRatingInput) {
+                const newHiddenRatingInput = document.createElement('input');
+                newHiddenRatingInput.type = 'hidden';
+                newHiddenRatingInput.name = '@Html.NameFor(m => m.FeedbackInput.Rating)';
+                newHiddenRatingInput.id = '@Html.IdFor(m => m.FeedbackInput.Rating)';
+                feedbackForm.appendChild(newHiddenRatingInput);
+            }
+
+            overallRatingContainer.addEventListener('click', (e) => {
+                const starBtn = e.target.closest('.star-button');
+                if (starBtn) {
+                    const rating = parseInt(starBtn.dataset.value);
+                    // Use the hidden input created by asp-for or the one we just created
+                    const currentHiddenRatingInput = document.getElementById('@Html.IdFor(m => m.FeedbackInput.Rating)');
+                    if (currentHiddenRatingInput) {
+                        currentHiddenRatingInput.value = rating;
+                        // Trigger an input event on the hidden field to allow client-side validation to re-evaluate
+                        currentHiddenRatingInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        currentHiddenRatingInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    // Update clientFeedbackState (which is now local to productfeedback.js)
+                    // The main productfeedback.js will handle its internal state.
+                    // This inline script just ensures the form field is updated.
+                }
+            });
+            // Re-render Lucide icons after modal content might change (e.g., reset)
+            const openModalBtn = document.getElementById('openModalBtn');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+
+            // These listeners are critical for opening/closing the modal.
+            // Ensure they are correctly bound, now that productfeedback.js no longer contains the Razor syntax.
+            if (openModalBtn) {
+                openModalBtn.addEventListener('click', () => {
+                    const modalOverlay = document.getElementById('productFeedbackModal');
+                    if (modalOverlay) {
+                        modalOverlay.classList.add('open');
+                        // Call any reset functions from productfeedback.js if they are exposed
+                        // or re-implement necessary resets here.
+                        // For example, if productfeedback.js has a reset function:
+                        // window.resetFeedbackModal(); // If you expose it globally
+                    }
+                });
+            }
+
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', () => {
+                    const modalOverlay = document.getElementById('productFeedbackModal');
+                    if (modalOverlay) {
+                        modalOverlay.classList.remove('open');
+                    }
+                });
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    const modalOverlay = document.getElementById('productFeedbackModal');
+                    if (modalOverlay) {
+                        modalOverlay.classList.remove('open');
+                    }
+                });
+            }
+        });
+    </script>
+    <partial name="_ValidationScriptsPartial" />
+}
