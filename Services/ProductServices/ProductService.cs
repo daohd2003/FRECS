@@ -67,12 +67,11 @@ namespace Services.ProductServices
 
                     // Các giá trị mặc định khi tạo mới
                     CreatedAt = DateTime.UtcNow,
-                    AvailabilityStatus = AvailabilityStatus.available,
+                    AvailabilityStatus = AvailabilityStatus.pending,
                     RentCount = 0,
                     AverageRating = 0,
                     RatingCount = 0,
-                    IsPromoted = true
-                    // Lưu ý: Không có PrimaryImagesUrl ở đây vì bảng Products không có cột này
+                    IsPromoted = false
                 };
 
                 // Bước 2: Thêm Product vào DbContext và Lưu để lấy Id

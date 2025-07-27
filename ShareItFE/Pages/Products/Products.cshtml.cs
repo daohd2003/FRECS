@@ -96,7 +96,7 @@ namespace ShareItFE.Pages.Products
                 var filters = new List<string>();
 
                 Console.WriteLine($"SearchQuery: {SearchQuery}, CategoryFilter: {CategoryFilter}, PriceRangeFilter: {PriceRangeFilter}, SizeFilter: {SizeFilter}, RatingFilter: {RatingFilter}");
-
+                filters.Add("AvailabilityStatus eq 'available'");
                 if (!string.IsNullOrEmpty(SearchQuery))
                 {
                     filters.Add($"(contains(tolower(Name), '{SearchQuery.ToLower()}') or contains(tolower(Description), '{SearchQuery.ToLower()}'))");
