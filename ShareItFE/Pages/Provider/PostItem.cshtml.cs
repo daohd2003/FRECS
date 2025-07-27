@@ -233,10 +233,10 @@ namespace ShareItFE.Pages.Provider
                 Images = new List<ProductImageDTO>()
             };
 
-            productDtoToSend.Images.Add(new ProductImageDTO { ImageUrl = PrimaryImageUrl, PublicId = PrimaryImagePublicId, IsPrimary = true });
+            productDtoToSend.Images.Add(new ProductImageDTO { ImageUrl = PrimaryImageUrl, IsPrimary = true });//PublicId = PrimaryImagePublicId,
             for (int i = 0; i < SecondaryImageUrls.Count; i++)
             {
-                productDtoToSend.Images.Add(new ProductImageDTO { ImageUrl = SecondaryImageUrls[i], PublicId = SecondaryImagePublicIds[i], IsPrimary = false });
+                productDtoToSend.Images.Add(new ProductImageDTO { ImageUrl = SecondaryImageUrls[i], IsPrimary = false });//PublicId = SecondaryImagePublicIds[i],
             }
 
             var client = await GetAuthenticatedClientAsync();
