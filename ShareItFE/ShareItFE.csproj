@@ -1,36 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Content Remove="wwwroot\js\notification.js" />
-    <Content Remove="wwwroot\js\profile.js" />
-  </ItemGroup>
+	<ItemGroup>
+		<Content Remove="wwwroot\js\productfeedback.js" />
+		<Content Remove="wwwroot\js\notification.js" />
+		<Content Remove="wwwroot\js\profile.js" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <_ContentIncludedByDefault Remove="wwwroot\css\chatbot.css" />
-    <_ContentIncludedByDefault Remove="wwwroot\js\notification.js" />
-    <_ContentIncludedByDefault Remove="wwwroot\js\profile.js" />
-  </ItemGroup>
+	<ItemGroup>
+		<_ContentIncludedByDefault Remove="wwwroot\css\chatbot.css" />
+		<_ContentIncludedByDefault Remove="wwwroot\js\notification.js" />
+		<_ContentIncludedByDefault Remove="wwwroot\js\profile.js" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Include="wwwroot\js\notification.js" />
-    <None Include="wwwroot\js\profile.js" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="wwwroot\js\productfeedback.js" />
+		<None Include="wwwroot\js\notification.js" />
+		<None Include="wwwroot\js\profile.js" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.17" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.17" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\BusinessObject\BusinessObject.csproj" />
-    <ProjectReference Include="..\Services\Services.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\BusinessObject\BusinessObject.csproj" />
+		<ProjectReference Include="..\Services\Services.csproj" />
+	</ItemGroup>
 
 </Project>
