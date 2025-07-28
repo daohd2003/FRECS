@@ -134,7 +134,6 @@ namespace ShareItFE.Pages
             {
                 ProductId = productId,
                 NewAvailabilityStatus = status,
-                RejectionReason = string.Empty
             };
 
             var jsonContent = JsonSerializer.Serialize(
