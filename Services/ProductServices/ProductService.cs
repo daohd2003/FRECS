@@ -141,5 +141,25 @@ namespace Services.ProductServices
 
             return deleted > 0;
         }
+
+        public async Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request)
+        {
+            var product = await _context.Products.FindAsync(request.ProductId);
+            if (product == null) return false;
+
+            product.UpdatedAt = DateTime.UtcNow;
+            if (request.NewAvailabilityStatus.Equals("Approved"))
+            {
+                product.AvailabilityStatus = AvailabilityStatus.available;
+
+            }
+            else
+            {
+                product.AvailabilityStatus = AvailabilityStatus.rejected;
+            }
+            _context.Products.Update(product);
+            var deleted = await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

@@ -9,6 +9,8 @@ namespace Services.ProductServices
         /*Task<ProductDTO> AddAsync(ProductDTO productDto);*/
         Task<ProductDTO> AddAsync(ProductRequestDTO productDto);
         Task<bool> UpdateAsync(ProductDTO productDto);
+        Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request);
+
         Task<bool> DeleteAsync(Guid id);
     }
 }

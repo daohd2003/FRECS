@@ -1,0 +1,578 @@
+﻿@page
+@using System.Net
+@model ShareItFE.Pages.ProductVerificationModel
+@{
+    ViewData["Title"] = "Verification Page";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Verification Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for status badges to provide distinct visual cues */
+        .status-pending {
+            background-color: #fef3c7; /* yellow-100 */
+            color: #b45309; /* amber-700 */
+        }
+        .status-available {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-700 */
+        }
+        .status-rejected {
+            background-color: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-700 */
+        }
+        .status-unavailable {
+            background-color: #ffedd5; /* orange-100 */
+            color: #9a3412; /* orange-700 */
+        }
+
+        /* Basic modal animation for a smoother appearance when modals open */
+        .animate-fade-in-up {
+            animation: fadeInScale 0.3s ease-out forwards;
+        }
+
+        @@keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="app" class="min-h-screen py-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="px-4 sm:px-0">
+                <h1 class="text-3xl font-extrabold text-gray-900 mb-6">Product Verification</h1>
+            </div>
+
+            @if (!string.IsNullOrEmpty(TempData["messageResponse"] as string))
+            {
+                <div aria-live="polite" aria-atomic="true" class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+                    <div class="toast show align-items-center text-white @((bool)TempData["isError"] ? "bg-danger" : "bg-success") border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                @TempData["messageResponse"]
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg mb-8">
+                <div class="px-4 py-5 sm:px-6">
+                    <h2 class="text-lg leading-6 font-medium text-gray-900">Submitted Items</h2>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Review and manage items submitted by vendors.</p>
+                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-4">
+                        <div class="flex-grow">
+                            <input type="text" id="searchInput" placeholder="Search items..." class="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-2" value="@Model.SearchTerm">
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <label for="statusFilter" class="text-sm font-medium text-gray-700">Filter by Status:</label>
+                            <select id="statusFilter" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md">
+                                <option value="all" selected="@(Model.StatusFilter == "all" ? "selected" : null)">All</option>
+                                <option value="pending" selected="@(Model.StatusFilter == "pending" ? "selected" : null)">Pending</option>
+                                <option value="available" selected="@(Model.StatusFilter == "available" ? "selected" : null)">Available</option>
+                                <option value="unavailable" selected="@(Model.StatusFilter == "unavailable" ? "selected" : null)">Unavailable</option>
+                                <option value="rejected" selected="@(Model.StatusFilter == "rejected" ? "selected" : null)">Rejected</option>
+                                @* <option value="revision" @(Model.StatusFilter == "revision" ? "selected" : "")>Revision</option> *@
+                            </select>
+                        </div>
+                        <button id="applyFiltersButton" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+                <div class="border-t border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted On</th>
+                                <th scope="col" class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-table-body" class="bg-white divide-y divide-gray-200">
+                            @if (!Model.ProductItems.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No products found.</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in Model.ProductItems)
+                                {
+                                    <tr data-item-id="@item.Id">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-16 w-20">
+                                                    <img class="h-16 w-20 object-cover rounded-md" src="@item.PrimaryImagesUrl" alt="@item.Name">
+                                                </div>
+                                                <div class="ml-4">
+                                                    <div class="text-sm font-medium text-gray-900">@item.Name</div>
+                                                    <div class="text-xs text-gray-500">@item.Category</div>
+                                                    <div class="text-xs text-purple-600 font-semibold">₫@item.PricePerDay.ToString("N0")/day</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="text-sm text-gray-900">
+                                                <div>Sizes: @(item.Size != null && item.Size.Any() ? string.Join(", ", item.Size) : "N/A")</div>
+                                                <div>Color: @item.Color</div>
+                                                <div>Condition: @item.Description</div> @* Assuming Description implies Condition *@
+                                                <div class="flex items-center space-x-1 mt-1">
+                                                    <svg class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0L6.343 16.657A8 8 0 1117.657 5.343a8 8 0 010 11.314z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    </svg>
+                                                    <span class="text-xs text-gray-500">@item.AverageRating.ToString("F1")</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-medium @($"status-{item.AvailabilityStatus.ToLower()}")">
+                                                @if (item.AvailabilityStatus == "Pending")
+                                                {
+                                                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                                                }
+                                                else if (item.AvailabilityStatus == "Available")
+                                                {
+                                                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                                }
+                                                else if (item.AvailabilityStatus == "Rejected")
+                                                {
+                                                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                                                }
+                                                else if (item.AvailabilityStatus == "Unavailable")
+                                                {
+                                                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.182V11a1 1 0 102 0V8.182a1 1 0 00-.445-.814l-.007-.005zM10 15a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
+                                                }
+                                                <span class="capitalize">@item.AvailabilityStatus</span>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            @item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div class="flex items-center space-x-2">
+                                                <button data-action="view" data-item-id="@item.Id"
+                                                        data-item-json="@Html.Raw(WebUtility.HtmlEncode(Json.Serialize(item).ToString()))"
+                                                        onclick="showItemDetailsModalFromData(this)"
+                                                        class="text-blue-600 hover:text-blue-900" title="View Details">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                    </svg>
+                                                </button>
+                                                @if (item.AvailabilityStatus == "pending")
+                                                {
+                                                    <button data-action="approve" data-item-id="@item.Id"
+                                                            onclick="openActionConfirmModal('@item.Id', 'Approved')"
+                                                            class="text-green-600 hover:text-green-900" title="Approve">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <button data-action="reject" data-item-id="@item.Id"
+                                                            onclick="openActionConfirmModal('@item.Id', 'Rejected')"
+                                                            class="text-red-600 hover:text-red-900" title="Reject">
+                                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </button>
+                                                }
+                                                @* else if (item.AvailabilityStatus == "Revision")
+                                                {
+                                                    <button data-action="approve" data-item-id="@item.Id"
+                                                                onclick="openActionConfirmModal('@item.Id', 'Approved')"
+                                                                class="text-green-600 hover:text-green-900" title="Approve">
+                                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                            </svg>
+                                                        </button>
+                                                } *@
+                                                <button class="text-gray-400 hover:text-gray-600" title="More Options">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                    <div class="flex-1 flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Showing
+                                <span class="font-medium">@((Model.CurrentPage - 1) * Model.PageSize + 1)</span>
+                                to
+                                <span class="font-medium">
+                                    @(Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalCount))
+                                </span>
+                                of
+                                <span class="font-medium">@Model.TotalCount</span> results
+                            </p>
+                        </div>
+
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+
+                                <!-- Previous -->
+                                <a href="?page=@(Model.CurrentPage - 1)"
+                                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 @(Model.CurrentPage == 1 ? "pointer-events-none opacity-50" : "")">
+                                    <span class="sr-only">Previous</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+
+                                <!-- Page Numbers -->
+                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                {
+                                    <a href="?page=@i"
+                                       class="pagination-page-link relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(i == Model.CurrentPage ? "z-10 bg-purple-50 border-purple-500 text-purple-600" : "")">
+                                        @i
+                                    </a>
+                                }
+
+                                <!-- Next -->
+                                <a href="?page=@(Model.CurrentPage + 1)"
+                                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 @(Model.CurrentPage == Model.TotalPages ? "pointer-events-none opacity-50" : "")">
+                                    <span class="sr-only">Next</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            </nav>
+                        </div>
+                    </div>
+                </nav>
+
+
+            </div>
+
+            <div id="item-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 hidden">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h2 id="modalTitle" class="text-2xl font-bold text-gray-900">Item Details</h2>
+                        <button id="close-details-modal-button" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Close">
+                            <svg class="h-6 w-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div id="modal-content-details" class="p-6">
+                        </div>
+                </div>
+            </div>
+
+            <div id="action-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 hidden">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fade-in-up">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h2 id="action-modal-title" class="2xl font-bold text-gray-900">Confirm Action</h2>
+                        <button id="action-close-button" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Close">
+                            <svg class="h-6 w-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="p-6">
+                        <p id="action-modal-message" class="text-gray-700 mb-4">Are you sure you want to perform this action?</p>
+                        <div id="reason-group" class="mb-4 hidden">
+                            <label for="action-reason" class="block text-sm font-medium text-gray-700 mb-2">Reason (required for rejection/revision):</label>
+                            <textarea id="action-reason" rows="4" class="shadow-sm focus:ring-purple-500 focus:border-purple-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md p-2" placeholder="Enter reason here..."></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button id="cancel-action-button" type="button" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                Cancel
+                            </button>
+                            <form method="post" asp-page-handler="UpdateItemStatus" class="inline-block">
+                                <input type="hidden" name="id" id="action-item-id" />
+                                <input type="hidden" name="status" id="action-status" />
+                                <button type="submit" id="confirm-action-button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-500">
+                                    Confirm
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="message-box-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 hidden">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm animate-fade-in-up">
+                    <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                        <h3 id="message-box-title" class="text-lg font-bold text-gray-900"></h3>
+                        <button id="message-box-close-button" class="p-1 hover:bg-gray-100 rounded-lg transition-colors" title="Close">
+                            <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-4">
+                        <p id="message-box-text" class="text-gray-700"></p>
+                    </div>
+                    <div class="flex justify-end p-4 border-t border-gray-200">
+                        <button id="message-box-ok-button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                OK
+                            </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded. Initializing script.');
+
+            // --- DOM Element References ---
+            const detailsModal = document.getElementById('item-details-modal');
+            const detailsCloseButton = document.getElementById('close-details-modal-button');
+            const modalContentDetails = document.getElementById('modal-content-details');
+
+            const actionConfirmModal = document.getElementById('action-confirm-modal');
+            const actionModalTitle = document.getElementById('action-modal-title');
+            const actionModalMessage = document.getElementById('action-modal-message');
+            const actionCloseButton = document.getElementById('action-close-button');
+            const reasonGroupDiv = document.getElementById('reason-group');
+            const actionReasonTextarea = document.getElementById('action-reason');
+            const cancelActionButton = document.getElementById('cancel-action-button');
+            const confirmActionButton = document.getElementById('confirm-action-button');
+            const actionItemIdInput = document.getElementById('action-item-id');
+            const actionStatusInput = document.getElementById('action-status');
+
+            const messageBoxModal = document.getElementById('message-box-modal');
+            const messageBoxTitle = document.getElementById('message-box-title');
+            const messageBoxText = document.getElementById('message-box-text');
+            const messageBoxCloseButton = document.getElementById('message-box-close-button');
+            const messageBoxOkButton = document.getElementById('message-box-ok-button');
+
+            // Filter and Pagination elements
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const applyFiltersButton = document.getElementById('applyFiltersButton');
+            const paginationPrevious = document.getElementById('pagination-previous');
+            const paginationNext = document.getElementById('pagination-next');
+            const paginationMobilePrevious = document.getElementById('pagination-mobile-previous');
+            const paginationMobileNext = document.getElementById('pagination-mobile-next');
+            const paginationPageLinks = document.querySelectorAll('.pagination-page-link');
+
+
+            // --- Utility Functions for Modals ---
+            function openModal(modalElement) {
+                modalElement.classList.remove('hidden');
+                modalElement.classList.add('flex'); // Ensure flex for centering
+            }
+
+            function closeModal(modalElement) {
+                modalElement.classList.add('hidden');
+                modalElement.classList.remove('flex');
+            }
+
+            // --- Item Details Modal Logic ---
+            window.showItemDetailsModalFromData = (buttonElement) => {
+                try {
+                    const itemJsonString = buttonElement.getAttribute('data-item-json');
+                    const item = JSON.parse(itemJsonString);
+
+                    console.log('Showing details for item:', item.id);
+                    console.log('*** COMPLETE PARSED ITEM OBJECT: ***', item);
+
+                    let additionalImagesHtml = '';
+                    if (item.images && item.images.length > 0) {
+                        additionalImagesHtml = `
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Additional Images</h3>
+                            <div class="flex flex-wrap gap-2">
+                                ${item.images.map(imgUrl => `<img src="${imgUrl.imageUrl}" alt="Additional Image" class="w-24 h-24 object-cover rounded-md shadow-sm">`).join('')}
+                            </div>
+                        `;
+                    } else {
+                        additionalImagesHtml = `<p class="text-gray-500">No additional images available.</p>`;
+                    }
+
+                    modalContentDetails.innerHTML = `
+                        <h2 class="text-2xl font-bold text-gray-900 mb-4">${item.name}</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <img src="${item.primaryImagesUrl}" alt="${item.name}" class="w-full h-auto object-cover rounded-lg shadow-md mb-4">
+                                ${additionalImagesHtml}
+                            </div>
+                            <div>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Description:</strong> ${item.description}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Category:</strong> ${item.category}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Size:</strong> ${item.size}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Color:</strong> ${item.color}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Price Per Day:</strong> ₫${item.pricePerDay !== undefined && item.pricePerDay !== null ? item.pricePerDay.toLocaleString('vi-VN') : 'N/A'}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Availability Status:</strong> <span class="capitalize">${item.availabilityStatus}</span></p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Is Promoted:</strong> ${item.isPromoted ? 'Yes' : 'No'}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Rent Count:</strong> ${item.rentCount}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Average Rating:</strong> ${item.averageRating.toFixed(1)}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Provider:</strong> ${item.providerName}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Created At:</strong> ${item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Last Updated:</strong> ${item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : 'N/A'}</p>
+                                <p class="text-gray-700 mb-3"><strong class="font-semibold">Location:</strong> Da Nang</p>
+                            </div>
+                        </div>
+                    `;
+                    openModal(detailsModal);
+                } catch (e) {
+                    console.error("Error parsing item JSON:", e);
+                    window.showMessageBox('Error', 'Could not load item details. Please try again.');
+                }
+            };
+
+            detailsCloseButton.onclick = () => closeModal(detailsModal);
+
+            // --- Action Confirmation Modal Logic ---
+            window.openActionConfirmModal = (itemId, actionStatus) => {
+                actionItemIdInput.value = itemId;
+                actionStatusInput.value = actionStatus;
+
+                actionReasonTextarea.value = ''; // Clear any previous reason
+                reasonGroupDiv.classList.add('hidden'); // Ensure reason field is always hidden
+
+                let confirmButtonClass = 'bg-purple-600 hover:bg-purple-700';
+                let modalTitleText = 'Confirm Action';
+                let modalMessageText = 'Are you sure you want to perform this action?';
+
+                switch (actionStatus) {
+                    case 'Approved':
+                        confirmButtonClass = 'bg-green-600 hover:bg-green-700';
+                        modalTitleText = 'Confirm Approval';
+                        modalMessageText = 'Are you sure you want to approve this item?';
+                        break;
+                    case 'Rejected':
+                        confirmButtonClass = 'bg-red-600 hover:bg-red-700';
+                        modalTitleText = 'Confirm Rejection';
+                        modalMessageText = 'Are you sure you want to reject this item?';
+                        reasonGroupDiv.classList.remove('hidden'); // Uncomment to show reason for rejection
+                        break;
+                    case 'Revision':
+                        confirmButtonClass = 'bg-orange-600 hover:bg-orange-700';
+                        modalTitleText = 'Request Revision';
+                        modalMessageText = 'Are you sure you want to request a revision for this item?';
+                        reasonGroupDiv.classList.remove('hidden'); // Uncomment to show reason for revision
+                        break;
+                }
+                actionModalTitle.textContent = modalTitleText;
+                actionModalMessage.textContent = modalMessageText;
+                confirmActionButton.className = `inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${confirmButtonClass} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500`;
+
+                openModal(actionConfirmModal);
+            };
+
+            actionCloseButton.onclick = () => closeModal(actionConfirmModal);
+            cancelActionButton.onclick = () => closeModal(actionConfirmModal);
+
+            // --- Message Box Modal Logic (Generic Alert) ---
+            window.showMessageBox = (title, message) => {
+                messageBoxTitle.textContent = title;
+                messageBoxText.textContent = message;
+                openModal(messageBoxModal);
+            };
+
+            messageBoxCloseButton.onclick = () => closeModal(messageBoxModal);
+            messageBoxOkButton.onclick = () => closeModal(messageBoxModal);
+
+            // --- Filter and Pagination Logic ---
+
+            function updateUrlAndReload(pageNumber) {
+                const currentSearchTerm = searchInput.value;
+                const currentStatusFilter = statusFilter.value;
+                const newUrl = `?searchTerm=${encodeURIComponent(currentSearchTerm)}&status=${encodeURIComponent(currentStatusFilter)}&page=${pageNumber}&pageSize=${@Model.PageSize}`;
+                window.location.href = newUrl;
+            }
+
+            applyFiltersButton.addEventListener('click', () => {
+                updateUrlAndReload(1); // Go to the first page when filters are applied
+            });
+            
+            // Pagination click handlers for desktop
+            if (paginationPrevious) {
+                paginationPrevious.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (@Model.CurrentPage > 1) {
+                        updateUrlAndReload(@Model.CurrentPage - 1);
+                    }
+                });
+            }
+
+            if (paginationNext) {
+                paginationNext.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (@Model.CurrentPage < @Model.TotalPages) {
+                        updateUrlAndReload(@Model.CurrentPage + 1);
+                    }
+                });
+            }
+
+            // Pagination click handlers for mobile
+            if (paginationMobilePrevious) {
+                paginationMobilePrevious.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (@Model.CurrentPage > 1) {
+                        updateUrlAndReload(@Model.CurrentPage - 1);
+                    }
+                });
+            }
+
+            if (paginationMobileNext) {
+                paginationMobileNext.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (@Model.CurrentPage < @Model.TotalPages) {
+                        updateUrlAndReload(@Model.CurrentPage + 1);
+                    }
+                });
+            }
+
+
+            paginationPageLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = parseInt(e.target.dataset.page);
+                    if (!isNaN(page)) {
+                        updateUrlAndReload(page);
+                    }
+                });
+            });
+
+
+            // --- Close modals when clicking outside ---
+            window.onclick = (event) => {
+                if (event.target == detailsModal) {
+                    closeModal(detailsModal);
+                }
+                if (event.target == actionConfirmModal) {
+                    closeModal(actionConfirmModal);
+                }
+                if (event.target == messageBoxModal) {
+                    closeModal(messageBoxModal);
+                }
+            };
+        });
+    </script>
+</body>
+</html>
