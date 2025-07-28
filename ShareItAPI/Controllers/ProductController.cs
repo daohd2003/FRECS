@@ -1,8 +1,11 @@
 ﻿using AutoMapper;
 using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.PagingDto;
 using BusinessObject.DTOs.ProductDto;
+using BusinessObject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Results;
 using Services.ProductServices;
 using System.Security.Claims;
 
@@ -30,6 +33,72 @@ namespace ShareItAPI.Controllers
             if (product == null) return NotFound();
             return Ok(product);
         }
+
+        [HttpGet()]
+        [AllowAnonymous]
+        public  IActionResult GetAll()
+        {
+            IQueryable<ProductDTO> products = _service.GetAll();
+            if (products == null) return NotFound();
+            return Ok(products);
+        }
+
+        [HttpGet("filter")] 
+        public async Task<ActionResult<PagedResult<ProductDTO>>> GetProductsAsync(
+            [FromQuery] string? searchTerm,
+            [FromQuery] string status,
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 5) 
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 5; 
+
+            if (searchTerm == "\"\"")
+            {
+                searchTerm = string.Empty;
+            }
+
+            IQueryable<ProductDTO> products = _service.GetAll(); 
+
+            var query = products.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lowerSearchTerm = searchTerm.ToLower();
+                query = query.Where(p =>
+                    p.Name.ToLower().Contains(lowerSearchTerm) ||
+                    (p.Description != null && p.Description.ToLower().Contains(lowerSearchTerm))
+                );
+            }
+
+            if (!string.IsNullOrWhiteSpace(status) && status.ToLower() != "all")
+            {
+                var lowerStatus = status.ToLower();
+                query = query.Where(p =>
+                    p.AvailabilityStatus.ToLower().Equals(lowerStatus)
+                );
+            }
+
+            var totalCount = query.Count();
+
+            var items = query
+                .OrderByDescending(p => p.CreatedAt) 
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList(); 
+
+            var pagedResult = new PagedResult<ProductDTO>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                CurrentPage = page,
+                PageSize = pageSize
+            };
+
+            return Ok(pagedResult);
+        }
+
+
 
         /* [HttpPost]
          public async Task<IActionResult> Create([FromBody] ProductDTO dto)
@@ -66,6 +135,26 @@ namespace ShareItAPI.Controllers
         {
             var result = await _service.UpdateAsync(dto);
             if (!result) return NotFound();
+            return NoContent();
+        }
+
+        [HttpPut("update-status/{id}")]
+        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] ProductStatusUpdateDto request)
+        {
+            if (id != request.ProductId)
+            {
+                return BadRequest("Product ID in route does not match Product ID in request body.");
+            }
+
+            var result = await _service.UpdateProductStatusAsync(
+               request
+            );
+
+            if (!result)
+            {
+                return NotFound("Product not found or status update failed.");
+            }
+
             return NoContent();
         }
 

@@ -5,8 +5,9 @@
     /// </summary>
     public enum AvailabilityStatus
     {
-        available,   // Có sẵn, có thể sử dụng hoặc đặt hàng
+        available,
         pending,
+        rejected,// Có sẵn, có thể sử dụng hoặc đặt hàng
         unavailable  // Không có sẵn, hết hàng hoặc tạm thời không sử dụng được
     }
 }

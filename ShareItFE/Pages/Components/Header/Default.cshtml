@@ -167,6 +167,17 @@
                             </a>
                         }
 
+                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/ProductVerification">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7.5 4.5v5.25c0 4.914-3.288 9.554-7.5 10.5-4.212-.946-7.5-5.586-7.5-10.5V7.5L12 3z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
+                                </svg>
+                                <span>Product Verification</span>
+                            </a>
+                        }
+
                         <hr style="margin: 0.5rem 0;" />
                         <form asp-page="/Auth" asp-page-handler="Logout" method="post">
                             @Html.AntiForgeryToken()
