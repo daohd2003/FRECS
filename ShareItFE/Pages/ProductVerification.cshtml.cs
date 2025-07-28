@@ -133,7 +133,8 @@ namespace ShareItFE.Pages
             var productStatusDto = new ProductStatusUpdateDto
             {
                 ProductId = productId,
-                NewAvailabilityStatus = status
+                NewAvailabilityStatus = status,
+                RejectionReason = string.Empty
             };
 
             var jsonContent = JsonSerializer.Serialize(
