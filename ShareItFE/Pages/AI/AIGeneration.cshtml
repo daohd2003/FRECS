@@ -1,0 +1,112 @@
+@page
+@model ShareItFE.Pages.AI.AIGeneration
+@{
+    ViewData["Title"] = "AIGeneration";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FashionFit - Virtual Try-On Experience</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="~/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="app-title">Try On Fashion<span class="sparkle">Fit</span></h1>
+
+        </header>
+
+        <div class="upload-section">
+            <div class="upload-box">
+                <h2><i class="fas fa-user-circle"></i> Person Image</h2>
+                <div class="dropzone" id="personDropzone">
+                    <i class="fas fa-cloud-upload-alt cloud-icon"></i>
+                    <div class="upload-text">
+                        <p>Drop Image Here</p>
+                        <p>- or -</p>
+                        <p class="upload-link">Click to Upload</p>
+                    </div>
+                    <input type="file" id="personInput" accept="image/*">
+                </div>
+            </div>
+
+            <div class="upload-box">
+                <h2><i class="fas fa-tshirt"></i> Garment Image</h2>
+                <div class="dropzone" id="garmentDropzone">
+                    <i class="fas fa-cloud-upload-alt cloud-icon"></i>
+                    <div class="upload-text">
+                        <p>Drop Image Here</p>
+                        <p>- or -</p>
+                        <p class="upload-link">Click to Upload</p>
+                    </div>
+                    <input type="file" id="garmentInput" accept="image/*">
+                </div>
+                <div id="garmentThumbnails" class="garment-thumbnails"
+                    style="display: flex; gap: 8px; margin-top: 10px;"></div>
+                <div id="garmentSelectContainer" style="margin-top: 10px; display: none;">
+                    <label for="garmentSelect" style="font-weight: bold; margin-bottom: 5px; display: block;">Select
+                        Garment Image:</label>
+                    <select id="garmentSelect" class="cloth-type-dropdown"
+                        style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Choose a garment image...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="upload-box">
+                <label for="clothTypeSelector" style="font-weight: bold; margin-bottom: 5px;">Clothing Type</label>
+                <select id="clothTypeSelector" class="cloth-type-dropdown">
+                    <option value="upper">Upper (e.g. shirt)</option>
+                    <option value="lower">Lower (e.g. pants)</option>
+                    <option value="overall">Overall (e.g. jumpsuit)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; justify-content: center; align-items: center; margin: 30px 0; width: 100%;">
+                <button class="generate-button" id="generateButton" type="button" disabled>
+                    <i class="fas fa-wand-magic-sparkles"></i> Create Magic!
+                </button>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div class="results-box">
+                <h2><i class="fas fa-tshirt"></i> Your Fashion Preview</h2>
+                <div class="generated-image-container" id="generatedImageContainer">
+                    <div class="image-placeholder">
+                        <i class="fas fa-camera placeholder-icon"></i>
+                        <p>Your virtual try-on image will appear here</p>
+                    </div>
+                    <button class="regenerate-feedback-button" id="regenerateFeedbackButton" type="button"
+                            style="margin-top: 15px; display: none;">
+                        <i class="fas fa-redo"></i> Regenerate the analysis
+                    </button>
+                </div>
+
+                <div class="analysis-box" id="analysisBox">
+                    <div class="analysis-header">
+                        <i class="fas fa-crown"></i>
+                        <span>Style Fairy Analysis</span>
+                    </div>
+                    <div class="analysis-content">
+                        Generate a try-on image to see AI style and fit analysis
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            &copy; 2025 FashionFit - Virtual Try-On Technology
+        </footer>
+    </div>
+
+    <script src="~/js/Ai/index.js"></script>
+</body>
+
+</html>

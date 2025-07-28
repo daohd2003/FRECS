@@ -4,6 +4,7 @@
     ViewData["Title"] = Model.Product?.Name ?? "Product Detail";
 }
 
+@using System.Text.Json
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -53,7 +54,13 @@
 
                     <form method="post" id="addToCartForm" asp-page-handler="AddToCart" asp-route-id="@Model.Product.Id">
                         <div>
-                            <h1 class="text-3xl font-bold text-gray-900 mb-4">@Model.Product.Name</h1>
+                            <div class="flex items-center justify-between mb-4">
+                                <h1 class="text-3xl font-bold text-gray-900">@Model.Product.Name</h1>
+                                <button type="button" id="tryOnBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                    <i data-lucide="sparkles" class="h-4 w-4"></i>
+                                    <span>Try On</span>
+                                </button>
+                            </div>
                             <div class="flex items-center space-x-4 mb-4">
                                 <div class="flex items-center space-x-1">
                                     <div class="flex">
@@ -330,6 +337,19 @@
                         const productId = favoriteForm.querySelector('input[name="productId"]').value;
                         if (productId) {
                             favoriteForm.submit();
+                        }
+                    });
+                }
+
+                // Try On button logic
+                const tryOnBtn = document.getElementById('tryOnBtn');
+                if (tryOnBtn) {
+                    tryOnBtn.addEventListener('click', () => {
+                        const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
+                        if (garmentImageUrls.length > 0) {
+                            window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
+                        } else {
+                            alert('No garment image available for try-on');
                         }
                     });
                 }
