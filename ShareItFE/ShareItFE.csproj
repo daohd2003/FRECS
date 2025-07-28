@@ -22,6 +22,8 @@
 		<None Include="wwwroot\js\productfeedback.js" />
 		<None Include="wwwroot\js\notification.js" />
 		<None Include="wwwroot\js\profile.js" />
+		<None Include="Pages\AI\AIGeneration.cshtml" />
+    	<None Include="wwwroot\js\Ai\index.js" />
 	</ItemGroup>
 
 	<ItemGroup>
