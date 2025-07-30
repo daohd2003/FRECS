@@ -1,16 +1,23 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+﻿using Azure;
+using Azure.Core;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.FeedbackDto;
+using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.DTOs.ProfileDtos;
+using BusinessObject.Enums;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using ShareItFE.Common.Utilities;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Products
 {
@@ -20,13 +27,14 @@ namespace ShareItFE.Pages.Products
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly IConfiguration _configuration;
-
-        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+        private readonly AuthenticatedHttpClientHelper _clientHelper;
+        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, AuthenticatedHttpClientHelper clientHelper)
         {
             _httpClientFactory = httpClientFactory;
             _httpContextAccessor = httpContextAccessor;
             _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             _configuration = configuration;
+            _clientHelper = clientHelper;
         }
 
         public ProductDTO Product { get; set; }
@@ -52,6 +60,121 @@ namespace ShareItFE.Pages.Products
 
         [TempData] // Dùng TempData để hiển thị thông báo lỗi
         public string? ErrorMessage { get; set; }
+
+
+
+        //---------------------Hau------------------------------------
+        [BindProperty]
+        public FeedbackRequest FeedbackInput { get; set; } = new FeedbackRequest();
+
+        public async Task<IActionResult> OnPostAddFeedbackAsync(Guid id)
+        {
+            Guid orderItemId;
+            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
+
+            if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
+            {
+                ErrorMessage = "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.";
+                await LoadInitialData(id);
+                return Page();
+            }
+
+
+            var client = await _clientHelper.GetAuthenticatedClientAsync();
+            var requestURI = $"https://localhost:7256/api/orders/order-item/{id}";
+            var orderItemresponse = await client.GetAsync(requestURI);
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
+
+
+            if (orderItemresponse.IsSuccessStatusCode)
+            {
+                var apiResponse = JsonSerializer.Deserialize<ApiResponse<String>>(   await orderItemresponse.Content.ReadAsStringAsync(), options);
+
+                string resutl = apiResponse?.Data;
+
+                if (resutl != null) { 
+                    orderItemId = Guid.Parse(resutl);
+                }
+                else
+                {
+                    orderItemId = Guid.Empty;
+                    Console.WriteLine($"User need to rent it to use feedback function");
+                    return RedirectToPage(new { id = id });
+                }
+
+            }
+            else
+            {
+                var errorContent = await orderItemresponse.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error fetching");
+                return RedirectToPage(new { id = id });
+            }
+
+            FeedbackInput.TargetId = id;
+            //FeedbackInput.OrderItemId = "4B4816CE-70A3-4BDB-BA1A-03D2080F2623";
+            //string input = "7361EEA2-5453-41B7-9999-11482B46E57B";
+            FeedbackInput.OrderItemId = orderItemId;
+            // 4. Make API Call
+            try
+            {
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
+
+                // Assuming your API endpoint for submitting feedback is "/api/feedback"
+                var apiUrl = $"https://localhost:7256/api/feedbacks"; // Make sure _apiBaseUrl is configured
+
+                var response = await httpClient.PostAsJsonAsync(apiUrl, FeedbackInput);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // API returned 201 Created (or 200 OK)
+                    TempData["SuccessMessage"] = "Phản hồi của bạn đã được gửi thành công!";
+                    SuccessMessage = "Phản hồi của bạn đã được gửi thành công!";
+                    // Optional: You might want to reload product details to show the new feedback immediately
+                    // await LoadInitialData(id);
+                }
+                else
+                {
+                    // API returned an error status code
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    TempData["ErrorMessage"] = $"Lỗi khi gửi phản hồi: {response.StatusCode} - {errorContent}";
+                    // Log the detailed errorContent for debugging
+                    Console.WriteLine($"Feedback API Error: {response.StatusCode} - {errorContent}");
+                    // Reload page data to maintain state if an error occurs
+                    // await LoadInitialData(id);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                // Handle network errors or API not reachable
+                TempData["ErrorMessage"] = $"Không thể kết nối đến dịch vụ: {ex.Message}";
+                Console.WriteLine($"HttpRequestException: {ex.Message}");
+                // await LoadInitialData(id);
+            }
+            catch (Exception ex)
+            {
+                // Handle other unexpected errors
+                TempData["ErrorMessage"] = $"Đã xảy ra lỗi không mong muốn: {ex.Message}";
+                Console.WriteLine($"General Exception: {ex.Message}");
+                // await LoadInitialData(id);
+            }
+
+            // Always redirect after a POST to prevent "Resubmit form" warnings on refresh
+            // and to clear the form data.
+            return RedirectToPage(new { id = id });
+        }
+
+
+        //---------------------Hau------------------------------------
+
+
+
+
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
@@ -397,4 +520,15 @@ namespace ShareItFE.Pages.Products
         }
     }
 }
+public class FeedbackRequest
+{
+    public FeedbackTargetType TargetType { get; set; }
 
+    public Guid TargetId { get; set; } 
+
+    public Guid? OrderItemId { get; set; }
+
+    public int Rating { get; set; }
+
+    public string? Comment { get; set; }
+}

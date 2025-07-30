@@ -123,5 +123,20 @@ namespace Repositories.OrderRepositories
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public Task<string?> GetOrderItemId(Guid customerId, Guid productId)
+        {
+            var orderItemId = _context.Orders
+                .Include(o => o.Items)
+                .Where(o => o.CustomerId == customerId && o.Status == OrderStatus.returned)
+                .OrderByDescending(o => o.CreatedAt)
+                .SelectMany(o => o.Items
+                    .Where(i => i.ProductId == productId)
+                    .Select(i => i.Id.ToString()))
+                .FirstOrDefault();
+
+            return Task.FromResult(orderItemId);
+        }
+
     }
 }

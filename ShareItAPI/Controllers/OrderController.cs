@@ -259,5 +259,24 @@ namespace ShareItAPI.Controllers
                 });
             }
         }
+
+        [HttpGet("order-item/{productId}")]
+        public async Task<IActionResult> GetOrderItemId([FromRoute] Guid productId)
+        {
+            var customerId = GetCurrentUserId();
+            var guidString = await _orderService.GetOrderItemId(customerId,productId);
+            
+            return Ok(new ApiResponse<string>("Get Order Item Successfully ", guidString));
+        }
+
+        private Guid GetCurrentUserId()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdString, out Guid userId))
+            {
+                throw new InvalidOperationException("User ID from authentication token is missing or invalid.");
+            }
+            return userId;
+        }
     }
 }
