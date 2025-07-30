@@ -1,0 +1,431 @@
+﻿/* General Page Layout */
+.contact-page-wrapper {
+    min-height: 100vh;
+    background-color: #f9fafb; /* gray-50 */
+}
+
+.contact-container {
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* Hero Section */
+.contact-hero-section {
+    background: linear-gradient(to bottom right, #8b5cf6, #4f46e5); /* from-purple-600 to-indigo-700 */
+    color: white;
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+    text-align: center;
+}
+
+.hero-title {
+    font-size: 3rem; /* text-5xl */
+    font-weight: 700; /* font-bold */
+    margin-bottom: 1.5rem;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem; /* text-xl */
+    opacity: 0.9;
+    max-width: 56rem; /* max-w-3xl */
+    margin: auto;
+}
+
+/* Main Content & Grid */
+.main-content {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+}
+
+@media (min-width: 1024px) {
+    .contact-grid {
+        grid-template-columns: 2fr 1fr; /* lg:grid-cols-3 -> col-span-2 + col-span-1 */
+    }
+}
+
+.form-column {
+    grid-column: span 1 / span 1;
+}
+
+@media (min-width: 1024px) {
+    .form-column {
+        grid-column: span 2 / span 2;
+    }
+}
+
+
+.info-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Card Style */
+.card {
+    background-color: white;
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); /* shadow-lg */
+    padding: 2rem;
+}
+
+    .card h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+
+/* Form Styles */
+.form-header {
+    margin-bottom: 2rem;
+}
+
+    .form-header h2 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 1rem;
+    }
+
+    .form-header p {
+        color: #4b5563;
+    }
+
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-grid-double {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .form-grid-double {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+    .form-input:focus {
+        outline: none;
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4);
+    }
+
+.validation-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Button Styles */
+.button-primary {
+    width: 100%;
+    background-color: #8b5cf6; /* purple-600 */
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+    .button-primary:hover {
+        background-color: #7c3aed; /* purple-700 */
+    }
+
+.button-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Success Message */
+.success-message {
+    margin-bottom: 2rem;
+    background-color: #f0fdf4; /* green-50 */
+    border: 1px solid #bbf7d0; /* green-200 */
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.success-content {
+    display: flex;
+    align-items: center;
+}
+
+.success-icon {
+    color: #22c55e; /* green-500 */
+    margin-right: 0.5rem;
+}
+
+.success-content span {
+    color: #15803d; /* green-800 */
+    font-weight: 500;
+}
+
+
+/* Info Column Styles */
+.contact-methods-list, .office-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.contact-method-item, .office-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.contact-icon-wrapper {
+    flex-shrink: 0;
+    width: 3rem;
+    height: 3rem;
+    background-color: #f5f3ff; /* purple-100 */
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8b5cf6; /* purple-600 */
+}
+
+    .contact-icon-wrapper svg {
+        width: 24px;
+        height: 24px;
+    }
+
+.contact-method-item h4 {
+    font-weight: 600;
+    color: #111827;
+}
+
+.contact-description {
+    color: #4b5563;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.contact-detail {
+    font-weight: 500;
+    color: #8b5cf6;
+}
+
+.contact-availability {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.office-icon {
+    flex-shrink: 0;
+    color: #8b5cf6;
+    margin-top: 0.25rem;
+}
+
+.office-title {
+    font-weight: 500;
+    color: #111827;
+}
+
+.quick-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.quick-link {
+    color: #8b5cf6;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+    .quick-link:hover {
+        color: #7c3aed;
+    }
+
+/* FAQ Section */
+.faq-section {
+    margin-top: 4rem;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+    .section-header h2 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 1rem;
+    }
+
+    .section-header p {
+        font-size: 1.25rem;
+        color: #4b5563;
+    }
+
+.faq-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .faq-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .faq-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.faq-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s;
+    text-decoration: none;
+    color: inherit;
+}
+
+    .faq-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    }
+
+.faq-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    background-color: #f9fafb; /* gray-50 */
+    border-radius: 9999px; /* rounded-full */
+    margin-bottom: 1rem;
+    transition: background-color 0.2s;
+}
+
+.faq-card:hover .faq-icon-wrapper {
+    background-color: #f3f4f6; /* gray-100 */
+}
+
+.faq-icon-wrapper svg {
+    width: 32px;
+    height: 32px;
+    color: #4f46e5; /* Example color */
+}
+
+.faq-card h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.faq-card p {
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+/* CTA Section */
+.cta-section {
+    margin-top: 4rem;
+    background: linear-gradient(to right, #8b5cf6, #4f46e5);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    color: white;
+}
+
+    .cta-section h2 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        margin-bottom: 1.5rem;
+    }
+
+.cta-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+}
+
+@media (min-width: 640px) {
+    .cta-buttons {
+        flex-direction: row;
+    }
+}
+
+.button-secondary {
+    background-color: white;
+    color: #8b5cf6;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+    .button-secondary:hover {
+        background-color: #f3f4f6;
+    }
+
+.button-outline {
+    border: 2px solid white;
+    color: white;
+    background-color: transparent;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+    .button-outline:hover {
+        background-color: white;
+        color: #8b5cf6;
+    }

@@ -27,7 +27,10 @@
                 <a asp-page="/Provider/PostItem">List Item</a>
             }
             <a href="/Index#how-it-works">How it Works</a>
-            <a asp-page="/Contact">Contact</a>
+            @if (Model.IsUserLoggedIn && (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase)))
+            {
+                <a asp-page="/Contact">Contact</a>
+            }
         </nav>
 
         <div class="header-actions">
@@ -156,6 +159,21 @@
                             <a asp-page="/Provider/Messages">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                                 <span>Messages</span>
+                            </a>
+                        }
+
+                        @* === THAY ĐỔI NẰM Ở ĐÂY === *@
+                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Admin/UserManagement">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                                <span>User Management</span>
+                            </a>
+
+                            @* **ĐÃ THÊM LINK MỚI VÀO ĐÂY** *@
+                            <a asp-page="/ReportManagement">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></svg>
+                                <span>Report Management</span>
                             </a>
                         }
 

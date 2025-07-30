@@ -1,0 +1,521 @@
+﻿@page
+@model ShareItFE.Pages.ReportManagementModel
+@{
+    ViewData["Title"] = "Report Management";
+
+    string GetPriorityClass(BusinessObject.Enums.ReportPriority priority)
+    {
+        return priority switch
+        {
+            BusinessObject.Enums.ReportPriority.Critical => "priority-critical",
+            BusinessObject.Enums.ReportPriority.High => "priority-high",
+            BusinessObject.Enums.ReportPriority.Medium => "priority-medium",
+            BusinessObject.Enums.ReportPriority.Low => "priority-low",
+            _ => ""
+        };
+    }
+
+    string GetStatusIcon(string status)
+    {
+        return status.ToLower() switch
+        {
+            "open" => "bi-clock",
+            "inprogress" => "bi-arrow-repeat",
+            "in_progress" => "bi-arrow-repeat", // optional
+            "resolved" => "bi-check-circle-fill",
+            "awaitingcustomerresponse" => "bi-person-vcard",
+            "awaiting_customer_response" => "bi-person-vcard", // optional
+            "resolutionnote" => "bi-journal-check",
+            _ => "bi-question-circle"
+        };
+    }
+
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="~/css/report-management.css" asp-append-version="true" />
+@Html.AntiForgeryToken()
+
+<div class="page-container">
+    @if (!string.IsNullOrEmpty(Model.NotificationMessage))
+    {
+        <div id="toast-notification" class="notification-toast @Model.NotificationType">
+            @Model.NotificationMessage
+        </div>
+    }
+
+    <div class="page-header">
+        <div>
+            <h1>Report Management</h1>
+            <p>Manage and respond to user-submitted reports</p>
+        </div>
+        <div class="header-actions">
+            <div id="realtime-status" class="status-indicator status-disconnected">
+                <div class="dot"></div>
+                <span>Connecting...</span>
+            </div>
+        </div>
+    </div>
+    <div class="card search-card">
+        <form method="get" class="search-bar">
+            <i class="bi bi-search"></i>
+            <input type="hidden" name="tab" value="@Model.Tab" />
+            <input asp-for="SearchQuery" placeholder="Search reports by ID, subject, or email " />
+        </form>
+    </div>
+    <div class="card">
+        <div class="tabs">
+            <a asp-page="/ReportManagement" asp-route-tab="all" class="@(Model.Tab == "all" ? "active" : "")">All Reports (@Model.AllReportsCount)</a>
+            <a asp-page="/ReportManagement" asp-route-tab="mytasks" class="@(Model.Tab == "mytasks" ? "active" : "")">My Tasks (@Model.MyTasksCount)</a>
+        </div>
+        <div class="table-container">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Report Info</th>
+                        <th>Reporter</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="reports-table-body">
+                    @if (Model.Reports.Any())
+                    {
+                        @foreach (var report in Model.Reports)
+                        {
+                            <tr data-report-id="@report.Id">
+                                <td>
+                                    <div class="id-info">
+                                        <div class="priority-dot @GetPriorityClass(report.Priority)" title="@report.Priority Priority"></div>
+                                        <div>
+                                            <div class="reporter-name">@report.Id.ToString("N").Substring(0, 8)</div>
+                                            <div class="report-subject" title="@report.Subject">@report.Subject</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="reporter-info">
+                                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #9ca3af;"></i>
+                                        <div>
+                                            <div class="reporter-name">@report.ReporterName</div>
+                                            <div class="reporter-email">@report.ReporterEmail</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="date-info">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <span>@report.DateCreated.ToLocalTime().ToString("g")</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @{
+                                        var statusString = report.Status ?? "Unknown";
+                                    }
+                                    <span class="status-badge status-@statusString.ToLower().Replace(" ", "-")">
+                                        <i class="@GetStatusIcon(statusString)"></i>
+                                        <span>@statusString</span>
+                                    </span>
+
+                                </td>
+                                <td>
+                                    @if (Model.Tab == "all")
+                                    {
+                                        <form method="post" asp-page-handler="TakeTask" asp-route-reportId="@report.Id" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-action btn-take-task"><i class="bi bi-person-check-fill"></i> Take Task</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn-action btn-view-details" data-report-id="@report.Id"><i class="bi bi-eye"></i> View Details</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="5"><div class="empty-state"><div class="icon"><i class="bi bi-folder2-open"></i></div><h3>No reports found</h3><p>There are no reports to display in this view.</p></div></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.TotalPages > 0)
+        {
+            <div class="pagination-container">
+                <div class="pagination-info">Showing <strong>@((Model.CurrentPage - 1) * Model.PageSize + 1)</strong> to <strong>@Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalCount)</strong> of <strong>@Model.TotalCount</strong> results</div>
+                <div class="pagination-controls">
+                    <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@(Model.CurrentPage - 1)" class="@(Model.CurrentPage <= 1 ? "disabled" : "")"><i class="bi bi-chevron-left"></i></a>
+                    @for (var i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@i" class="@(i == Model.CurrentPage ? "active" : "")">@i</a>
+                    }
+                    <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@(Model.CurrentPage + 1)" class="@(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")"><i class="bi bi-chevron-right"></i></a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div id="report-detail-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="header-info">
+                <div id="modal-priority-dot" class="priority-dot"></div>
+                <div>
+                    <h2>Report Details</h2>
+                    <p>ID: <span id="modal-report-id-display"></span></p>
+                </div>
+            </div>
+            <button id="modal-close-btn" type="button" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="modal-grid">
+                <div class="modal-col">
+                    <div class="modal-section">
+                        <h3>Report Information</h3>
+                        <div class="info-card">
+                            <div><label>Subject</label><p id="modal-subject"></p></div>
+                            <div><label>Description</label><p id="modal-description"></p></div>
+                            <div class="grid-2">
+                                <div><label>Priority</label><p id="modal-priority"></p></div>
+                                <div><label>Date Created</label><p id="modal-date"></p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Reporter</h3>
+                        <div class="user-card reporter-card">
+                            <div class="icon-wrapper"><i class="bi bi-person-fill"></i></div>
+                            <div>
+                                <p class="reporter-name" id="modal-reporter-name"></p>
+                                <p class="reporter-email" id="modal-reporter-email"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Reported User</h3>
+                        <div class="user-card reportee-card">
+                            <div class="icon-wrapper"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                            <div>
+                                <p class="reporter-name" id="modal-reportee-name"></p>
+                                <p class="reporter-email" id="modal-reportee-email"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-col">
+                    <div class="modal-section">
+                        <h3>Actions</h3>
+                        <div class="info-card" style="margin-bottom: 1rem;">
+                            <label>Current Status</label>
+                            <p>Assigned to: <strong id="modal-assigned-admin"></strong></p>
+                            <div id="modal-current-status-badge"></div>
+                        </div>
+
+                        <div class="action-control" style="margin-bottom: 1rem;">
+                            <select id="modal-status-select" class="form-control">
+                                @foreach (var statusValue in Enum.GetValues(typeof(BusinessObject.Enums.ReportStatus)))
+                                {
+                                    // Lấy tên dạng chuỗi của Enum (ví dụ: "InProgress")
+                                    var statusName = Enum.GetName(typeof(BusinessObject.Enums.ReportStatus), statusValue);
+
+                                    // Dùng tên chuỗi này làm "value" cho option
+                                    // và thay thế gạch dưới bằng khoảng trắng để hiển thị đẹp hơn
+                                    <option value="@statusName">@statusName.Replace("_", " ")</option>
+                                }
+                            </select>
+                            <button id="btn-update-status" class="btn-action btn-update-status">Update</button>
+                        </div>
+                        <div class="action-control" style="margin-bottom: 1rem;">
+                            <select id="modal-admin-select" class="form-control">
+                                <option value="">Select an admin...</option>
+                                @foreach (var admin in Model.Admins)
+                                {
+                                    <option value="@admin.Id">@admin.Email</option>
+                                }
+                            </select>
+                            <button id="btn-assign-admin" class="btn-action btn-assign-admin">Assign</button>
+                        </div>
+                        <div>
+                            <textarea id="modal-response-message" rows="4" placeholder="Write your response..."></textarea>
+                            <div style="text-align: right; margin-top: 0.5rem;">
+                                <button id="btn-send-response" class="btn-action btn-send-response"><i class="bi bi-send-fill"></i> Send & Update</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button id="modal-footer-close-btn" class="btn-close-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/dist/browser/signalr.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // --- Globals and Constants ---
+            const modal = document.getElementById('report-detail-modal');
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            let currentReport = null; // To store the data of the currently opened report
+
+            const adminsList = @Json.Serialize(Model.Admins);
+            // === SỬA LỖI Ở ĐÂY: Thêm lại logic SignalR đã bị thiếu ===
+            const statusDiv = document.getElementById('realtime-status');
+            const hubUrl = `@Model.ApiRootUrl/reportHub`;
+            const accessToken = @Json.Serialize(Model.AccessToken);
+
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl(hubUrl, { accessTokenFactory: () => accessToken })
+                .withAutomaticReconnect()
+                .build();
+
+            async function startSignalR() {
+                try {
+                    await connection.start();
+                    statusDiv.classList.remove('status-disconnected');
+                    statusDiv.classList.add('status-connected');
+                    statusDiv.querySelector('span').textContent = 'Connected';
+                } catch (err) {
+                    console.error('SignalR Connection Error: ', err);
+                    statusDiv.classList.remove('status-connected');
+                    statusDiv.classList.add('status-disconnected');
+                    statusDiv.querySelector('span').textContent = 'Disconnected';
+                }
+            }
+            startSignalR(); // Bắt đầu kết nối
+
+
+            // --- Function to populate Admin Dropdown ---
+            function populateAdminDropdown() {
+                const adminSelect = document.getElementById('modal-admin-select');
+                // Xóa các option cũ (trừ option đầu tiên "Select an admin...")
+                while (adminSelect.options.length > 1) {
+                    adminSelect.remove(1);
+                }
+                // Thêm các admin mới từ danh sách
+                adminsList.forEach(admin => {
+                    const option = document.createElement('option');
+                    option.value = admin.id;
+                    option.textContent = admin.email || 'No Name';
+                    adminSelect.appendChild(option);
+                });
+            }
+            
+
+            // --- Function to show toast notifications ---
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `notification-toast ${type}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = 0;
+                    setTimeout(() => toast.remove(), 500);
+                }, 4000);
+            }
+
+            // --- Function to update a row in the main table ---
+            function updateTableRow(reportData) {
+                const row = document.querySelector(`tr[data-report-id='${reportData.id}']`);
+                if (!row) return;
+
+                const statusCell = row.querySelector('td:nth-child(4)');
+                const statusString = reportData.status.toString();
+                const statusIcon = getStatusIcon(statusString);
+
+                statusCell.innerHTML = `
+                    <span class="status-badge status-${statusString.toLowerCase()}">
+                        <i class="${statusIcon}"></i>
+                        <span>${statusString.replace(/_/g, " ")}</span>
+                    </span>`;
+            }
+
+            // --- Function to map status string to icon class ---
+            function getStatusIcon(status) {
+                 switch(status) {
+                    case 'open': return 'bi-clock';
+                    case 'in_progress': return 'bi-arrow-repeat';
+                    case 'resolved': return 'bi-check-circle-fill';
+                    case 'awaiting_customer_response': return 'bi-person-vcard';
+                    case 'ResolutionNote': return 'bi-journal-check';
+                    default: return 'bi-question-circle';
+                }
+            }
+
+            // --- Main update function via Fetch ---
+            async function updateReportAction(action, data) {
+                const response = await fetch('?handler=UpdateReportJson', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({ ...data, Action: action })
+                });
+
+                if (!response.ok) {
+                    return showToast('An error occurred while updating.', 'error');
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    currentReport = result.data;
+                    populateModal(currentReport);
+                    updateTableRow(currentReport);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            }
+
+            // --- Function to populate the modal with data ---
+            function populateModal(report) {
+                console.log("Data received in modal:", report);
+                if (!report) {
+                    console.error("populateModal was called with null or undefined report data.");
+                    return;
+                }
+                // Helper: get property value using both camelCase and PascalCase fallback
+                const getValue = (prop) => report[prop] ?? report[prop.charAt(0).toUpperCase() + prop.slice(1)] ?? 'N/A';
+
+                // Sửa lỗi: Kiểm tra cả 'id' và 'Id' để đảm bảo an toàn
+                const reportId = report.id || report.Id || '';
+                const reportPriority = String(report.priority || report.Priority || '').toLowerCase();
+
+                // Header
+                document.getElementById('modal-report-id-display').textContent = reportId.substring(0, 8);
+                const priorityDot = document.getElementById('modal-priority-dot');
+                priorityDot.className = 'priority-dot'; // Reset
+                if (reportPriority === 'critical') priorityDot.classList.add('priority-critical');
+                else if (reportPriority === 'high') priorityDot.classList.add('priority-high');
+                else if (reportPriority === 'medium') priorityDot.classList.add('priority-medium');
+                else priorityDot.classList.add('priority-low');
+
+                        // Left Column
+                document.getElementById('modal-subject').textContent = getValue('subject');
+                document.getElementById('modal-description').textContent = getValue('description');
+                document.getElementById('modal-priority').textContent = getValue('priority');
+
+                const dateCreated = report.dateCreated ?? report.DateCreated;
+                document.getElementById('modal-date').textContent = dateCreated ? new Date(dateCreated).toLocaleString() : 'N/A';
+
+                document.getElementById('modal-reporter-name').textContent = getValue('reporterName');
+                document.getElementById('modal-reporter-email').textContent = getValue('reporterEmail');
+                document.getElementById('modal-reportee-name').textContent = getValue('reporteeName');
+                document.getElementById('modal-reportee-email').textContent = getValue('reporteeEmail');
+
+                // Right Column
+                document.getElementById('modal-assigned-admin').textContent = getValue('assignedAdminName') || 'Not Assigned';
+                document.getElementById('modal-status-select').value = report.status ?? 'open';
+                document.getElementById('modal-admin-select').value = report.assignedAdminId ?? '';
+                document.getElementById('modal-response-message').value = '';
+
+                const statusBadge = document.getElementById('modal-current-status-badge');
+                const statusString = String(getValue('status'));
+                statusBadge.innerHTML = `
+                    <span class="status-badge status-${statusString.toLowerCase()}">
+                        <i class="${getStatusIcon(statusString)}"></i>
+                        <span>${statusString.replace(/_/g, " ")}</span>
+                    </span>`;
+
+                populateAdminDropdown();
+                            const statusValue = getValue('status');
+                document.getElementById('modal-status-select').value = statusValue;
+                const adminSelect = document.getElementById('modal-admin-select');
+                adminSelect.value = report.assignedAdminId ?? '';
+
+            }
+
+            // --- Event Listeners ---
+            document.querySelectorAll('.btn-view-details').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const reportId = e.currentTarget.dataset.reportId;
+                    const response = await fetch(`?handler=ReportDetails&id=${reportId}`);
+                    if (!response.ok) { return showToast('Could not load report details.', 'error'); }
+
+                    try {
+                        currentReport = await response.json();
+                        populateModal(currentReport);
+                        modal.classList.remove('hidden');
+                    } catch(err) {
+                        console.error("Error parsing report details JSON:", err);
+                        showToast("Error processing server response.", 'error');
+                    }
+                });
+            });
+
+            document.getElementById('modal-close-btn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('modal-footer-close-btn').addEventListener('click', () => modal.classList.add('hidden'));
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+            document.getElementById('btn-update-status').addEventListener('click', () => {
+                const newStatus = document.getElementById('modal-status-select').value;
+                updateReportAction('updateStatus', { reportId: (currentReport.id || currentReport.Id), newStatus: newStatus });
+            });
+
+            document.getElementById('btn-assign-admin').addEventListener('click', () => {
+                const newAdminId = document.getElementById('modal-admin-select').value;
+                if (!newAdminId) return showToast('Please select an admin.', 'warning');
+                updateReportAction('assign', { reportId: (currentReport.id || currentReport.Id), newAdminId: newAdminId });
+            });
+
+            document.getElementById('btn-send-response').addEventListener('click', () => {
+                const responseMessage = document.getElementById('modal-response-message').value;
+                const newStatus = document.getElementById('modal-status-select').value;
+                if (!responseMessage.trim()) return showToast('Response message cannot be empty.', 'warning');
+                updateReportAction('respond', { reportId: (currentReport.id || currentReport.Id), responseMessage: responseMessage, newStatus: newStatus });
+            });
+
+            // --- Helper Functions outside DOMContentLoaded ---
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `notification-toast ${type}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = 0;
+                    setTimeout(() => toast.remove(), 500);
+                }, 4000);
+            }
+
+            function updateTableRow(reportData) {
+                const reportId = reportData.id || reportData.Id;
+                const row = document.querySelector(`tr[data-report-id='${reportId}']`);
+                if (!row) return;
+
+                const statusCell = row.querySelector('td:nth-child(4)');
+                const statusString = reportData.status.toString();
+                const statusIcon = getStatusIcon(statusString);
+
+                statusCell.innerHTML = `
+                    <span class="status-badge status-${statusString.toLowerCase()}">
+                        <i class="${statusIcon}"></i>
+                        <span>${statusString.replace(/_/g, " ")}</span>
+                    </span>`;
+            }
+
+            function getStatusIcon(status) {
+                 switch(status) {
+                    case 'open': return 'bi-clock';
+                    case 'in_progress': return 'bi-arrow-repeat';
+                    case 'resolved': return 'bi-check-circle-fill';
+                    case 'awaiting_customer_response': return 'bi-person-vcard';
+                    case 'ResolutionNote': return 'bi-journal-check';
+                    default: return 'bi-question-circle';
+                }
+            }
+        });
+    </script>
+}
+}

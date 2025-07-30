@@ -10,18 +10,14 @@ namespace Repositories.ReportRepositories
 {
     public class ReportRepository : Repository<Report>, IReportRepository
     {
-        /*private readonly YourDbContext _context;
-
-        public ReportRepository(YourDbContext context) : base(context)
-        {
-            _context = context;
-        }*/
-        public ReportRepository(ShareItDbContext context, IMapper mapper) : base(context) { }
+        public ReportRepository(ShareItDbContext context) : base(context) { }
 
         public async Task<IEnumerable<Report>> GetReportsByReporterIdAsync(Guid reporterId)
         {
             return await _context.Reports
                 .Where(r => r.ReporterId == reporterId)
+                .Include(r => r.Reporter).ThenInclude(u => u.Profile)
+                .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .ToListAsync();
         }
 
@@ -29,6 +25,8 @@ namespace Repositories.ReportRepositories
         {
             return await _context.Reports
                 .Where(r => r.ReporteeId == reporteeId)
+                .Include(r => r.Reporter).ThenInclude(u => u.Profile)
+                .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .ToListAsync();
         }
 
@@ -36,32 +34,25 @@ namespace Repositories.ReportRepositories
         {
             return await _context.Reports
                 .Where(r => r.Status == status)
+                .Include(r => r.Reporter).ThenInclude(u => u.Profile)
+                .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .ToListAsync();
         }
 
-        public async Task<ReportDTO> GetReportDetailsAsync(Guid reportId)
+        // THAY ĐỔI: Sửa lại phương thức này để trả về đối tượng Report đầy đủ thông tin
+        // Giúp cho AutoMapper ở tầng Service hoạt động
+        public async Task<Report?> GetReportWithDetailsAsync(Guid reportId)
         {
-            var report = await _context.Reports
-                .Include(r => r.Reporter)
-                .Include(r => r.Reportee)
+            return await _context.Reports
+                .Include(r => r.Reporter).ThenInclude(u => u.Profile)
+                .Include(r => r.Reportee).ThenInclude(u => u.Profile)
+                .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile) // Lấy cả thông tin admin được gán
                 .FirstOrDefaultAsync(r => r.Id == reportId);
-
-            if (report == null) return null;
-
-            return new ReportDTO
-            {
-                Id = report.Id,
-                ReporterId = report.ReporterId,
-                ReporteeId = report.ReporteeId,
-                Subject = report.Subject,
-                Description = report.Description,
-                Status = report.Status,
-                CreatedAt = report.CreatedAt
-            };
         }
 
         public async Task CreateReportAsync(ReportDTO dto)
         {
+            // Logic tạo Report giữ nguyên
             var report = new Report
             {
                 Id = Guid.NewGuid(),
@@ -70,21 +61,27 @@ namespace Repositories.ReportRepositories
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow,
+                Priority = dto.Priority
             };
-
-            await _context.Reports.AddAsync(report);
-            await _context.SaveChangesAsync();
+            await AddAsync(report);
         }
 
         public async Task UpdateReportStatusAsync(Guid reportId, ReportStatus newStatus)
         {
-            var report = await _context.Reports.FindAsync(reportId);
+            var report = await GetByIdAsync(reportId);
             if (report == null) return;
 
             report.Status = newStatus;
-            _context.Reports.Update(report);
-            await _context.SaveChangesAsync();
+            await UpdateAsync(report);
+        }
+        public IQueryable<Report> GetReportsAsQueryable()
+        {
+            return _context.Reports
+                .Include(r => r.Reporter).ThenInclude(u => u.Profile)
+                .Include(r => r.Reportee).ThenInclude(u => u.Profile)
+                .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile)
+                .AsQueryable();
         }
     }
 }

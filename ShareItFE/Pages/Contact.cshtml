@@ -1,0 +1,222 @@
+﻿@page
+@model ShareItFE.Pages.ContactModel
+@using BusinessObject.Enums
+@{
+    ViewData["Title"] = "Submit Report";
+    Layout = "_Layout";
+}
+
+<link rel="stylesheet" href="~/css/contact.css" asp-append-version="true" />
+<!-- Thêm vào phần head hoặc trước khi sử dụng -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+
+<div class="contact-page-wrapper">
+    <section class="contact-hero-section">
+        <div class="contact-container">
+            <h1 class="hero-title">Submit a Report</h1>
+            <p class="hero-subtitle">
+                Found an issue or need to report something? Fill out the form below and our team will review it promptly.
+            </p>
+        </div>
+    </section>
+
+    <div class="contact-container main-content">
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="error-message">
+                <span>@Model.ErrorMessage</span>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="success-message">
+                <div class="success-content">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="success-icon"><line x1="22" x2="11" y1="2" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                    <span>@Model.SuccessMessage</span>
+                </div>
+            </div>
+        }
+
+        <div class="contact-grid">
+            <div class="form-column">
+                <div class="card">
+                    <div class="form-header">
+                        <h2>Report Details</h2>
+                        <p>Please provide complete and accurate information about your report.</p>
+                    </div>
+
+                    <form method="post" class="contact-form">
+                        @Html.AntiForgeryToken()
+
+                        <div class="form-grid-double">
+                            <div>
+                                <label asp-for="FormInput.Subject" class="form-label">Report Subject *</label>
+                                <input asp-for="FormInput.Subject" class="form-input"
+                                       placeholder="Enter report subject (max 255 characters)"
+                                       maxlength="255" required />
+                                <span asp-validation-for="FormInput.Subject" class="validation-error"></span>
+                            </div>
+                            <div>
+                                <label asp-for="FormInput.Priority" class="form-label">Priority *</label>
+                                <select asp-for="FormInput.Priority" class="form-input" required>
+                                    <option value="">Select priority</option>
+                                    <option value="@ReportPriority.Low">Low</option>
+                                    <option value="@ReportPriority.Medium">Medium</option>
+                                    <option value="@ReportPriority.High">High</option>
+                                    <option value="@ReportPriority.Critical">Critical</option>
+                                </select>
+                                <span asp-validation-for="FormInput.Priority" class="validation-error"></span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="ReporteeSearch" class="form-label">Reported User (optional)</label>
+                            <select id="ReporteeSearch" class="form-input user-search"
+                                    data-placeholder="Search by email...">
+                                <option></option>
+                            </select>
+                            <input type="hidden" asp-for="FormInput.ReporteeId" id="ReporteeId" />
+                            <span asp-validation-for="FormInput.ReporteeId" class="validation-error"></span>
+                        </div>
+
+                        <div>
+                            <label asp-for="FormInput.Description" class="form-label">Detailed Description *</label>
+                            <textarea asp-for="FormInput.Description" rows="6" class="form-input" required
+                                      placeholder="Please provide as much detail as possible about the issue..."></textarea>
+                            <span asp-validation-for="FormInput.Description" class="validation-error"></span>
+                        </div>
+
+                        <button type="submit" class="button-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="button-icon"><line x1="22" x2="11" y1="2" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                            <span>Submit Report</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="info-column">
+                <div class="card">
+                    <h3>Contact Information</h3>
+                    <div class="contact-methods-list">
+                        @foreach (var method in Model.ContactMethods)
+                        {
+                            <div class="contact-method-item">
+                                <div class="contact-icon-wrapper">
+                                    @Html.Raw(method.IconSvg)
+                                </div>
+                                <div>
+                                    <h4>@method.Title</h4>
+                                    <p class="contact-description">@method.Description</p>
+                                    <p class="contact-detail">@method.Contact</p>
+                                    <p class="contact-availability">@method.Availability</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Our Office</h3>
+                    <div class="office-info-list">
+                        <div class="office-info-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="office-icon"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                            <div>
+                                <p class="office-title">RentChic Headquarters</p>
+                                <p>123 Fashion Avenue<br />New York, NY 10001</p>
+                            </div>
+                        </div>
+                        <div class="office-info-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="office-icon"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                            <div>
+                                <p class="office-title">Business Hours</p>
+                                <p>
+                                    Monday - Friday: 9:00 AM - 6:00 PM EST<br />
+                                    Saturday: 10:00 AM - 4:00 PM EST<br />
+                                    Sunday: Closed
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Quick Help</h3>
+                    <div class="quick-links-list">
+                        <a href="/Help/FAQ" class="quick-link">→ Frequently Asked Questions</a>
+                        <a href="/Help/HowToRent" class="quick-link">→ How to Rent Guide</a>
+                        <a href="/Help/SizeGuide" class="quick-link">→ Size Guide</a>
+                        <a href="/Help/ReturnPolicy" class="quick-link">→ Return Policy</a>
+                        <a href="/Help/ProviderGuidelines" class="quick-link">→ Provider Guidelines</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-section">
+            <div class="section-header">
+                <h2>Frequently Asked Questions</h2>
+                <p>Find quick answers to common questions</p>
+            </div>
+            <div class="faq-grid">
+                @foreach (var category in Model.FaqCategories)
+                {
+                    <a href="@category.Link" class="faq-card">
+                        <div class="faq-icon-wrapper">
+                            @Html.Raw(category.IconSvg)
+                        </div>
+                        <h3>@category.Title</h3>
+                        <p>@category.Description</p>
+                    </a>
+                }
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>Still Need Help?</h2>
+            <p>Our customer success team is standing by to help you with any questions or concerns.</p>
+            <div class="cta-buttons">
+                <button id="startChatButton" class="button-secondary">Start Live Chat</button>
+                <a href="/Contact/ScheduleCall" class="button-outline" style="text-decoration:none;">Schedule a Call</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#ReporteeSearch').select2({
+                minimumInputLength: 2,
+                placeholder: 'Search by email...',
+                allowClear: true,
+                ajax: {
+                    url: '@Url.Page("Contact", "SearchUsers")',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            term: params.term
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    error: function(xhr) {
+                        console.error('Search error:', xhr.responseText);
+                    }
+                }
+            });
+
+            $('#ReporteeSearch').on('change', function() {
+                $('#ReporteeId').val($(this).val());
+            });
+        });
+    </script>
+}
+}
