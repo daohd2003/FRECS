@@ -8,7 +8,7 @@ namespace BusinessObject.DTOs.ReportDto
 
         public Guid ReporterId { get; set; }  // Người thực hiện báo cáo
 
-        public Guid ReporteeId { get; set; }  // Người bị báo cáo
+        public Guid? ReporteeId { get; set; } = null; // Người bị báo cáo
 
         public string Subject { get; set; }  // Chủ đề/nguyên nhân báo cáo (Ví dụ: Spam, Lừa đảo)
 
@@ -17,5 +17,7 @@ namespace BusinessObject.DTOs.ReportDto
         public ReportStatus? Status { get; set; }  // Trạng thái xử lý (Pending, Reviewed, Rejected...)
 
         public DateTime? CreatedAt { get; set; }
+
+        public ReportPriority Priority { get; set; }
     }
 }

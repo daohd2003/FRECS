@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ReportDto;
 using BusinessObject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -74,6 +75,22 @@ namespace ShareItAPI.Controllers
                 return NotFound(new ApiResponse<string>("User not found", null));
 
             return Ok(new ApiResponse<string>("User deleted successfully", null));
+        }
+
+        [HttpGet("admins")]
+        [Authorize(Roles = "admin")] // Chỉ admin mới được lấy danh sách các admin khác
+        public async Task<IActionResult> GetAllAdmins()
+        {
+            var admins = await _userService.GetAllAdminsAsync();
+            return Ok(new ApiResponse<IEnumerable<AdminViewModel>>("Fetched admins successfully.", admins));
+        }
+
+        [HttpGet("search-by-email")]
+        [Authorize(Roles = "provider,customer")]
+        public async Task<IActionResult> SearchByEmail()
+        {
+            var users = await _userService.GetAllAsync();
+            return Ok(new ApiResponse<object>("Success", users));
         }
     }
 }

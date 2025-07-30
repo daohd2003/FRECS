@@ -5,6 +5,7 @@ using BusinessObject.DTOs.CloudinarySetting;
 using BusinessObject.DTOs.EmailSetiings;
 using BusinessObject.DTOs.Login;
 using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.ReportDto;
 using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Mappings;
 using CloudinaryDotNet;
@@ -83,11 +84,10 @@ namespace ShareItAPI
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
-                    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.WriteIndented = true;
-                });
-
-            builder.Services.AddControllers()
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                })
                 .AddOData(opt => opt
                     .EnableQueryFeatures()
                     .AddRouteComponents("odata", GetEdmModel())
@@ -99,6 +99,7 @@ namespace ShareItAPI
                     .SetMaxTop(100)
                     .SkipToken()
                 );
+
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -164,7 +165,8 @@ namespace ShareItAPI
 
                         // Nếu có token và request đang hướng đến hub của chúng ta
                         if (!string.IsNullOrEmpty(accessToken) &&
-                            (path.StartsWithSegments("/chathub")))
+                        (path.StartsWithSegments("/reportHub") || path.StartsWithSegments("/chathub")))
+
                         {
                             // Gán token này để middleware xác thực
                             context.Token = accessToken;
@@ -320,6 +322,7 @@ namespace ShareItAPI
             // Cấu hình endpoint
             app.MapHub<NotificationHub>("/notificationHub");
             app.MapHub<ChatHub>("/chathub");
+            app.MapHub<ReportHub>("/reportHub");
 
             app.MapControllers();
 
@@ -332,6 +335,9 @@ namespace ShareItAPI
                 // Đăng ký các entity bạn muốn query bằng OData
                 builder.EntitySet<ProductDTO>("products");
                 builder.EntitySet<UserODataDTO>("users");
+                builder.EntitySet<ReportViewModel>("unassigned");
+                builder.EntitySet<ReportViewModel>("mytasks");
+
                 return builder.GetEdmModel();
             }
         }

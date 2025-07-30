@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.Login;
+using BusinessObject.DTOs.ReportDto;
 using BusinessObject.Models;
 using System;
 using System.Collections.Generic;
@@ -17,5 +18,6 @@ namespace Services.UserServices
         Task<bool> UpdateAsync(User user);
         Task<bool> DeleteAsync(Guid id);
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
+        Task<IEnumerable<AdminViewModel>> GetAllAdminsAsync();
     }
 }

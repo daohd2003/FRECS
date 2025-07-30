@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -72,6 +73,10 @@ namespace Repositories.RepositoryBase
             var affectedRows = await _context.SaveChangesAsync();
 
             return affectedRows > 0;
+        }
+        public async Task<IEnumerable<T>> GetByCondition(Expression<Func<T, bool>> expression)
+        {
+            return await _context.Set<T>().Where(expression).AsNoTracking().ToListAsync();
         }
     }
 }

@@ -1,4 +1,7 @@
-﻿using BusinessObject.DTOs.Login;
+﻿using AutoMapper;
+using BusinessObject.DTOs.Login;
+using BusinessObject.DTOs.ReportDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using Repositories.UserRepositories;
 using System;
@@ -12,10 +15,12 @@ namespace Services.UserServices
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IMapper _mapper;
 
-        public UserService(IUserRepository userRepository)
+        public UserService(IUserRepository userRepository, IMapper mapper)
         {
             _userRepository = userRepository;
+            _mapper = mapper;
         }
 
         public async Task<IEnumerable<User>> GetAllAsync()
@@ -51,6 +56,14 @@ namespace Services.UserServices
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             return await _userRepository.GetUserByEmailAsync(email);
+        }
+        public async Task<IEnumerable<AdminViewModel>> GetAllAdminsAsync()
+        {
+            // Lấy tất cả user có vai trò là admin từ repository
+            var admins = await _userRepository.GetByCondition(u => u.Role == UserRole.admin);
+
+            // Dùng AutoMapper để chuyển đổi sang ViewModel
+            return _mapper.Map<IEnumerable<AdminViewModel>>(admins);
         }
     }
 }

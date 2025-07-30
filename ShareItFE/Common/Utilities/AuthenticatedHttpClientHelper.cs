@@ -17,7 +17,6 @@ namespace ShareItFE.Common.Utilities
         {
             var client = _httpClientFactory.CreateClient("BackendApi");
 
-            // Lấy AccessToken từ cookie một cách an toàn
             var accessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
 
             if (!string.IsNullOrEmpty(accessToken))

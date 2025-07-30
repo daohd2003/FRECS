@@ -2,6 +2,7 @@
 using Repositories.EmailRepositories;
 using BusinessObject.DTOs.EmailSetiings;
 using System.Threading.Tasks;
+using BusinessObject.DTOs.Contact;
 
 namespace Services.EmailServices
 {
@@ -40,6 +41,27 @@ namespace Services.EmailServices
                 <p>If you believe this is a mistake, please contact our support team.</p>";
 
             await _emailRepository.SendEmailAsync(toEmail, subject, body);
+        }
+        public async Task SendContactFormEmailAsync(ContactFormRequestDto formData)
+        {
+            var adminEmail = "support@rentchic.com";
+            var subject = $"New Contact Form Submission: {formData.Subject}";
+
+            var body = $@"
+            <h3>You have a new contact message from your website:</h3>
+            <ul>
+                <li><strong>Name:</strong> {formData.Name}</li>
+                <li><strong>Email:</strong> {formData.Email}</li>
+                <li><strong>Category:</strong> {formData.Category ?? "Not specified"}</li>
+                <li><strong>Subject:</strong> {formData.Subject}</li>
+            </ul>
+            <hr>
+            <h4>Message:</h4>
+            <p style='white-space: pre-wrap;'>{formData.Message}</p>
+            <hr>
+            <p><i>Please reply to the sender's email directly: <a href='mailto:{formData.Email}'>{formData.Email}</a></i></p>";
+
+            await _emailRepository.SendEmailAsync(adminEmail, subject, body);
         }
     }
 }
