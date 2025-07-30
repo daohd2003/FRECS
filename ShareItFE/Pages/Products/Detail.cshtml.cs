@@ -1,14 +1,10 @@
-﻿using Azure;
-using Azure.Core;
-using BusinessObject.DTOs.ApiResponses;
+﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.FeedbackDto;
-using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.DTOs.ProfileDtos;
 using BusinessObject.Enums;
-using CloudinaryDotNet;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
@@ -52,6 +48,8 @@ namespace ShareItFE.Pages.Products
 
         public Guid? CurrentUserId { get; set; }
         public string ApiBaseUrl { get; private set; }
+
+        public bool CanBeFeedbacked { get; private set; }
         public string SignalRRootUrl { get; private set; }
         public string? AccessToken { get; private set; }
 
@@ -93,11 +91,12 @@ namespace ShareItFE.Pages.Products
 
             if (orderItemresponse.IsSuccessStatusCode)
             {
-                var apiResponse = JsonSerializer.Deserialize<ApiResponse<String>>(   await orderItemresponse.Content.ReadAsStringAsync(), options);
+                var apiResponse = JsonSerializer.Deserialize<ApiResponse<String>>(await orderItemresponse.Content.ReadAsStringAsync(), options);
 
                 string resutl = apiResponse?.Data;
 
-                if (resutl != null) { 
+                if (resutl != null)
+                {
                     orderItemId = Guid.Parse(resutl);
                 }
                 else
@@ -268,6 +267,9 @@ namespace ShareItFE.Pages.Products
                         }
                     }
                 }
+
+                // check whether a user can feedback
+                CanBeFeedbacked = await CanFeedback(id);
             }
             catch (Exception ex)
             {
@@ -518,13 +520,60 @@ namespace ShareItFE.Pages.Products
                 CurrentUserId = Guid.Parse(userIdString);
             }
         }
+
+
+        public async Task<bool> CanFeedback(Guid id)
+        {
+            Guid orderItemId;
+            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
+
+
+
+
+            var client = await _clientHelper.GetAuthenticatedClientAsync();
+            var requestURI = $"https://localhost:7256/api/orders/order-item/{id}";
+            var orderItemresponse = await client.GetAsync(requestURI);
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
+
+
+            if (orderItemresponse.IsSuccessStatusCode)
+            {
+                var apiResponse = JsonSerializer.Deserialize<ApiResponse<String>>(await orderItemresponse.Content.ReadAsStringAsync(), options);
+
+                string resutl = apiResponse?.Data;
+
+                if (resutl != null)
+                {
+                    orderItemId = Guid.Parse(resutl);
+                    return true;
+                }
+                else
+                {
+                    orderItemId = Guid.Empty;
+                    Console.WriteLine($"User need to rent it to use feedback function");
+                    return false;
+                }
+
+            }
+            else
+            {
+                var errorContent = await orderItemresponse.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error fetching");
+                return false;
+            }
+        }
     }
 }
 public class FeedbackRequest
 {
     public FeedbackTargetType TargetType { get; set; }
 
-    public Guid TargetId { get; set; } 
+    public Guid TargetId { get; set; }
 
     public Guid? OrderItemId { get; set; }
 
