@@ -143,6 +143,10 @@
                                     class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
                                 @(string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase) ? "Add to Cart" : "Not Available")
                             </button>
+                            <button id="openFeedbackBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2">
+                                <i data-lucide="message-square-plus" class="h-4 w-4"></i>
+                                <span>Leave Feedback</span>
+                            </button>
                             <div class="grid grid-cols-3 gap-4 pt-6 border-t">
                                 <div class="text-center"><i data-lucide="truck" class="h-8 w-8 text-purple-600 mx-auto mb-2"></i><div class="text-sm font-medium text-gray-900">Free Delivery</div><div class="text-xs text-gray-500">Both ways</div></div>
                                 <div class="text-center"><i data-lucide="calendar" class="h-8 w-8 text-purple-600 mx-auto mb-2"></i><div class="text-sm font-medium text-gray-900">Flexible Dates</div><div class="text-xs text-gray-500">Easy rescheduling</div></div>
@@ -232,7 +236,46 @@
         </div>
     </div>
 </div>
+<div id="feedbackModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <p class="text-2xl font-bold">Submit Your Feedback</p>
+            <button id="closeFeedbackBtn" class="cursor-pointer z-50">
+                <i data-lucide="x" class="h-6 w-6"></i>
+            </button>
+        </div>
+        <form method="post" asp-page-handler="AddFeedback" asp-route-id="@Model.Product.Id" class="mt-4 space-y-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="productId" value="@Model.Product.Id" />
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
+                <div class="flex space-x-1" id="starRatingContainer">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        <button type="button" class="feedback-star-btn text-gray-300 hover:text-yellow-400" data-rating="@i">
+                            <i data-lucide="star" class="h-8 w-8"></i>
+                        </button>
+                    }
+                </div>
+                <input type="hidden" id="feedbackRatingInput" asp-for="FeedbackInput.Rating" value="0" />
+                <span asp-validation-for="FeedbackInput.Rating" class="text-red-500 text-sm"></span>
+            </div>
 
+            <div>
+                <label for="feedbackComment" class="block text-sm font-medium text-gray-700 mb-2">Your Comment</label>
+                <textarea id="feedbackComment" asp-for="FeedbackInput.Comment" rows="4"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                          placeholder="Share your thoughts about this product..."></textarea>
+                <span asp-validation-for="FeedbackInput.Comment" class="text-red-500 text-sm"></span>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancelFeedbackBtn" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors">Submit Feedback</button>
+            </div>
+        </form>
+    </div>
+</div>
 @section Scripts {
     <script src="~/js/dist/browser/signalr.js"></script>
     <script>
@@ -240,7 +283,107 @@
 
         document.addEventListener('DOMContentLoaded', function () {
 
-            // Chỉ thực thi JavaScript nếu Model.Product tồn tại
+                    // --- PHẦN 3: LOGIC CHO FEEDBACK MODAL ---
+
+            // DOM Elements for Feedback Modal
+            const openFeedbackBtn = document.getElementById('openFeedbackBtn');
+            const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
+            const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
+            const feedbackModal = document.getElementById('feedbackModal');
+            const starRatingContainer = document.getElementById('starRatingContainer');
+            const feedbackRatingInput = document.getElementById('feedbackRatingInput');
+            const feedbackCommentInput = document.getElementById('feedbackComment'); // Corrected ID
+
+            if (openFeedbackBtn) {
+                openFeedbackBtn.addEventListener('click', () => {
+                    feedbackModal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    // Reset form fields when opening
+                    feedbackRatingInput.value = '0';
+                    feedbackCommentInput.value = '';
+                    updateStarRating(0); // Set initial stars to none
+                });
+            }
+
+            if (closeFeedbackBtn) {
+                closeFeedbackBtn.addEventListener('click', () => {
+                    feedbackModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                });
+            }
+
+            if (cancelFeedbackBtn) {
+                cancelFeedbackBtn.addEventListener('click', () => {
+                    feedbackModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                });
+            }
+
+                    // ... (keep your existing DOM element references and open/close modal logic) ...
+
+                // ... (Your existing DOM elements and modal open/close logic) ...
+
+            // Star Rating Logic
+            function updateStarRating(rating) {
+                const starButtons = starRatingContainer.querySelectorAll('.feedback-star-btn');
+                starButtons.forEach((button, index) => {
+                    // Find the SVG element within the button
+                    const svgIcon = button.querySelector('svg[data-lucide="star"]');
+
+                    if (svgIcon) {
+                        // Option A: Manipulate fill directly on the SVG path (most robust for fill color)
+                        const pathElement = svgIcon.querySelector('path');
+                        if (pathElement) {
+                            if (index < rating) {
+                                pathElement.setAttribute('fill', '#FACC15'); // Tailwind yellow-400
+                                svgIcon.setAttribute('stroke', '#FACC15'); // Tailwind yellow-400 (for stroke, if applicable)
+                            } else {
+                                pathElement.setAttribute('fill', 'none'); // No fill for empty star
+                                svgIcon.setAttribute('stroke', '#D1D5DB'); // Tailwind gray-300 (for stroke)
+                            }
+                        }
+
+                        // Option B: (Less reliable, but can try if A causes issues with complex SVGs)
+                        // Re-create the icon on the button after changing classes
+                        // This requires calling lucide.createIcons() on a specific element
+                        //
+                        // First, remove existing classes
+                        // button.classList.remove('text-gray-300', 'text-yellow-400', 'fill-yellow-400');
+                        //
+                        // if (index < rating) {
+                        //     button.classList.add('text-yellow-400'); // Add text class for stroke
+                        //     // Note: Tailwind fill- classes typically target SVGs directly,
+                        //     // but Lucide might need a recreation if its internal rendering
+                        //     // isn't reacting to parent class changes.
+                        // } else {
+                        //     button.classList.add('text-gray-300'); // Add text class for stroke
+                        // }
+                        // lucide.createIcons({ attrs: { class: 'h-8 w-8' }, element: button }); // Re-create just this icon
+                    }
+                });
+                feedbackRatingInput.value = rating;
+            }
+
+            starRatingContainer.addEventListener('click', (event) => {
+                const clickedButton = event.target.closest('.feedback-star-btn');
+                if (clickedButton) {
+                    const rating = parseInt(clickedButton.dataset.rating, 10);
+                    updateStarRating(rating);
+                }
+            });
+
+            // IMPORTANT: Call updateStarRating(0) on modal open to ensure stars are reset
+            if (openFeedbackBtn) {
+                openFeedbackBtn.addEventListener('click', () => {
+                    feedbackModal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    feedbackRatingInput.value = '0';
+                    feedbackCommentInput.value = '';
+                    updateStarRating(0); // This line is crucial for resetting on open
+                });
+            }
+
+                // Chỉ thực thi JavaScript nếu Model.Product tồn tại
         @if (Model.Product != null)
         {
             <text>

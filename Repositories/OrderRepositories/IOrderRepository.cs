@@ -13,5 +13,7 @@ namespace Repositories.OrderRepositories
         Task UpdateOnlyStatusAndTimeAsync(Order order);
         Task<Order> GetOrderWithItemsAsync(Guid orderId);
         Task<bool> UpdateOrderContactInfoAsync(Order order);
+
+        Task<string> GetOrderItemId(Guid customerId, Guid productId);
     }
 }

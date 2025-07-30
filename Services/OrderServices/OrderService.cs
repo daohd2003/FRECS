@@ -791,5 +791,10 @@ namespace Services.OrderServices
 
             return await _orderRepo.UpdateOrderContactInfoAsync(order);
         }
+
+        public Task<string> GetOrderItemId(Guid customerId, Guid productId)
+        {
+            return _orderRepo.GetOrderItemId(customerId, productId);
+        }
     }
 }

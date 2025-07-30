@@ -41,5 +41,7 @@ namespace Services.OrderServices
         Task ClearCartItemsForOrderAsync(Order order);
         Task<Guid> RentAgainOrderAsync(Guid customerId, RentAgainRequestDto requestDto);
         Task<bool> UpdateOrderContactInfoAsync(Guid customerId, UpdateOrderContactInfoDto dto);
+
+        Task<string> GetOrderItemId(Guid customerId, Guid productId);
     }
 }
