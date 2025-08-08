@@ -13,9 +13,7 @@
             <span id="collapseChatBtn" class="collapse-btn">-</span>
         </div>
     </div>
-    <div class="chat-body" id="chatBody">
-        <div class="chat-bubble bot">Hello! How can I help you with ShareIT today?</div>
-    </div>
+    <div class="chat-body" id="chatBody"></div>
 
     <form id="chatForm" class="chat-input-form">
         <input type="text" id="chatInput" class="chat-input" placeholder="Enter your question..." autocomplete="off" />
@@ -23,68 +21,97 @@
     </form>
 </div>
 
-<script>
-    const API_BASE_URL = '@Configuration["ApiSettings:BaseUrl"]';
+    <script>
+        const API_BASE_URL = '@Configuration["ApiSettings:BaseUrl"]';
+        const CHAT_STORAGE_KEY = 'shareit_chat_history_v1';
 
-    document.addEventListener('DOMContentLoaded', (event) => {
-        const chatToggleBtn = document.getElementById("chatToggleBtn");
-        const chatbotWidget = document.getElementById("chatbotWidget");
-        const collapseChatBtn = document.getElementById("collapseChatBtn");
-        const chatForm = document.getElementById('chatForm');
-        const chatInput = document.getElementById('chatInput');
-        const chatBody = document.getElementById('chatBody');
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatToggleBtn = document.getElementById('chatToggleBtn');
+            const chatbotWidget = document.getElementById('chatbotWidget');
+            const collapseChatBtn = document.getElementById('collapseChatBtn');
+            const chatForm = document.getElementById('chatForm');
+            const chatInput = document.getElementById('chatInput');
+            const chatBody = document.getElementById('chatBody');
 
-        // Function to toggle chatbot visibility
-        function toggleChatbot() {
-            chatbotWidget.classList.toggle("hidden");
-            // Show/hide the toggle button based on widget visibility
-            if (chatbotWidget.classList.contains("hidden")) {
-                chatToggleBtn.style.display = "flex"; // Show toggle button
-            } else {
-                chatToggleBtn.style.display = "none"; // Hide toggle button
+            function saveHistory(history) {
+                try { sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history)); } catch {}
             }
-        }
 
-        // Initially hide the chatbot widget and show the toggle button
-        chatbotWidget.classList.add("hidden");
-        chatToggleBtn.style.display = "flex";
-
-        // Event listener for opening the chatbot
-        chatToggleBtn.addEventListener("click", toggleChatbot);
-
-        // Event listener for collapsing the chatbot
-        collapseChatBtn.addEventListener("click", toggleChatbot);
-
-        // Event listener for form submission
-        chatForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            const question = chatInput.value.trim();
-            if (!question) return;
-
-            // Add user bubble
-            chatBody.innerHTML += `<div class="chat-bubble user">${question}</div>`;
-            chatInput.value = '';
-            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`);
-                if (!res.ok) throw new Error(`Error ${res.status}`);
-
-                const data = await res.json();
-                const answer = data.answer || "Sorry, I don't have a suitable answer.";
-                const answerHtml = answer
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
-                    .replace(/\n/g, '<br/>');
-
-                // Add bot bubble
-                chatBody.innerHTML += `<div class="chat-bubble bot">${answerHtml}</div>`;
-                chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
-            } catch (err) {
-                chatBody.innerHTML += `<div class="chat-bubble bot error">Error calling API: ${err.message}</div>`;
-                chatBody.scrollTop = chatBody.scrollHeight; // Scroll to bottom
+            function loadHistory() {
+                try {
+                    const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
+                    return raw ? JSON.parse(raw) : [];
+                } catch { return []; }
             }
+
+            function renderHistory(history) {
+                chatBody.innerHTML = '';
+                history.forEach(msg => {
+                    const roleClass = msg.role === 'user' ? 'user' : 'bot';
+                    chatBody.innerHTML += `<div class="chat-bubble ${roleClass}">${msg.html ?? escapeHtml(msg.content)}</div>`;
+                });
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.innerText = text ?? '';
+                return div.innerHTML;
+            }
+
+            function toggleChatbot() {
+                chatbotWidget.classList.toggle('hidden');
+                chatToggleBtn.style.display = chatbotWidget.classList.contains('hidden') ? 'flex' : 'none';
+            }
+
+            // Initialize visibility
+            chatbotWidget.classList.add('hidden');
+            chatToggleBtn.style.display = 'flex';
+
+            // Wire events
+            chatToggleBtn.addEventListener('click', toggleChatbot);
+            collapseChatBtn.addEventListener('click', toggleChatbot);
+
+            // Initialize history and greeting
+            let history = loadHistory();
+            if (history.length === 0) {
+                history.push({ role: 'bot', content: 'Hello! How can I help you with ShareIT today?' });
+                saveHistory(history);
+            }
+            renderHistory(history);
+
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const question = chatInput.value.trim();
+                if (!question) return;
+
+                // Push user message
+                history.push({ role: 'user', content: question });
+                saveHistory(history);
+                renderHistory(history);
+
+                chatInput.value = '';
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`);
+                    if (!res.ok) throw new Error(`Error ${res.status}`);
+
+                    const data = await res.json();
+                    const answer = data.answer || "Sorry, I don't have a suitable answer.";
+                    const answerHtml = answer
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+                        .replace(/\n/g, '<br/>' );
+
+                    history.push({ role: 'bot', content: answer, html: answerHtml });
+                    saveHistory(history);
+                    renderHistory(history);
+                } catch (err) {
+                    const errorMsg = `Error calling API: ${err.message}`;
+                    history.push({ role: 'bot', content: errorMsg });
+                    saveHistory(history);
+                    renderHistory(history);
+                }
+            });
         });
-    });
-</script>
+    </script>

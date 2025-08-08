@@ -61,11 +61,21 @@ namespace Services.CartServices
                 await _cartRepository.CreateCartAsync(cart);
             }
 
+            // Defaults if not provided from Product Detail page
+            int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
+                ? cartAddRequestDto.RentalDays.Value
+                : 1;
+            DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
+            if (startDate < DateTime.UtcNow.Date)
+            {
+                startDate = DateTime.UtcNow.Date.AddDays(1);
+            }
+
             // Lấy CartItem hiện có (nếu có cùng ProductId, StartDate, RentalDays)
             var existingCartItem = cart.Items.FirstOrDefault(ci =>
                 ci.ProductId == cartAddRequestDto.ProductId &&
-                ci.StartDate.Date == cartAddRequestDto.StartDate.Date && // So sánh ngày
-                ci.RentalDays == cartAddRequestDto.RentalDays);// So sánh số ngày thuê)
+                ci.StartDate.Date == startDate && // So sánh ngày
+                ci.RentalDays == rentalDays);// So sánh số ngày thuê)
 
             if (existingCartItem != null)
             {
@@ -78,6 +88,9 @@ namespace Services.CartServices
                 var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto); // Ánh xạ từ DTO
                 newCartItem.CartId = cart.Id;
                 newCartItem.Id = Guid.NewGuid(); // Gán Id mới
+                // Apply defaults
+                newCartItem.StartDate = startDate;
+                newCartItem.RentalDays = rentalDays;
                 newCartItem.EndDate = newCartItem.StartDate.AddDays(newCartItem.RentalDays);
 
                 // EndDate đã được tính toán trong Mapper Profile khi map từ CartAddRequestDto
@@ -97,7 +110,7 @@ namespace Services.CartServices
                 return false; // Không tìm thấy mục giỏ hàng hoặc không thuộc về người dùng hiện tại
             }
 
-            // Lấy giá trị hiện tại của Quantity và RentalDays
+            // Lấy giá trị hiện tại (nếu cần dùng cho logic phức tạp sau này)
             int currentQuantity = cartItem.Quantity;
             int currentRentalDays = cartItem.RentalDays;
 
@@ -113,6 +126,19 @@ namespace Services.CartServices
                     return await RemoveCartItemAsync(customerId, cartItemId); // Xóa item nếu Quantity về 0
                 }
             }
+            // Cập nhật StartDate nếu có
+            if (updateDto.StartDate.HasValue)
+            {
+                var newStartDate = updateDto.StartDate.Value.Date;
+                if (newStartDate < DateTime.UtcNow.Date)
+                {
+                    throw new ArgumentException("Start Date cannot be in the past.");
+                }
+                cartItem.StartDate = newStartDate;
+                // Tính lại EndDate dựa trên RentalDays hiện tại
+                cartItem.EndDate = cartItem.StartDate.AddDays(cartItem.RentalDays);
+            }
+
             if (updateDto.RentalDays.HasValue)
             {
                 if (updateDto.RentalDays.Value >= 1)
@@ -128,7 +154,7 @@ namespace Services.CartServices
                    
                 }
             }
-            if (!updateDto.Quantity.HasValue && !updateDto.RentalDays.HasValue)
+            if (!updateDto.Quantity.HasValue && !updateDto.RentalDays.HasValue && !updateDto.StartDate.HasValue)
             {
                 return false; // Không có dữ liệu nào để cập nhật
             }

@@ -118,8 +118,8 @@ namespace ShareItFE.Pages
             var profileUpdateDto = new BusinessObject.DTOs.ProfileDtos.ProfileUpdateDto
             {
                 FullName = Profile.FullName,
-                Phone = Profile.Phone,
-                Address = Profile.Address
+                Phone = Profile.Phone ?? string.Empty,
+                Address = Profile.Address ?? string.Empty
             };
 
             var client = await _clientHelper.GetAuthenticatedClientAsync();

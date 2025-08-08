@@ -14,8 +14,8 @@ namespace BusinessObject.DTOs.ProfileDtos
         public string FullName { get; set; }
 
         [MaxLength(50, ErrorMessage = "Phone number cannot exceed 50 characters.")]
-        public string Phone { get; set; }
+        public string Phone { get; set; } = String.Empty;
 
-        public string Address { get; set; }
+        public string Address { get; set; } = String.Empty;
     }
 }

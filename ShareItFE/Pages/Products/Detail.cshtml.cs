@@ -40,11 +40,12 @@ namespace ShareItFE.Pages.Products
         [BindProperty, Required(ErrorMessage = "Please select a size")]
         public string SelectedSize { get; set; }
 
-        [BindProperty, Required(ErrorMessage = "Please select a start date")]
-        public DateTime StartDate { get; set; } = DateTime.Today;
+        // StartDate and RentalDays moved to Cart; backend will default
+        [BindProperty]
+        public DateTime? StartDate { get; set; }
 
         [BindProperty]
-        public int RentalDays { get; set; } = 3;
+        public int? RentalDays { get; set; }
 
         public Guid? CurrentUserId { get; set; }
         public string ApiBaseUrl { get; private set; }
@@ -177,10 +178,7 @@ namespace ShareItFE.Pages.Products
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
-            if (StartDate == DateTime.MinValue)
-            {
-                StartDate = DateTime.Today;
-            }
+            // No-op: StartDate/RentalDays handled later in Cart
 
             ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
             SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
@@ -298,10 +296,13 @@ namespace ShareItFE.Pages.Products
             }
 
             // 2. Kiểm tra ModelState.IsValid (Validation từ thuộc tính)
+            // Only size required at product detail level
+            ModelState.Remove(nameof(StartDate));
+            ModelState.Remove(nameof(RentalDays));
             if (!ModelState.IsValid)
             {
-                ErrorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại kích thước và ngày thuê.";
-                await LoadInitialData(id); // Tải lại dữ liệu để hiển thị trang
+                ErrorMessage = "Please select a size.";
+                await LoadInitialData(id);
                 return Page();
             }
 
