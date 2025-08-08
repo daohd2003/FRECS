@@ -194,6 +194,41 @@ namespace ShareItFE.Pages.CartPage
             return RedirectToPage();
         }
 
+        // --- NEW: Page Handler để cập nhật START DATE ---
+        public async Task<IActionResult> OnPostUpdateStartDateAsync(Guid itemId, DateTime startDate)
+        {
+            if (itemId == Guid.Empty)
+            {
+                ErrorMessage = "Invalid product ID.";
+                return RedirectToPage();
+            }
+
+            if (startDate.Date < DateTime.UtcNow.Date)
+            {
+                ErrorMessage = "Start date cannot be in the past.";
+                return RedirectToPage();
+            }
+
+            var client = await _clientHelper.GetAuthenticatedClientAsync();
+            var updateDto = new CartUpdateRequestDto
+            {
+                StartDate = startDate
+            };
+
+            var response = await client.PutAsJsonAsync($"api/cart/{itemId}", updateDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                SuccessMessage = "Rental start date updated.";
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Could not update start date: {errorContent}";
+            }
+
+            return RedirectToPage();
+        }
         // --- EXISTING: Page Handler để xóa Item ---
         public async Task<IActionResult> OnPostRemoveFromCartAsync(Guid itemId)
         {

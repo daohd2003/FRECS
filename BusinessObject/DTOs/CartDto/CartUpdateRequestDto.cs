@@ -14,5 +14,8 @@ namespace BusinessObject.DTOs.CartDto
 
         [Range(1, int.MaxValue, ErrorMessage = "Rental Days must be at least 1.")]
         public int? RentalDays { get; set; }
+
+        // Optional: allow updating the rental start date from Cart
+        public DateTime? StartDate { get; set; }
     }
 }

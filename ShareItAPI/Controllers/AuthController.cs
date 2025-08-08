@@ -121,7 +121,7 @@ namespace ShareItAPI.Controllers
             if (tokenResponse == null)
                 return BadRequest(new ApiResponse<string>("Email is already registered", null));
 
-            return Ok(new ApiResponse<TokenResponseDto>("Registration successful", tokenResponse));
+            return Ok(new ApiResponse<TokenResponseDto>("Registration successful! Please check your email to verify your account.", tokenResponse));
         }
 
         [HttpPost("change-password")]

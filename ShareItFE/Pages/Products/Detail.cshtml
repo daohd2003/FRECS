@@ -114,30 +114,7 @@
                                     }
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Rental Period</label>
-                                <input type="hidden" id="rentalDaysInput" asp-for="RentalDays" />
-                                <div class="flex items-center space-x-4">
-                                    <button type="button" id="decreaseDaysBtn" class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"><i data-lucide="minus" class="h-4 w-4"></i></button>
-                                    <span id="rentalDaysDisplay" class="text-lg font-semibold min-w-[5rem] text-center">@Model.RentalDays days</span>
-                                    <button type="button" id="increaseDaysBtn" class="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"><i data-lucide="plus" class="h-4 w-4"></i></button>
-                                </div>
-                            </div>
-                            <div>
-                                <label asp-for="StartDate" class="block text-sm font-medium text-gray-900 mb-3">Start Date</label>
-                                <div asp-validation-for="StartDate" class="text-red-500 text-sm mb-2"></div>
-                                <input type="date" asp-for="StartDate" min="@DateTime.Now.ToString("yyyy-MM-dd")" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-gray-600">Rental (<span id="totalDaysDisplay">@Model.RentalDays</span> days)</span>
-                                    <span id="pricePerPeriod" class="font-semibold"></span>
-                                </div>
-                                <div class="flex justify-between items-center text-lg font-bold">
-                                    <span>Total</span>
-                                    <span id="totalPrice" class="text-purple-600"></span>
-                                </div>
-                            </div>
+                            <!-- Rental selection moved to Cart; we keep add-to-cart simple -->
                             <button type="submit"
                                     disabled="@(!string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase))"
                                     class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
@@ -418,44 +395,7 @@
                     });
                 });
 
-                // Rental days and price logic
-                const decreaseBtn = document.getElementById('decreaseDaysBtn');
-                const increaseBtn = document.getElementById('increaseDaysBtn');
-                const daysDisplay = document.getElementById('rentalDaysDisplay');
-                const daysInput = document.getElementById('rentalDaysInput');
-                const pricePerDay = @Model.Product.PricePerDay.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                const pricePerPeriodEl = document.getElementById('pricePerPeriod');
-                const totalDaysDisplayEl = document.getElementById('totalDaysDisplay');
-                const totalPriceEl = document.getElementById('totalPrice');
-
-                function formatCurrency(amount) {
-                    return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
-                }
-
-                function updatePrice() {
-                    let currentDays = parseInt(daysInput.value, 10);
-                    daysDisplay.textContent = `${currentDays} ${currentDays === 1 ? 'day' : 'days'}`;
-                    const total = currentDays * pricePerDay;
-                    pricePerPeriodEl.textContent = formatCurrency(total);
-                    totalPriceEl.textContent = formatCurrency(total);
-                    totalDaysDisplayEl.textContent = currentDays;
-                }
-
-                decreaseBtn.addEventListener('click', () => {
-                    let currentDays = parseInt(daysInput.value, 10);
-                    if (currentDays > 1) {
-                        daysInput.value = currentDays - 1;
-                        updatePrice();
-                    }
-                });
-
-                increaseBtn.addEventListener('click', () => {
-                    let currentDays = parseInt(daysInput.value, 10);
-                    daysInput.value = currentDays + 1;
-                    updatePrice();
-                });
-
-                updatePrice(); // Initial price calculation
+                // Rental selection removed; calculation will be done in Cart
 
                 // Form validation
                 const addToCartForm = document.getElementById('addToCartForm');

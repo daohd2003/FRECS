@@ -35,7 +35,8 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.Product, opt => opt.Ignore()) // Product navigation property sẽ được EF Core quản lý
                 .ForMember(dest => dest.ProductId, opt => opt.MapFrom(src => src.ProductId)) // Map ProductId
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity)) // Map Quantity
-                .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays)); // Map RentalDays
+                .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays ?? 1)) // Default handled in service as well
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate ?? DateTime.UtcNow.Date.AddDays(1))); // Default handled in service as well
 
             CreateMap<CartUpdateRequestDto, CartItem>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore()) // Id của CartItem hiện tại không thay đổi
