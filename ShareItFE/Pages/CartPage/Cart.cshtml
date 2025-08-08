@@ -59,7 +59,39 @@
                             <p class="text-gray-600">@Model.Cart.Items.Count @(Model.Cart.Items.Count == 1 ? "product" : "products")</p>
                         </div>
 
+                        <div class="p-6 border-b border-gray-200">
+                            @* Global rental schedule for entire cart *@
+                            @if (Model.Cart?.Items != null && Model.Cart.Items.Any())
+                            {
+                                var firstItem = Model.Cart.Items.First();
+                                <form id="global-schedule-form" method="post" asp-page-handler="UpdateCartSchedule" class="grid grid-cols-1 md:grid-cols-3 items-end gap-4 md:gap-6">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="itemId" value="@firstItem.ItemId" />
+                                    <div class="flex flex-col w-full">
+                                        <label class="text-sm font-medium text-gray-700 mb-2">Start Date (all items)</label>
+                                        <input id="globalStartDate" type="date" name="startDate" value="@firstItem.StartDate.ToString("yyyy-MM-dd")" min="@DateTime.Now.ToString("yyyy-MM-dd")" class="h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                                    </div>
+                                    <div class="flex flex-col w-full">
+                                        <label class="text-sm font-medium text-gray-700 mb-2">Rental Days (all items)</label>
+                                        <div class="inline-flex items-center space-x-2">
+                                            <button type="submit" name="action" value="decreaseDays" class="h-10 px-3 border border-gray-300 rounded-lg hover:bg-gray-50" aria-label="Decrease rental days">
+                                                <i class="bi bi-dash-lg w-4 h-4"></i>
+                                            </button>
+                                            <input id="globalRentalDays" type="number" name="rentalDays" value="@firstItem.RentalDays" min="1" class="h-10 w-24 text-center px-3 border border-gray-300 rounded-lg" />
+                                            <button type="submit" name="action" value="increaseDays" class="h-10 px-3 border border-gray-300 rounded-lg hover:bg-gray-50" aria-label="Increase rental days">
+                                                <i class="bi bi-plus-lg w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flex md:justify-end">
+                                        <button type="submit" name="action" value="apply" class="h-10 bg-gray-900 text-white px-6 rounded-lg hover:bg-gray-800 transition-colors">Apply to all</button>
+                                    </div>
+                                </form>
+                            }
+                        </div>
+
                         <div class="divide-y divide-gray-200">
+                            @{ var globalStart = Model.Cart.Items.First().StartDate; var globalEnd = Model.Cart.Items.First().EndDate; var globalDays = Model.Cart.Items.First().RentalDays; }
                             @foreach (var item in Model.Cart.Items)
                             {
                                 <div class="p-6">
@@ -74,14 +106,7 @@
                                             </h3>
                                             <p class="text-gray-600 mb-2">Size: @item.ProductSize</p>
                                             <div class="text-sm text-gray-500 mb-3">
-                                                <form method="post" asp-page-handler="UpdateStartDate" class="flex items-center space-x-2">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                    <label class="text-xs text-gray-500">Start</label>
-                                                    <input type="date" name="startDate" value="@item.StartDate.ToString("yyyy-MM-dd")" min="@DateTime.Now.ToString("yyyy-MM-dd")" class="px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                                                    <button type="submit" class="text-xs px-2 py-1 bg-gray-100 border rounded hover:bg-gray-200">Update</button>
-                                                    <span class="ml-2">→ @item.EndDate.ToString("dd-MM-yyyy")</span>
-                                                </form>
+                                                <span>From @globalStart.ToString("dd-MM-yyyy") To @globalEnd.ToString("dd-MM-yyyy")</span>
                                             </div>
 
                                             <div class="flex items-center"> @* Added a flex container for controls ************ NEW ************ *@
@@ -109,20 +134,7 @@
                                                 @* Controls for Rental Days *@
                                                 <div class="flex flex-col">
                                                     <label class="text-xs text-gray-500 mb-1">Number of rental days</label>
-                                                    <form method="post" asp-page-handler="UpdateRentalDays" class="inline-flex items-center space-x-2"> @* Removed ml-4 ************ CHANGED ************ *@
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                        <input type="hidden" name="currentRentalDays" value="@item.RentalDays" />
-                                                        <button type="submit" name="action" value="decrease" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Giảm số ngày thuê">
-                                                            <i class="bi bi-dash-lg w-4 h-4"></i>
-                                                        </button>
-                                                        <span class="text-sm font-medium min-w-[3rem] text-center">
-                                                            @item.RentalDays
-                                                        </span>
-                                                        <button type="submit" name="action" value="increase" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Tăng số ngày thuê">
-                                                            <i class="bi bi-plus-lg w-4 h-4"></i>
-                                                        </button>
-                                                    </form>
+                                                    <span class="text-sm font-medium min-w-[3rem] text-center">@globalDays</span>
                                                 </div>
 
                                                 @* Remove Button *@
@@ -241,6 +253,20 @@
             }
             if (toastError) {
                 setTimeout(() => { toastError.style.display = 'none'; }, 4000);
+            }
+
+            // Auto-submit global schedule on change
+            const globalForm = document.getElementById('global-schedule-form');
+            const startInput = document.getElementById('globalStartDate');
+            const daysInput = document.getElementById('globalRentalDays');
+            if (globalForm && startInput && daysInput) {
+                const submit = () => globalForm.requestSubmit();
+                startInput.addEventListener('change', submit);
+                daysInput.addEventListener('change', () => {
+                    const v = parseInt(daysInput.value || '1', 10);
+                    if (v < 1) daysInput.value = '1';
+                    submit();
+                });
             }
         });
     </script>

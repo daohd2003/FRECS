@@ -102,66 +102,63 @@ namespace Services.CartServices
 
         public async Task<bool> UpdateCartItemAsync(Guid customerId, Guid cartItemId, CartUpdateRequestDto updateDto)
         {
-            // Đảm bảo CartItem được include Cart để kiểm tra CustomerId
-            var cartItem = await _cartRepository.GetCartItemByIdAsync(cartItemId);
-
-            if (cartItem == null || cartItem.Cart.CustomerId != customerId)
+            // Path 1: Only Quantity is provided -> update a SINGLE item (do not unify)
+            if (updateDto.Quantity.HasValue && !updateDto.RentalDays.HasValue && !updateDto.StartDate.HasValue)
             {
-                return false; // Không tìm thấy mục giỏ hàng hoặc không thuộc về người dùng hiện tại
-            }
-
-            // Lấy giá trị hiện tại (nếu cần dùng cho logic phức tạp sau này)
-            int currentQuantity = cartItem.Quantity;
-            int currentRentalDays = cartItem.RentalDays;
-
-            // Cập nhật Quantity nếu updateDto.Quantity có giá trị
-            if (updateDto.Quantity.HasValue) // Chỉ kiểm tra HasValue, không kiểm tra Value >= 1 ở đây
-            {
+                var targetItem = await _cartRepository.GetCartItemByIdAsync(cartItemId);
+                if (targetItem == null || targetItem.Cart.CustomerId != customerId)
+                {
+                    return false;
+                }
                 if (updateDto.Quantity.Value >= 1)
                 {
-                    cartItem.Quantity = updateDto.Quantity.Value;
-                }
-                else // Nếu Quantity được gửi với giá trị < 1, coi như muốn xóa item
-                {
-                    return await RemoveCartItemAsync(customerId, cartItemId); // Xóa item nếu Quantity về 0
-                }
-            }
-            // Cập nhật StartDate nếu có
-            if (updateDto.StartDate.HasValue)
-            {
-                var newStartDate = updateDto.StartDate.Value.Date;
-                if (newStartDate < DateTime.UtcNow.Date)
-                {
-                    throw new ArgumentException("Start Date cannot be in the past.");
-                }
-                cartItem.StartDate = newStartDate;
-                // Tính lại EndDate dựa trên RentalDays hiện tại
-                cartItem.EndDate = cartItem.StartDate.AddDays(cartItem.RentalDays);
-            }
-
-            if (updateDto.RentalDays.HasValue)
-            {
-                if (updateDto.RentalDays.Value >= 1)
-                {
-                    cartItem.RentalDays = updateDto.RentalDays.Value;
-                    // Tính toán lại EndDate khi RentalDays thay đổi
-                    cartItem.EndDate = cartItem.StartDate.AddDays(cartItem.RentalDays);
+                    targetItem.Quantity = updateDto.Quantity.Value;
+                    await _cartRepository.UpdateCartItemAsync(targetItem);
+                    return true;
                 }
                 else
                 {
-                    
-                    throw new ArgumentException("Rental Days must be at least 1.");
-                   
+                    await _cartRepository.DeleteCartItemAsync(targetItem);
+                    return true;
                 }
             }
-            if (!updateDto.Quantity.HasValue && !updateDto.RentalDays.HasValue && !updateDto.StartDate.HasValue)
+
+            // Path 2: StartDate and/or RentalDays provided -> apply to ALL items in cart
+            if (!updateDto.RentalDays.HasValue && !updateDto.StartDate.HasValue)
             {
-                return false; // Không có dữ liệu nào để cập nhật
+                return false; // nothing to update
             }
 
+            var cartItems = await _cartRepository.GetCartItemsForCustomerQuery(customerId).ToListAsync();
+            if (!cartItems.Any()) return false;
 
-            await _cartRepository.UpdateCartItemAsync(cartItem);
-            return true; // Luôn trả về true nếu không có lỗi và đã có ít nhất 1 giá trị được gửi để cập nhật (hoặc xóa)
+            foreach (var item in cartItems)
+            {
+                if (updateDto.StartDate.HasValue)
+                {
+                    var newStart = updateDto.StartDate.Value.Date;
+                    if (newStart < DateTime.UtcNow.Date)
+                    {
+                        throw new ArgumentException("Start Date cannot be in the past.");
+                    }
+                    item.StartDate = newStart;
+                    item.EndDate = item.StartDate.AddDays(item.RentalDays);
+                }
+
+                if (updateDto.RentalDays.HasValue)
+                {
+                    if (updateDto.RentalDays.Value < 1)
+                    {
+                        throw new ArgumentException("Rental Days must be at least 1.");
+                    }
+                    item.RentalDays = updateDto.RentalDays.Value;
+                    item.EndDate = item.StartDate.AddDays(item.RentalDays);
+                }
+
+                await _cartRepository.UpdateCartItemAsync(item);
+            }
+
+            return true;
         }
 
         public async Task<bool> RemoveCartItemAsync(Guid customerId, Guid cartItemId)

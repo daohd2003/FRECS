@@ -194,6 +194,47 @@ namespace ShareItFE.Pages.CartPage
             return RedirectToPage();
         }
 
+        // NEW: Global schedule update (apply StartDate and/or RentalDays to entire cart)
+        public async Task<IActionResult> OnPostUpdateCartScheduleAsync(Guid itemId, DateTime? startDate, int? rentalDays, string? action)
+        {
+            // Use the existing API signature by passing one item's id; backend will apply to all
+            var client = await _clientHelper.GetAuthenticatedClientAsync();
+
+            // Adjust rentalDays based on action buttons, if provided
+            if (!rentalDays.HasValue && action is "increaseDays" or "decreaseDays")
+            {
+                // If not provided, we cannot infer current; just ignore here and rely on explicit input path
+                action = "apply";
+            }
+            else if (rentalDays.HasValue && action is "increaseDays")
+            {
+                rentalDays = Math.Max(1, rentalDays.Value + 1);
+            }
+            else if (rentalDays.HasValue && action is "decreaseDays")
+            {
+                rentalDays = Math.Max(1, rentalDays.Value - 1);
+            }
+
+            var updateDto = new CartUpdateRequestDto
+            {
+                StartDate = startDate,
+                RentalDays = rentalDays
+            };
+
+            var response = await client.PutAsJsonAsync($"api/cart/{itemId}", updateDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                SuccessMessage = "Applied rental schedule to all items in the cart.";
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Could not update cart schedule: {errorContent}";
+            }
+
+            return RedirectToPage();
+        }
         // --- NEW: Page Handler để cập nhật START DATE ---
         public async Task<IActionResult> OnPostUpdateStartDateAsync(Guid itemId, DateTime startDate)
         {
