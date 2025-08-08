@@ -625,14 +625,15 @@ namespace Services.OrderServices
 
         public async Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId)
         {
+            // Reduce tracking and payload size: AsNoTracking + filtered includes
             var order = await _context.Orders
+                .AsNoTracking()
                 .Where(o => o.Id == orderId)
                 .Include(o => o.Items)
                     .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p.Images)
+                        .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
                 .Include(o => o.Customer)
                     .ThenInclude(c => c.Profile)
-                    .Include(o => o.Transactions) // Add this to load transaction data
                 .FirstOrDefaultAsync();
 
             if (order == null)
@@ -641,9 +642,16 @@ namespace Services.OrderServices
             }
 
             var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-            if (order.Transactions.Any())
+            // Fetch latest payment method without loading entire transactions collection
+            var latestPaymentMethod = await _context.Transactions
+                .AsNoTracking()
+                .Where(t => t.Orders.Any(o => o.Id == orderId))
+                .OrderByDescending(t => t.TransactionDate)
+                .Select(t => t.PaymentMethod)
+                .FirstOrDefaultAsync();
+            if (!string.IsNullOrEmpty(latestPaymentMethod))
             {
-                orderDetailsDto.PaymentMethod = order.Transactions.OrderByDescending(t => t.TransactionDate).First().PaymentMethod;
+                orderDetailsDto.PaymentMethod = latestPaymentMethod;
             }
             return orderDetailsDto;
         }
