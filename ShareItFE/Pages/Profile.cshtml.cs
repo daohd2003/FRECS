@@ -48,7 +48,7 @@ namespace ShareItFE.Pages
         [BindProperty]
         public ChangePasswordRequest ChangePassword { get; set; }
 
-        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
         public string AccessToken { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile")

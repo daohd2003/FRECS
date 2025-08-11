@@ -13,6 +13,7 @@
     <title>@ViewData["Title"] - ShareIT</title>
     <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 </head>
 <body>
     <div class="page-wrapper">
@@ -131,7 +132,7 @@
                         @* <div id="google-button-container" style="display: none;"></div>*@
 
 
-                        <button type="button" class="social-button">
+                        <button type="button" class="social-button" id="facebook-login-btn">
                             <svg class="social-icon-mr" fill="#1877F2" viewBox="0 0 24 24">
                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                             </svg>
@@ -369,6 +370,64 @@
                     shape: "rectangular"
                 }
             );
+            // Facebook SDK init
+            if (window.FB) {
+                FB.init({
+                    appId: '@Model.FacebookAppId', // add to AuthModel
+                    cookie: true,
+                    xfbml: false,
+                    version: 'v17.0'
+                });
+            }
+
+            const fbBtn = document.getElementById('facebook-login-btn');
+            if (fbBtn && window.FB) {
+                fbBtn.addEventListener('click', function () {
+                    // Disable button to prevent multiple clicks
+                    fbBtn.disabled = true;
+                    fbBtn.textContent = 'Connecting...';
+                    
+                    FB.login(function (response) {
+                        if (response.authResponse && response.authResponse.accessToken) {
+                            const token = response.authResponse.accessToken;
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = '?handler=FacebookLogin';
+                            form.style.display = 'none';
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'AccessToken';
+                            input.value = token;
+                            form.appendChild(input);
+                            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+                            if (antiForgeryToken) {
+                                const antiForgeryInput = document.createElement('input');
+                                antiForgeryInput.type = 'hidden';
+                                antiForgeryInput.name = antiForgeryToken.name;
+                                antiForgeryInput.value = antiForgeryToken.value;
+                                form.appendChild(antiForgeryInput);
+                            }
+                            document.body.appendChild(form);
+                            form.submit();
+                        } else {
+                            // Re-enable button and show error
+                            fbBtn.disabled = false;
+                            fbBtn.innerHTML = '<svg class="social-icon-mr" fill="#1877F2" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>Continue with Facebook';
+                            
+                            if (response.status === 'not_authorized') {
+                                alert('Facebook login was cancelled or not authorized.');
+                            } else if (response.status === 'unknown') {
+                                alert('Facebook login failed. Please try again later.');
+                            } else {
+                                alert('Facebook login error: ' + response.status);
+                            }
+                        }
+                    }, { 
+                        scope: 'email,public_profile',
+                        return_scopes: true
+                    });
+                });
+            }
         };
 
         // Tự động ẩn các thông báo sau 5 giây

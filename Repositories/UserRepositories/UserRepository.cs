@@ -87,6 +87,63 @@ namespace Repositories.UserRepositories
             return user;
         }
 
+        public async Task<User> GetOrCreateUserAsync(FacebookPayload payload)
+        {
+            // If email is provided, try by email first
+            if (!string.IsNullOrWhiteSpace(payload.Email))
+            {
+                var existingByEmail = await _context.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
+                if (existingByEmail != null)
+                {
+                    return existingByEmail;
+                }
+            }
+
+            // Try by Facebook Id stored in GoogleId slot? We won't change model, so reuse GoogleId to store social id
+            var existingByFbId = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == payload.Id);
+            if (existingByFbId != null)
+            {
+                // Update email if newly available
+                if (!string.IsNullOrWhiteSpace(payload.Email) && existingByFbId.Email != payload.Email)
+                {
+                    existingByFbId.Email = payload.Email;
+                    _context.Users.Update(existingByFbId);
+                    await _context.SaveChangesAsync();
+                }
+                return existingByFbId;
+            }
+
+            // Create new user
+            string username;
+            do
+            {
+                username = "user" + new Random().Next(100000, 999999);
+            }
+            while (await _context.Profiles.AnyAsync(u => u.FullName == username));
+
+            var user = new User
+            {
+                Email = payload.Email ?? string.Empty,
+                GoogleId = payload.Id, // reuse field to store facebook id
+                Role = UserRole.customer,
+                PasswordHash = string.Empty,
+                RefreshToken = string.Empty,
+                RefreshTokenExpiryTime = DateTime.Now,
+                IsActive = true,
+                Profile = new Profile
+                {
+                    FullName = string.IsNullOrWhiteSpace(payload.Name) ? username : payload.Name,
+                    ProfilePictureUrl = string.IsNullOrWhiteSpace(payload.PictureUrl)
+                        ? "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg"
+                        : payload.PictureUrl
+                }
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return user;
+        }
+
         public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
         {
             return await _context.Users

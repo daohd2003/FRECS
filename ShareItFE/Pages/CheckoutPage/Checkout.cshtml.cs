@@ -20,6 +20,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public string frontendBaseUrl { get; set; }
         public string backendBaseUrl { get; set; }
+        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
         public CheckoutModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
         {
             _clientHelper = clientHelper;

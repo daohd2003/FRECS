@@ -13,6 +13,7 @@ namespace Repositories.UserRepositories
     {
         Task<User?> GetUserByEmailAsync(string email);
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
+        Task<User> GetOrCreateUserAsync(FacebookPayload payload);
         Task<User?> GetByRefreshTokenAsync(string refreshToken);
     }
 }

@@ -14,6 +14,7 @@ namespace ShareItFE.Pages
         private readonly IConfiguration _configuration;
 
         public string GoogleClientId { get; private set; } = string.Empty;
+        public string FacebookAppId { get; private set; } = string.Empty;
 
         public AuthModel(HttpClient httpClient, ILogger<AuthModel> logger, IConfiguration configuration)
         {
@@ -22,6 +23,7 @@ namespace ShareItFE.Pages
             _configuration = configuration;
             GoogleClientId = _configuration["GoogleClientSettings:ClientId"]
                              ?? throw new InvalidOperationException("GoogleClientSettings:ClientId không được cấu hình.");
+            FacebookAppId = _configuration["Facebook:AppId"] ?? string.Empty;
         }
 
         [BindProperty] public string Email { get; set; } = string.Empty;
@@ -32,7 +34,7 @@ namespace ShareItFE.Pages
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
 
         public void OnGet()
         {
@@ -221,6 +223,44 @@ namespace ShareItFE.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred during Google login.");
+                TempData["ErrorMessage"] = "An unexpected error occurred.";
+                return RedirectToPage();
+            }
+        }
+
+        public async Task<IActionResult> OnPostFacebookLoginAsync([FromForm] FacebookLoginRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.AccessToken))
+            {
+                TempData["ErrorMessage"] = "Facebook token is invalid.";
+                return RedirectToPage();
+            }
+
+            try
+            {
+                var apiRequest = new { accessToken = request.AccessToken };
+                var content = new StringContent(JsonSerializer.Serialize(apiRequest), Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"{ApiBaseUrl}/auth/facebook-login", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<TokenResponseDto>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (apiResponse?.Data != null)
+                    {
+                        Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Lax, Expires = DateTimeOffset.UtcNow.AddMinutes(30) });
+                        Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Lax, Expires = apiResponse.Data.RefreshTokenExpiryTime });
+                        return RedirectToPage("/Index");
+                    }
+                }
+
+                TempData["ErrorMessage"] = "Facebook login failed.";
+                return RedirectToPage();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during Facebook login.");
                 TempData["ErrorMessage"] = "An unexpected error occurred.";
                 return RedirectToPage();
             }

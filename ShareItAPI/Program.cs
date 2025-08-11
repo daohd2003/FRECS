@@ -116,6 +116,7 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddHttpClient<GoogleAuthService>();
+            builder.Services.AddHttpClient<FacebookAuthService>();
 
             builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddHttpClient();

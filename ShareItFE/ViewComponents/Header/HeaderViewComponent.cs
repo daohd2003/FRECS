@@ -22,7 +22,7 @@ namespace ShareItFE.ViewComponents.Header
             _clientHelper = clientHelper;
             _configuration = configuration;
         }
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
 
         public async Task<IViewComponentResult> InvokeAsync()
         {
