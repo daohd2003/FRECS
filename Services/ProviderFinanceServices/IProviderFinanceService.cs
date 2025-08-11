@@ -14,5 +14,7 @@ namespace Services.ProviderFinanceServices
         Task<decimal> GetTotalRevenue(Guid providerId);
         Task<BankAccount?> GetPrimaryBankAccount(Guid providerId);
         Task<IEnumerable<TransactionSummaryDto>> GetTransactionDetails(Guid providerId);
+        Task<AllProvidersPaymentSummaryDto> GetAllProviderPaymentsSummaryAsync();
+        Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync();
     }
 }

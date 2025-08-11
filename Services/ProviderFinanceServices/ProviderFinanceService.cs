@@ -35,5 +35,15 @@ namespace Services.ProviderFinanceServices
         {
             return await _transactionRepo.GetTransactionsByProviderAsync(providerId);
         }
+
+        public async Task<AllProvidersPaymentSummaryDto> GetAllProviderPaymentsSummaryAsync()
+        {
+            return await _transactionRepo.GetAllProviderPaymentsSummaryAsync();
+        }
+
+        public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync()
+        {
+            return await _transactionRepo.GetAllProviderPaymentsAsync();
+        }
     }
 }

@@ -5,6 +5,7 @@ using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
+using Services.PricingServices;
 
 namespace Services.ProductServices
 {
@@ -12,11 +13,13 @@ namespace Services.ProductServices
     {
         private readonly ShareItDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IPricingService _pricingService;
 
-        public ProductService(ShareItDbContext context, IMapper mapper)
+        public ProductService(ShareItDbContext context, IMapper mapper, IPricingService pricingService)
         {
             _context = context;
             _mapper = mapper;
+            _pricingService = pricingService;
         }
 
         public IQueryable<ProductDTO> GetAll()
@@ -34,6 +37,26 @@ namespace Services.ProductServices
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             return product == null ? null : _mapper.Map<ProductDTO>(product);
+        }
+
+        public async Task<ProductDTO?> GetByIdWithDiscountedPriceAsync(Guid id)
+        {
+            var product = await _context.Products
+                .AsNoTracking() // Ensure fresh data from database
+                .Include(p => p.Provider)
+                .ThenInclude(prov => prov.Profile)
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (product == null) return null;
+
+            var productDto = _mapper.Map<ProductDTO>(product);
+            
+            // Get current price with fresh rent count data
+            var currentPrice = await _pricingService.GetCurrentPriceAsync(id);
+            productDto.PricePerDay = currentPrice;
+            
+            return productDto;
         }
 
         /*public async Task<ProductDTO> AddAsync(ProductDTO productDto)

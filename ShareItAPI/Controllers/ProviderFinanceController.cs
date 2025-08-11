@@ -49,5 +49,41 @@ namespace ShareItAPI.Controllers
             var transactions = await _financeService.GetTransactionDetails(providerId);
             return Ok(new ApiResponse<object>("Provider transaction list fetched successfully.", transactions));
         }
+
+        /// <summary>
+        /// Get summary statistics of all provider payments - Admin only
+        /// Returns total amount owed and count only, no detailed provider list
+        /// </summary>
+        [HttpGet("all/summary")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetAllProviderPaymentsSummary()
+        {
+            var fullSummary = await _financeService.GetAllProviderPaymentsSummaryAsync();
+            
+            // Return only summary statistics, no provider details
+            var summaryOnly = new
+            {
+                TotalAmountOwed = fullSummary.TotalAmountOwed,
+                TotalProviders = fullSummary.TotalProviders,
+                TopProviderEarnings = fullSummary.Providers.FirstOrDefault()?.TotalEarned ?? 0,
+                AverageEarningsPerProvider = fullSummary.TotalProviders > 0 
+                    ? fullSummary.TotalAmountOwed / fullSummary.TotalProviders 
+                    : 0
+            };
+            
+            return Ok(new ApiResponse<object>("Provider payments summary statistics fetched successfully.", summaryOnly));
+        }
+
+        /// <summary>
+        /// Get detailed list of all provider payments with full information - Admin only
+        /// Returns complete provider details including bank accounts
+        /// </summary>
+        [HttpGet("all/payments")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetAllProviderPayments()
+        {
+            var payments = await _financeService.GetAllProviderPaymentsAsync();
+            return Ok(new ApiResponse<object>("All provider payments with details fetched successfully.", payments));
+        }
     }
 }

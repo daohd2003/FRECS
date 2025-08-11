@@ -40,5 +40,52 @@ namespace Repositories.TransactionRepositories
                              o.Transactions.Any(t => t.Status == TransactionStatus.completed))
                 .SumAsync(o => o.TotalAmount);
         }
+
+        public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync()
+        {
+            return await _context.Orders
+                .Where(o => o.Transactions.Any(t => t.Status == TransactionStatus.completed))
+                .GroupBy(o => new { o.ProviderId, o.Provider.Profile.FullName, o.Provider.Email })
+                .Select(g => new ProviderPaymentDto
+                {
+                    ProviderId = g.Key.ProviderId,
+                    ProviderName = g.Key.FullName ?? "Unknown",
+                    ProviderEmail = g.Key.Email,
+                    TotalEarned = g.Sum(o => o.TotalAmount),
+                    CompletedOrders = g.Count(),
+                    LastPayment = g.SelectMany(o => o.Transactions)
+                                   .Where(t => t.Status == TransactionStatus.completed)
+                                   .Max(t => (DateTime?)t.TransactionDate)
+                })
+                .OrderByDescending(p => p.TotalEarned)
+                .ToListAsync();
+        }
+
+        public async Task<AllProvidersPaymentSummaryDto> GetAllProviderPaymentsSummaryAsync()
+        {
+            var providers = await GetAllProviderPaymentsAsync();
+            
+            // Get bank account info for each provider
+            var providersWithBankInfo = new List<ProviderPaymentDto>();
+            
+            foreach (var provider in providers)
+            {
+                var bankAccount = await _context.BankAccounts
+                    .Where(b => b.ProviderId == provider.ProviderId && b.IsPrimary)
+                    .FirstOrDefaultAsync();
+                
+                provider.BankAccount = bankAccount?.AccountNumber;
+                provider.BankName = bankAccount?.BankName;
+                
+                providersWithBankInfo.Add(provider);
+            }
+
+            return new AllProvidersPaymentSummaryDto
+            {
+                TotalAmountOwed = providersWithBankInfo.Sum(p => p.TotalEarned),
+                TotalProviders = providersWithBankInfo.Count(),
+                Providers = providersWithBankInfo
+            };
+        }
     }
 }

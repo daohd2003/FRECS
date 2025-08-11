@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Repositories.ProductRepositories;
 using CloudinaryDotNet.Actions;
 using BusinessObject.DTOs.ApiResponses;
+using Services.PricingServices;
 
 
 namespace Services.OrderServices
@@ -33,6 +34,7 @@ namespace Services.OrderServices
         private readonly IUserRepository _userRepository;
         private readonly ShareItDbContext _context;
         private readonly IEmailRepository _emailRepository;
+        private readonly IPricingService _pricingService;
         public OrderService(
             IOrderRepository orderRepo,
             INotificationService notificationService,
@@ -44,7 +46,8 @@ namespace Services.OrderServices
             IUserRepository userRepository,
             ShareItDbContext context,
             IEmailRepository emailRepository,
-            IProductRepository productRepo)
+            IProductRepository productRepo,
+            IPricingService pricingService)
         {
             _orderRepo = orderRepo;
             _notificationService = notificationService;
@@ -57,6 +60,7 @@ namespace Services.OrderServices
             _context = context;
             _emailRepository = emailRepository;
             _productRepo = productRepo;
+            _pricingService = pricingService;
         }
 
         public async Task CreateOrderAsync(CreateOrderDto dto)
@@ -222,10 +226,32 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
+            // Check if order was already marked as returned to prevent duplicate rent count increments
+            if (order.Status == OrderStatus.returned)
+            {
+                throw new InvalidOperationException("Order is already marked as returned");
+            }
+
             order.Status = OrderStatus.returned;
             order.UpdatedAt = DateTime.UtcNow;
 
+            // Increment rent count for all products in this order
+            foreach (var item in order.Items)
+            {
+                var product = await _context.Products.FindAsync(item.ProductId);
+                if (product != null)
+                {
+                    var oldRentCount = product.RentCount;
+                    product.RentCount += 1;
+                    _context.Products.Update(product);
+                    
+                    // Log for debugging
+                    Console.WriteLine($"Product {product.Id}: RentCount {oldRentCount} -> {product.RentCount}");
+                }
+            }
+
             await _orderRepo.UpdateAsync(order);
+            await _context.SaveChangesAsync(); // Save product rent count changes
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returned);
 
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as returned");
@@ -387,13 +413,16 @@ namespace Services.OrderServices
                                 throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable or has an invalid price.");
                             }
 
+                            // Get discounted price instead of original price
+                            var discountedPrice = await _pricingService.GetCurrentPriceAsync(cartItem.ProductId);
+
                             var orderItem = new OrderItem
                             {
                                 Id = Guid.NewGuid(),
                                 ProductId = cartItem.ProductId,
                                 RentalDays = cartItem.RentalDays,
                                 Quantity = cartItem.Quantity,
-                                DailyRate = product.PricePerDay
+                                DailyRate = discountedPrice  // Use discounted price
                             };
 
                             orderItems.Add(orderItem);
