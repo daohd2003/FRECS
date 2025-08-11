@@ -18,6 +18,7 @@ namespace Services.UserServices
         Task<bool> UpdateAsync(User user);
         Task<bool> DeleteAsync(Guid id);
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
+        Task<User> GetOrCreateUserAsync(FacebookPayload payload);
         Task<IEnumerable<AdminViewModel>> GetAllAdminsAsync();
     }
 }

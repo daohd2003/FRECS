@@ -53,6 +53,11 @@ namespace Services.UserServices
             return await _userRepository.GetOrCreateUserAsync(payload);
         }
 
+        public async Task<User> GetOrCreateUserAsync(FacebookPayload payload)
+        {
+            return await _userRepository.GetOrCreateUserAsync(payload);
+        }
+
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             return await _userRepository.GetUserByEmailAsync(email);

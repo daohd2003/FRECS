@@ -16,12 +16,14 @@ namespace ShareItAPI.Controllers
         private readonly IJwtService _jwtService;
         private readonly IUserService _userService;
         private readonly GoogleAuthService _googleAuthService;
+        private readonly FacebookAuthService _facebookAuthService;
 
-        public AuthController(IJwtService jwtService, IUserService userService, GoogleAuthService googleAuthService)
+        public AuthController(IJwtService jwtService, IUserService userService, GoogleAuthService googleAuthService, FacebookAuthService facebookAuthService)
         {
             _jwtService = jwtService;
             _userService = userService;
             _googleAuthService = googleAuthService;
+            _facebookAuthService = facebookAuthService;
         }
 
         [HttpPost("login")]
@@ -35,6 +37,47 @@ namespace ShareItAPI.Controllers
             catch (UnauthorizedAccessException)
             {
                 return Unauthorized(new ApiResponse<string>("Invalid email or password", null));
+            }
+        }
+
+        [HttpPost("facebook-login")]
+        public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginRequestDto request)
+        {
+            try
+            {
+                var payload = await _facebookAuthService.VerifyFacebookTokenAsync(request.AccessToken);
+                if (payload == null)
+                {
+                    return Unauthorized(new ApiResponse<string>("Invalid Facebook token", null));
+                }
+
+                var user = await _userService.GetOrCreateUserAsync(payload);
+                if (user == null)
+                {
+                    return BadRequest(new ApiResponse<string>("Could not create or fetch user from Facebook payload", null));
+                }
+
+                var tokens = _jwtService.GenerateToken(user);
+                var refreshTokens = _jwtService.GenerateRefreshToken();
+                var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
+
+                user.RefreshTokenExpiryTime = expiryTime;
+                user.RefreshToken = refreshTokens;
+                await _userService.UpdateAsync(user);
+
+                var response = new TokenResponseDto
+                {
+                    Token = tokens,
+                    RefreshToken = refreshTokens,
+                    RefreshTokenExpiryTime = expiryTime,
+                    Role = user.Role.ToString()
+                };
+
+                return Ok(new ApiResponse<TokenResponseDto>("Facebook login successful", response));
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new ApiResponse<string>($"Facebook authentication error: {ex.Message}", null));
             }
         }
 
