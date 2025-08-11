@@ -34,7 +34,7 @@ namespace ShareItFE.Pages
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
 
         public void OnGet()
         {

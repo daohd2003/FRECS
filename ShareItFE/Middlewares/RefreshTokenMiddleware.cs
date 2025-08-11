@@ -53,7 +53,7 @@ namespace ShareItFE.Middlewares
             {
                 _logger.LogInformation("AccessToken is missing from cookies, but RefreshToken is present. Attempting to refresh token.");
 
-                var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+                var apiBaseUrl = _configuration["ApiSettings:BaseUrl"];
 
                 try
                 {

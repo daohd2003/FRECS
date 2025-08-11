@@ -271,7 +271,7 @@
                 if (transactionId) {
                     let checkStatusInterval = setInterval(async () => { // Changed to 'let' to allow reassigning
                         try {
-                            const response = await fetch(`https://localhost:7256/api/transactions/${transactionId}/status`, {
+                            const response = await fetch(`@Model.ApiBaseUrl/transactions/${transactionId}/status`, {
                                 credentials: "include" // Giữ nguyên nếu cần gửi cookie/token
                             });
 

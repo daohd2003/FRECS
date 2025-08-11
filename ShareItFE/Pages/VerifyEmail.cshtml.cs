@@ -14,7 +14,7 @@ namespace ShareItFE.Pages
         public string Message { get; set; } = string.Empty;
         public bool IsSuccess { get; set; } = false;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
 
 
         public VerifyEmailModel(HttpClient httpClient, ILogger<VerifyEmailModel> logger, IConfiguration configuration)
