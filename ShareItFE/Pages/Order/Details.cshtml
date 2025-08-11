@@ -81,7 +81,35 @@
                                 </div>
                             </div>
                             <div class="item-price">
-                                <span>@item.PricePerDay.ToString("C") / day</span>
+                                @if (Model.ItemPricingInfo.ContainsKey(item.ProductId))
+                                {
+                                    var pricingInfo = Model.ItemPricingInfo[item.ProductId];
+                                    @if (pricingInfo.IsDiscounted)
+                                    {
+                                        <!-- Show both original and discounted price -->
+                                        <div class="pricing-container">
+                                            <div class="original-price">@pricingInfo.OriginalPrice.ToString("C") / day</div>
+                                            <div class="current-price">@item.PricePerDay.ToString("C") / day</div>
+                                            <div class="discount-badge">
+                                                <span class="discount-text">-@pricingInfo.DiscountPercentage.ToString("F0")% OFF</span>
+                                                @if (!pricingInfo.IsMaxDiscount)
+                                                {
+                                                    <small class="rent-count">After @pricingInfo.RentalsNeededForDiscount rentals</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- Show normal price -->
+                                        <span>@item.PricePerDay.ToString("C") / day</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <!-- Fallback if pricing info not available -->
+                                    <span>@item.PricePerDay.ToString("C") / day</span>
+                                }
                             </div>
                         </div>
                     }

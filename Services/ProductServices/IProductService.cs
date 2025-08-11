@@ -6,6 +6,7 @@ namespace Services.ProductServices
     {
         IQueryable<ProductDTO> GetAll();
         Task<ProductDTO?> GetByIdAsync(Guid id);
+        Task<ProductDTO?> GetByIdWithDiscountedPriceAsync(Guid id);
         /*Task<ProductDTO> AddAsync(ProductDTO productDto);*/
         Task<ProductDTO> AddAsync(ProductRequestDTO productDto);
         Task<bool> UpdateAsync(ProductDTO productDto);

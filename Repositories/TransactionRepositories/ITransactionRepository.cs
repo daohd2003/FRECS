@@ -12,5 +12,7 @@ namespace Repositories.TransactionRepositories
     {
         Task<IEnumerable<TransactionSummaryDto>> GetTransactionsByProviderAsync(Guid providerId);
         Task<decimal> GetTotalReceivedByProviderAsync(Guid providerId);
+        Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync();
+        Task<AllProvidersPaymentSummaryDto> GetAllProviderPaymentsSummaryAsync();
     }
 }

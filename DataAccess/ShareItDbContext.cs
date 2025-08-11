@@ -29,6 +29,7 @@ namespace DataAccess
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<PricingConfig> PricingConfigs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -265,6 +266,17 @@ namespace DataAccess
                 .WithOne()
                 .HasForeignKey<Conversation>(c => c.LastMessageId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
+
+            // PricingConfig configuration
+            modelBuilder.Entity<PricingConfig>()
+                .HasOne(p => p.UpdatedByAdmin)
+                .WithMany()
+                .HasForeignKey(p => p.UpdatedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<PricingConfig>()
+                .HasIndex(p => p.ConfigKey)
+                .IsUnique();
 
             base.OnModelCreating(modelBuilder);
         }
