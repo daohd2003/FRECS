@@ -53,6 +53,8 @@ using Services.ProductServices;
 using Services.ProfileServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
+using Services.ProviderApplicationServices;
+using Repositories.ProviderApplicationRepositories;
 using Services.ReportService;
 using Services.Transactions;
 using Services.UserServices;
@@ -260,6 +262,8 @@ namespace ShareItAPI
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
             builder.Services.AddScoped<IProviderBankService, ProviderBankService>();
+            builder.Services.AddScoped<IProviderApplicationRepository, ProviderApplicationRepository>();
+            builder.Services.AddScoped<IProviderApplicationService, ProviderApplicationService>();
 
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<UserContextHelper>();
