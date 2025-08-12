@@ -1,0 +1,70 @@
+@page
+@model ShareItFE.Pages.Provider.ApplyModel
+@{
+    ViewData["Title"] = "Become a Provider";
+}
+
+<section class="container py-5">
+    <h1 class="mb-4">Become a Provider</h1>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">@Model.SuccessMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    <style>
+        .help-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffc107;
+            color: #212529;
+            text-align: center;
+            line-height: 18px;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 6px;
+        }
+    </style>
+
+    <form method="post" class="card p-4">
+        <div class="mb-3">
+            <label asp-for="Input.BusinessName" class="form-label"></label>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Store/brand name visible to customers. e.g., 'Chic Dress Rental'.">!</span>
+            <input asp-for="Input.BusinessName" class="form-control" placeholder="e.g., Chic Dress Rental" />
+            <span asp-validation-for="Input.BusinessName" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.TaxId" class="form-label"></label>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (or personal ID) for payouts/reconciliation. Optional.">!</span>
+            <input asp-for="Input.TaxId" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.ContactPhone" class="form-label"></label>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Contact phone number for orders/support. Use an active mobile number.">!</span>
+            <input asp-for="Input.ContactPhone" class="form-control" placeholder="e.g., +84 901 234 567" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.Notes" class="form-label"></label>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Short description about your store, style, or special requirements (max 500 characters).">!</span>
+            <textarea asp-for="Input.Notes" class="form-control" rows="3" placeholder="e.g., Specialize in evening gowns sizes S–L; rush delivery available"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Application</button>
+    </form>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.bootstrap) {
+                var triggers = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                triggers.forEach(function (el) { new bootstrap.Tooltip(el); });
+            }
+        });
+    </script>
+</section>
+
+

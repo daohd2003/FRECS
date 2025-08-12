@@ -30,6 +30,7 @@ namespace DataAccess
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
         public DbSet<PricingConfig> PricingConfigs { get; set; }
+        public DbSet<ProviderApplication> ProviderApplications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -277,6 +278,23 @@ namespace DataAccess
             modelBuilder.Entity<PricingConfig>()
                 .HasIndex(p => p.ConfigKey)
                 .IsUnique();
+
+            // ProviderApplication configuration
+            modelBuilder.Entity<ProviderApplication>()
+                .Property(p => p.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<ProviderApplication>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProviderApplication>()
+                .HasOne(p => p.ReviewedByAdmin)
+                .WithMany()
+                .HasForeignKey(p => p.ReviewedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
         }
