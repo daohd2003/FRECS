@@ -21,6 +21,13 @@ namespace Services.ConversationServices
         public async Task<IEnumerable<ConversationDto>> GetConversationsForUserAsync(Guid userId)
         {
             var conversations = await _conversationRepository.GetConversationsByUserIdAsync(userId);
+            var unreadMap = await _conversationRepository.GetUnreadCountsAsync(userId);
+
+            // Compute unread counts per conversation for this user
+            var unreadCounts = conversations
+                .ToDictionary(c => c.Id, c => 0);
+            // Pull from DB in repository would be better; quick compute here for safety
+            // Note: We can inject DbContext, but keep current abstraction; rely on LastMessage.IsRead for now
 
             // Dùng LINQ .Select để map từ Model sang DTO
             return conversations.Select(c =>
@@ -28,25 +35,38 @@ namespace Services.ConversationServices
                 // Xác định ai là người kia trong cuộc hội thoại
                 var otherUser = c.User1Id == userId ? c.User2 : c.User1;
                 var lastMessageProduct = c.LastMessage?.Product;
-                return new ConversationDto
+                var lastMessageText = c.LastMessage == null
+                    ? null
+                    : (!string.IsNullOrEmpty(c.LastMessage.Content)
+                        ? c.LastMessage.Content
+                        : (!string.IsNullOrEmpty(c.LastMessage.FileName)
+                            ? $"[Attachment] {c.LastMessage.FileName}"
+                            : (!string.IsNullOrEmpty(c.LastMessage.AttachmentType)
+                                ? $"[Attachment] {c.LastMessage.AttachmentType}"
+                                : "[Attachment]")));
+                // Default unread count to 0; FE will increment via SignalR for realtime and we can enhance later
+                var dto = new ConversationDto
                 {
                     Id = c.Id,
-                    LastMessageContent = c.LastMessage?.Content,
+                    LastMessageContent = lastMessageText,
                     UpdatedAt = c.UpdatedAt,
                     IsRead = c.LastMessage?.IsRead ?? true,
                     OtherParticipant = new ParticipantDto
                     {
                         UserId = otherUser.Id,
                         FullName = otherUser.Profile?.FullName,
-                        ProfilePictureUrl = otherUser.Profile?.ProfilePictureUrl
+                        ProfilePictureUrl = otherUser.Profile?.ProfilePictureUrl,
+                        Role = otherUser.Role.ToString()
                     },
                     ProductContext = lastMessageProduct == null ? null : new ProductContextDto
                     {
                         Id = lastMessageProduct.Id,
                         Name = lastMessageProduct.Name,
                         ImageUrl = lastMessageProduct.Images?.FirstOrDefault()?.ImageUrl
-                    }
+                    },
+                    UnreadMessageCount = unreadMap.TryGetValue(c.Id, out var cnt) ? cnt : 0
                 };
+                return dto;
             });
         }
 
@@ -68,6 +88,16 @@ namespace Services.ConversationServices
                     Id = m.Product.Id,
                     Name = m.Product.Name,
                     ImageUrl = m.Product.Images?.FirstOrDefault()?.ImageUrl
+                },
+                Attachment = string.IsNullOrEmpty(m.AttachmentUrl) ? null : new AttachmentDto
+                {
+                    Url = m.AttachmentUrl,
+                    Type = m.AttachmentType,
+                    PublicId = m.AttachmentPublicId,
+                    ThumbnailUrl = m.ThumbnailUrl,
+                    MimeType = m.MimeType,
+                    FileName = m.FileName,
+                    FileSize = m.FileSize
                 }
             });
         }
@@ -154,6 +184,16 @@ namespace Services.ConversationServices
                     ImageUrl = lastMessageProduct.Images?.FirstOrDefault()?.ImageUrl
                 }
             };
+        }
+
+        public async Task<Dictionary<Guid, int>> GetUnreadCountsAsync(Guid userId)
+        {
+            return await _conversationRepository.GetUnreadCountsAsync(userId);
+        }
+
+        public async Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId)
+        {
+            return await _conversationRepository.MarkMessagesAsReadAsync(conversationId, receiverId);
         }
     }
 }

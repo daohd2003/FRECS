@@ -36,6 +36,7 @@ namespace ShareItFE.Pages.Products
         public ProductDTO Product { get; set; }
         public List<FeedbackDto> Feedbacks { get; set; } = new List<FeedbackDto>();
         public bool IsFavorite { get; set; }
+        public string? ProviderEmail { get; set; }
         
         // Pricing information
         public decimal OriginalPrice { get; set; }
@@ -219,6 +220,26 @@ namespace ShareItFE.Pages.Products
                     }
                     if (Product == null) return NotFound();
                     
+                    // Fetch provider email via profile endpoint
+                    try
+                    {
+                        var profileRequestUri = $"api/profile/{Product.ProviderId}";
+                        var profileResponse = await client.GetAsync(profileRequestUri);
+                        if (profileResponse.IsSuccessStatusCode)
+                        {
+                            var raw = await profileResponse.Content.ReadAsStringAsync();
+                            var doc = JsonSerializer.Deserialize<JsonElement>(raw, _jsonOptions);
+                            if (doc.TryGetProperty("data", out var dataEl))
+                            {
+                                if (dataEl.TryGetProperty("user", out var userEl) && userEl.TryGetProperty("email", out var emailEl))
+                                {
+                                    ProviderEmail = emailEl.GetString();
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+
                     // Fetch pricing information
                     await LoadPricingInformation(client, id);
                 }
@@ -464,6 +485,26 @@ namespace ShareItFE.Pages.Products
                     if (Product == null) Product = new ProductDTO(); // Khởi tạo Product để tránh null reference
                     else
                     {
+                        // Fetch provider email via profile endpoint
+                        try
+                        {
+                            var profileRequestUri = $"api/profile/{Product.ProviderId}";
+                            var profileResponse = await client.GetAsync(profileRequestUri);
+                            if (profileResponse.IsSuccessStatusCode)
+                            {
+                                var raw = await profileResponse.Content.ReadAsStringAsync();
+                                var doc = JsonSerializer.Deserialize<JsonElement>(raw, _jsonOptions);
+                                if (doc.TryGetProperty("data", out var dataEl))
+                                {
+                                    if (dataEl.TryGetProperty("user", out var userEl) && userEl.TryGetProperty("email", out var emailEl))
+                                    {
+                                        ProviderEmail = emailEl.GetString();
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+
                         // Load pricing information
                         await LoadPricingInformation(client, id);
                     }

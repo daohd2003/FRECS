@@ -107,6 +107,13 @@
                                 <div>
                                     <h4 class="font-medium text-gray-900">Provided by</h4>
                                     <p class="text-purple-600 font-semibold">@Model.Product.ProviderName</p>
+                                    @if (!string.IsNullOrEmpty(Model.ProviderEmail))
+                                    {
+                                        <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
+                                            <i data-lucide="mail" class="h-4 w-4"></i>
+                                            <a class="text-gray-700 hover:text-purple-600 underline" href="mailto:@Model.ProviderEmail">@Model.ProviderEmail</a>
+                                        </div>
+                                    }
                                 </div>
                                 <button type="button" id="openChatBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
                                     <i data-lucide="message-circle" class="h-4 w-4"></i>

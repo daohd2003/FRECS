@@ -41,5 +41,14 @@ namespace BusinessObject.Models
         public DateTime SentAt { get; set; } = DateTime.UtcNow;  // Thời điểm gửi
 
         public bool IsRead { get; set; } = false;  // Đã đọc hay chưa
+
+        // --- Attachment metadata for chat messages ---
+        public string? AttachmentUrl { get; set; }
+        public string? AttachmentType { get; set; } // image | video | file
+        public string? AttachmentPublicId { get; set; }
+        public string? ThumbnailUrl { get; set; }
+        public string? MimeType { get; set; }
+        public string? FileName { get; set; }
+        public long? FileSize { get; set; }
     }
 }

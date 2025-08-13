@@ -42,6 +42,17 @@ namespace ShareItAPI.Controllers
             return Ok(messages);
         }
 
+        [HttpPost("{id}/mark-read")]
+        public async Task<IActionResult> MarkRead(Guid id)
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+            var currentUserId = Guid.Parse(userIdString);
+
+            var updated = await _conversationService.MarkMessagesAsReadAsync(id, currentUserId);
+            return Ok(new { updated });
+        }
+
         [HttpPost("find-or-create")]
         public async Task<IActionResult> FindOrCreateConversation([FromBody] FindConversationRequestDto request)
         {

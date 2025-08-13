@@ -8,6 +8,8 @@ namespace BusinessObject.Mappings
         public ReportProfile()
         {
             CreateMap<Report, ReportViewModel>()
+                .ForMember(dest => dest.ReporterId, opt => opt.MapFrom(src => src.ReporterId))
+                .ForMember(dest => dest.ReporteeId, opt => opt.MapFrom(src => src.ReporteeId))
                 .ForMember(dest => dest.ReporterName, opt => opt.MapFrom(src => src.Reporter.Profile.FullName))
                 .ForMember(dest => dest.ReporterEmail, opt => opt.MapFrom(src => src.Reporter.Email))
                 .ForMember(dest => dest.ReporteeName, opt => opt.MapFrom(src => src.Reportee.Profile.FullName))

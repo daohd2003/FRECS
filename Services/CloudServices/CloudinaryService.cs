@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.CloudinarySetting;
+using BusinessObject.DTOs.ConversationDtos;
 using BusinessObject.Models;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
@@ -160,6 +161,93 @@ namespace Services.CloudServices
 
             // "ok" nghĩa là xóa thành công, "not found" cũng có thể coi là thành công
             return result.Result.ToLower() == "ok" || result.Result.ToLower() == "not found";
+        }
+
+        public async Task<ChatAttachmentUploadResult> UploadChatAttachmentAsync(IFormFile file, Guid userId)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("No file selected.");
+
+            var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+            var isImage = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(extension);
+            var isVideo = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm" }.Contains(extension);
+
+            var folder = $"ShareIt/chat/{userId}";
+            var publicId = $"chat_{userId}_{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}";
+
+            RawUploadParams uploadParams;
+            if (isImage)
+            {
+                var imgParams = new ImageUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream()),
+                    PublicId = publicId,
+                    Folder = folder,
+                    Overwrite = false,
+                    Transformation = new Transformation().Quality("auto").FetchFormat("auto")
+                };
+                var imgResult = await _cloudinary.UploadAsync(imgParams);
+                if (imgResult.Error != null) throw new Exception(imgResult.Error.Message);
+                return new ChatAttachmentUploadResult
+                {
+                    Url = imgResult.SecureUrl?.ToString(),
+                    PublicId = imgResult.PublicId,
+                    Type = "image",
+                    ThumbnailUrl = imgResult.SecureUrl?.ToString(),
+                    MimeType = file.ContentType,
+                    FileName = file.FileName,
+                    FileSize = file.Length
+                };
+            }
+            else if (isVideo)
+            {
+                var vidParams = new VideoUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream()),
+                    PublicId = publicId,
+                    Folder = folder,
+                    Overwrite = false,
+                };
+                var vidResult = await _cloudinary.UploadAsync(vidParams);
+                if (vidResult.Error != null) throw new Exception(vidResult.Error.Message);
+
+                // Optional: generate thumbnail URL using Cloudinary transformations
+                var thumbnailUrl = _cloudinary.Api.UrlVideoUp.Secure(true)
+                    .Transform(new Transformation().Width(320).Height(180).Crop("fill")).BuildUrl(vidResult.PublicId + ".jpg");
+
+                return new ChatAttachmentUploadResult
+                {
+                    Url = vidResult.SecureUrl?.ToString(),
+                    PublicId = vidResult.PublicId,
+                    Type = "video",
+                    ThumbnailUrl = thumbnailUrl,
+                    MimeType = file.ContentType,
+                    FileName = file.FileName,
+                    FileSize = file.Length
+                };
+            }
+            else
+            {
+                var rawParams = new RawUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream()),
+                    PublicId = publicId,
+                    Folder = folder,
+                    Overwrite = false,
+                };
+                var rawResult = await _cloudinary.UploadAsync(rawParams);
+                if (rawResult.Error != null) throw new Exception(rawResult.Error.Message);
+                return new ChatAttachmentUploadResult
+                {
+                    Url = rawResult.SecureUrl?.ToString(),
+                    PublicId = rawResult.PublicId,
+                    Type = "file",
+                    ThumbnailUrl = null,
+                    MimeType = file.ContentType,
+                    FileName = file.FileName,
+                    FileSize = file.Length
+                };
+            }
         }
     }
 }

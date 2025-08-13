@@ -14,5 +14,7 @@ namespace Services.ConversationServices
         Task<IEnumerable<MessageDto>> GetMessagesForConversationAsync(Guid conversationId, int pageNumber, int pageSize);
         Task<ConversationDto> FindOrCreateConversationAsync(Guid user1Id, Guid user2Id);
         Task<ConversationDto> FindConversationAsync(Guid user1Id, Guid user2Id);
+        Task<Dictionary<Guid, int>> GetUnreadCountsAsync(Guid userId);
+        Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId);
     }
 }

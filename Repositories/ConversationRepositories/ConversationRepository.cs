@@ -20,7 +20,8 @@ namespace Repositories.ConversationRepositories
 
         public async Task<IEnumerable<Conversation>> GetConversationsByUserIdAsync(Guid userId)
         {
-            return await _context.Conversations
+            // Load conversations + compute unread count per conversation for this user
+            var conversations = await _context.Conversations
                 .Where(c => c.User1Id == userId || c.User2Id == userId)
 
                 // Sửa lại chuỗi Include ở đây
@@ -30,8 +31,52 @@ namespace Repositories.ConversationRepositories
 
                 .Include(c => c.User1).ThenInclude(u => u.Profile)
                 .Include(c => c.User2).ThenInclude(u => u.Profile)
+                .AsNoTracking()
+                .AsSplitQuery()
                 .OrderByDescending(c => c.UpdatedAt)
                 .ToListAsync();
+
+            var conversationIds = conversations.Select(c => c.Id).ToList();
+            var unreadCounts = await _context.Messages
+                .Where(m => conversationIds.Contains(m.ConversationId) && m.ReceiverId == userId && !m.IsRead)
+                .GroupBy(m => m.ConversationId)
+                .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var map = unreadCounts.ToDictionary(x => x.ConversationId, x => x.Count);
+            foreach (var c in conversations)
+            {
+                // stash temporarily using LastMessageId as carrier is wrong; instead we will attach via service mapping
+                // nothing to do here; service will read counts using local dictionary
+            }
+
+            return conversations;
+        }
+
+        public async Task<Dictionary<Guid, int>> GetUnreadCountsAsync(Guid userId)
+        {
+            var unreadCounts = await _context.Messages
+                .Where(m => m.ReceiverId == userId && !m.IsRead)
+                .GroupBy(m => m.ConversationId)
+                .Select(g => new { ConversationId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            return unreadCounts.ToDictionary(x => x.ConversationId, x => x.Count);
+        }
+
+        public async Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId)
+        {
+            var messages = await _context.Messages
+                .Where(m => m.ConversationId == conversationId && m.ReceiverId == receiverId && !m.IsRead)
+                .ToListAsync();
+
+            if (messages.Count == 0) return 0;
+
+            foreach (var m in messages)
+            {
+                m.IsRead = true;
+            }
+            await _context.SaveChangesAsync();
+            return messages.Count;
         }
 
         public async Task<IEnumerable<Message>> GetMessagesByConversationIdAsync(Guid conversationId, int pageNumber, int pageSize)
@@ -47,6 +92,8 @@ namespace Repositories.ConversationRepositories
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .OrderBy(m => m.SentAt)
+                .AsNoTracking()
+                .AsSplitQuery()
                 .ToListAsync();
         }
 
