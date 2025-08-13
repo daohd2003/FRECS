@@ -146,7 +146,7 @@
                         }
                         convoEl.dataset.conversationId = convo.id;
 
-                        const unreadDot = convo.unreadMessageCount > 0 ? `<div class="unread-dot"></div>` : '';
+                        const unreadBadge = (convo.unreadMessageCount || 0) > 0 ? `<span class=\"badge-unread\">${convo.unreadMessageCount}</span>` : '';
 
                         const productTopicHtml = convo.productContext
                             ? `<p class="product-topic">Topic: ${convo.productContext.name}</p>`
@@ -161,7 +161,7 @@
                                 <p class="name">${convo.otherParticipant.fullName}
                                     ${convo.otherParticipant.role ? `<span style=\"margin-left:6px; font-size:12px; color:${convo.otherParticipant.role.toLowerCase()==='admin' ? '#dc2626' : '#6b7280'};\">(${convo.otherParticipant.role})</span>` : ''}
                                 </p>
-                                ${unreadDot}
+                                ${unreadBadge}
                             </div>
                             ${productTopicHtml}
                             <p class="last-message">${convo.lastMessageContent || 'No messages yet'}</p>
@@ -234,6 +234,16 @@
 
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
+
+                // Mark as read on server and reset badge locally
+                try {
+                    await fetch(`${apiUrl}/conversations/${conversationId}/mark-read`, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    });
+                    const idx = conversations.findIndex(c => c.id === conversationId);
+                    if (idx >= 0) { conversations[idx].unreadMessageCount = 0; renderConversationList(); }
+                } catch {}
             }
 
             sendMessageForm.addEventListener('submit', (e) => {

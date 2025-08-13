@@ -21,6 +21,13 @@ namespace Services.ConversationServices
         public async Task<IEnumerable<ConversationDto>> GetConversationsForUserAsync(Guid userId)
         {
             var conversations = await _conversationRepository.GetConversationsByUserIdAsync(userId);
+            var unreadMap = await _conversationRepository.GetUnreadCountsAsync(userId);
+
+            // Compute unread counts per conversation for this user
+            var unreadCounts = conversations
+                .ToDictionary(c => c.Id, c => 0);
+            // Pull from DB in repository would be better; quick compute here for safety
+            // Note: We can inject DbContext, but keep current abstraction; rely on LastMessage.IsRead for now
 
             // Dùng LINQ .Select để map từ Model sang DTO
             return conversations.Select(c =>
@@ -37,7 +44,8 @@ namespace Services.ConversationServices
                             : (!string.IsNullOrEmpty(c.LastMessage.AttachmentType)
                                 ? $"[Attachment] {c.LastMessage.AttachmentType}"
                                 : "[Attachment]")));
-                return new ConversationDto
+                // Default unread count to 0; FE will increment via SignalR for realtime and we can enhance later
+                var dto = new ConversationDto
                 {
                     Id = c.Id,
                     LastMessageContent = lastMessageText,
@@ -55,8 +63,10 @@ namespace Services.ConversationServices
                         Id = lastMessageProduct.Id,
                         Name = lastMessageProduct.Name,
                         ImageUrl = lastMessageProduct.Images?.FirstOrDefault()?.ImageUrl
-                    }
+                    },
+                    UnreadMessageCount = unreadMap.TryGetValue(c.Id, out var cnt) ? cnt : 0
                 };
+                return dto;
             });
         }
 
@@ -174,6 +184,16 @@ namespace Services.ConversationServices
                     ImageUrl = lastMessageProduct.Images?.FirstOrDefault()?.ImageUrl
                 }
             };
+        }
+
+        public async Task<Dictionary<Guid, int>> GetUnreadCountsAsync(Guid userId)
+        {
+            return await _conversationRepository.GetUnreadCountsAsync(userId);
+        }
+
+        public async Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId)
+        {
+            return await _conversationRepository.MarkMessagesAsReadAsync(conversationId, receiverId);
         }
     }
 }

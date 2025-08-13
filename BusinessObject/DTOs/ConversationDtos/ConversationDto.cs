@@ -14,5 +14,6 @@ namespace BusinessObject.DTOs.ConversationDtos
         public DateTime UpdatedAt { get; set; }
         public bool IsRead { get; set; }
         public ProductContextDto? ProductContext { get; set; }
+        public int UnreadMessageCount { get; set; }
     }
 }
