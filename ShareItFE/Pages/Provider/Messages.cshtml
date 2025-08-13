@@ -157,7 +157,9 @@
                         </div>
                         <div class="details">
                             <div class="header">
-                                <p class="name">${convo.otherParticipant.fullName}</p>
+                                <p class="name">${convo.otherParticipant.fullName}
+                                    ${convo.otherParticipant.role ? `<span style="margin-left:6px; font-size:12px; color:#6b7280;">(${convo.otherParticipant.role})</span>` : ''}
+                                </p>
                                 ${unreadDot}
                             </div>
                             ${productTopicHtml}
@@ -214,7 +216,7 @@
 
                 chatPlaceholderEl.classList.add('hidden');
                 chatWindowEl.classList.remove('hidden');
-                chatUserNameEl.textContent = selectedConversation.otherParticipant.fullName;
+                chatUserNameEl.textContent = selectedConversation.otherParticipant.fullName + (selectedConversation.otherParticipant.role ? ` (${selectedConversation.otherParticipant.role})` : '');
 
                 if (selectedConversation.productContext) {
                     productImageEl.src = selectedConversation.productContext.imageUrl || 'https://via.placeholder.com/100';

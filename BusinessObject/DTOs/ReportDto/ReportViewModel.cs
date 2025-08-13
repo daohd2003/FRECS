@@ -10,6 +10,8 @@ namespace BusinessObject.DTOs.ReportDto
     public class ReportViewModel
     {
         public Guid Id { get; set; }
+        public Guid ReporterId { get; set; }
+        public Guid? ReporteeId { get; set; }
         public string Subject { get; set; }
         public string Description { get; set; }
         public string ReporterName { get; set; }
