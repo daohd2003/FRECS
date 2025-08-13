@@ -28,10 +28,19 @@ namespace Services.ConversationServices
                 // Xác định ai là người kia trong cuộc hội thoại
                 var otherUser = c.User1Id == userId ? c.User2 : c.User1;
                 var lastMessageProduct = c.LastMessage?.Product;
+                var lastMessageText = c.LastMessage == null
+                    ? null
+                    : (!string.IsNullOrEmpty(c.LastMessage.Content)
+                        ? c.LastMessage.Content
+                        : (!string.IsNullOrEmpty(c.LastMessage.FileName)
+                            ? $"[Attachment] {c.LastMessage.FileName}"
+                            : (!string.IsNullOrEmpty(c.LastMessage.AttachmentType)
+                                ? $"[Attachment] {c.LastMessage.AttachmentType}"
+                                : "[Attachment]")));
                 return new ConversationDto
                 {
                     Id = c.Id,
-                    LastMessageContent = c.LastMessage?.Content,
+                    LastMessageContent = lastMessageText,
                     UpdatedAt = c.UpdatedAt,
                     IsRead = c.LastMessage?.IsRead ?? true,
                     OtherParticipant = new ParticipantDto
@@ -68,6 +77,16 @@ namespace Services.ConversationServices
                     Id = m.Product.Id,
                     Name = m.Product.Name,
                     ImageUrl = m.Product.Images?.FirstOrDefault()?.ImageUrl
+                },
+                Attachment = string.IsNullOrEmpty(m.AttachmentUrl) ? null : new AttachmentDto
+                {
+                    Url = m.AttachmentUrl,
+                    Type = m.AttachmentType,
+                    PublicId = m.AttachmentPublicId,
+                    ThumbnailUrl = m.ThumbnailUrl,
+                    MimeType = m.MimeType,
+                    FileName = m.FileName,
+                    FileSize = m.FileSize
                 }
             });
         }

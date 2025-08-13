@@ -81,7 +81,53 @@
 
                 const bubbleDiv = document.createElement('div');
                 bubbleDiv.className = 'message-bubble';
-                bubbleDiv.textContent = message.content;
+                if (message.attachment) {
+                    const att = message.attachment;
+                    if (att.type === 'image') {
+                        const img = document.createElement('img');
+                        img.src = att.url;
+                        img.alt = att.fileName || 'image';
+                        img.style.maxWidth = '260px';
+                        img.style.borderRadius = '8px';
+                        img.style.cursor = 'zoom-in';
+                        img.addEventListener('click', () => openLightbox(att.url));
+                        bubbleDiv.appendChild(img);
+                        if (message.content) {
+                            const caption = document.createElement('div');
+                            caption.textContent = message.content;
+                            caption.style.marginTop = '6px';
+                            bubbleDiv.appendChild(caption);
+                        }
+                    } else if (att.type === 'video') {
+                        const video = document.createElement('video');
+                        video.src = att.url;
+                        video.controls = true;
+                        video.style.maxWidth = '260px';
+                        video.style.borderRadius = '8px';
+                        bubbleDiv.appendChild(video);
+                        if (message.content) {
+                            const caption = document.createElement('div');
+                            caption.textContent = message.content;
+                            caption.style.marginTop = '6px';
+                            bubbleDiv.appendChild(caption);
+                        }
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = att.url;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.textContent = att.fileName || 'Download file';
+                        bubbleDiv.appendChild(link);
+                        if (message.content) {
+                            const caption = document.createElement('div');
+                            caption.textContent = message.content;
+                            caption.style.marginTop = '6px';
+                            bubbleDiv.appendChild(caption);
+                        }
+                    }
+                } else {
+                    bubbleDiv.textContent = message.content;
+                }
 
                 messageRow.appendChild(bubbleDiv);
                 return messageRow;
@@ -207,6 +253,87 @@
                         });
                 }
             });
+
+            // --- Upload attachment ---
+            const uploadInput = document.createElement('input');
+            uploadInput.type = 'file';
+            uploadInput.style.display = 'none';
+            uploadInput.accept = 'image/*,video/*,*/*';
+            uploadInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                uploadInput.value = '';
+                if (!file || !selectedConversation || !signalRConnection) return;
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await fetch(`${apiUrl}/chat/attachments`, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + accessToken },
+                        body: formData
+                    });
+                    if (!res.ok) throw new Error('Upload failed');
+                    const { data } = await res.json();
+                    const recipientId = selectedConversation.otherParticipant.userId;
+                    await signalRConnection.invoke('SendMessageWithAttachmentAsync',
+                        selectedConversation.id,
+                        recipientId,
+                        messageInput.value.trim() || null,
+                        null,
+                        data.url,
+                        data.type,
+                        data.publicId,
+                        data.thumbnailUrl,
+                        data.mimeType,
+                        data.fileName,
+                        data.fileSize
+                    );
+                    messageInput.value = '';
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to send attachment');
+                }
+            });
+
+            const attachBtn = document.createElement('button');
+            attachBtn.type = 'button';
+            attachBtn.title = 'Attach';
+            attachBtn.setAttribute('aria-label', 'Attach');
+            attachBtn.style.background = 'transparent';
+            attachBtn.style.border = 'none';
+            attachBtn.style.padding = '0 6px';
+            attachBtn.style.cursor = 'pointer';
+            attachBtn.style.color = '#000';
+            attachBtn.className = 'attach-btn';
+            attachBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 1 1 5.66 5.66l-9.2 9.19a2 2 0 1 1-2.83-2.83l8.49-8.48"/></svg>';
+            attachBtn.addEventListener('click', () => uploadInput.click());
+            // đặt icon trong thanh nhập: trước nút Send
+            sendMessageForm.insertBefore(attachBtn, sendBtn);
+            sendMessageForm.appendChild(uploadInput);
+
+            // --- Lightbox for image preview ---
+            function openLightbox(url) {
+                let overlay = document.getElementById('image-lightbox');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'image-lightbox';
+                    overlay.style.position = 'fixed';
+                    overlay.style.inset = '0';
+                    overlay.style.background = 'rgba(0,0,0,0.85)';
+                    overlay.style.display = 'flex';
+                    overlay.style.alignItems = 'center';
+                    overlay.style.justifyContent = 'center';
+                    overlay.style.zIndex = '10000';
+                    const img = document.createElement('img');
+                    img.style.maxWidth = '90%';
+                    img.style.maxHeight = '90%';
+                    img.style.borderRadius = '8px';
+                    overlay.appendChild(img);
+                    overlay.addEventListener('click', () => overlay.remove());
+                    document.body.appendChild(overlay);
+                }
+                const imgEl = overlay.querySelector('img');
+                imgEl.src = url;
+            }
 
             messagesContainerEl.addEventListener('scroll', async () => {
                 if (messagesContainerEl.scrollTop <= 50 && !isLoadingMore) {

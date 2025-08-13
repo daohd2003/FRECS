@@ -30,6 +30,8 @@ namespace Repositories.ConversationRepositories
 
                 .Include(c => c.User1).ThenInclude(u => u.Profile)
                 .Include(c => c.User2).ThenInclude(u => u.Profile)
+                .AsNoTracking()
+                .AsSplitQuery()
                 .OrderByDescending(c => c.UpdatedAt)
                 .ToListAsync();
         }
@@ -47,6 +49,8 @@ namespace Repositories.ConversationRepositories
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .OrderBy(m => m.SentAt)
+                .AsNoTracking()
+                .AsSplitQuery()
                 .ToListAsync();
         }
 
