@@ -11,8 +11,10 @@ namespace DataAccess.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "PricingConfigs");
+            migrationBuilder.Sql(@"
+                IF OBJECT_ID('dbo.PricingConfigs', 'U') IS NOT NULL
+                    DROP TABLE [dbo].[PricingConfigs];
+            ");
         }
 
         /// <inheritdoc />
