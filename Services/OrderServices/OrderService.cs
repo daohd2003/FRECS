@@ -16,7 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Repositories.ProductRepositories;
 using CloudinaryDotNet.Actions;
 using BusinessObject.DTOs.ApiResponses;
-using Services.PricingServices;
+
 
 
 namespace Services.OrderServices
@@ -34,7 +34,7 @@ namespace Services.OrderServices
         private readonly IUserRepository _userRepository;
         private readonly ShareItDbContext _context;
         private readonly IEmailRepository _emailRepository;
-        private readonly IPricingService _pricingService;
+
         public OrderService(
             IOrderRepository orderRepo,
             INotificationService notificationService,
@@ -46,8 +46,8 @@ namespace Services.OrderServices
             IUserRepository userRepository,
             ShareItDbContext context,
             IEmailRepository emailRepository,
-            IProductRepository productRepo,
-            IPricingService pricingService)
+            IProductRepository productRepo
+            )
         {
             _orderRepo = orderRepo;
             _notificationService = notificationService;
@@ -60,7 +60,7 @@ namespace Services.OrderServices
             _context = context;
             _emailRepository = emailRepository;
             _productRepo = productRepo;
-            _pricingService = pricingService;
+
         }
 
         public async Task CreateOrderAsync(CreateOrderDto dto)
@@ -241,12 +241,7 @@ namespace Services.OrderServices
                 var product = await _context.Products.FindAsync(item.ProductId);
                 if (product != null)
                 {
-                    var oldRentCount = product.RentCount;
-                    product.RentCount += 1;
-                    _context.Products.Update(product);
-                    
-                    // Log for debugging
-                    Console.WriteLine($"Product {product.Id}: RentCount {oldRentCount} -> {product.RentCount}");
+
                 }
             }
 
@@ -413,16 +408,13 @@ namespace Services.OrderServices
                                 throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable or has an invalid price.");
                             }
 
-                            // Get discounted price instead of original price
-                            var discountedPrice = await _pricingService.GetCurrentPriceAsync(cartItem.ProductId);
-
                             var orderItem = new OrderItem
                             {
                                 Id = Guid.NewGuid(),
                                 ProductId = cartItem.ProductId,
                                 RentalDays = cartItem.RentalDays,
                                 Quantity = cartItem.Quantity,
-                                DailyRate = discountedPrice  // Use discounted price
+                                DailyRate = product.PricePerDay
                             };
 
                             orderItems.Add(orderItem);

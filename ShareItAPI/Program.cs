@@ -48,7 +48,7 @@ using Services.FeedbackServices;
 using Services.NotificationServices;
 using Services.OrderServices;
 using Services.Payments.VNPay;
-using Services.PricingServices;
+
 using Services.ProductServices;
 using Services.ProfileServices;
 using Services.ProviderBankServices;
@@ -298,8 +298,7 @@ namespace ShareItAPI
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
 
-            // Pricing services
-            builder.Services.AddScoped<IPricingService, PricingService>();
+
 
 
             builder.WebHost.UseUrls($"http://*:80");

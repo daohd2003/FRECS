@@ -424,45 +424,6 @@ namespace DataAccess.Migrations
                     b.ToTable("OrderItems");
                 });
 
-            modelBuilder.Entity("BusinessObject.Models.PricingConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ConfigKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ConfigValue")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UpdatedByAdminId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConfigKey")
-                        .IsUnique();
-
-                    b.HasIndex("UpdatedByAdminId");
-
-                    b.ToTable("PricingConfigs");
-                });
-
             modelBuilder.Entity("BusinessObject.Models.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1000,17 +961,6 @@ namespace DataAccess.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.PricingConfig", b =>
-                {
-                    b.HasOne("BusinessObject.Models.User", "UpdatedByAdmin")
-                        .WithMany()
-                        .HasForeignKey("UpdatedByAdminId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("UpdatedByAdmin");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Product", b =>

@@ -6,22 +6,29 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DataAccess.Migrations
 {
     /// <inheritdoc />
-    public partial class AddPricingConfigTable : Migration
+    public partial class RemovePricingConfig : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "PricingConfigs");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
                 name: "PricingConfigs",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedByAdminId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ConfigKey = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     ConfigValue = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    UpdatedByAdminId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -44,13 +51,6 @@ namespace DataAccess.Migrations
                 name: "IX_PricingConfigs_UpdatedByAdminId",
                 table: "PricingConfigs",
                 column: "UpdatedByAdminId");
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropTable(
-                name: "PricingConfigs");
         }
     }
 }
