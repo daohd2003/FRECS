@@ -38,14 +38,7 @@ namespace ShareItFE.Pages.Products
         public bool IsFavorite { get; set; }
         public string? ProviderEmail { get; set; }
         
-        // Pricing information
-        public decimal OriginalPrice { get; set; }
-        public decimal CurrentPrice { get; set; }
-        public bool IsDiscounted { get; set; }
-        public int RentCount { get; set; }
-        public decimal DiscountPercentage { get; set; }
-        public int RentalsNeededForDiscount { get; set; }
-        public bool IsMaxDiscount { get; set; }
+
 
         [BindProperty, Required(ErrorMessage = "Please select a size")]
         public string SelectedSize { get; set; }
@@ -240,8 +233,7 @@ namespace ShareItFE.Pages.Products
                     }
                     catch { }
 
-                    // Fetch pricing information
-                    await LoadPricingInformation(client, id);
+
                 }
                 else
                 {
@@ -505,8 +497,7 @@ namespace ShareItFE.Pages.Products
                         }
                         catch { }
 
-                        // Load pricing information
-                        await LoadPricingInformation(client, id);
+
                     }
                 }
                 else
@@ -627,102 +618,7 @@ namespace ShareItFE.Pages.Products
             }
         }
 
-        private async Task LoadPricingInformation(HttpClient client, Guid productId)
-        {
-            try
-            {
-                var pricingRequestUri = $"api/pricing/product/{productId}";
-                var pricingResponse = await client.GetAsync(pricingRequestUri);
 
-                if (pricingResponse.IsSuccessStatusCode)
-                {
-                    var pricingApiResponse = await pricingResponse.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
-                    
-                    if (pricingApiResponse?.Data != null)
-                    {
-                        var pricingData = JsonSerializer.Deserialize<JsonElement>(pricingApiResponse.Data.ToString());
-                        
-                        OriginalPrice = pricingData.GetProperty("originalPrice").GetDecimal();
-                        CurrentPrice = pricingData.GetProperty("currentPrice").GetDecimal();
-                        RentCount = pricingData.GetProperty("rentCount").GetInt32();
-                        DiscountPercentage = pricingData.GetProperty("discountPercentage").GetDecimal();
-                        IsDiscounted = pricingData.GetProperty("isDiscounted").GetBoolean();
-                        
-                        // Calculate rentals needed for current discount
-                        await CalculateRentalsNeededForDiscount(client);
-                        
-                        // Check if max discount reached
-                        IsMaxDiscount = RentCount >= 5; // Default max discount times
-                    }
-                }
-                else
-                {
-                    // Fallback to original price if pricing API fails
-                    OriginalPrice = Product?.PricePerDay ?? 0;
-                    CurrentPrice = Product?.PricePerDay ?? 0;
-                    IsDiscounted = false;
-                    RentCount = 0;
-                    DiscountPercentage = 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching pricing information: {ex.Message}");
-                // Fallback to original price
-                OriginalPrice = Product?.PricePerDay ?? 0;
-                CurrentPrice = Product?.PricePerDay ?? 0;
-                IsDiscounted = false;
-                RentCount = 0;
-                DiscountPercentage = 0;
-                RentalsNeededForDiscount = 0;
-                IsMaxDiscount = false;
-            }
-        }
-
-        private async Task CalculateRentalsNeededForDiscount(HttpClient client)
-        {
-            try
-            {
-                // Get discount rate and max discount times from API
-                var settingsResponse = await client.GetAsync("api/pricing/settings");
-                if (settingsResponse.IsSuccessStatusCode)
-                {
-                    var settingsApiResponse = await settingsResponse.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
-                    if (settingsApiResponse?.Data != null)
-                    {
-                        var settingsData = JsonSerializer.Deserialize<JsonElement>(settingsApiResponse.Data.ToString());
-                        var discountRatePercent = settingsData.GetProperty("discountRate").GetDecimal();
-                        var maxDiscountTimes = settingsData.GetProperty("maxDiscountTimes").GetInt32();
-                        
-                        // Check if max discount reached
-                        IsMaxDiscount = RentCount >= maxDiscountTimes;
-                        
-                        // Calculate how many rentals needed for current discount percentage
-                        if (discountRatePercent > 0 && !IsMaxDiscount)
-                        {
-                            RentalsNeededForDiscount = (int)Math.Ceiling(DiscountPercentage / discountRatePercent);
-                        }
-                        else
-                        {
-                            RentalsNeededForDiscount = 0;
-                        }
-                    }
-                }
-                else
-                {
-                    // Default: assume 8% per rental, max 5 times
-                    IsMaxDiscount = RentCount >= 5;
-                    RentalsNeededForDiscount = IsMaxDiscount ? 0 : (int)Math.Ceiling(DiscountPercentage / 8m);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error calculating rentals needed: {ex.Message}");
-                // Default: assume 8% per rental, max 5 times
-                IsMaxDiscount = RentCount >= 5;
-                RentalsNeededForDiscount = IsMaxDiscount ? 0 : (int)Math.Ceiling(DiscountPercentage / 8m);
-            }
-        }
     }
 }
 public class FeedbackRequest

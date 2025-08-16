@@ -4,7 +4,7 @@ using BusinessObject.Models;
 using Repositories.CartRepositories;
 using Repositories.ProductRepositories;
 using Repositories.UserRepositories;
-using Services.PricingServices;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,15 +20,12 @@ namespace Services.CartServices
         private readonly IProductRepository _productRepository; // Assume you have a ProductRepository
         private readonly IUserRepository _userRepository; // Assume you have a UserRepository
         private readonly IMapper _mapper;
-        private readonly IPricingService _pricingService;
-
-        public CartService(ICartRepository cartRepository, IProductRepository productRepository, IUserRepository userRepository, IMapper mapper, IPricingService pricingService)
+        public CartService(ICartRepository cartRepository, IProductRepository productRepository, IUserRepository userRepository, IMapper mapper)
         {
             _cartRepository = cartRepository;
             _productRepository = productRepository;
             _userRepository = userRepository;
             _mapper = mapper;
-            _pricingService = pricingService;
         }
 
         public async Task<CartDto> GetUserCartAsync(Guid customerId)
@@ -47,10 +44,9 @@ namespace Services.CartServices
             {
                 var cartItemDto = _mapper.Map<CartItemDto>(cartItem);
                 
-                // Use discounted price instead of original price
-                var currentPrice = await _pricingService.GetCurrentPriceAsync(cartItem.ProductId);
-                cartItemDto.PricePerUnit = currentPrice;
-                cartItemDto.TotalItemPrice = currentPrice * cartItem.Quantity * cartItem.RentalDays;
+                // Use original price
+                cartItemDto.PricePerUnit = cartItem.Product.PricePerDay;
+                cartItemDto.TotalItemPrice = cartItem.Product.PricePerDay * cartItem.Quantity * cartItem.RentalDays;
                 
                 cartItemDtos.Add(cartItemDto);
             }

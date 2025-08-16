@@ -29,7 +29,7 @@ namespace ShareItAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetById(Guid id)
         {
-            var product = await _service.GetByIdWithDiscountedPriceAsync(id);
+            var product = await _service.GetByIdAsync(id);
             if (product == null) return NotFound();
             return Ok(product);
         }
@@ -167,19 +167,6 @@ namespace ShareItAPI.Controllers
         }
 
         // Debug endpoint to check rent count
-        [HttpGet("{id}/rent-count")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetRentCount(Guid id)
-        {
-            var product = await _service.GetByIdAsync(id);
-            if (product == null) return NotFound();
-            
-            return Ok(new { 
-                ProductId = id, 
-                ProductName = product.Name,
-                RentCount = product.RentCount,
-                Timestamp = DateTime.UtcNow
-            });
-        }
+
     }
 }
