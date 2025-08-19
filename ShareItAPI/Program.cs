@@ -24,6 +24,7 @@ using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
 using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
+using Repositories.CategoryRepositories;
 using Repositories.ConversationRepositories;
 using Repositories.EmailRepositories;
 using Repositories.FavoriteRepositories;
@@ -33,6 +34,7 @@ using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
 using Repositories.ProductRepositories;
 using Repositories.ProfileRepositories;
+using Repositories.ProviderApplicationRepositories;
 using Repositories.ReportRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
@@ -41,6 +43,7 @@ using Services.AI;
 using Services.Authentication;
 using Services.CartServices;
 using Services.CloudServices;
+using Services.CategoryServices;
 using Services.ConversationServices;
 using Services.EmailServices;
 using Services.FavoriteServices;
@@ -48,13 +51,11 @@ using Services.FeedbackServices;
 using Services.NotificationServices;
 using Services.OrderServices;
 using Services.Payments.VNPay;
-
 using Services.ProductServices;
 using Services.ProfileServices;
+using Services.ProviderApplicationServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
-using Services.ProviderApplicationServices;
-using Repositories.ProviderApplicationRepositories;
 using Services.ReportService;
 using Services.Transactions;
 using Services.UserServices;
@@ -245,6 +246,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(OrderItemProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(CategoryProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
@@ -270,6 +272,8 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IProductService, ProductService>();
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
 
             // Thêm SignalR service
             builder.Services.AddSignalR();
@@ -301,7 +305,7 @@ namespace ShareItAPI
 
 
 
-            builder.WebHost.UseUrls($"http://*:80");
+            // builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();
 

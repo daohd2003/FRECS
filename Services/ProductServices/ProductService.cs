@@ -22,6 +22,7 @@ namespace Services.ProductServices
         public IQueryable<ProductDTO> GetAll()
         {
             return _context.Products
+                .Include(p => p.Category)
                 .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
         }
 
@@ -30,6 +31,7 @@ namespace Services.ProductServices
             var product = await _context.Products
                 .Include(p => p.Provider)
                 .ThenInclude(prov => prov.Profile)
+                .Include(p => p.Category)
                 .Include(p => p.Images)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -61,10 +63,12 @@ namespace Services.ProductServices
                     ProviderId = dto.ProviderId,
                     Name = dto.Name,
                     Description = dto.Description,
-                    Category = dto.Category,
+                    CategoryId = dto.CategoryId ?? Guid.Empty,
                     Size = dto.Size,
                     Color = dto.Color,
                     PricePerDay = dto.PricePerDay,
+                    PurchasePrice = dto.PurchasePrice ?? 0,
+                    PurchaseQuantity = dto.Quantity ?? 0,
                     // Sẽ được gán từ Controller
 
                     // Các giá trị mặc định khi tạo mới

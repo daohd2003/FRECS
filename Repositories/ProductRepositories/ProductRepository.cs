@@ -21,6 +21,7 @@ namespace Repositories.ProductRepositories
         {
             return await _context.Products
                 .Include(p => p.Images)
+                .Include(p => p.Category)
                 .Include(p => p.Provider)
                     .ThenInclude(u => u.Profile)
             .ToListAsync();
@@ -30,6 +31,7 @@ namespace Repositories.ProductRepositories
         {
             return await _context.Products
                 .Include(p => p.Images)
+                .Include(p => p.Category)
                 .Include(p => p.Provider)
                     .ThenInclude(u => u.Profile)
                 .FirstOrDefaultAsync(p => p.Id == id);

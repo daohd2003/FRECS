@@ -63,6 +63,7 @@ namespace Services.AI
             }
 
             var products = await _context.Products
+                .Include(p => p.Category)
                 .Where(p => p.AvailabilityStatus == AvailabilityStatus.available)
                 .OrderBy(p => p.Id)
                 .Select(p => new
@@ -72,7 +73,7 @@ namespace Services.AI
                     p.Size,
                     p.PricePerDay,
                     p.Description,
-                    p.Category,
+                    Category = p.Category.Name,
                     p.Color
                 })
                 .Take(50)

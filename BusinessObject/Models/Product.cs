@@ -28,8 +28,11 @@ namespace BusinessObject.Models
 
         public string Description { get; set; }
 
-        [MaxLength(100)]
-        public string Category { get; set; }
+        [Required]
+        public Guid CategoryId { get; set; }
+
+        [ForeignKey(nameof(CategoryId))]
+        public Category Category { get; set; }
 
         [MaxLength(50)]
         public string Size { get; set; }
@@ -41,6 +44,11 @@ namespace BusinessObject.Models
         [Column(TypeName = "decimal(10,2)")]
         public decimal PricePerDay { get; set; }
 
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal PurchasePrice { get; set; } = 0m;
+
+        public int PurchaseQuantity { get; set; } = 0;
+
         [Required]
         public AvailabilityStatus AvailabilityStatus { get; set; }
 
@@ -50,6 +58,8 @@ namespace BusinessObject.Models
         public bool IsPromoted { get; set; } = false;
 
         public int RentCount { get; set; } = 0;
+
+        public int BuyCount { get; set; } = 0;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
