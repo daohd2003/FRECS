@@ -4,18 +4,7 @@
 @{
     ViewData["Title"] = "Browse Collection";
 
-    var categories = new List<SelectListItem>
-    {
-        new SelectListItem { Value = "", Text = "All Categories" },
-        new SelectListItem { Value = "Electronics", Text = "Electronics" },
-        new SelectListItem { Value = "Tools", Text = "Tools" },
-        new SelectListItem { Value = "Outdoors", Text = "Outdoors" },
-        new SelectListItem { Value = "Camera", Text = "Camera" },
-        new SelectListItem { Value = "Evening Wear", Text = "Evening Wear" },
-        new SelectListItem { Value = "Formal Wear", Text = "Formal Wear" },
-        new SelectListItem { Value = "Cocktail", Text = "Cocktail" },
-        new SelectListItem { Value = "Wedding", Text = "Wedding" },
-    };
+    // Categories now loaded dynamically from Model.CategoryOptions
 
     var priceRanges = new List<SelectListItem>
     {
@@ -108,7 +97,7 @@
                         <div>
                             <label for="CategoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
                             <select id="CategoryFilter" name="CategoryFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
-                                @foreach (var option in categories)
+                                @foreach (var option in Model.CategoryOptions ?? new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } })
                                 {
                                     <option value="@option.Value" selected="@(Model.CategoryFilter == option.Value)">@option.Text</option>
                                 }

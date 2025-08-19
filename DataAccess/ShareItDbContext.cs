@@ -29,6 +29,7 @@ namespace DataAccess
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<Category> Categories { get; set; }
 
         public DbSet<ProviderApplication> ProviderApplications { get; set; }
 
@@ -53,6 +54,12 @@ namespace DataAccess
             modelBuilder.Entity<Product>()
                 .Property(t => t.AvailabilityStatus)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Category)
+                .WithMany(c => c.Products)
+                .HasForeignKey(p => p.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Order>()
                 .Property(t => t.Status)

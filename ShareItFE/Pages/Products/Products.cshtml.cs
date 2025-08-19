@@ -3,6 +3,7 @@ using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.ProductDto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -35,6 +36,9 @@ namespace ShareItFE.Pages.Products
         public List<ProductDTO> Products { get; set; } = new List<ProductDTO>();
         public int TotalProductsCount { get; set; }
         public List<string> FavoriteProductIds { get; set; } = new List<string>(); // Thêm thuộc tính để lưu danh sách productId yêu thích
+
+        // Filter option sources
+        public List<SelectListItem> CategoryOptions { get; set; } = new List<SelectListItem>();
 
         // Pagination properties
         [BindProperty(SupportsGet = true)]
@@ -92,6 +96,33 @@ namespace ShareItFE.Pages.Products
                 TempData["FilterState"] = currentFilterState;
 
                 var client = _httpClientFactory.CreateClient("BackendApi");
+
+                // Load categories for filter dropdown
+                try
+                {
+                    var categoryResponse = await client.GetAsync("api/categories");
+                    if (categoryResponse.IsSuccessStatusCode)
+                    {
+                        var categories = await categoryResponse.Content.ReadFromJsonAsync<IEnumerable<CategoryDto>>();
+                        CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
+                        if (categories != null)
+                        {
+                            CategoryOptions.AddRange(categories
+                                .Where(c => c.IsActive)
+                                .OrderBy(c => c.Name)
+                                .Select(c => new SelectListItem { Value = c.Name, Text = c.Name }));
+                        }
+                    }
+                    else
+                    {
+                        CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
+                    }
+                }
+                catch
+                {
+                    CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
+                }
+
                 var queryOptions = new List<string> { "$count=true" };
                 var filters = new List<string>();
 
