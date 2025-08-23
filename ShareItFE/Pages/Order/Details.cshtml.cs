@@ -2,6 +2,7 @@
 using BusinessObject.DTOs.OrdersDto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Configuration;
 using ShareItFE.Common.Utilities;
 using System;
 using System.Net.Http;
@@ -14,14 +15,18 @@ namespace ShareItFE.Pages.Order
     public class DetailsModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
+        private readonly IConfiguration _configuration;
 
-        public DetailsModel(AuthenticatedHttpClientHelper clientHelper)
+        public DetailsModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
         {
             _clientHelper = clientHelper;
+            _configuration = configuration;
         }
 
         [BindProperty]
         public OrderDetailsDto Order { get; set; }
+        
+        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
         
 
 

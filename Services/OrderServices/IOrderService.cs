@@ -19,6 +19,7 @@ namespace Services.OrderServices
         Task<OrderWithDetailsDto> GetOrderDetailAsync(Guid orderId);
         Task MarkAsReceivedAsync(Guid orderId, bool paid);
         Task MarkAsReturnedAsync(Guid orderId);
+        Task MarkAsReturningAsync(Guid orderId);
         Task MarkAsApprovedAsync(Guid orderId);
         Task MarkAsShipingAsync(Guid orderId);
         Task CompleteTransactionAsync(Guid orderId);
@@ -30,6 +31,7 @@ namespace Services.OrderServices
         Task<IEnumerable<OrderDto>> CreateOrderFromCartAsync(Guid customerId, CheckoutRequestDto checkoutRequestDto);
         Task MarkAsReturnedWithIssueAsync(Guid orderId);
         Task SendDamageReportEmailAsync(string toEmail, string subject, string body);
+        Task ConfirmDeliveryAsync(Guid orderId);
 
         //New Updated Methods for Order List Display
         Task<IEnumerable<OrderListDto>> GetProviderOrdersForListDisplayAsync(Guid providerId);

@@ -182,17 +182,18 @@
                             <div class="order-list">
                                 @foreach (var order in pagedOrders)
                                 {
-                                    var statusClass = order.Status.ToString().ToLower() switch
-                                    {
-                                        "pending" => "status-pending",
-                                        "approved" => "status-approved",
-                                        "in_transit" => "status-in-transit",
-                                        "in_use" => "status-in-use",
-                                        "returned" => "status-returned",
-                                        "cancelled" => "status-cancelled",
-                                        "returned_with_issue" => "status-issue",
-                                        _ => "status-pending"
-                                    };
+                                                                    var statusClass = order.Status.ToString().ToLower() switch
+                                {
+                                    "pending" => "status-pending",
+                                    "approved" => "status-approved",
+                                    "in_transit" => "status-in-transit",
+                                    "in_use" => "status-in-use",
+                                    "returning" => "status-returning",
+                                    "returned" => "status-returned",
+                                    "cancelled" => "status-cancelled",
+                                    "returned_with_issue" => "status-issue",
+                                    _ => "status-pending"
+                                };
 
                                     <div class="order-card">
                                         <div class="order-header">
@@ -243,6 +244,18 @@
                                             </span>
                                             <div class="order-actions">
                                                 <a asp-page="/Order/Details" asp-route-id="@order.Id" class="btn btn-secondary">View Details</a>
+                                                @if (order.Status.ToString().ToLower() == "in_transit")
+                                                {
+                                                    <button type="button" class="btn btn-success confirm-delivery-btn" data-order-id="@order.Id">
+                                                        <i class="bi bi-check-circle"></i> Confirm Received
+                                                    </button>
+                                                }
+                                                @if (order.Status.ToString().ToLower() == "in_use")
+                                                {
+                                                    <button type="button" class="btn btn-warning mark-returning-btn" data-order-id="@order.Id">
+                                                        <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                                    </button>
+                                                }
                                                 @if (order.Status.ToString().ToLower() == "returned")
                                                 {
                                                     <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@order.Id">Rent Again</button>
@@ -642,6 +655,78 @@
             const originalOrderIdInput = document.getElementById('rent-again-original-order-id');
             const newRentalStartDateInput = document.getElementById('new-rental-start-date');
             const newRentalEndDateInput = document.getElementById('new-rental-end-date');
+
+            // Bắt sự kiện click vào nút "Confirm Received" trên mỗi thẻ đơn hàng
+            document.querySelectorAll('.confirm-delivery-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const orderId = button.dataset.orderId;
+                    
+                    if (confirm('Are you sure you want to confirm that you have received this order?')) {
+                        button.disabled = true;
+                        button.innerHTML = '<i class="bi bi-hourglass"></i> Processing...';
+                        
+                        try {
+                            const response = await fetch(`@Model.ApiBaseUrl/orders/${orderId}/confirm-delivery`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            if (response.ok) {
+                                alert('Order delivery confirmed successfully!');
+                                location.reload(); // Reload để cập nhật status
+                            } else {
+                                const errorData = await response.json();
+                                alert('Error confirming delivery: ' + (errorData.message || 'Unknown error'));
+                                button.disabled = false;
+                                button.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Received';
+                            }
+                        } catch (error) {
+                            alert('Error confirming delivery: ' + error.message);
+                            button.disabled = false;
+                            button.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Received';
+                        }
+                    }
+                });
+            });
+
+            // Bắt sự kiện click vào nút "Mark as Returning" trên mỗi thẻ đơn hàng
+            document.querySelectorAll('.mark-returning-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const orderId = button.dataset.orderId;
+                    
+                    if (confirm('Are you sure you want to mark this order as returning?')) {
+                        button.disabled = true;
+                        button.innerHTML = '<i class="bi bi-hourglass"></i> Processing...';
+                        
+                        try {
+                            const response = await fetch(`@Model.ApiBaseUrl/orders/${orderId}/mark-returning`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            if (response.ok) {
+                                alert('Order marked as returning successfully!');
+                                location.reload(); // Reload để cập nhật status
+                            } else {
+                                const errorData = await response.json();
+                                alert('Error marking as returning: ' + (errorData.message || 'Unknown error'));
+                                button.disabled = false;
+                                button.innerHTML = '<i class="bi bi-box-arrow-up"></i> Mark as Returning';
+                            }
+                        } catch (error) {
+                            alert('Error marking as returning: ' + error.message);
+                            button.disabled = false;
+                            button.innerHTML = '<i class="bi bi-box-arrow-up"></i> Mark as Returning';
+                        }
+                    }
+                });
+            });
 
             // Bắt sự kiện click vào nút "Rent Again" trên mỗi thẻ đơn hàng
             document.querySelectorAll('.rent-again-btn').forEach(button => {

@@ -275,6 +275,40 @@ namespace Services.OrderServices
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as shipped");
         }
 
+        public async Task ConfirmDeliveryAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+            
+            // Chỉ cho phép xác nhận khi đơn hàng đang ở trạng thái in_transit
+            if (order.Status != OrderStatus.in_transit)
+                throw new Exception("Order must be in transit status to confirm delivery");
+            
+            order.Status = OrderStatus.in_use;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _orderRepo.UpdateAsync(order);
+            
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been confirmed as received and is now in use");
+        }
+
+        public async Task MarkAsReturningAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+            
+            // Chỉ cho phép mark as returning khi đơn hàng đang ở trạng thái in_use
+            if (order.Status != OrderStatus.in_use)
+                throw new Exception("Order must be in use status to mark as returning");
+            
+            order.Status = OrderStatus.returning;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _orderRepo.UpdateAsync(order);
+            
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returning);
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} is being returned by customer");
+        }
+
         public async Task CompleteTransactionAsync(Guid orderId)
         {
             var order = await _orderRepo.GetByIdAsync(orderId);
