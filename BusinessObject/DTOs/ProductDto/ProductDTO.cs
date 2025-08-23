@@ -35,7 +35,8 @@
         public string? Color { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal? PurchasePrice { get; set; }
-        public int? Quantity { get; set; }
+        public int? PurchaseQuantity { get; set; }
+        public int? RentalQuantity { get; set; }
         public List<ProductImageDTO>? Images { get; set; }
     }
 }

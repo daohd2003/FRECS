@@ -68,7 +68,8 @@ namespace Services.ProductServices
                     Color = dto.Color,
                     PricePerDay = dto.PricePerDay,
                     PurchasePrice = dto.PurchasePrice ?? 0,
-                    PurchaseQuantity = dto.Quantity ?? 0,
+                    PurchaseQuantity = dto.PurchaseQuantity ?? 0,
+                    RentalQuantity = dto.RentalQuantity ?? 0,
                     // Sẽ được gán từ Controller
 
                     // Các giá trị mặc định khi tạo mới

@@ -82,7 +82,7 @@ namespace ShareItFE.Pages.Provider
 
             if (CurrentStep == 1)
             {
-                if (string.IsNullOrEmpty(Product.Name) || string.IsNullOrEmpty(Product.Description) || Product.CategoryId == Guid.Empty || string.IsNullOrEmpty(Product.Size))
+                if (string.IsNullOrEmpty(Product.Name) || string.IsNullOrEmpty(Product.Description) || string.IsNullOrEmpty(Product.Size))
                 {
                     ModelState.AddModelError("Product", "Please fill all required fields in this step.");
                     SaveStateToTempData();
@@ -230,6 +230,9 @@ namespace ShareItFE.Pages.Provider
                 Size = Product.Size,
                 Color = Product.Color,
                 PricePerDay = Product.PricePerDay,
+                PurchasePrice = Product.PurchasePrice,
+                /*PurchaseQuantity = Product.PurchaseQuantity,
+                RentalQuantity = Product.RentalQuantity,*/
                 Images = new List<ProductImageDTO>()
             };
 
