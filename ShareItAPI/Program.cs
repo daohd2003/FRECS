@@ -57,6 +57,7 @@ using Services.ProviderApplicationServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
 using Services.ReportService;
+using Services.RevenueServices;
 using Services.Transactions;
 using Services.UserServices;
 using ShareItAPI.Middlewares;
@@ -248,6 +249,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CategoryProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(RevenueProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
             builder.Services.AddScoped<IEmailRepository, EmailRepository>();
@@ -301,6 +303,9 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
+
+            // Register Revenue Services
+            builder.Services.AddScoped<IRevenueService, RevenueService>();
 
 
 
