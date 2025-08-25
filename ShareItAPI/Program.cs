@@ -74,11 +74,14 @@ namespace ShareItAPI
 
             // Add services to the container.
 
+            // Configure CORS from Frontend BaseUrl
+            var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"] ?? "https://localhost:7045";
+            
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins("https://localhost:7045")
+                    policy.WithOrigins(frontendBaseUrl)
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();

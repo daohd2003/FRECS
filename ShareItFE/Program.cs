@@ -18,7 +18,8 @@ namespace ShareItFE
 
             builder.Services.AddHttpClient("BackendApi", client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7256/");
+                var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7256/api";
+                client.BaseAddress = new Uri(apiBaseUrl);
             });
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
