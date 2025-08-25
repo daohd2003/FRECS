@@ -9,6 +9,11 @@
     <title>@ViewData["Title"] - ShareIt</title>
     <script>
         const apiRootUrl = '@Configuration["ApiSettings:RootUrl"]';
+        // Global API settings for JavaScript
+        window.apiSettings = {
+            baseUrl: '@Configuration["ApiSettings:BaseUrl"]',
+            rootUrl: '@Configuration["ApiSettings:RootUrl"]'
+        };
     </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />

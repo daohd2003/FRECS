@@ -67,15 +67,15 @@ namespace Services.Payments.VNPay
             //Sửa lại mỗi lần chạy ngrok
             /*helper.AddRequestData("vnp_IpAddr", request.IpAddress);*/
             /*helper.AddRequestData("vnp_IpAddr", "https://localhost:7021/api/payment/Vnpay/IpnAction");*/
-            helper.AddRequestData("vnp_IpAddr", "https://shareit-containerapp-be.livelytree-9f3e2a46.southeastasia.azurecontainerapps.io/api/payment/Vnpay/IpnAction");
+            helper.AddRequestData("vnp_IpAddr", "https://share-it-be-dzhpe4encrceg3b2.southeastasia-01.azurewebsites.net/api/payment/Vnpay/IpnAction");
             helper.AddRequestData("vnp_Locale", EnumHelper.GetDescription(request.Language));
             helper.AddRequestData("vnp_BankCode", request.BankCode == BankCode.ANY ? string.Empty : request.BankCode.ToString());
             helper.AddRequestData("vnp_OrderInfo", request.Description.Trim());
             helper.AddRequestData("vnp_OrderType", _orderType);
             //Sửa lại mỗi lần chạy ngrok
-            /*helper.AddRequestData("vnp_ReturnUrl", _callbackUrl);*/
+            helper.AddRequestData("vnp_ReturnUrl", _callbackUrl);
             /*helper.AddRequestData("vnp_ReturnUrl", "https://localhost:7021/api/payment/Vnpay/Callback");*/
-            helper.AddRequestData("vnp_ReturnUrl", "https://shareit-containerapp-be.livelytree-9f3e2a46.southeastasia.azurecontainerapps.io/api/payment/Vnpay/Callback");
+            // helper.AddRequestData("vnp_ReturnUrl", "https://share-it-be-dzhpe4encrceg3b2.southeastasia-01.azurewebsites.net/api/payment/Vnpay/Callback");
             helper.AddRequestData("vnp_TxnRef", request.PaymentId.ToString());
 
             return helper.GetPaymentUrl(_baseUrl, _hashSecret);

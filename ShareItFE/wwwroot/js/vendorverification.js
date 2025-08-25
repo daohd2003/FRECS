@@ -173,7 +173,9 @@
     };
 
     // --- API Integration ---
-    const API_BASE_URL = 'https://localhost:7256/api/products'; // Define your API base URL
+    // Get API base URL from environment or use default
+    const apiBaseUrl = window.apiSettings?.baseUrl || 'https://localhost:7256/api';
+    const API_BASE_URL = `${apiBaseUrl}/products`;
 
     const fetchItems = async () => {
         try {
@@ -188,7 +190,7 @@
         } catch (error) {
             console.error('Error fetching items:', error);
             noItemsFoundDiv.classList.remove('hidden');
-            noItemsFoundDiv.textContent = 'Failed to load items. Please ensure the API is running and accessible (https://localhost:7256/api/products) and that CORS is configured correctly.';
+            noItemsFoundDiv.textContent = `Failed to load items. Please ensure the API is running and accessible (${API_BASE_URL}) and that CORS is configured correctly.`;
         }
     };
 
