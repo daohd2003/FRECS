@@ -4,26 +4,19 @@ namespace ShareItAPI.Extensions
 {
     public static class ConfigurationExtensions
     {
-        public static string GetEnvironmentConfig(this IConfiguration configuration, string sectionKey, string fallbackValue = "", IWebHostEnvironment? environment = null)
+        public static string GetFrontendBaseUrl(this IConfiguration configuration, IWebHostEnvironment environment)
         {
-            var envName = environment?.EnvironmentName ?? "Development";
-            var envSpecificValue = configuration[$"{sectionKey}:{envName}"];
-            return envSpecificValue ?? fallbackValue;
+            return configuration[$"FrontendSettings:{environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7045";
         }
 
-        public static string GetFrontendBaseUrl(this IConfiguration configuration, IWebHostEnvironment? environment = null)
+        public static string GetVnpayCallbackUrl(this IConfiguration configuration, IWebHostEnvironment environment)
         {
-            return configuration.GetEnvironmentConfig("FrontendSettings:BaseUrl", "https://localhost:7045", environment);
+            return configuration[$"Vnpay:{environment.EnvironmentName}:CallbackUrl"] ?? "https://localhost:7256/api/payment/Vnpay/Callback";
         }
 
-        public static string GetVnpayCallbackUrl(this IConfiguration configuration, IWebHostEnvironment? environment = null)
+        public static string GetOpenAIBaseAppUrl(this IConfiguration configuration, IWebHostEnvironment environment)
         {
-            return configuration.GetEnvironmentConfig("Vnpay:CallbackUrl", "https://localhost:7256/api/payment/Vnpay/Callback", environment);
-        }
-
-        public static string GetOpenAIBaseUrl(this IConfiguration configuration, IWebHostEnvironment? environment = null)
-        {
-            return configuration.GetEnvironmentConfig("OpenAI:BaseAppUrl", "https://localhost:7045", environment);
+            return configuration[$"OpenAI:{environment.EnvironmentName}:BaseAppUrl"] ?? "https://localhost:7045";
         }
     }
 }
