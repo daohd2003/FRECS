@@ -74,8 +74,9 @@ namespace ShareItAPI
 
             // Add services to the container.
 
-            // Configure CORS from Frontend BaseUrl
-            var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"] ?? "https://localhost:7045";
+            // Configure CORS from Frontend BaseUrl based on environment
+            var environment = builder.Environment.EnvironmentName;
+            var frontendBaseUrl = builder.Configuration[$"FrontendSettings:{environment}:BaseUrl"] ?? "https://localhost:7045";
             
             builder.Services.AddCors(options =>
             {
@@ -318,15 +319,13 @@ namespace ShareItAPI
             app.UseMiddleware<TokenValidationMiddleware>();
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            // Enable Swagger in both Development and Production
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
-                    c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
-                });
-            }
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
+                c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+            });
 
             app.UseHttpsRedirection();
             app.UseRouting();

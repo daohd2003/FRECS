@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.DTOs.VNPay;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.CheckoutPage
 {
@@ -17,16 +18,18 @@ namespace ShareItFE.Pages.CheckoutPage
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public string frontendBaseUrl { get; set; }
         public string backendBaseUrl { get; set; }
-        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
-        public CheckoutModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
+        public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
+        public CheckoutModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
             _configuration = configuration;
-            frontendBaseUrl = _configuration["FrontendBaseUrl"] ?? "/";
-            backendBaseUrl = _configuration["BackendBaseUrl"] ?? "https://localhost:7256/";
+            _environment = environment;
+            frontendBaseUrl = _configuration.GetFrontendBaseUrl(_environment);
+            backendBaseUrl = _configuration.GetApiRootUrl(_environment);
         }
 
         [BindProperty]

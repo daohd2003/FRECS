@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Text.Json;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
@@ -10,18 +11,20 @@ namespace ShareItFE.Pages
         private readonly HttpClient _httpClient;
         private readonly ILogger<VerifyEmailModel> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public string Message { get; set; } = string.Empty;
         public bool IsSuccess { get; set; } = false;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        private string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
 
-        public VerifyEmailModel(HttpClient httpClient, ILogger<VerifyEmailModel> logger, IConfiguration configuration)
+        public VerifyEmailModel(HttpClient httpClient, ILogger<VerifyEmailModel> logger, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
+            _environment = environment;
         }
 
         public async Task<IActionResult> OnGetAsync(string email, string token)
