@@ -4,26 +4,19 @@ namespace ShareItFE.Extensions
 {
     public static class ConfigurationExtensions
     {
-        public static string GetEnvironmentConfig(this IConfiguration configuration, string sectionKey, string fallbackValue = "", IWebHostEnvironment? environment = null)
+        public static string GetApiBaseUrl(this IConfiguration configuration, IWebHostEnvironment environment)
         {
-            var envName = environment?.EnvironmentName ?? "Development";
-            var envSpecificValue = configuration[$"{sectionKey}:{envName}"];
-            return envSpecificValue ?? fallbackValue;
+            return configuration[$"ApiSettings:{environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api";
         }
 
-        public static string GetApiBaseUrl(this IConfiguration configuration, IWebHostEnvironment? environment = null)
+        public static string GetApiRootUrl(this IConfiguration configuration, IWebHostEnvironment environment)
         {
-            return configuration.GetEnvironmentConfig("ApiSettings:BaseUrl", "https://localhost:7256/api", environment);
+            return configuration[$"ApiSettings:{environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256";
         }
 
-        public static string GetApiRootUrl(this IConfiguration configuration, IWebHostEnvironment? environment = null)
+        public static string GetFrontendBaseUrl(this IConfiguration configuration, IWebHostEnvironment environment)
         {
-            return configuration.GetEnvironmentConfig("ApiSettings:RootUrl", "https://localhost:7256", environment);
-        }
-
-        public static string GetFrontendBaseUrl(this IConfiguration configuration, IWebHostEnvironment? environment = null)
-        {
-            return configuration.GetEnvironmentConfig("FrontendSettings:BaseUrl", "https://localhost:7045", environment);
+            return configuration[$"FrontendSettings:{environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7045";
         }
     }
 }
