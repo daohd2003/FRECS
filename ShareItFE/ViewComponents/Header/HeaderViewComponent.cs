@@ -7,6 +7,7 @@ using ShareItFE.Common.Utilities;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.ViewComponents.Header
 {
@@ -15,14 +16,16 @@ namespace ShareItFE.ViewComponents.Header
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public HeaderViewComponent(IHttpContextAccessor httpContextAccessor, AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
+        public HeaderViewComponent(IHttpContextAccessor httpContextAccessor, AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _httpContextAccessor = httpContextAccessor;
             _clientHelper = clientHelper;
             _configuration = configuration;
+            _environment = environment;
         }
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        private string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
         public async Task<IViewComponentResult> InvokeAsync()
         {

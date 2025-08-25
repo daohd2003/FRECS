@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
@@ -12,6 +13,7 @@ namespace ShareItFE.Pages
         private readonly HttpClient _httpClient;
         private readonly ILogger<ResetPasswordModel> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         [BindProperty(SupportsGet = true)] // Allow binding from query string on GET
         public string Email { get; set; } = string.Empty;
@@ -35,13 +37,14 @@ namespace ShareItFE.Pages
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        private string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
-        public ResetPasswordModel(HttpClient httpClient, ILogger<ResetPasswordModel> logger, IConfiguration configuration)
+        public ResetPasswordModel(HttpClient httpClient, ILogger<ResetPasswordModel> logger, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
+            _environment = environment;
         }
 
         public IActionResult OnGet()

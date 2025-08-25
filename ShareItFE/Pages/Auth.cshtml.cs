@@ -2,6 +2,7 @@
 using BusinessObject.DTOs.Login;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using ShareItFE.Extensions;
 using System.Text;
 using System.Text.Json;
 
@@ -12,15 +13,17 @@ namespace ShareItFE.Pages
         private readonly HttpClient _httpClient;
         private readonly ILogger<AuthModel> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public string GoogleClientId { get; private set; } = string.Empty;
         public string FacebookAppId { get; private set; } = string.Empty;
 
-        public AuthModel(HttpClient httpClient, ILogger<AuthModel> logger, IConfiguration configuration)
+        public AuthModel(HttpClient httpClient, ILogger<AuthModel> logger, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
+            _environment = environment;
             GoogleClientId = _configuration["GoogleClientSettings:ClientId"]
                              ?? throw new InvalidOperationException("GoogleClientSettings:ClientId không được cấu hình.");
             FacebookAppId = _configuration["Facebook:AppId"] ?? string.Empty;
@@ -34,7 +37,7 @@ namespace ShareItFE.Pages
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        private string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
         public void OnGet()
         {

@@ -14,6 +14,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Products
 {
@@ -23,13 +24,15 @@ namespace ShareItFE.Pages.Products
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly AuthenticatedHttpClientHelper _clientHelper;
-        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, AuthenticatedHttpClientHelper clientHelper)
+        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IWebHostEnvironment environment, AuthenticatedHttpClientHelper clientHelper)
         {
             _httpClientFactory = httpClientFactory;
             _httpContextAccessor = httpContextAccessor;
             _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             _configuration = configuration;
+            _environment = environment;
             _clientHelper = clientHelper;
         }
 
@@ -183,8 +186,8 @@ namespace ShareItFE.Pages.Products
         {
             // No-op: StartDate/RentalDays handled later in Cart
 
-            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
-            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
+            ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+            SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
 
             if (id == Guid.Empty) return BadRequest("Invalid product ID.");
 
@@ -446,8 +449,8 @@ namespace ShareItFE.Pages.Products
         }
         private async Task LoadInitialData(Guid id)
         {
-            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
-            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
+            ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+            SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
 
             if (id == Guid.Empty) return; // Không cần xử lý BadRequest ở đây, nó đã được xử lý ở OnGetAsync
 

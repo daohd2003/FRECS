@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Text.Json;
 using System.Text;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
@@ -11,6 +12,7 @@ namespace ShareItFE.Pages
         private readonly HttpClient _httpClient;
         private readonly ILogger<ForgotPasswordModel> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         [BindProperty]
         public string Email { get; set; } = string.Empty;
@@ -18,13 +20,14 @@ namespace ShareItFE.Pages
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        private string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
-        public ForgotPasswordModel(HttpClient httpClient, ILogger<ForgotPasswordModel> logger, IConfiguration configuration)
+        public ForgotPasswordModel(HttpClient httpClient, ILogger<ForgotPasswordModel> logger, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
+            _environment = environment;
         }
 
         public void OnGet()
