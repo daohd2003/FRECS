@@ -11,6 +11,8 @@ namespace ShareItFE
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.WebHost.UseUrls($"http://*:80");
+            
             builder.Services.AddHttpClient();
 
             // Add configuration for API Base URL
