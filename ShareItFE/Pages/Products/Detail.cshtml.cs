@@ -184,23 +184,23 @@ namespace ShareItFE.Pages.Products
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
-            // No-op: StartDate/RentalDays handled later in Cart
-
-            ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
-            SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
-
-            if (id == Guid.Empty) return BadRequest("Invalid product ID.");
-
-            var client = _httpClientFactory.CreateClient("BackendApi");
-            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
-            var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
-            if (!string.IsNullOrEmpty(authToken))
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
-            }
-
             try
             {
+                // No-op: StartDate/RentalDays handled later in Cart
+
+                ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+                SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
+
+                if (id == Guid.Empty) return BadRequest("Invalid product ID.");
+
+                var client = _httpClientFactory.CreateClient("BackendApi");
+                AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
+                var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+                if (!string.IsNullOrEmpty(authToken))
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+                }
+
                 // Fetch product details
                 var productRequestUri = $"api/products/{id}";
                 var productResponse = await client.GetAsync(productRequestUri);
@@ -297,10 +297,26 @@ namespace ShareItFE.Pages.Products
                 // check whether a user can feedback
                 CanBeFeedbacked = await CanFeedback(id);
             }
+            catch (HttpRequestException httpEx)
+            {
+                Console.WriteLine($"HTTP Error in OnGetAsync: {httpEx.Message}");
+                return NotFound("Product not found or service unavailable.");
+            }
+            catch (TaskCanceledException tcEx)
+            {
+                Console.WriteLine($"Timeout Error in OnGetAsync: {tcEx.Message}");
+                return StatusCode(504, "Request timeout. Please try again.");
+            }
+            catch (JsonException jsonEx)
+            {
+                Console.WriteLine($"JSON Parsing Error in OnGetAsync: {jsonEx.Message}");
+                return StatusCode(500, "Error processing product data.");
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"An exception occurred: {ex.Message}");
-                return StatusCode(500, "An internal error occurred.");
+                Console.WriteLine($"Unexpected Error in OnGetAsync: {ex}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return StatusCode(500, "An unexpected error occurred. Please try again later.");
             }
 
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -584,7 +600,8 @@ namespace ShareItFE.Pages.Products
 
 
             var client = await _clientHelper.GetAuthenticatedClientAsync();
-            var requestURI = $"https://localhost:7256/api/orders/order-item/{id}";
+            var apiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+            var requestURI = $"{apiBaseUrl}/orders/order-item/{id}";
             var orderItemresponse = await client.GetAsync(requestURI);
 
             var options = new JsonSerializerOptions
