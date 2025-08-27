@@ -81,7 +81,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 {
                     // Call the API to get details of the specific order
                     // Ensure your API endpoint for OrderDetailsDto is correct, e.g., api/orders/{id}/details
-                    var orderResponse = await client.GetAsync($"{backendBaseUrl}api/orders/{OrderId.Value}/details");
+                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{OrderId.Value}/details");
 
                     if (orderResponse.IsSuccessStatusCode)
                     {
@@ -231,7 +231,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 // Reload profile info if "UseSameProfile" is checked
                 if (Input.UseSameProfile)
                 {
-                    var profileResponse = await client.GetAsync($"{backendBaseUrl}api/profile/my-profile-for-checkout");
+                    var profileResponse = await client.GetAsync($"{backendBaseUrl}/api/profile/my-profile-for-checkout");
                     if (profileResponse.IsSuccessStatusCode)
                     {
                         var profileApiResponse = JsonSerializer.Deserialize<ApiResponse<ProfileDetailDto>>(
@@ -259,7 +259,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                     // Fetch the single order details again to get the accurate TotalAmount for payment
                     // (This ensures we have the latest total and status from the API)
-                    var orderResponse = await client.GetAsync($"{backendBaseUrl}api/orders/{OrderId.Value}/details");
+                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{OrderId.Value}/details");
                     if (orderResponse.IsSuccessStatusCode)
                     {
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<OrderDetailsDto>>(
@@ -283,7 +283,7 @@ namespace ShareItFE.Pages.CheckoutPage
                             HasAgreedToPolicies = Input.HasAgreedToPolicies
                         };
 
-                        var updateInfoResponse = await client.PutAsJsonAsync($"{backendBaseUrl}api/orders/update-contact-info", updateContactInfoRequest);
+                        var updateInfoResponse = await client.PutAsJsonAsync($"{backendBaseUrl}/api/orders/update-contact-info", updateContactInfoRequest);
 
                         if (!updateInfoResponse.IsSuccessStatusCode)
                         {
@@ -316,7 +316,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         HasAgreedToPolicies = Input.HasAgreedToPolicies
                     };
 
-                    var cartCheckoutResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/cart/checkout", checkoutRequest);
+                    var cartCheckoutResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/cart/checkout", checkoutRequest);
 
                     if (!cartCheckoutResponse.IsSuccessStatusCode)
                     {
@@ -362,7 +362,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         Note = $"Payment for orders: {string.Join(", ", orderIdsToProcess.Select(id => id.ToString().Substring(0, 8)))}"
                     };
 
-                    var vnpayResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/payment/Vnpay/CreatePaymentUrl", vnpayRequest);
+                    var vnpayResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/payment/Vnpay/CreatePaymentUrl", vnpayRequest);
 
                     if (vnpayResponse.IsSuccessStatusCode)
                     {
@@ -390,7 +390,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 {
                     var createTransactionRequest = new CreateTransactionRequest { OrderIds = orderIdsToProcess };
 
-                    var qrResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/transactions/create", createTransactionRequest);
+                    var qrResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/transactions/create", createTransactionRequest);
 
                     if (qrResponse.IsSuccessStatusCode)
                     {
