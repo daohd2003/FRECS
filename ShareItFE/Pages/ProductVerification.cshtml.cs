@@ -6,6 +6,7 @@ using BusinessObject.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
+using ShareItFE.Extensions;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Text;
@@ -18,6 +19,8 @@ namespace ShareItFE.Pages
     public class ProductVerificationModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public List<ProductDTO> ProductItems { get; set; } = new();
 
@@ -39,10 +42,13 @@ namespace ShareItFE.Pages
 
         public ProductVerificationModel(
             HttpClient httpClient, // Can be removed if not directly used by the model
-            IConfiguration configuration, // Can be removed if not directly used by the model
+            IConfiguration configuration,
+            IWebHostEnvironment environment,
             AuthenticatedHttpClientHelper clientHelper)
         {
             _clientHelper = clientHelper;
+            _configuration = configuration;
+            _environment = environment;
         }
 
         public async Task<IActionResult> OnGetAsync(string searchTerm = "", string status = "all", int page = 1, int pageSize = 5)
@@ -61,7 +67,7 @@ namespace ShareItFE.Pages
             try
             {
                 // Construct the URL with query parameters for filtering and pagination
-                var baseUrl = "https://localhost:7256/api/products/filter"; // Use your filter endpoint
+                var baseUrl = $"{_configuration.GetApiBaseUrl(_environment)}/products/filter"; // Use your filter endpoint
                 var url = $"{baseUrl}?searchTerm={Uri.EscapeDataString(SearchTerm ?? "")}&status={Uri.EscapeDataString(StatusFilter ?? "all")}&page={CurrentPage}&pageSize={PageSize}";
 
                 var response = await client.GetAsync(url);
@@ -148,7 +154,7 @@ namespace ShareItFE.Pages
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 Console.WriteLine("Authorization: " + client.DefaultRequestHeaders.Authorization?.ToString());
 
-                var response = await client.PutAsync($"https://localhost:7256/api/products/update-status/{id}", content);
+                var response = await client.PutAsync($"{_configuration.GetApiBaseUrl(_environment)}/products/update-status/{id}", content);
 
                 if (response.IsSuccessStatusCode)
                 {

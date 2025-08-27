@@ -79,14 +79,14 @@ namespace ShareItFE.Pages.Products
 
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
-                ErrorMessage = "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.";
+                ErrorMessage = "Please log in to add product to cart.";
                 await LoadInitialData(id);
                 return Page();
             }
 
 
             var client = await _clientHelper.GetAuthenticatedClientAsync();
-            var requestURI = $"https://localhost:7256/api/orders/order-item/{id}";
+            var requestURI = $"{_configuration.GetApiBaseUrl(_environment)}/orders/order-item/{id}";
             var orderItemresponse = await client.GetAsync(requestURI);
 
             var options = new JsonSerializerOptions
@@ -132,15 +132,15 @@ namespace ShareItFE.Pages.Products
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
 
                 // Assuming your API endpoint for submitting feedback is "/api/feedback"
-                var apiUrl = $"https://localhost:7256/api/feedbacks"; // Make sure _apiBaseUrl is configured
+                var apiUrl = $"{_configuration.GetApiBaseUrl(_environment)}/feedbacks";
 
                 var response = await httpClient.PostAsJsonAsync(apiUrl, FeedbackInput);
 
                 if (response.IsSuccessStatusCode)
                 {
                     // API returned 201 Created (or 200 OK)
-                    TempData["SuccessMessage"] = "Phản hồi của bạn đã được gửi thành công!";
-                    SuccessMessage = "Phản hồi của bạn đã được gửi thành công!";
+                    TempData["SuccessMessage"] = "Your feedback has been submitted successfully!";
+                    SuccessMessage = "Your feedback has been submitted successfully!";
                     // Optional: You might want to reload product details to show the new feedback immediately
                     // await LoadInitialData(id);
                 }
@@ -148,7 +148,7 @@ namespace ShareItFE.Pages.Products
                 {
                     // API returned an error status code
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    TempData["ErrorMessage"] = $"Lỗi khi gửi phản hồi: {response.StatusCode} - {errorContent}";
+                    TempData["ErrorMessage"] = $"Error sending feedback: {response.StatusCode} - {errorContent}";
                     // Log the detailed errorContent for debugging
                     Console.WriteLine($"Feedback API Error: {response.StatusCode} - {errorContent}");
                     // Reload page data to maintain state if an error occurs
@@ -158,14 +158,14 @@ namespace ShareItFE.Pages.Products
             catch (HttpRequestException ex)
             {
                 // Handle network errors or API not reachable
-                TempData["ErrorMessage"] = $"Không thể kết nối đến dịch vụ: {ex.Message}";
+                TempData["ErrorMessage"] = $"Unable to connect to service: {ex.Message}";
                 Console.WriteLine($"HttpRequestException: {ex.Message}");
                 // await LoadInitialData(id);
             }
             catch (Exception ex)
             {
                 // Handle other unexpected errors
-                TempData["ErrorMessage"] = $"Đã xảy ra lỗi không mong muốn: {ex.Message}";
+                TempData["ErrorMessage"] = $"An unexpected error occurred: {ex.Message}";
                 Console.WriteLine($"General Exception: {ex.Message}");
                 // await LoadInitialData(id);
             }
@@ -334,7 +334,7 @@ namespace ShareItFE.Pages.Products
             // 1. Kiểm tra xác thực người dùng
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
-                ErrorMessage = "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.";
+                ErrorMessage = "Please log in to add product to cart.";
                 await LoadInitialData(id); // Tải lại dữ liệu để giữ trạng thái trang
                 return Page();
             }
@@ -369,21 +369,21 @@ namespace ShareItFE.Pages.Products
 
                 if (response.IsSuccessStatusCode)
                 {
-                    SuccessMessage = "Sản phẩm đã được thêm vào giỏ hàng!";
+                    SuccessMessage = "Product added to cart successfully!";
                     return RedirectToPage("/CartPage/Cart");
                 }
                 else
                 {
                     // Đọc lỗi từ API để hiển thị thông báo chính xác hơn
                     var errorContent = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
-                    ErrorMessage = errorContent?.Message ?? "Không thể thêm vào giỏ hàng. Vui lòng thử lại.";
+                    ErrorMessage = errorContent?.Message ?? "Cannot add to cart. Please try again.";
                     await LoadInitialData(id);
                     return Page();
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Đã có lỗi xảy ra: {ex.Message}";
+                ErrorMessage = $"An error occurred: {ex.Message}";
                 await LoadInitialData(id);
                 return Page();
             }
@@ -580,7 +580,7 @@ namespace ShareItFE.Pages.Products
             {
                 Console.WriteLine($"An exception occurred in LoadInitialData: {ex.Message}");
                 // Không return StatusCode ở đây, chỉ set ErrorMessage để hiển thị trên trang
-                ErrorMessage = "Đã có lỗi xảy ra khi tải dữ liệu sản phẩm.";
+                ErrorMessage = "An error occurred while loading product data.";
             }
 
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

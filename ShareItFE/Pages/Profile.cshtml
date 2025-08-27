@@ -694,7 +694,7 @@
                     const newRentalEndDate = newRentalEndDateInput.value;
 
                     if (!originalOrderId || !newRentalStartDate || !newRentalEndDate) {
-                        alert('Vui lòng cung cấp đầy đủ thông tin ngày thuê.');
+                        alert('Please provide complete rental date information.');
                         return;
                     }
 
@@ -726,18 +726,18 @@
                         if (response.ok) {
                             const newOrderId = apiResponse.data;
                             if (newOrderId) {
-                                alert(apiResponse.message || "Đơn hàng mới đã được tạo thành công! Đang chuyển hướng đến trang thanh toán.");
+                                alert(apiResponse.message || "New order created successfully! Redirecting to payment page.");
                                 window.location.href = `/CheckoutPage/Checkout?orderId=${newOrderId}`;
                             } else {
-                                alert("Không thể lấy ID đơn hàng mới từ phản hồi API. Vui lòng thử lại.");
+                                alert("Unable to get new order ID from API response. Please try again.");
                             }
                         } else {
-                            alert(apiResponse.message || "Không thể thuê lại. Đã xảy ra lỗi.");
+                            alert(apiResponse.message || "Unable to rent again. An error occurred.");
                             window.location.reload();
                         }
                     } catch (error) {
-                        console.error('Lỗi khi thực hiện thuê lại:', error);
-                        alert('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.');
+                        console.error('Error during re-rental:', error);
+                        alert('An unexpected error occurred. Please try again.');
                     }
                     closeModal();
                 });

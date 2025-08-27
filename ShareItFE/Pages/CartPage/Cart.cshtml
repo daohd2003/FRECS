@@ -138,10 +138,10 @@
                                                 </div>
 
                                                 @* Remove Button *@
-                                                    <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?');" class="ml-auto-remove-btn">
+                                                    <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Are you sure you want to remove this product from cart?');" class="ml-auto-remove-btn">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                        <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Xóa sản phẩm">
+                                                        <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Remove product">
                                                             <i class="bi bi-trash-fill h-5 w-5"></i>
                                                             <span class="text-sm">Delete</span>
                                                         </button>

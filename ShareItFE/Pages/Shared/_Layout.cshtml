@@ -16,7 +16,8 @@
         window.apiSettings = {
             environment: currentEnvironment,
             baseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
-            rootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")'
+            rootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")',
+            frontendUrl: '@(Configuration[$"FrontendSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7045")'
         };
         console.log('Environment:', currentEnvironment);
         console.log('API Settings:', window.apiSettings);
