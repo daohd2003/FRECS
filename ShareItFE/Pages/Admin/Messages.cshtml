@@ -221,7 +221,7 @@
                 if (selectedConversation.productContext) {
                     productImageEl.src = selectedConversation.productContext.imageUrl || 'https://via.placeholder.com/100';
                     productNameEl.textContent = selectedConversation.productContext.name;
-                    productLinkEl.href = `https://localhost:7045/products/detail/${selectedConversation.productContext.id}`;
+                    productLinkEl.href = `${window.apiSettings.frontendUrl}/products/detail/${selectedConversation.productContext.id}`;
                     productBannerEl.classList.remove('hidden');
                 } else {
                     productBannerEl.classList.add('hidden');
@@ -399,7 +399,7 @@
                             if (message.productContext) {
                                 productImageEl.src = message.productContext.imageUrl || 'https://www.shutterstock.com/image-vector/image-icon-trendy-flat-style-600nw-643080895.jpg';
                                 productNameEl.textContent = message.productContext.name;
-                                productLinkEl.href = `https://localhost:7045/products/detail/${message.productContext.id}`;
+                                productLinkEl.href = `${window.apiSettings.frontendUrl}/products/detail/${message.productContext.id}`;
                                 productBannerEl.classList.remove('hidden');
                             }
                         }
