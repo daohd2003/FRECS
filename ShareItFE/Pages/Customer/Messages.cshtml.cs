@@ -2,16 +2,19 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Security.Claims;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Customer
 {
     public class MessagesModel : PageModel
     {
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public MessagesModel(IConfiguration configuration)
+        public MessagesModel(IConfiguration configuration, IWebHostEnvironment environment)
         {
             _configuration = configuration;
+            _environment = environment;
         }
 
         public string? CurrentUserId { get; private set; }
@@ -22,8 +25,8 @@ namespace ShareItFE.Pages.Customer
         public async Task<IActionResult> OnGetAsync()
         {
             // 1. Lấy URL từ configuration
-            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
-            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
+            ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+            SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
 
             // 2. Kiểm tra để đảm bảo các giá trị không bị null
             ApiBaseUrl ??= string.Empty;

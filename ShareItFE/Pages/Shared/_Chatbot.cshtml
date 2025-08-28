@@ -1,4 +1,5 @@
 ﻿@inject IConfiguration Configuration
+@inject IWebHostEnvironment Environment
 
 <div id="chatToggleBtn" class="chat-toggle-btn">
     <img src="~/images/chatbot-icon.png" alt="Open Chatbot" />
@@ -22,7 +23,7 @@
 </div>
 
     <script>
-        const API_BASE_URL = '@Configuration["ApiSettings:BaseUrl"]';
+        const API_BASE_URL = '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")';
         const CHAT_STORAGE_KEY = 'shareit_chat_history_v1';
 
         document.addEventListener('DOMContentLoaded', () => {

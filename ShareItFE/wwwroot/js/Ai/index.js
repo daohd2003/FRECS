@@ -114,11 +114,11 @@ regenerateFeedbackButton.addEventListener('click', async () => {
     if (isFetchingFeedback) return
 
     if (!tryOnResultId) {
-        showToast('Không có ID ảnh để tạo lại phân tích.', 'error')
+        showToast('No image ID available to regenerate analysis.', 'error')
         return
     }
 
-    showToast('Đang buộc tạo lại phân tích mới...', 'info')
+    showToast('Forcing regeneration of new analysis...', 'info')
     await regenerateFashionFeedback(tryOnResultId)
 })
 
@@ -495,10 +495,10 @@ async function regenerateFashionFeedback(resultId) {
                 '.analysis-content'
             ).innerHTML = `<pre>${JSON.stringify(feedback, null, 2)}</pre>`
         }
-        showToast('Đã tạo lại phân tích thành công!', 'success')
+        showToast('Analysis regenerated successfully!', 'success')
     } catch (error) {
         console.error('Error regenerating feedback:', error)
-        showToast(`Lỗi khi tạo lại phân tích: ${error.message}`, 'error')
+        showToast(`Error regenerating analysis: ${error.message}`, 'error')
         analysisBox.querySelector('.analysis-content').innerHTML = `
             <div style="padding: 15px; color: #666;">
                 <p><i class="fas fa-exclamation-circle"></i> Could not regenerate fashion analysis: ${error.message}</p>

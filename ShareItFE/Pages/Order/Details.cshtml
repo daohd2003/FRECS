@@ -83,7 +83,7 @@
                             </div>
                             <div class="item-price-actions">
                                 <div class="item-price">
-                                    <span>@item.PricePerDay.ToString("C") / day</span>
+                                    <span>@item.PricePerDay.ToString("N0") / day</span>
                                 </div>
                                 @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
                                 {
@@ -167,7 +167,7 @@
                 <div class="summary-list">
                     <div class="summary-item">
                         <span>Subtotal</span>
-                        <span>@Model.Order.Subtotal.ToString("C")</span>
+                        <span>₫@Model.Order.Subtotal.ToString("N0")</span>
                     </div>
                     <div class="summary-item rental-period">
                         <span>Rental Period</span>
@@ -177,9 +177,9 @@
                     </div>
                     <div class="summary-item">
                         <span>Shipping</span>
-                        <span>@(Model.Order.Shipping == 0 ? "FREE" : Model.Order.Shipping.ToString("C"))</span>
+                        <span>@(Model.Order.Shipping == 0 ? "FREE" : "₫" + Model.Order.Shipping.ToString("N0"))</span>
                     </div>
-                    <div class="summary-total"><span>Total</span><span>@Model.Order.TotalAmount.ToString("C")</span></div>
+                    <div class="summary-total"><span>Total</span><span>₫@Model.Order.TotalAmount.ToString("N0")</span></div>
                 </div>
             </div>
 

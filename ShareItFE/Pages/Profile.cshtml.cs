@@ -9,6 +9,7 @@ using ShareItFE.Common.Utilities;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
@@ -16,11 +17,13 @@ namespace ShareItFE.Pages
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public ProfileModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
+        public ProfileModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
             _configuration = configuration;
+            _environment = environment;
         }
 
         public bool IsPostBack { get; set; } = false;
@@ -48,7 +51,7 @@ namespace ShareItFE.Pages
         [BindProperty]
         public ChangePasswordRequest ChangePassword { get; set; }
 
-        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
         public string AccessToken { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile")
