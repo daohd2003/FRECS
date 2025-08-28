@@ -65,9 +65,9 @@ namespace Services.Payments.VNPay
             helper.AddRequestData("vnp_CreateDate", request.CreatedDate.ToString("yyyyMMddHHmmss"));
             helper.AddRequestData("vnp_CurrCode", request.Currency.ToString().ToUpper());
             //Sửa lại mỗi lần chạy ngrok
-            /*helper.AddRequestData("vnp_IpAddr", request.IpAddress);*/
+            helper.AddRequestData("vnp_IpAddr", request.IpAddress);
             /*helper.AddRequestData("vnp_IpAddr", "https://localhost:7021/api/payment/Vnpay/IpnAction");*/
-            helper.AddRequestData("vnp_IpAddr", "https://share-it-be-dzhpe4encrceg3b2.southeastasia-01.azurewebsites.net/api/payment/Vnpay/IpnAction");
+            // helper.AddRequestData("vnp_IpAddr", "https://share-it-be-dzhpe4encrceg3b2.southeastasia-01.azurewebsites.net/api/payment/Vnpay/IpnAction");
             helper.AddRequestData("vnp_Locale", EnumHelper.GetDescription(request.Language));
             helper.AddRequestData("vnp_BankCode", request.BankCode == BankCode.ANY ? string.Empty : request.BankCode.ToString());
             helper.AddRequestData("vnp_OrderInfo", request.Description.Trim());
