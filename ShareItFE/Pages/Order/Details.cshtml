@@ -12,6 +12,7 @@
             BusinessObject.Enums.OrderStatus.approved => "status-approved",
             BusinessObject.Enums.OrderStatus.in_transit => "status-in-transit",
             BusinessObject.Enums.OrderStatus.in_use => "status-in-use",
+            BusinessObject.Enums.OrderStatus.returning => "status-returning",
             BusinessObject.Enums.OrderStatus.returned => "status-returned",
             BusinessObject.Enums.OrderStatus.cancelled => "status-cancelled",
             _ => "status-default"
@@ -80,8 +81,19 @@
                                     <span>Quantity: @item.Quantity</span>
                                 </div>
                             </div>
-                            <div class="item-price">
-                                <span>₫@item.PricePerDay.ToString("N0") / day</span>
+                            <div class="item-price-actions">
+                                <div class="item-price">
+                                    <span>@item.PricePerDay.ToString("N0") / day</span>
+                                </div>
+                                @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
+                                {
+                                    <div class="item-actions">
+                                        <a asp-page="/Products/Detail" asp-route-id="@item.ProductId" asp-route-fromOrder="true"
+                                           class="btn btn-sm btn-success review-btn">
+                                            <i class="bi bi-star"></i> Review
+                                        </a>
+                                    </div>
+                                }
                             </div>
                         </div>
                     }
@@ -91,14 +103,59 @@
             <div class="card">
                 <h2 class="card-title">Order Actions</h2>
                 <div class="actions-grid">
-                    <button class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</button>
+                    <a href="/Contact" class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</a>
+                    
+                    <!-- Rent Again Button (for returned orders) -->
                     @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
                     {
-                        <button class="btn btn-success"><i class="bi bi-star"></i> Leave Review</button>
+                        <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@Model.Order.Id">
+                            <i class="bi bi-arrow-repeat"></i> Rent Again
+                        </button>
                     }
-                    @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending || Model.Order.Status == BusinessObject.Enums.OrderStatus.approved)
+                    else
                     {
-                        <button class="btn btn-danger"><i class="bi bi-x-circle"></i> Cancel Order</button>
+                        <!-- Confirm Received Button -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_transit)
+                        {
+                            <button class="btn btn-success confirm-delivery-btn" data-order-id="@Model.Order.Id">
+                                <i class="bi bi-check-circle"></i> Confirm Received
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-disabled" disabled>
+                                <i class="bi bi-check-circle"></i> Confirm Received
+                            </button>
+                        }
+
+                        <!-- Mark as Returning Button -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                        {
+                            <button class="btn btn-warning mark-returning-btn" data-order-id="@Model.Order.Id">
+                                <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-disabled" disabled>
+                                <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                            </button>
+                        }
+
+                        <!-- Cancel Order Button -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending || Model.Order.Status == BusinessObject.Enums.OrderStatus.approved)
+                        {
+                            <button class="btn btn-danger">
+                                <i class="bi bi-x-circle"></i> Cancel Order
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-disabled" disabled>
+                                <i class="bi bi-x-circle"></i> Cancel Order
+                            </button>
+                        }
+
                     }
                 </div>
             </div>
@@ -148,3 +205,194 @@
         </aside>
     </div>
 </div>
+
+<!-- Rent Again Modal -->
+<div id="rent-again-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Rent Item(s) Again</h3>
+            <button id="rent-again-close-btn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="rent-again-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="rent-again-original-order-id" name="OriginalOrderId" />
+
+                <div class="form-group mb-3">
+                    <label for="new-rental-start-date" class="form-label">Rental Start Date</label>
+                    <input type="date" id="new-rental-start-date" class="form-input" required />
+                </div>
+                <div class="form-group mb-3">
+                    <label for="new-rental-end-date" class="form-label">Rental End Date</label>
+                    <input type="date" id="new-rental-end-date" class="form-input" required />
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button id="rent-again-cancel-btn" class="btn btn-secondary">Cancel</button>
+            <button id="rent-again-save-btn" class="btn btn-primary">Confirm Rent</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('.confirm-delivery-btn').on('click', function() {
+                const orderId = $(this).data('order-id');
+                const button = $(this);
+                
+                if (confirm('Are you sure you want to confirm that you have received this order?')) {
+                    button.prop('disabled', true).html('<i class="bi bi-hourglass"></i> Processing...');
+                    
+                    $.ajax({
+                        url: `@Model.ApiBaseUrl/orders/${orderId}/confirm-delivery`,
+                        type: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + '@(Request.Cookies["AccessToken"])',
+                            'Content-Type': 'application/json'
+                        },
+                        success: function(response) {
+                            alert('Order delivery confirmed successfully!');
+                            location.reload(); // Reload để cập nhật status
+                        },
+                        error: function(xhr) {
+                            alert('Error confirming delivery: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                            button.prop('disabled', false).html('<i class="bi bi-check-circle"></i> Confirm Received');
+                        }
+                    });
+                }
+            });
+
+            $('.mark-returning-btn').on('click', function() {
+                const orderId = $(this).data('order-id');
+                const button = $(this);
+                
+                if (confirm('Are you sure you want to mark this order as returning?')) {
+                    button.prop('disabled', true).html('<i class="bi bi-hourglass"></i> Processing...');
+                    
+                    $.ajax({
+                        url: `@Model.ApiBaseUrl/orders/${orderId}/mark-returning`,
+                        type: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + '@(Request.Cookies["AccessToken"])',
+                            'Content-Type': 'application/json'
+                        },
+                        success: function(response) {
+                            alert('Order marked as returning successfully!');
+                            location.reload(); // Reload để cập nhật status
+                        },
+                        error: function(xhr) {
+                            alert('Error marking as returning: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                            button.prop('disabled', false).html('<i class="bi bi-box-arrow-up"></i> Mark as Returning');
+                        }
+                    });
+                }
+            });
+
+            // Logic cho chức năng "Rent Again"
+            const rentAgainModal = document.getElementById('rent-again-modal');
+            const rentAgainCloseBtn = document.getElementById('rent-again-close-btn');
+            const rentAgainCancelBtn = document.getElementById('rent-again-cancel-btn');
+            const rentAgainSaveBtn = document.getElementById('rent-again-save-btn');
+            const originalOrderIdInput = document.getElementById('rent-again-original-order-id');
+            const newRentalStartDateInput = document.getElementById('new-rental-start-date');
+            const newRentalEndDateInput = document.getElementById('new-rental-end-date');
+
+            // Bắt sự kiện click vào nút "Rent Again"
+            document.querySelectorAll('.rent-again-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const orderId = button.dataset.orderId;
+                    originalOrderIdInput.value = orderId;
+
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+
+                    newRentalStartDateInput.min = tomorrow.toISOString().split('T')[0];
+                    newRentalStartDateInput.value = tomorrow.toISOString().split('T')[0];
+
+                    const defaultEndDate = new Date(tomorrow);
+                    defaultEndDate.setDate(tomorrow.getDate() + 7);
+                    newRentalEndDateInput.min = defaultEndDate.toISOString().split('T')[0];
+                    newRentalEndDateInput.value = defaultEndDate.toISOString().split('T')[0];
+
+                    rentAgainModal.classList.remove('hidden');
+                });
+            });
+
+            newRentalStartDateInput.addEventListener('change', () => {
+                const startDate = new Date(newRentalStartDateInput.value);
+                const minEndDate = new Date(startDate);
+                minEndDate.setDate(startDate.getDate() + 1);
+
+                newRentalEndDateInput.min = minEndDate.toISOString().split('T')[0];
+                if (new Date(newRentalEndDateInput.value) < minEndDate) {
+                    newRentalEndDateInput.value = minEndDate.toISOString().split('T')[0];
+                }
+            });
+
+            const closeModal = () => {
+                rentAgainModal.classList.add('hidden');
+            };
+
+            if (rentAgainCloseBtn) {
+                rentAgainCloseBtn.addEventListener('click', closeModal);
+            }
+            if (rentAgainCancelBtn) {
+                rentAgainCancelBtn.addEventListener('click', closeModal);
+            }
+
+            if (rentAgainSaveBtn) {
+                rentAgainSaveBtn.addEventListener('click', async () => {
+                    const originalOrderId = originalOrderIdInput.value;
+                    const newRentalStartDate = newRentalStartDateInput.value;
+                    const newRentalEndDate = newRentalEndDateInput.value;
+
+                    if (!originalOrderId || !newRentalStartDate || !newRentalEndDate) {
+                        alert('Vui lòng cung cấp đầy đủ thông tin ngày thuê.');
+                        return;
+                    }
+
+                    try {
+                        const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                        const accessToken = '@(Request.Cookies["AccessToken"])';
+
+                        const headers = {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': antiForgeryToken
+                        };
+
+                        if (accessToken) {
+                            headers['Authorization'] = `Bearer ${accessToken}`;
+                        }
+
+                        const response = await fetch('@Model.ApiBaseUrl/orders/rent-again', {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify({
+                                OriginalOrderId: originalOrderId,
+                                NewRentalStartDate: newRentalStartDate,
+                                NewRentalEndDate: newRentalEndDate
+                            })
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            alert('Đặt hàng lại thành công!');
+                            closeModal();
+                            // Redirect to new order details or refresh page
+                            window.location.reload();
+                        } else {
+                            const errorData = await response.json();
+                            alert('Lỗi khi đặt hàng lại: ' + (errorData.message || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        console.error('Rent again error:', error);
+                        alert('Đã xảy ra lỗi khi đặt hàng lại.');
+                    }
+                });
+            }
+        });
+    </script>
+}

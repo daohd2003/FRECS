@@ -37,6 +37,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ReturnDate, opt => opt.MapFrom(src => src.RentalEnd));
 
             CreateMap<OrderItem, OrderItemListDto>()
+                .ForMember(dest => dest.ProductId, opt => opt.MapFrom(src => src.ProductId))
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
                 .ForMember(dest => dest.ProductSize, opt => opt.MapFrom(src => src.Product.Size))
                 .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
