@@ -111,7 +111,7 @@ namespace Services.AI
                 return $"You are an assistant for the ShareIT clothing rental store. No product information is available currently.\n\nUser's question: {question}\n\nPlease inform the user that product details are currently unavailable. Suggest visiting the store at {_baseAppUrl}.";
             }
 
-            return $"You are a helpful assistant for the ShareIT clothing rental store. Only respond using the provided product list.\n\nProducts:\n{context}\n\nUser's question: {question}\n\nAnswer with matching items, their names, prices, and **direct links**. If not found, say so.";
+            return $"You are a helpful assistant for the ShareIT clothing rental store. Only respond using the provided product list.\n\nProducts:\n{context}\n\nUser's question: {question}\n\nAnswer with matching items, their names, prices, and {_baseAppUrl}. If not found, say so.";
         }
 
         private async Task<string?> SendRequestToGeminiAsync(string prompt)
