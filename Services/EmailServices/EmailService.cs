@@ -21,9 +21,9 @@ namespace Services.EmailServices
 
         public async Task SendVerificationEmailAsync(string toEmail, string verificationLink)
         {
-            string subject = "Email Verification - ShareIT Shop";
+            string subject = "Email Verification - FRECS Shop";
             string body = $@"
-                <h3>Welcome to ShareIT Shop!</h3>
+                <h3>Welcome to FRECS Shop!</h3>
                 <p>Please verify your email by clicking the link below:</p>
                 <p><a href='{verificationLink}'>Verify Email</a></p>
                 <br />
@@ -34,9 +34,9 @@ namespace Services.EmailServices
 
         public async Task SendBanNotificationEmailAsync(string toEmail, string reason)
         {
-            string subject = "Account Ban Notification - ShareIT Shop";
+            string subject = "Account Ban Notification - FRECS Shop";
             string body = $@"
-                <h3>Your ShareIT Shop account has been banned</h3>
+                <h3>Your FRECS Shop account has been banned</h3>
                 <p>Reason: <strong>{reason}</strong></p>
                 <p>If you believe this is a mistake, please contact our support team.</p>";
 
@@ -44,7 +44,7 @@ namespace Services.EmailServices
         }
         public async Task SendContactFormEmailAsync(ContactFormRequestDto formData)
         {
-            var adminEmail = "support@rentchic.com";
+            var adminEmail = "support@frecs.com";
             var subject = $"New Contact Form Submission: {formData.Subject}";
 
             var body = $@"

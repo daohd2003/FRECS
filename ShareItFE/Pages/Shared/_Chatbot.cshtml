@@ -24,7 +24,7 @@
 
     <script>
         const API_BASE_URL = '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")';
-        const CHAT_STORAGE_KEY = 'shareit_chat_history_v1';
+        const CHAT_STORAGE_KEY = 'frecs_chat_history_v1';
 
         document.addEventListener('DOMContentLoaded', () => {
             const chatToggleBtn = document.getElementById('chatToggleBtn');
@@ -76,7 +76,7 @@
             // Initialize history and greeting
             let history = loadHistory();
             if (history.length === 0) {
-                history.push({ role: 'bot', content: 'Hello! How can I help you with ShareIT today?' });
+                history.push({ role: 'bot', content: 'Hello! How can I help you with FRECS today?' });
                 saveHistory(history);
             }
             renderHistory(history);

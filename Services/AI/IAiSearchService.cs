@@ -8,6 +8,6 @@ namespace Services.AI
 {
     public interface IAiSearchService
     {
-        Task<string> AskAboutShareITAsync(string question);
+        Task<string> AskAboutFRECSAsync(string question);
     }
 }

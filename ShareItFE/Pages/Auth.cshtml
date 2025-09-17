@@ -10,7 +10,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ShareIT</title>
+    <title>@ViewData["Title"] - FRECS</title>
     <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
@@ -25,7 +25,7 @@
                 </a>
                 <div class="brand-link">
                     <svg class="brand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                    <span class="brand-name">ShareIT</span>
+                    <span class="brand-name">FRECS</span>
                 </div>
                 <div class="spacer"></div>
             </div>
@@ -41,10 +41,10 @@
                         <div class="benefits-heading-group">
                             <h1>
                                 Welcome to
-                                <span class="purple-text">ShareIT</span>
+                                <span class="purple-text">FRECS</span>
                             </h1>
                             <p>
-                                Join thousands of fashion lovers who rent designer outfits for every special occasion.
+                                Join thousands of fashion lovers who rent and buy designer outfits for every special occasion.
                             </p>
                         </div>
 
@@ -52,8 +52,8 @@
                             @{
                                 var benefits = new[]
                                 {
-                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>", Title = "Track Your Bookings", Description = "Monitor all your rentals in one place" },
-                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 10h18M7 15h10m-10 4h10M3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2z\"></path></svg>", Title = "Faster Checkout", Description = "Save payment info for quick rentals" },
+                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>", Title = "Track Your Orders", Description = "Monitor all your rentals and purchases in one place" },
+                                    new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 10h18M7 15h10m-10 4h10M3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2z\"></path></svg>", Title = "Faster Checkout", Description = "Save payment info for quick rentals and purchases" },
                                     new { Icon = "<svg class=\"benefit-item-svg-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>", Title = "Exclusive Offers", Description = "Get early access to new collections" }
                                 };
                             }
@@ -73,7 +73,7 @@
 
                         <div class="offer-banner">
                             <h3>Special Welcome Offer!</h3>
-                            <p>Get 20% off your first rental when you sign up today.</p>
+                            <p>Sign up today and grab your good discount without delay.</p>
                         </div>
                     </div>
 
@@ -88,9 +88,9 @@
                         </h2>
                         <p id="auth-subtitle">
                             @if (Model.IsLogin)
-                            {<text>Sign in to access your fashion rentals</text> }
+                            {<text>Sign in to access your fashion collection</text> }
                         else
-                        { <text>Join the RentChic community today</text>}
+                        { <text>Join the FRECS community today</text>}
                         </p>
                     </div>
 
@@ -286,7 +286,7 @@
 
             if (isLoginMode) {
                 authTitle.innerText = 'Welcome Back';
-                authSubtitle.innerText = 'Sign in to access your fashion rentals';
+                authSubtitle.innerText = 'Sign in to access your fashion collection';
                 registerFields.style.display = 'none';
                 loginOptions.style.display = 'flex';
                 submitButtonText.innerText = 'Sign In';
@@ -297,7 +297,7 @@
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
             } else {
                 authTitle.innerText = 'Create Account';
-                authSubtitle.innerText = 'Join the RentChic community today';
+                authSubtitle.innerText = 'Join the FRECS community today';
                 registerFields.style.display = 'block';
                 loginOptions.style.display = 'none';
                 submitButtonText.innerText = 'Create Account';
