@@ -313,7 +313,7 @@ namespace Services.Authentication
             var resetLink = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
             _logger.LogInformation("Sending password reset to {Email} with link: {ResetLink}", email, resetLink);
-            await _emailService.SendVerificationEmailAsync(email, resetLink);
+            await _emailService.SendPasswordResetEmailAsync(email, resetLink);
             return true;
         }
 

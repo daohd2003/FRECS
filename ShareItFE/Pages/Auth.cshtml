@@ -161,7 +161,10 @@
                                            class="form-input"
                                            placeholder="Enter your full name" />
                                 </div>
-                                <span asp-validation-for="Name" class="validation-message"></span>
+                                @if (!Model.IsLogin)
+                                {
+                                    <span asp-validation-for="Name" class="validation-message"></span>
+                                }
                             </div>
                         </div>
 
@@ -369,6 +372,9 @@
             const requirementsDiv = document.getElementById('password-requirements');
             const handlerString = isLoginMode ? 'Login' : 'Register';
 
+            // Clear all validation messages when switching modes
+            clearValidationMessages();
+
             if (isLoginMode) {
                 authTitle.innerText = 'Welcome Back';
                 authSubtitle.innerText = 'Sign in to access your fashion collection';
@@ -381,6 +387,10 @@
                 termsPrivacy.style.display = 'none';
                 if (requirementsDiv) requirementsDiv.style.display = 'none';
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
+                
+                // Clear name field when switching to login
+                const nameInput = document.getElementById('name');
+                if (nameInput) nameInput.value = '';
             } else {
                 authTitle.innerText = 'Create Account';
                 authSubtitle.innerText = 'Join the FRECS community today';
@@ -394,6 +404,15 @@
                 if (requirementsDiv) requirementsDiv.style.display = 'none';
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
             }
+        }
+
+        function clearValidationMessages() {
+            // Clear all validation message spans
+            const validationMessages = document.querySelectorAll('.validation-message');
+            validationMessages.forEach(msg => {
+                msg.textContent = '';
+                msg.style.display = 'none';
+            });
         }
 
         function toggleAuthMode() {

@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.Login;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Text.Json;
@@ -38,11 +39,6 @@ namespace ShareItFE.Pages
 
             try
             {
-                // Gọi API backend của bạn để xác minh email
-                // Chú ý: Backend của bạn đang là [HttpGet], nên ở đây chúng ta sẽ gọi GET
-                // Nếu API của bạn là POST, bạn cần tạo một DTO và gửi nó qua PostAsJsonAsync hoặc tương tự.
-                // Dựa trên code API bạn cung cấp, nó là GET.
-
                 var requestUrl = $"{ApiBaseUrl}/auth/verify-email?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
                 _logger.LogInformation($"Attempting to verify email with URL: {requestUrl}");
 
@@ -51,14 +47,40 @@ namespace ShareItFE.Pages
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<string>>(
+                    // Backend now returns TokenResponseDto instead of just string message
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<TokenResponseDto>>(
                         responseContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
                     );
 
-                    Message = apiResponse?.Message ?? "Email verified successfully!";
-                    IsSuccess = true;
-                    _logger.LogInformation($"Email '{email}' successfully verified. API Response: {responseContent}");
+                    if (apiResponse?.Data != null)
+                    {
+                        // Set authentication cookies (same as login flow)
+                        HttpContext.Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = Request.IsHttps,
+                            SameSite = SameSiteMode.Lax,
+                            Expires = DateTimeOffset.UtcNow.AddMinutes(120) // Default 2 hours
+                        });
+
+                        HttpContext.Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = Request.IsHttps,
+                            SameSite = SameSiteMode.Lax,
+                            Expires = apiResponse.Data.RefreshTokenExpiryTime
+                        });
+
+                        Message = apiResponse?.Message ?? "Email verified successfully! You are now logged in.";
+                        IsSuccess = true;
+                        _logger.LogInformation($"Email '{email}' successfully verified and user automatically logged in. API Response: {responseContent}");
+                    }
+                    else
+                    {
+                        Message = "Email verification succeeded but login failed. Please try logging in manually.";
+                        IsSuccess = false;
+                    }
                 }
                 else
                 {
@@ -85,7 +107,7 @@ namespace ShareItFE.Pages
                 _logger.LogError(ex, "Unhandled exception during email verification for email: {Email}", email);
             }
 
-            return Page(); // Trả về trang Razor để hiển thị thông báo
+            return Page();
         }
     }
 }

@@ -244,7 +244,7 @@ namespace ShareItAPI.Controllers
         [HttpGet("verify-email")]
         // This endpoint is triggered by clicking the verification link sent to the user's email.
         // It verifies the email directly via query string parameters (email & token).
-        // This is useful when you don't have a frontend app to handle the confirmation.
+        // After successful verification, it automatically logs in the user by returning JWT tokens.
         public async Task<IActionResult> VerifyEmail([FromQuery] string email, [FromQuery] string token)
         {
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
@@ -264,7 +264,32 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new ApiResponse<string>("Invalid or expired verification token", null));
             }
 
-            return Ok(new ApiResponse<string>("Email verified successfully", null));
+            // Refresh user object from database to get updated EmailConfirmed status
+            user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound(new ApiResponse<string>("User not found after email verification", null));
+            }
+
+            // After successful email verification, automatically generate tokens for login
+            var accessToken = _jwtService.GenerateToken(user);
+            var refreshToken = _jwtService.GenerateRefreshToken();
+            var refreshTokenExpiry = _jwtService.GetRefreshTokenExpiryTime();
+
+            // Update user with new refresh token
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = refreshTokenExpiry;
+            await _userService.UpdateAsync(user);
+
+            var tokenResponse = new TokenResponseDto
+            {
+                Token = accessToken,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = refreshTokenExpiry,
+                Role = user.Role.ToString()
+            };
+
+            return Ok(new ApiResponse<TokenResponseDto>("Email verified successfully. You are now logged in.", tokenResponse));
         }
     }
 }
