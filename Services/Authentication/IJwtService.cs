@@ -11,11 +11,11 @@ namespace Services.Authentication
 {
     public interface IJwtService
     {
-        string GenerateToken(User user);
+        string GenerateToken(User user, bool rememberMe = false);
         string GenerateRefreshToken();
         ClaimsPrincipal? ValidateToken(string? token, bool validateLifetime = false);
         DateTime GetRefreshTokenExpiryTime();
-        Task<TokenResponseDto> Authenticate(string email, string password);
+        Task<TokenResponseDto> Authenticate(string email, string password, bool rememberMe = false);
         Task<TokenResponseDto?> RefreshTokenAsync(string? accessToken, string refreshToken);
         Task LogoutAsync(string token);
         Task<bool> IsTokenValidAsync(string token);

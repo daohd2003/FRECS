@@ -12,6 +12,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - FRECS</title>
     <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/password-requirements.css" asp-append-version="true" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 </head>
@@ -189,18 +190,91 @@
                                        value="@Model.Password"
                                        class="form-input"
                                        placeholder="Enter your password"
-                                       required />
+                                       required 
+                                       onfocus="showPasswordRequirements()"
+                                       onblur="hidePasswordRequirements()"
+                                       oninput="validatePasswordRequirements(this.value)" />
                                 <span class="password-toggle-icon" onclick="togglePasswordVisibility('password', this)">
                                     <svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                 </span>
                             </div>
+                            
+                            <!-- Password Requirements Component -->
+                            <div id="password-requirements" class="password-requirements" style="display: none;">
+                                <div class="requirements-header">
+                                    <h4>Password Requirements</h4>
+                                </div>
+                                <div class="requirements-list">
+                                    <div class="requirement-item" data-requirement="length">
+                                        <span class="requirement-icon">
+                                            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <svg class="x-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </span>
+                                        <span class="requirement-text">At least 8 characters</span>
+                                    </div>
+                                    <div class="requirement-item" data-requirement="uppercase">
+                                        <span class="requirement-icon">
+                                            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <svg class="x-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </span>
+                                        <span class="requirement-text">One uppercase letter</span>
+                                    </div>
+                                    <div class="requirement-item" data-requirement="lowercase">
+                                        <span class="requirement-icon">
+                                            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <svg class="x-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </span>
+                                        <span class="requirement-text">One lowercase letter</span>
+                                    </div>
+                                    <div class="requirement-item" data-requirement="number">
+                                        <span class="requirement-icon">
+                                            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <svg class="x-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </span>
+                                        <span class="requirement-text">One number</span>
+                                    </div>
+                                    <div class="requirement-item" data-requirement="special">
+                                        <span class="requirement-icon">
+                                            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <svg class="x-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </span>
+                                        <span class="requirement-text">One special character (!&#64;#$%^&amp;*)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <span asp-validation-for="Password" class="validation-message"></span>
                         </div>
 
                         <div id="login-options" class="login-options" style="display: @(Model.IsLogin ? "flex" : "none");">
                             <div class="remember-me">
                                 <input id="remember-me-checkbox"
-                                       name="remember-me"
+                                       asp-for="RememberMe"
                                        type="checkbox"
                                        class="remember-me-checkbox-input" />
                                 <label for="remember-me-checkbox" class="remember-me-label">Remember me</label>
@@ -248,10 +322,20 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/password-requirements.js" asp-append-version="true"></script>
 
     <script>
         // Your existing JavaScript
         let isLoginMode = @Model.IsLogin.ToString().ToLowerInvariant();
+
+        // Initialize password requirements component when mode changes
+        function initPasswordRequirements() {
+            if (!isLoginMode && !window.passwordRequirements) {
+                window.passwordRequirements = new PasswordRequirements('password', 'password-requirements', {
+                    autoHide: false // Don't auto-hide in registration mode
+                });
+            }
+        }
 
         function togglePasswordVisibility(inputId, iconContainer) {
             const passwordInput = document.getElementById(inputId);
@@ -264,7 +348,7 @@
 
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
-                iconContainer.innerHTML = '<svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274 4.057 5.064-7 9.542-7 1.54 0 3.003.266 4.375.772m0 0L21 3m-6.225 6.225L3 21" /></svg>';
+                iconContainer.innerHTML = '<svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 11-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>';
             } else {
                 passwordInput.type = 'password';
                 iconContainer.innerHTML = '<svg class="icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>'; // Eye icon
@@ -282,6 +366,7 @@
             const authTogglePrompt = document.getElementById('auth-toggle-prompt');
             const authToggleButton = document.getElementById('auth-toggle-button-js');
             const termsPrivacy = document.getElementById('terms-privacy');
+            const requirementsDiv = document.getElementById('password-requirements');
             const handlerString = isLoginMode ? 'Login' : 'Register';
 
             if (isLoginMode) {
@@ -294,6 +379,7 @@
                 authTogglePrompt.innerText = "Don't have an account?";
                 authToggleButton.innerText = 'Sign up';
                 termsPrivacy.style.display = 'none';
+                if (requirementsDiv) requirementsDiv.style.display = 'none';
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
             } else {
                 authTitle.innerText = 'Create Account';
@@ -305,6 +391,7 @@
                 authTogglePrompt.innerText = "Already have an account?";
                 authToggleButton.innerText = 'Sign in';
                 termsPrivacy.style.display = 'block';
+                if (requirementsDiv) requirementsDiv.style.display = 'none';
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
             }
         }
@@ -312,6 +399,7 @@
         function toggleAuthMode() {
             isLoginMode = !isLoginMode;
             updateAuthModeUI();
+            initPasswordRequirements();
         }
 
     // --- GOOGLE SIGN-IN INTEGRATION (This function remains the same) ---
@@ -447,6 +535,12 @@
                 setTimeout(() => successAlert.remove(), 500); // xóa khỏi DOM
             }
         }, 5000); // sau 5 giây
+
+        // Initialize UI and password requirements when page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            updateAuthModeUI();
+            initPasswordRequirements();
+        });
     </script>
 </body>
 </html>

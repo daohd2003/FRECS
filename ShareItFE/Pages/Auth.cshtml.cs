@@ -33,6 +33,7 @@ namespace ShareItFE.Pages
         [BindProperty] public string Password { get; set; } = string.Empty;
         [BindProperty] public string Name { get; set; } = string.Empty;
         [BindProperty] public bool IsLogin { get; set; } = true;
+        [BindProperty] public bool RememberMe { get; set; } = false;
 
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
@@ -62,7 +63,7 @@ namespace ShareItFE.Pages
                 return Page();
             }
 
-            var loginRequest = new LoginRequestDto { Email = Email, Password = Password };
+            var loginRequest = new LoginRequestDto { Email = Email, Password = Password, RememberMe = RememberMe };
             var content = new StringContent(JsonSerializer.Serialize(loginRequest), Encoding.UTF8, "application/json");
 
             try
@@ -77,12 +78,13 @@ namespace ShareItFE.Pages
 
                     if (apiResponse?.Data != null)
                     {
+                        var cookieExpiry = RememberMe ? DateTimeOffset.UtcNow.AddMinutes(10080) : DateTimeOffset.UtcNow.AddMinutes(120);
                         HttpContext.Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions
                         {
                             HttpOnly = true,
                             Secure = Request.IsHttps,
                             SameSite = SameSiteMode.Lax,
-                            Expires = DateTimeOffset.UtcNow.AddMinutes(30)
+                            Expires = cookieExpiry
                         });
                         HttpContext.Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions
                         {

@@ -31,12 +31,16 @@ namespace ShareItAPI.Controllers
         {
             try
             {
-                var tokenResponse = await _jwtService.Authenticate(request.Email, request.Password);
+                var tokenResponse = await _jwtService.Authenticate(request.Email, request.Password, request.RememberMe);
                 return Ok(new ApiResponse<TokenResponseDto>("Login successful", tokenResponse));
             }
             catch (UnauthorizedAccessException)
             {
                 return Unauthorized(new ApiResponse<string>("Invalid email or password", null));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Email not verified"))
+            {
+                return BadRequest(new ApiResponse<string>("Login failed. Please verify your email to continue.", null));
             }
         }
 
