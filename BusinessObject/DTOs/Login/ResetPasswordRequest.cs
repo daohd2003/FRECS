@@ -14,7 +14,10 @@ namespace BusinessObject.DTOs.Login
         [MaxLength(128)]
         public string Email { get; set; }
         public string Token { get; set; }
-        [MinLength(6)]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [Uppercase]
+        [Lowercase]
+        [Numeric]
         [SpecialCharacter]
         public string NewPassword { get; set; }
     }

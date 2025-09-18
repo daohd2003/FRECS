@@ -542,12 +542,12 @@ namespace Services.OrderServices
             {
                 var subject = "Thông báo sản phẩm trả lại bị hư hỏng";
                 var body = $@"
-            <h3>Thông Báo Từ ShareIT Shop</h3>
+            <h3>Thông Báo Từ FRECS Shop</h3>
             <p>Chúng tôi phát hiện đơn hàng mã <strong>{order.Id}</strong> có sản phẩm trả lại bị <strong>hư hỏng</strong>.</p>
             <p>Vui lòng phản hồi trong vòng <strong>3 ngày</strong> để tránh bị phạt.</p>
             <br />
             <p>Bạn có thể phản hồi tại mục <strong>'Reports liên quan đến bạn'</strong> trong hệ thống.</p>
-            <p>Trân trọng,<br/>Đội ngũ hỗ trợ ShareIT</p>";
+            <p>Trân trọng,<br/>Đội ngũ hỗ trợ FRECS</p>";
 
                 await SendDamageReportEmailAsync(customer.Email, subject, body);
             }

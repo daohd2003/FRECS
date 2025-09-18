@@ -1,4 +1,5 @@
 using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.Validators;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
@@ -23,7 +24,11 @@ namespace ShareItFE.Pages
 
         [BindProperty]
         [Required(ErrorMessage = "New password is required.")]
-        [MinLength(6, ErrorMessage = "Password must be at least 6 characters long.")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [Uppercase]
+        [Lowercase]
+        [Numeric]
+        [SpecialCharacter]
         [DataType(DataType.Password)]
         public string NewPassword { get; set; } = string.Empty;
 

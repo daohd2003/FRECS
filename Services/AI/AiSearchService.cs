@@ -41,7 +41,7 @@ namespace Services.AI
             _cache = cache;
         }
 
-        public async Task<string> AskAboutShareITAsync(string question)
+        public async Task<string> AskAboutFRECSAsync(string question)
         {
             _logger.LogInformation("Received question: {Question}", question);
 
@@ -56,7 +56,7 @@ namespace Services.AI
 
         private async Task<List<dynamic>> GetCachedProductsAsync()
         {
-            const string cacheKey = "ShareIT_Products";
+            const string cacheKey = "FRECS_Products";
             if (_cache.TryGetValue(cacheKey, out List<dynamic> cachedProducts))
             {
                 return cachedProducts;
@@ -92,7 +92,7 @@ namespace Services.AI
         {
             if (products == null || products.Count == 0)
             {
-                return "The store currently has no clothing items available for rent.";
+                return "The store currently has no clothing items available for rent or purchase.";
             }
 
             var lines = products.Select(p =>
@@ -108,10 +108,10 @@ namespace Services.AI
         {
             if (!hasProducts)
             {
-                return $"You are an assistant for the ShareIT clothing rental store. No product information is available currently.\n\nUser's question: {question}\n\nPlease inform the user that product details are currently unavailable. Suggest visiting the store at {_baseAppUrl}.";
+                return $"You are an assistant for the FRECS clothing rental & sales store. No product information is available currently.\n\nUser's question: {question}\n\nPlease inform the user that product details are currently unavailable. Suggest visiting the store at {_baseAppUrl}.";
             }
 
-            return $"You are a helpful assistant for the ShareIT clothing rental store. Only respond using the provided product list.\n\nProducts:\n{context}\n\nUser's question: {question}\n\nAnswer with matching items, their names, prices, and {_baseAppUrl}. If not found, say so.";
+            return $"You are a helpful assistant for the FRECS clothing rental & sales store. Only respond using the provided product list.\n\nProducts:\n{context}\n\nUser's question: {question}\n\nAnswer with matching items, their names, prices, and {_baseAppUrl}. If not found, say so.";
         }
 
         private async Task<string?> SendRequestToGeminiAsync(string prompt)

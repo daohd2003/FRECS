@@ -47,12 +47,12 @@ namespace Services.Authentication
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
 
-        public string GenerateToken(User user)
+        public string GenerateToken(User user, bool rememberMe = false)
         {
             var secretKey = _jwtSettings.SecretKey;
             var issuer = _jwtSettings.Issuer;
             var audience = _jwtSettings.Audience;
-            var expiryMinutes = _jwtSettings.ExpiryMinutes;
+            var expiryMinutes = rememberMe ? _jwtSettings.RememberMeExpiryMinutes : _jwtSettings.ExpiryMinutes;
 
             var claims = new[]
             {
@@ -197,14 +197,14 @@ namespace Services.Authentication
             };
         }
 
-        public async Task<TokenResponseDto> Authenticate(string email, string password)
+        public async Task<TokenResponseDto> Authenticate(string email, string password, bool rememberMe = false)
         {
             var user = await _userRepository.GetUserByEmailAsync(email);
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
-                if (!user.EmailConfirmed) throw new Exception("Email chưa được xác minh");
+                if (!user.EmailConfirmed) throw new InvalidOperationException("Email not verified");
 
-                var token = GenerateToken(user);
+                var token = GenerateToken(user, rememberMe);
                 var refreshToken = GenerateRefreshToken();
                 var refreshExpiry = GetRefreshTokenExpiryTime();
 
@@ -309,9 +309,10 @@ namespace Services.Authentication
             user.PasswordResetTokenExpiry = DateTime.UtcNow.AddMinutes(30);
             await _userRepository.UpdateAsync(user);
 
-            var baseUrl = _configuration["Frontend:BaseUrl"];
+            var baseUrl = GetFrontendBaseUrl();
             var resetLink = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
+            _logger.LogInformation("Sending password reset to {Email} with link: {ResetLink}", email, resetLink);
             await _emailService.SendVerificationEmailAsync(email, resetLink);
             return true;
         }
@@ -340,9 +341,10 @@ namespace Services.Authentication
             user.EmailVerificationExpiry = DateTime.UtcNow.AddHours(1);
             await _userRepository.UpdateAsync(user);
 
-            var baseUrl = _configuration["Frontend:BaseUrl"];
+            var baseUrl = GetFrontendBaseUrl();
             var verifyLink = $"{baseUrl}/verify-email?email={HttpUtility.UrlEncode(user.Email)}&token={HttpUtility.UrlEncode(token)}";
 
+            _logger.LogInformation("Sending email verification to {Email} with link: {VerifyLink}", user.Email, verifyLink);
             await _emailService.SendVerificationEmailAsync(user.Email, verifyLink);
             return true;
         }
@@ -364,6 +366,15 @@ namespace Services.Authentication
         private string GenerateTokenString()
         {
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        }
+
+        private string GetFrontendBaseUrl()
+        {
+            var environment = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "Development";
+            var baseUrl = _configuration[$"FrontendSettings:{environment}:BaseUrl"] ?? "https://localhost:7045";
+            
+            _logger.LogDebug("Environment: {Environment}, Frontend BaseUrl: {BaseUrl}", environment, baseUrl);
+            return baseUrl;
         }
     }
 }

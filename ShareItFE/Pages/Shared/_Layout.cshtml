@@ -1,5 +1,6 @@
 ﻿@using Microsoft.Extensions.Configuration
 @using Microsoft.Extensions.Hosting
+@using ShareItFE.Extensions
 @inject IConfiguration Configuration
 @inject IWebHostEnvironment Environment
 @RenderSection("Styles", required: false)
@@ -8,7 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ShareIt</title>
+    <title>@ViewData["Title"] - FRECS</title>
     <script>
         const currentEnvironment = '@Environment.EnvironmentName';
         const apiRootUrl = '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")';
@@ -44,10 +45,10 @@
                             <path d="M12,2a4,4,0,0,0-4,4v2.4a4,4,0,0,0,8,0V6A4,4,0,0,0,12,2Z" />
                             <line x1="10" y1="12" x2="14" y2="12" />
                         </svg>
-                        <span class="footer-brand-name">RentChic</span>
+                        <span class="footer-brand-name">FRECS</span>
                     </div>
                     <p class="footer-description">
-                        Premium fashion rentals for every special occasion. Look amazing, save money, stay sustainable.
+                        Premium fashion rentals & sales for every special occasion. Look amazing, save money, stay sustainable.
                     </p>
                     <div class="footer-social-links">
                         <a href="#" aria-label="Instagram">
@@ -93,14 +94,21 @@
                 </div>
             </div>
             <div class="footer-bottom-bar">
-                <p>&copy; 2025 RentChic. All rights reserved. | Privacy Policy | Terms of Service</p>
+                <p>&copy; @DateTime.Now.Year FRECS. All rights reserved. | Privacy Policy | Terms of Service</p>
             </div>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/toast-manager.js" asp-append-version="true"></script>
     <script src="~/js/notification.js" asp-append-version="true"></script>
+
+    <!-- TempData Toast Messages -->
+    @{
+        var toastMessages = TempData.GetToastMessagesJson();
+    }
+    <script type="application/json" id="tempdata-messages">@Html.Raw(toastMessages)</script>
 
     <script src="~/js/dist/browser/signalr.js"></script>
     <script>
