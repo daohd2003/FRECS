@@ -123,7 +123,7 @@ namespace ShareItFE.Pages
             }
 
             TempData["IsLoginState"] = true;
-            TempData["ErrorMessage"] = ErrorMessage;
+            TempData.AddErrorToast(ErrorMessage);
             return Page();
         }
 
@@ -190,7 +190,7 @@ namespace ShareItFE.Pages
         {
             if (string.IsNullOrWhiteSpace(request.IdToken))
             {
-                TempData["ErrorMessage"] = "Google token is invalid.";
+                TempData.AddErrorToast("Google token is invalid.");
                 return RedirectToPage();
             }
 
@@ -276,7 +276,7 @@ namespace ShareItFE.Pages
             HttpContext.Response.Cookies.Delete("AccessToken");
             HttpContext.Response.Cookies.Delete("RefreshToken");
 
-            TempData["SuccessMessage"] = "You have been successfully logged out.";
+            TempData.AddSuccessToast("You have been successfully logged out.");
             return RedirectToPage("/Auth");
         }
     }
