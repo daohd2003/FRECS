@@ -11,6 +11,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - FRECS</title>
+    
+    <!-- FRECS Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="~/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="~/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="~/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="~/favicon_io/site.webmanifest">
+    <link rel="shortcut icon" href="~/favicon_io/favicon.ico" type="image/x-icon">
+    
     <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/password-requirements.css" asp-append-version="true" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -161,7 +169,10 @@
                                            class="form-input"
                                            placeholder="Enter your full name" />
                                 </div>
-                                <span asp-validation-for="Name" class="validation-message"></span>
+                                @if (!Model.IsLogin)
+                                {
+                                    <span asp-validation-for="Name" class="validation-message"></span>
+                                }
                             </div>
                         </div>
 
@@ -369,6 +380,9 @@
             const requirementsDiv = document.getElementById('password-requirements');
             const handlerString = isLoginMode ? 'Login' : 'Register';
 
+            // Clear all validation messages when switching modes
+            clearValidationMessages();
+
             if (isLoginMode) {
                 authTitle.innerText = 'Welcome Back';
                 authSubtitle.innerText = 'Sign in to access your fashion collection';
@@ -381,6 +395,10 @@
                 termsPrivacy.style.display = 'none';
                 if (requirementsDiv) requirementsDiv.style.display = 'none';
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
+                
+                // Clear name field when switching to login
+                const nameInput = document.getElementById('name');
+                if (nameInput) nameInput.value = '';
             } else {
                 authTitle.innerText = 'Create Account';
                 authSubtitle.innerText = 'Join the FRECS community today';
@@ -394,6 +412,15 @@
                 if (requirementsDiv) requirementsDiv.style.display = 'none';
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
             }
+        }
+
+        function clearValidationMessages() {
+            // Clear all validation message spans
+            const validationMessages = document.querySelectorAll('.validation-message');
+            validationMessages.forEach(msg => {
+                msg.textContent = '';
+                msg.style.display = 'none';
+            });
         }
 
         function toggleAuthMode() {

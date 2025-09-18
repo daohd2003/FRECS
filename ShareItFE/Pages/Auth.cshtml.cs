@@ -55,6 +55,10 @@ namespace ShareItFE.Pages
         public async Task<IActionResult> OnPostLogin()
         {
             IsLogin = true;
+            
+            // Clear validation errors and reset fields not used in login
+            ModelState.Remove(nameof(Name));
+            Name = string.Empty; // Reset name field for login mode
 
             if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
             {
@@ -130,6 +134,9 @@ namespace ShareItFE.Pages
         public async Task<IActionResult> OnPostRegister()
         {
             IsLogin = false;
+            
+            // Clear validation errors for fields that might conflict
+            ModelState.Remove(nameof(RememberMe));
 
             if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password) || string.IsNullOrWhiteSpace(Name))
             {

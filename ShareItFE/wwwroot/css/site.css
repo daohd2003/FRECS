@@ -100,38 +100,6 @@ body {
     color: #111827; /* text-gray-900 */
 }
 
-/* Thanh tìm kiếm */
-.search-container {
-    flex: 1;
-    max-width: 36rem; /* max-w-lg */
-    margin: 0 2rem;
-    position: relative;
-}
-
-.search-icon {
-    position: absolute;
-    left: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 1.25rem; /* h-5 */
-    width: 1.25rem; /* w-5 */
-    color: #9ca3af; /* text-gray-400 */
-}
-
-.search-input {
-    width: 100%;
-    padding-left: 2.5rem; /* pl-10 */
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem; /* py-2 */
-    border: 1px solid #d1d5db; /* border-gray-300 */
-    border-radius: 0.5rem; /* rounded-lg */
-}
-
-    .search-input:focus {
-        outline: 2px solid transparent;
-        outline-offset: 2px;
-        border-color: #a78bfa; /* ring-purple-500 */
-    }
 
 /* Điều hướng */
 .main-nav {
