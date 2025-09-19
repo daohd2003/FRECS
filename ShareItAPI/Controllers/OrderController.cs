@@ -41,6 +41,20 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Order cancelled", null));
         }
 
+        [HttpDelete("{orderId:guid}")]
+        public async Task<IActionResult> DeleteOrder(Guid orderId)
+        {
+            try
+            {
+                await _orderService.DeleteOrderAsync(orderId);
+                return Ok(new ApiResponse<string>("Order deleted permanently", null));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
         [HttpPut("{orderId:guid}/items")]
         public async Task<IActionResult> UpdateOrderItems(Guid orderId, [FromBody] List<Guid> updatedItemIds, int rentalDays)
         {

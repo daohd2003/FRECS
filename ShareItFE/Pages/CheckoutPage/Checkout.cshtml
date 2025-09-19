@@ -21,23 +21,19 @@
                 </svg>
             </button>
 
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">Scan QR code to pay</h2>
-            <div class="marquee-container mb-6">
+            <h2 class="modal-title text-2xl font-bold text-gray-900 mb-2">Scan QR code to pay</h2>
+            <div class="marquee-container mb-4">
                 <div class="marquee-content">
                     SEPay only supports payments via: Vietcombank, VPBank, VIB, VietinBank, MBBank, ACB, Sacombank, TPBank, Eximbank, HDBank, BIDV, Techcombank, MSB, Shinhan Bank, Agribank, Public Bank (PublicBank Vietnam) and other banks such as OCB, KienlongBank, ABBANK, LPBank, Bac A Bank, SeaBank, SHB, NCB, Woori Bank, VietABank, Vietbank, Nam A Bank, PGBank
                 </div>
             </div>
 
-            <div class="p-2 border border-gray-200 rounded-lg inline-block mb-4">
-                <img src="@Model.QrCodeUrl" alt="Payment QR code" class="mx-auto w-32 h-64" />
+            <div class="qr-code-container p-2 border border-gray-200 rounded-lg inline-block mb-4">
+                <img src="@Model.QrCodeUrl" alt="Payment QR code" class="qr-code-image mx-auto" />
             </div>
 
-            <p class="text-xl font-bold">Total amount: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
+            <p class="modal-amount text-xl font-bold">Total amount: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
             <p class="text-sm text-gray-500 mt-4 max-w-sm mx-auto">After successful payment, the order status will be updated. You don't need to perform any additional actions.</p>
-
-            <a href="/OrderHistory" class="mt-6 inline-block w-full bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                Check order history
-            </a>
         </div>
     </div>
 }

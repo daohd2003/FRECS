@@ -45,7 +45,7 @@ namespace Services.NotificationServices
                 Id = n.Id,
                 Message = n.Message,
                 IsRead = n.IsRead,
-                CreatedAt = n.CreatedAt,
+                CreatedAt = DateTime.SpecifyKind(n.CreatedAt, DateTimeKind.Utc),
                 Type = n.Type,
                 OrderId = n.OrderId
                 // Tạo link URL động dựa trên loại thông báo và OrderId
@@ -63,7 +63,7 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
             };
 
             await _notificationRepository.AddAsync(notification);
@@ -176,7 +176,7 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                 OrderId = orderId
             };
 
@@ -191,7 +191,7 @@ namespace Services.NotificationServices
             {
                 OrderId = orderId,
                 Message = message,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                 UserId = userId
             });
         }
@@ -204,7 +204,7 @@ namespace Services.NotificationServices
             {
                 OrderId = orderId,
                 Message = message,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                 UserId = userId
             });
         }

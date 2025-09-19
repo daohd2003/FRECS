@@ -61,7 +61,7 @@ namespace Repositories.ReportRepositories
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                 Priority = dto.Priority
             };
             await AddAsync(report);

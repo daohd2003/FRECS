@@ -8,6 +8,7 @@ using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.CartRepositories;
 using Repositories.EmailRepositories;
+using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
@@ -34,6 +35,7 @@ namespace Services.OrderServices
         private readonly IUserRepository _userRepository;
         private readonly ShareItDbContext _context;
         private readonly IEmailRepository _emailRepository;
+        private readonly INotificationRepository _notificationRepository;
 
         public OrderService(
             IOrderRepository orderRepo,
@@ -46,7 +48,8 @@ namespace Services.OrderServices
             IUserRepository userRepository,
             ShareItDbContext context,
             IEmailRepository emailRepository,
-            IProductRepository productRepo
+            IProductRepository productRepo,
+            INotificationRepository notificationRepository
             )
         {
             _orderRepo = orderRepo;
@@ -60,6 +63,7 @@ namespace Services.OrderServices
             _context = context;
             _emailRepository = emailRepository;
             _productRepo = productRepo;
+            _notificationRepository = notificationRepository;
 
         }
 
@@ -95,7 +99,7 @@ namespace Services.OrderServices
 
             var oldStatus = order.Status;
             order.Status = newStatus;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(orderId, oldStatus, newStatus);
@@ -116,7 +120,7 @@ namespace Services.OrderServices
             if (order == null) throw new Exception("Order not found");
 
             order.Status = OrderStatus.cancelled;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await _orderRepo.UpdateAsync(order);
 
             await _notificationService.NotifyOrderCancellation(orderId);
@@ -127,6 +131,45 @@ namespace Services.OrderServices
 
             await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
                 .SendAsync("ReceiveNotification", $"Order #{orderId} has been cancelled by customer");
+        }
+
+        public async Task DeleteOrderAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+
+            // Only allow deleting cancelled orders
+            if (order.Status != OrderStatus.cancelled)
+            {
+                throw new InvalidOperationException("Only cancelled orders can be deleted");
+            }
+
+            // Delete related records in correct order to avoid foreign key constraints
+            
+            // 1. Delete all notifications related to this order
+            await _notificationRepository.DeleteByOrderIdAsync(orderId);
+
+            // 2. Delete all order items related to this order
+            var orderItems = await _context.OrderItems
+                .Where(oi => oi.OrderId == orderId)
+                .ToListAsync();
+            
+            if (orderItems.Any())
+            {
+                _context.OrderItems.RemoveRange(orderItems);
+                await _context.SaveChangesAsync();
+            }
+
+            // 3. Finally delete the order itself
+            // Note: Transactions don't have OrderId FK, they have one-to-many relationship with Orders
+            await _orderRepo.DeleteAsync(orderId);
+
+            // Send notifications to both parties
+            await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
+                .SendAsync("ReceiveNotification", $"Order #{orderId} has been permanently deleted");
+
+            await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
+                .SendAsync("ReceiveNotification", $"Order #{orderId} has been permanently deleted");
         }
 
         public async Task UpdateOrderItemsAsync(Guid orderId, List<Guid> updatedProductIds, int rentalDays)
@@ -213,7 +256,7 @@ namespace Services.OrderServices
             if (order == null) throw new Exception("Order not found");
 
             order.Status = OrderStatus.in_use;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
@@ -233,7 +276,7 @@ namespace Services.OrderServices
             }
 
             order.Status = OrderStatus.returned;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             // Increment rent count for all products in this order
             foreach (var item in order.Items)
@@ -257,7 +300,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
             order.Status = OrderStatus.approved;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.pending, OrderStatus.approved);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as approved");
@@ -268,8 +311,8 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
             order.Status = OrderStatus.in_transit;
-            order.DeliveredDate = DateTime.UtcNow;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.DeliveredDate = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.approved, OrderStatus.in_transit);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as shipped");
@@ -285,7 +328,7 @@ namespace Services.OrderServices
                 throw new Exception("Order must be in transit status to confirm delivery");
             
             order.Status = OrderStatus.in_use;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await _orderRepo.UpdateAsync(order);
             
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
@@ -302,7 +345,7 @@ namespace Services.OrderServices
                 throw new Exception("Order must be in use status to mark as returning");
             
             order.Status = OrderStatus.returning;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await _orderRepo.UpdateAsync(order);
             
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returning);
@@ -314,7 +357,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyTransactionCompleted(orderId, order.CustomerId);
@@ -327,7 +370,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyTransactionFailed(orderId, order.CustomerId);
@@ -518,7 +561,7 @@ namespace Services.OrderServices
 
             // 2. Cập nhật trạng thái và thời gian
             order.Status = OrderStatus.returned_with_issue;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             // 3. Chỉ cập nhật 2 field: Status & UpdatedAt
             await _orderRepo.UpdateOnlyStatusAndTimeAsync(order);
@@ -850,7 +893,7 @@ namespace Services.OrderServices
             order.CustomerPhoneNumber = dto.CustomerPhoneNumber;
             order.DeliveryAddress = dto.DeliveryAddress;
             order.HasAgreedToPolicies = dto.HasAgreedToPolicies;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             return await _orderRepo.UpdateOrderContactInfoAsync(order);
         }

@@ -36,7 +36,7 @@ namespace BusinessObject.Models
 
         public DateTime? DeliveredDate { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
         public DateTime? UpdatedAt { get; set; }
 
         public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();

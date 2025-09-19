@@ -35,7 +35,7 @@ namespace BusinessObject.Models
         [Required]
         public ReportStatus Status { get; set; }  // Trạng thái xử lý (Pending, Reviewed, Rejected...)
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;  // Thời điểm gửi báo cáo
+        public DateTime CreatedAt { get; set; } = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);  // Thời điểm gửi báo cáo
                                                                     // --- THÊM CÁC THUỘC TÍNH MỚI ---
         public Guid? AssignedAdminId { get; set; } // ID của admin đang xử lý, có thể null
 
