@@ -1,4 +1,28 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+﻿// Helper function to format date for Vietnam timezone
+function formatDateForVietnam(dateString) {
+    try {
+        // Ensure the datetime string is treated as UTC by adding 'Z' if not present
+        let utcDateString = dateString;
+        if (!dateString.includes('Z') && !dateString.includes('+')) {
+            utcDateString = dateString.replace(/\.\d{3}$/, '') + 'Z';
+        }
+        
+        const date = new Date(utcDateString);
+        
+        // Format with Vietnam timezone (UTC+7) - date only
+        return date.toLocaleDateString('vi-VN', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+    } catch (e) {
+        console.error('Error formatting date:', e, 'Original dateString:', dateString);
+        return dateString; // Fallback to original string if parsing fails
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
     // --- Variables ---
     let items = [];
     let filteredItems = [];
@@ -130,7 +154,7 @@
                         <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
-                        <span>${item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</span>
+                        <span>${item.createdAt ? formatDateForVietnam(item.createdAt) : 'N/A'}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">

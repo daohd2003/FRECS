@@ -15,7 +15,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ReporteeName, opt => opt.MapFrom(src => src.Reportee.Profile.FullName))
                 .ForMember(dest => dest.ReporteeEmail, opt => opt.MapFrom(src => src.Reportee.Email))
                 .ForMember(dest => dest.AssignedAdminName, opt => opt.MapFrom(src => src.AssignedAdmin != null ? src.AssignedAdmin.Profile.FullName : null))
-                .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => src.CreatedAt));
+                .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTime.SpecifyKind(src.CreatedAt, DateTimeKind.Utc)));
 
             CreateMap<ReportDTO, Report>().ReverseMap();
         }

@@ -74,6 +74,10 @@
         .then(data => {
             if (data && data.data) {
                 console.log('Notifications reloaded:', data.data.length);
+                // Debug: Log first notification's createdAt to see format
+                if (data.data.length > 0) {
+                    console.log('First notification CreatedAt:', data.data[0].createdAt);
+                }
                 updateNotificationList(data.data);
             }
         })
@@ -132,9 +136,36 @@
     // Helper function to format notification time
     function formatNotificationTime(dateString) {
         try {
-            const date = new Date(dateString);
-            return date.toLocaleString(); // Basic formatting, adjust as needed
+            // Ensure the datetime string is treated as UTC by adding 'Z' if not present
+            let utcDateString = dateString;
+            if (!dateString.includes('Z') && !dateString.includes('+')) {
+                utcDateString = dateString.replace(/\.\d{3}$/, '') + 'Z';
+            }
+            
+            const date = new Date(utcDateString);
+            
+            // Format with Vietnam timezone (UTC+7)
+            const formatted = date.toLocaleString('vi-VN', {
+                timeZone: 'Asia/Ho_Chi_Minh',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            
+            // Debug: Log conversion
+            console.log('DateTime conversion:', { 
+                original: dateString, 
+                utcString: utcDateString, 
+                parsed: date.toISOString(), 
+                formatted: formatted 
+            });
+            
+            return formatted;
         } catch (e) {
+            console.error('Error formatting notification time:', e, 'Original dateString:', dateString);
             return dateString; // Fallback to original string if parsing fails
         }
     }
