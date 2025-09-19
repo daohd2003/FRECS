@@ -69,5 +69,18 @@ namespace Repositories.NotificationRepositories
                 .Take(count)
                 .ToListAsync();
         }
+
+        public async Task DeleteByOrderIdAsync(Guid orderId)
+        {
+            var notificationsToDelete = await _context.Notifications
+                .Where(n => n.OrderId == orderId)
+                .ToListAsync();
+
+            if (notificationsToDelete.Any())
+            {
+                _context.Notifications.RemoveRange(notificationsToDelete);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

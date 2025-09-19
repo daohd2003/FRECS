@@ -143,9 +143,9 @@
                         }
 
                         <!-- Cancel Order Button -->
-                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending || Model.Order.Status == BusinessObject.Enums.OrderStatus.approved)
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
                         {
-                            <button class="btn btn-danger">
+                            <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
                                 <i class="bi bi-x-circle"></i> Cancel Order
                             </button>
                         }
@@ -254,6 +254,17 @@
                         },
                         success: function(response) {
                             alert('Order delivery confirmed successfully!');
+                            
+                            // Reload notifications after order status change
+                            if (window.loadNotifications) {
+                                const notificationMenu = document.querySelector('.notification-menu');
+                                const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                                if (userId) {
+                                    console.log('Reloading notifications after delivery confirmation...');
+                                    setTimeout(() => window.loadNotifications(userId), 500);
+                                }
+                            }
+                            
                             location.reload(); // Reload để cập nhật status
                         },
                         error: function(xhr) {
@@ -280,11 +291,62 @@
                         },
                         success: function(response) {
                             alert('Order marked as returning successfully!');
+                            
+                            // Reload notifications after order status change
+                            if (window.loadNotifications) {
+                                const notificationMenu = document.querySelector('.notification-menu');
+                                const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                                if (userId) {
+                                    console.log('Reloading notifications after marking returning...');
+                                    setTimeout(() => window.loadNotifications(userId), 500);
+                                }
+                            }
+                            
                             location.reload(); // Reload để cập nhật status
                         },
                         error: function(xhr) {
                             alert('Error marking as returning: ' + (xhr.responseJSON?.message || 'Unknown error'));
                             button.prop('disabled', false).html('<i class="bi bi-box-arrow-up"></i> Mark as Returning');
+                        }
+                    });
+                }
+            });
+
+            // Handle Cancel Order for pending orders
+            $('.cancel-order-btn').on('click', function() {
+                const orderId = $(this).data('order-id');
+                const button = $(this);
+                
+                if (confirm('Are you sure you want to cancel this order? Once cancelled, you can remove it from your order list.')) {
+                    button.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Canceling...');
+                    
+                    $.ajax({
+                        url: `@Model.ApiBaseUrl/orders/${orderId}/cancel`,
+                        type: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + '@(Request.Cookies["AccessToken"])',
+                            'Content-Type': 'application/json'
+                        },
+                        success: function(response) {
+                            alert('Order cancelled successfully!');
+                            
+                            // Reload notifications to reflect cancelled order status
+                            if (window.loadNotifications) {
+                                const notificationMenu = document.querySelector('.notification-menu');
+                                const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                                if (userId) {
+                                    console.log('Reloading notifications after order cancellation...');
+                                    setTimeout(() => {
+                                        window.loadNotifications(userId);
+                                    }, 500); // Small delay to ensure cancellation is processed
+                                }
+                            }
+                            
+                            location.reload(); // Reload để cập nhật status
+                        },
+                        error: function(xhr) {
+                            alert('Error cancelling order: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                            button.prop('disabled', false).html('<i class="bi bi-x-circle"></i> Cancel Order');
                         }
                     });
                 }

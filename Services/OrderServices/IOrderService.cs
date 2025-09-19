@@ -12,6 +12,7 @@ namespace Services.OrderServices
         Task ChangeOrderStatus(Guid orderId, OrderStatus newStatus);
         Task CreateOrderAsync(CreateOrderDto dto);
         Task CancelOrderAsync(Guid orderId);
+        Task DeleteOrderAsync(Guid orderId);
         Task UpdateOrderItemsAsync(Guid orderId, List<Guid> updatedItemIds, int rentalDays);
         Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
         Task<IEnumerable<OrderWithDetailsDto>> GetOrdersByStatusAsync(OrderStatus status);

@@ -23,6 +23,12 @@
         event.stopPropagation();
         const isVisible = notificationDropdown.style.display === 'block';
         notificationDropdown.style.display = isVisible ? 'none' : 'block';
+        
+        // Load fresh notifications when opening dropdown
+        if (!isVisible && userId) {
+            console.log('Loading fresh notifications on dropdown open...');
+            loadNotifications(userId);
+        }
     });
 
     // Close dropdown when clicking outside
@@ -40,6 +46,102 @@
             notificationCountBadge.style.display = 'none';
         }
     }
+
+    // Function to reload notifications - exposed globally
+    function loadNotifications(userIdParam = null) {
+        const targetUserId = userIdParam || userId;
+        if (!targetUserId) return;
+
+        // Reload unread count
+        fetch(`${apiRootUrl}/api/notification/unread-count/${targetUserId}`, {
+            headers: authHeaders
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && typeof data.data === 'number') {
+                updateCountBadge(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Failed to reload notification count:', error);
+        });
+
+        // Always reload notification list to keep it updated
+        fetch(`${apiRootUrl}/api/notification/user/${targetUserId}?unreadOnly=false`, {
+            headers: authHeaders
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.data) {
+                console.log('Notifications reloaded:', data.data.length);
+                updateNotificationList(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Failed to reload notifications:', error);
+        });
+    }
+
+    // Function to update notification list DOM
+    function updateNotificationList(notifications) {
+        if (!notificationList) return;
+        
+        if (!notifications || notifications.length === 0) {
+            notificationList.innerHTML = '<p class="no-notifications">You have no notifications.</p>';
+            return;
+        }
+        
+        let html = '';
+        notifications.forEach(notification => {
+            const isUnread = !notification.isRead;
+            const unreadClass = isUnread ? 'unread' : '';
+            const unreadDot = isUnread ? '<div class="unread-dot"></div>' : '';
+            
+            if (notification.orderId && notification.orderId !== '00000000-0000-0000-0000-000000000000') {
+                // Notification with order link
+                html += `
+                    <a href="/Order/Details/${notification.orderId}" 
+                       class="notification-item ${unreadClass}" 
+                       data-id="${notification.id}">
+                        <div class="notification-content">
+                            <p class="notification-message">${notification.message}</p>
+                            <span class="notification-time">${formatNotificationTime(notification.createdAt)}</span>
+                        </div>
+                        ${unreadDot}
+                    </a>
+                `;
+            } else {
+                // Notification without order link
+                html += `
+                    <div class="notification-item ${unreadClass}" 
+                         data-id="${notification.id}">
+                        <div class="notification-content">
+                            <p class="notification-message">${notification.message}</p>
+                            <span class="notification-time">${formatNotificationTime(notification.createdAt)}</span>
+                        </div>
+                        ${unreadDot}
+                    </div>
+                `;
+            }
+        });
+        
+        notificationList.innerHTML = html;
+        console.log('Notification list DOM updated with', notifications.length, 'notifications');
+    }
+    
+    // Helper function to format notification time
+    function formatNotificationTime(dateString) {
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleString(); // Basic formatting, adjust as needed
+        } catch (e) {
+            return dateString; // Fallback to original string if parsing fails
+        }
+    }
+
+    // Expose functions globally so they can be called from other scripts
+    window.loadNotifications = loadNotifications;
+    window.updateNotificationList = updateNotificationList;
 
     // Mark all as read
     markAllReadBtn.addEventListener('click', function () {

@@ -8,6 +8,7 @@ using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.CartRepositories;
 using Repositories.EmailRepositories;
+using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
@@ -34,6 +35,7 @@ namespace Services.OrderServices
         private readonly IUserRepository _userRepository;
         private readonly ShareItDbContext _context;
         private readonly IEmailRepository _emailRepository;
+        private readonly INotificationRepository _notificationRepository;
 
         public OrderService(
             IOrderRepository orderRepo,
@@ -46,7 +48,8 @@ namespace Services.OrderServices
             IUserRepository userRepository,
             ShareItDbContext context,
             IEmailRepository emailRepository,
-            IProductRepository productRepo
+            IProductRepository productRepo,
+            INotificationRepository notificationRepository
             )
         {
             _orderRepo = orderRepo;
@@ -60,6 +63,7 @@ namespace Services.OrderServices
             _context = context;
             _emailRepository = emailRepository;
             _productRepo = productRepo;
+            _notificationRepository = notificationRepository;
 
         }
 
@@ -127,6 +131,45 @@ namespace Services.OrderServices
 
             await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
                 .SendAsync("ReceiveNotification", $"Order #{orderId} has been cancelled by customer");
+        }
+
+        public async Task DeleteOrderAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+
+            // Only allow deleting cancelled orders
+            if (order.Status != OrderStatus.cancelled)
+            {
+                throw new InvalidOperationException("Only cancelled orders can be deleted");
+            }
+
+            // Delete related records in correct order to avoid foreign key constraints
+            
+            // 1. Delete all notifications related to this order
+            await _notificationRepository.DeleteByOrderIdAsync(orderId);
+
+            // 2. Delete all order items related to this order
+            var orderItems = await _context.OrderItems
+                .Where(oi => oi.OrderId == orderId)
+                .ToListAsync();
+            
+            if (orderItems.Any())
+            {
+                _context.OrderItems.RemoveRange(orderItems);
+                await _context.SaveChangesAsync();
+            }
+
+            // 3. Finally delete the order itself
+            // Note: Transactions don't have OrderId FK, they have one-to-many relationship with Orders
+            await _orderRepo.DeleteAsync(orderId);
+
+            // Send notifications to both parties
+            await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
+                .SendAsync("ReceiveNotification", $"Order #{orderId} has been permanently deleted");
+
+            await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
+                .SendAsync("ReceiveNotification", $"Order #{orderId} has been permanently deleted");
         }
 
         public async Task UpdateOrderItemsAsync(Guid orderId, List<Guid> updatedProductIds, int rentalDays)
