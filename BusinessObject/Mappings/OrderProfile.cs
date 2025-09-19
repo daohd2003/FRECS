@@ -20,7 +20,7 @@ namespace BusinessObject.Mappings
             CreateMap<Order, OrderWithDetailsDto>();
             CreateMap<CreateOrderDto, Order>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.Customer, opt => opt.Ignore())
                 .ForMember(dest => dest.Provider, opt => opt.Ignore());
@@ -32,7 +32,7 @@ namespace BusinessObject.Mappings
 
                 .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.Customer.Profile.Address))
                 .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Customer.Profile.Phone))
-                .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.UtcNow))
+                .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)))
                 .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src => src.Status == OrderStatus.in_use ? src.UpdatedAt : (DateTime?)null))
                 .ForMember(dest => dest.ReturnDate, opt => opt.MapFrom(src => src.RentalEnd));
 
@@ -49,7 +49,7 @@ namespace BusinessObject.Mappings
 
             CreateMap<Order, OrderDetailsDto>()
             .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => $"ORD{src.Id.ToString().Substring(0, 3).ToUpper()}"))
-            .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => src.CreatedAt))
+            .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => DateTime.SpecifyKind(src.CreatedAt, DateTimeKind.Utc)))
             .ForMember(dest => dest.RentalStartDate, opt => opt.MapFrom(src => src.RentalStart))
             .ForMember(dest => dest.RentalEndDate, opt => opt.MapFrom(src => src.RentalEnd))
             .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))

@@ -99,7 +99,7 @@ namespace Services.OrderServices
 
             var oldStatus = order.Status;
             order.Status = newStatus;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(orderId, oldStatus, newStatus);
@@ -120,7 +120,7 @@ namespace Services.OrderServices
             if (order == null) throw new Exception("Order not found");
 
             order.Status = OrderStatus.cancelled;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             await _orderRepo.UpdateAsync(order);
 
             await _notificationService.NotifyOrderCancellation(orderId);
@@ -561,7 +561,7 @@ namespace Services.OrderServices
 
             // 2. Cập nhật trạng thái và thời gian
             order.Status = OrderStatus.returned_with_issue;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
             // 3. Chỉ cập nhật 2 field: Status & UpdatedAt
             await _orderRepo.UpdateOnlyStatusAndTimeAsync(order);
