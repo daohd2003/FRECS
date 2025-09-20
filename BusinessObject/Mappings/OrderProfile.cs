@@ -4,6 +4,7 @@ using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace BusinessObject.Mappings
             CreateMap<Order, OrderWithDetailsDto>();
             CreateMap<CreateOrderDto, Order>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTimeHelper.GetVietnamTime()))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.Customer, opt => opt.Ignore())
                 .ForMember(dest => dest.Provider, opt => opt.Ignore());
@@ -32,7 +33,7 @@ namespace BusinessObject.Mappings
 
                 .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.Customer.Profile.Address))
                 .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Customer.Profile.Phone))
-                .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)))
+                .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.UtcNow))
                 .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src => src.Status == OrderStatus.in_use ? src.UpdatedAt : (DateTime?)null))
                 .ForMember(dest => dest.ReturnDate, opt => opt.MapFrom(src => src.RentalEnd));
 

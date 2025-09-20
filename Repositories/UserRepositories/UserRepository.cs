@@ -1,6 +1,7 @@
 ﻿using BusinessObject.DTOs.Login;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
@@ -63,6 +64,7 @@ namespace Repositories.UserRepositories
                     RefreshToken = "",
                     RefreshTokenExpiryTime = DateTime.Now,
                     IsActive = true,
+                    CreatedAt = DateTimeHelper.GetVietnamTime(),
                     Profile = new Profile
                     {
                         FullName = username,
@@ -130,6 +132,7 @@ namespace Repositories.UserRepositories
                 RefreshToken = string.Empty,
                 RefreshTokenExpiryTime = DateTime.Now,
                 IsActive = true,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 Profile = new Profile
                 {
                     FullName = string.IsNullOrWhiteSpace(payload.Name) ? username : payload.Name,

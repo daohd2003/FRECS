@@ -78,7 +78,7 @@
                                         <a href="/Order/Details/@notification.OrderId" class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
-                                                <span class="notification-time">@TimeZoneInfo.ConvertTimeFromUtc(notification.CreatedAt, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).ToString("dd/MM/yyyy HH:mm")</span>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                             </div>
                                             @if (!notification.IsRead)
                                             {
@@ -91,7 +91,7 @@
                                         <div class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
-                                                <span class="notification-time">@TimeZoneInfo.ConvertTimeFromUtc(notification.CreatedAt, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).ToString("dd/MM/yyyy HH:mm")</span>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                             </div>
                                             @if (!notification.IsRead)
                                             {

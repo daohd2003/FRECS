@@ -5,6 +5,7 @@ using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.NotificationRepositories;
 using Repositories.RepositoryBase;
+using BusinessObject.Utilities;
 
 namespace Services.NotificationServices
 {
@@ -45,7 +46,7 @@ namespace Services.NotificationServices
                 Id = n.Id,
                 Message = n.Message,
                 IsRead = n.IsRead,
-                CreatedAt = DateTime.SpecifyKind(n.CreatedAt, DateTimeKind.Utc),
+                CreatedAt = n.CreatedAt,
                 Type = n.Type,
                 OrderId = n.OrderId
                 // Tạo link URL động dựa trên loại thông báo và OrderId
@@ -63,7 +64,7 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _notificationRepository.AddAsync(notification);
@@ -176,7 +177,7 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 OrderId = orderId
             };
 
@@ -191,7 +192,7 @@ namespace Services.NotificationServices
             {
                 OrderId = orderId,
                 Message = message,
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 UserId = userId
             });
         }
@@ -204,7 +205,7 @@ namespace Services.NotificationServices
             {
                 OrderId = orderId,
                 Message = message,
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 UserId = userId
             });
         }

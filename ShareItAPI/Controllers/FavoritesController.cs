@@ -1,6 +1,7 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.FavoriteServices;
@@ -47,7 +48,8 @@ namespace ShareItAPI.Controllers
             var favorite = new Favorite
             {
                 UserId = dto.UserId,
-                ProductId = dto.ProductId
+                ProductId = dto.ProductId,
+                CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _favoriteService.AddFavoriteAsync(favorite);
