@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.CartRepositories;
 using Repositories.ProductRepositories;
 using Repositories.UserRepositories;
@@ -70,7 +71,7 @@ namespace Services.CartServices
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
-                cart = new Cart { CustomerId = customerId, CreatedAt = DateTime.UtcNow };
+                cart = new Cart { CustomerId = customerId, CreatedAt = DateTimeHelper.GetVietnamTime() };
                 await _cartRepository.CreateCartAsync(cart);
             }
 

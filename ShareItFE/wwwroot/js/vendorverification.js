@@ -1,17 +1,11 @@
 ﻿// Helper function to format date for Vietnam timezone
 function formatDateForVietnam(dateString) {
     try {
-        // Ensure the datetime string is treated as UTC by adding 'Z' if not present
-        let utcDateString = dateString;
-        if (!dateString.includes('Z') && !dateString.includes('+')) {
-            utcDateString = dateString.replace(/\.\d{3}$/, '') + 'Z';
-        }
+        // API now returns Vietnam time directly, no need to convert from UTC
+        const date = new Date(dateString);
         
-        const date = new Date(utcDateString);
-        
-        // Format with Vietnam timezone (UTC+7) - date only
+        // Format as Vietnam locale (already Vietnam time)
         return date.toLocaleDateString('vi-VN', {
-            timeZone: 'Asia/Ho_Chi_Minh',
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'

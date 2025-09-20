@@ -1,5 +1,4 @@
 ﻿@page
-@using ShareItFE.Utilities
 @model ShareItFE.Pages.ProfileModel
 @{
     ViewData["Title"] = "My Profile";
@@ -200,7 +199,7 @@
                                         <div class="order-header">
                                             <div class="order-header-info">
                                                 <h3 class="order-id">Order #@order.OrderCode</h3>
-                                                <p class="order-date">Placed on: @DateTimeHelper.ToSeAsiaTimeString(order.CreatedAt, "dd/M/yyyy")</p>
+                                                <p class="order-date">Placed on: @order.CreatedAt.ToString("dd/M/yyyy")</p>
                                             </div>
                                             <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
                                         </div>

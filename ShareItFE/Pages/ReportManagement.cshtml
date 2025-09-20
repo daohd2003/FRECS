@@ -1,5 +1,4 @@
 ﻿@page
-@using ShareItFE.Utilities
 @model ShareItFE.Pages.ReportManagementModel
 @{
     ViewData["Title"] = "Report Management";
@@ -115,7 +114,7 @@
                                 <td>
                                     <div class="date-info">
                                         <i class="bi bi-calendar-event"></i>
-                                        <span>@DateTimeHelper.ToSeAsiaTimeString(report.DateCreated, "dd/MM/yyyy HH:mm")</span>
+                                        <span>@report.DateCreated.ToString("dd/MM/yyyy HH:mm")</span>
                                     </div>
                                 </td>
                                 <td>
@@ -146,27 +145,7 @@
                     }
                     else
                     {
-                        <tr>
-                            <td colspan="5">
-                                <div class="empty-state">
-                                    @if (!string.IsNullOrEmpty(Model.NotificationMessage) && Model.NotificationType == "error")
-                                    {
-                                        <div class="icon"><i class="bi bi-exclamation-triangle-fill" style="color: #dc2626;"></i></div>
-                                        <h3>Error Loading Reports</h3>
-                                        <p>@Model.NotificationMessage</p>
-                                        <a href="#" onclick="location.reload(); return false;" class="btn btn-primary" style="margin-top: 1rem;">
-                                            <i class="bi bi-arrow-clockwise"></i> Retry
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <div class="icon"><i class="bi bi-folder2-open"></i></div>
-                                        <h3>No reports found</h3>
-                                        <p>There are no reports to display in this view.</p>
-                                    }
-                                </div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="5"><div class="empty-state"><div class="icon"><i class="bi bi-folder2-open"></i></div><h3>No reports found</h3><p>There are no reports to display in this view.</p></div></td></tr>
                     }
                 </tbody>
             </table>

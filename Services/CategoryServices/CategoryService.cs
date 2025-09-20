@@ -3,6 +3,7 @@ using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Models;
 using DataAccess;
 using Repositories.CategoryRepositories;
+using BusinessObject.Utilities;
 
 namespace Services.CategoryServices
 {
@@ -45,7 +46,7 @@ namespace Services.CategoryServices
             if (existing == null) return false;
 
             _mapper.Map(dto, existing);
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _repository.UpdateCategoryAsync(existing);
             return true;

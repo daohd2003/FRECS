@@ -37,25 +37,6 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Report submitted successfully. We will review it shortly.", null));
         }
 
-        /// <summary>
-        /// Lấy danh sách admin cho dropdown
-        /// </summary>
-        [HttpGet("admins")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> GetAdmins()
-        {
-            try
-            {
-                var currentAdminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                var admins = await _reportService.GetAllAdminsAsync(currentAdminId);
-                return Ok(new ApiResponse<IEnumerable<AdminViewModel>>("Admins retrieved successfully", admins));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ApiResponse<string>(ex.Message, null));
-            }
-        }
-
         
 
         

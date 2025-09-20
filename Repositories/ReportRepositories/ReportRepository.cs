@@ -5,6 +5,7 @@ using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
+using BusinessObject.Utilities;
 
 namespace Repositories.ReportRepositories
 {
@@ -61,7 +62,7 @@ namespace Repositories.ReportRepositories
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
-                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
+                CreatedAt = DateTime.UtcNow,
                 Priority = dto.Priority
             };
             await AddAsync(report);

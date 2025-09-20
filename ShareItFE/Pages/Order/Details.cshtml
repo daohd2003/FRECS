@@ -1,5 +1,4 @@
 ﻿@page "{id:guid}"
-@using ShareItFE.Utilities
 @model ShareItFE.Pages.Order.DetailsModel
 @{
     ViewData["Title"] = $"Order Details - {Model.Order.OrderCode}";
@@ -51,7 +50,7 @@
                 <div class="order-title">
                     <div>
                         <h1>Order @Model.Order.OrderCode</h1>
-                        <p>Placed on @DateTimeHelper.ToSeAsiaTimeString(Model.Order.OrderDate, "MMMM d, yyyy 'at' h:mm tt")</p>
+                        <p>Placed on @Model.Order.OrderDate.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
                     </div>
                     <span class="status-badge @GetStatusColor(Model.Order.Status)">
                         @Model.Order.Status.ToString().Replace("_", " ")
@@ -173,7 +172,7 @@
                     <div class="summary-item rental-period">
                         <span>Rental Period</span>
                         <span>
-                            @TimeZoneInfo.ConvertTimeFromUtc(Model.Order.RentalStartDate, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).ToString("dd/MM/yyyy") - @TimeZoneInfo.ConvertTimeFromUtc(Model.Order.RentalEndDate, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).ToString("dd/MM/yyyy")
+                            @Model.Order.RentalStartDate.ToString("dd/MM/yyyy") - @Model.Order.RentalEndDate.ToString("dd/MM/yyyy")
                         </span>
                     </div>
                     <div class="summary-item">

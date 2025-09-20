@@ -5,6 +5,7 @@ using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
+using BusinessObject.Utilities;
 
 
 namespace Services.ProductServices
@@ -44,7 +45,7 @@ namespace Services.ProductServices
         {
             var product = _mapper.Map<Product>(productDto);
             product.Id = Guid.NewGuid();
-            product.CreatedAt = DateTime.UtcNow;
+            product.CreatedAt = DateTimeHelper.GetVietnamTime();
 
             await _context.Products.AddAsync(product);
             await _context.SaveChangesAsync();
@@ -72,7 +73,7 @@ namespace Services.ProductServices
                     // Sẽ được gán từ Controller
 
                     // Các giá trị mặc định khi tạo mới
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTimeHelper.GetVietnamTime(),
                     AvailabilityStatus = AvailabilityStatus.pending,
 
                     AverageRating = 0,
@@ -128,7 +129,7 @@ namespace Services.ProductServices
             // Map các trường từ DTO sang entity, giữ lại các trường không map nếu cần
             _mapper.Map(productDto, existingProduct);
 
-            existingProduct.UpdatedAt = DateTime.UtcNow;
+            existingProduct.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             _context.Products.Update(existingProduct);
             var updated = await _context.SaveChangesAsync();
@@ -152,7 +153,7 @@ namespace Services.ProductServices
             var product = await _context.Products.FindAsync(request.ProductId);
             if (product == null) return false;
 
-            product.UpdatedAt = DateTime.UtcNow;
+            product.UpdatedAt = DateTimeHelper.GetVietnamTime();
             if (request.NewAvailabilityStatus.Equals("Approved"))
             {
                 product.AvailabilityStatus = AvailabilityStatus.available;

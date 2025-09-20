@@ -13,6 +13,7 @@ using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Services.NotificationServices;
+using BusinessObject.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Repositories.ProductRepositories;
 using CloudinaryDotNet.Actions;
@@ -99,7 +100,7 @@ namespace Services.OrderServices
 
             var oldStatus = order.Status;
             order.Status = newStatus;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(orderId, oldStatus, newStatus);
@@ -120,7 +121,7 @@ namespace Services.OrderServices
             if (order == null) throw new Exception("Order not found");
 
             order.Status = OrderStatus.cancelled;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
 
             await _notificationService.NotifyOrderCancellation(orderId);
@@ -256,7 +257,7 @@ namespace Services.OrderServices
             if (order == null) throw new Exception("Order not found");
 
             order.Status = OrderStatus.in_use;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
@@ -276,7 +277,7 @@ namespace Services.OrderServices
             }
 
             order.Status = OrderStatus.returned;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             // Increment rent count for all products in this order
             foreach (var item in order.Items)
@@ -300,7 +301,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
             order.Status = OrderStatus.approved;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.pending, OrderStatus.approved);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as approved");
@@ -311,8 +312,8 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
             order.Status = OrderStatus.in_transit;
-            order.DeliveredDate = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.DeliveredDate = DateTimeHelper.GetVietnamTime();
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.approved, OrderStatus.in_transit);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as shipped");
@@ -328,7 +329,7 @@ namespace Services.OrderServices
                 throw new Exception("Order must be in transit status to confirm delivery");
             
             order.Status = OrderStatus.in_use;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
             
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
@@ -345,7 +346,7 @@ namespace Services.OrderServices
                 throw new Exception("Order must be in use status to mark as returning");
             
             order.Status = OrderStatus.returning;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
             
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returning);
@@ -357,7 +358,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyTransactionCompleted(orderId, order.CustomerId);
@@ -370,7 +371,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyTransactionFailed(orderId, order.CustomerId);
@@ -511,6 +512,7 @@ namespace Services.OrderServices
                             RentalEnd = rentalEnd,
                             Items = orderItems,
                             CustomerFullName = checkoutRequestDto.CustomerFullName,
+                            CreatedAt = DateTimeHelper.GetVietnamTime(),
                             CustomerEmail = checkoutRequestDto.CustomerEmail,
                             CustomerPhoneNumber = checkoutRequestDto.CustomerPhoneNumber,
                             DeliveryAddress = checkoutRequestDto.DeliveryAddress,
@@ -561,7 +563,7 @@ namespace Services.OrderServices
 
             // 2. Cập nhật trạng thái và thời gian
             order.Status = OrderStatus.returned_with_issue;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             // 3. Chỉ cập nhật 2 field: Status & UpdatedAt
             await _orderRepo.UpdateOnlyStatusAndTimeAsync(order);
@@ -833,6 +835,7 @@ namespace Services.OrderServices
                 RentalStart = requestDto.NewRentalStartDate,
                 RentalEnd = requestDto.NewRentalEndDate,
                 TotalAmount = 0,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
             };
 
             int calculatedRentalDays = Math.Max(1, (int)(requestDto.NewRentalEndDate - requestDto.NewRentalStartDate).TotalDays);
@@ -893,7 +896,7 @@ namespace Services.OrderServices
             order.CustomerPhoneNumber = dto.CustomerPhoneNumber;
             order.DeliveryAddress = dto.DeliveryAddress;
             order.HasAgreedToPolicies = dto.HasAgreedToPolicies;
-            order.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             return await _orderRepo.UpdateOrderContactInfoAsync(order);
         }

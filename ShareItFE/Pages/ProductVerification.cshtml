@@ -1,6 +1,5 @@
 ﻿@page
 @using System.Net
-@using ShareItFE.Utilities
 @model ShareItFE.Pages.ProductVerificationModel
 @{
     ViewData["Title"] = "Verification Page";
@@ -20,17 +19,14 @@
             background-color: #fef3c7; /* yellow-100 */
             color: #b45309; /* amber-700 */
         }
-
         .status-available {
             background-color: #d1fae5; /* green-100 */
             color: #065f46; /* green-700 */
         }
-
         .status-rejected {
             background-color: #fee2e2; /* red-100 */
             color: #991b1b; /* red-700 */
         }
-
         .status-unavailable {
             background-color: #ffedd5; /* orange-100 */
             color: #9a3412; /* orange-700 */
@@ -46,7 +42,6 @@
                 opacity: 0;
                 transform: translateY(20px) scale(0.95);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0) scale(1);
@@ -170,7 +165,7 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @DateTimeHelper.ToSeAsiaTimeString(item.CreatedAt, "dd/MM/yyyy")
+                                            @item.CreatedAt.ToString("dd/MM/yyyy")
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex items-center space-x-2">
@@ -201,15 +196,15 @@
                                                     </button>
                                                 }
                                                 @* else if (item.AvailabilityStatus == "Revision")
-                                                    {
-                                                        <button data-action="approve" data-item-id="@item.Id"
-                                                                    onclick="openActionConfirmModal('@item.Id', 'Approved')"
-                                                                    class="text-green-600 hover:text-green-900" title="Approve">
-                                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                                </svg>
-                                                            </button>
-                                                    } *@
+                                                {
+                                                    <button data-action="approve" data-item-id="@item.Id"
+                                                                onclick="openActionConfirmModal('@item.Id', 'Approved')"
+                                                                class="text-green-600 hover:text-green-900" title="Approve">
+                                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                            </svg>
+                                                        </button>
+                                                } *@
                                                 <button class="text-gray-400 hover:text-gray-600" title="More Options">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
@@ -288,7 +283,7 @@
                     </div>
 
                     <div id="modal-content-details" class="p-6">
-                    </div>
+                        </div>
                 </div>
             </div>
 
@@ -340,8 +335,8 @@
                     </div>
                     <div class="flex justify-end p-4 border-t border-gray-200">
                         <button id="message-box-ok-button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-                            OK
-                        </button>
+                                OK
+                            </button>
                     </div>
                 </div>
             </div>
@@ -514,7 +509,7 @@
             applyFiltersButton.addEventListener('click', () => {
                 updateUrlAndReload(1); // Go to the first page when filters are applied
             });
-
+            
             // Pagination click handlers for desktop
             if (paginationPrevious) {
                 paginationPrevious.addEventListener('click', (e) => {

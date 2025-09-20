@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.ProviderApplications;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.ProviderApplicationRepositories;
 using Repositories.UserRepositories;
 
@@ -41,7 +42,7 @@ namespace Services.ProviderApplicationServices
                 ContactPhone = dto.ContactPhone,
                 Notes = dto.Notes,
                 Status = ProviderApplicationStatus.pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _applicationRepository.AddAsync(app);
