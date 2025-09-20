@@ -19,17 +19,24 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div class="space-y-4">
-                    <div class="aspect-w-3 aspect-h-4 bg-gray-100 rounded-lg overflow-hidden">
-                        <img id="mainProductImage" src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")" alt="@Model.Product.Name" class="w-full h-96 lg:h-[600px] object-cover" />
+                    <div class="product-image-container relative bg-gray-100 rounded-lg overflow-hidden" style="height: 600px;">
+                        <img id="mainProductImage" 
+                             src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")" 
+                             alt="@Model.Product.Name" 
+                             class="product-image-main w-full h-full object-contain cursor-pointer" 
+                             onclick="openImageModal(this.src)" />
+                        <button class="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity" onclick="openImageModal(document.getElementById('mainProductImage').src)">
+                            <i data-lucide="maximize-2" class="h-5 w-5"></i>
+                        </button>
                     </div>
-                    <div class="flex space-x-4">
+                    <div class="thumbnail-container">
                         @if (Model.Product.Images != null)
                         {
                             @for (int i = 0; i < Model.Product.Images.Count; i++)
                             {
                                 var image = Model.Product.Images[i];
-                                <button type="button" class="thumbnail-btn w-20 h-20 rounded-lg overflow-hidden border-2 @(i == 0 ? "border-purple-600" : "border-gray-200")" data-image-src="@image.ImageUrl">
-                                    <img src="@image.ImageUrl" alt="@($"{Model.Product.Name} {i + 1}")" class="w-full h-full object-cover" />
+                                <button type="button" class="thumbnail-btn w-20 h-20 rounded-lg overflow-hidden border-2 @(i == 0 ? "border-purple-600" : "border-gray-200") bg-gray-100 hover:border-purple-400 transition-colors" data-image-src="@image.ImageUrl">
+                                    <img src="@image.ImageUrl" alt="@($"{Model.Product.Name} {i + 1}")" class="w-full h-full object-contain" />
                                 </button>
                             }
                         }
@@ -268,10 +275,222 @@
         </form>
     </div>
 </div>
+
+<!-- Image Modal for Full Size View -->
+<div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50">
+    <div class="relative w-full h-full overflow-hidden">
+        <!-- Top Controls -->
+        <div class="zoom-controls absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 z-20">
+            <button id="zoomOutBtn" class="text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200">
+                <i data-lucide="zoom-out" class="h-5 w-5"></i>
+            </button>
+            <span id="zoomLevel" class="text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm font-medium">100%</span>
+            <button id="zoomInBtn" class="text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200">
+                <i data-lucide="zoom-in" class="h-5 w-5"></i>
+            </button>
+            <button id="resetZoomBtn" class="text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200" title="Reset zoom and position">
+                <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+            </button>
+        </div>
+        
+        <!-- Close Button -->
+        <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-opacity z-20">
+            <i data-lucide="x" class="h-6 w-6"></i>
+        </button>
+        
+        <!-- Image Container -->
+        <div id="imageContainer" class="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing">
+            <img id="modalImage" src="" alt="Product Image" class="transition-transform duration-200 select-none" style="transform-origin: center center;" />
+        </div>
+        
+        <!-- Instructions -->
+        <div class="modal-instructions absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 px-4 py-2 rounded-full text-sm z-10">
+            <span>Drag to pan • Scroll to zoom • Double-click to fit</span>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/js/dist/browser/signalr.js"></script>
     <script>
         lucide.createIcons();
+
+        // Image Modal Functions with Pan and Zoom
+        let modalState = {
+            scale: 1,
+            translateX: 0,
+            translateY: 0,
+            isDragging: false,
+            startX: 0,
+            startY: 0,
+            startTranslateX: 0,
+            startTranslateY: 0
+        };
+
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageSrc;
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            
+            // Reset modal state
+            resetModalState();
+            updateImageTransform();
+            updateZoomLevel();
+            
+            // Re-create icons for the new buttons
+            lucide.createIcons();
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            resetModalState();
+        }
+
+        function resetModalState() {
+            modalState.scale = 1;
+            modalState.translateX = 0;
+            modalState.translateY = 0;
+            modalState.isDragging = false;
+        }
+
+        function updateImageTransform() {
+            const modalImage = document.getElementById('modalImage');
+            modalImage.style.transform = `translate(${modalState.translateX}px, ${modalState.translateY}px) scale(${modalState.scale})`;
+        }
+
+        function updateZoomLevel() {
+            const zoomLevel = document.getElementById('zoomLevel');
+            zoomLevel.textContent = Math.round(modalState.scale * 100) + '%';
+        }
+
+        function zoomImage(delta, centerX = null, centerY = null) {
+            const zoomFactor = 1.2;
+            const oldScale = modalState.scale;
+            
+            if (delta > 0) {
+                modalState.scale = Math.min(modalState.scale * zoomFactor, 5); // Max 500%
+            } else {
+                modalState.scale = Math.max(modalState.scale / zoomFactor, 0.1); // Min 10%
+            }
+
+            // If zoom center is provided, adjust translation to zoom towards that point
+            if (centerX !== null && centerY !== null) {
+                const scaleChange = modalState.scale - oldScale;
+                const modalImage = document.getElementById('modalImage');
+                const rect = modalImage.getBoundingClientRect();
+                const imageCenterX = rect.left + rect.width / 2;
+                const imageCenterY = rect.top + rect.height / 2;
+                
+                modalState.translateX -= (centerX - imageCenterX) * (scaleChange / oldScale);
+                modalState.translateY -= (centerY - imageCenterY) * (scaleChange / oldScale);
+            }
+
+            updateImageTransform();
+            updateZoomLevel();
+        }
+
+        // Mouse/Touch Events
+        document.getElementById('imageContainer').addEventListener('mousedown', function(e) {
+            if (e.target.id === 'modalImage') {
+                modalState.isDragging = true;
+                modalState.startX = e.clientX;
+                modalState.startY = e.clientY;
+                modalState.startTranslateX = modalState.translateX;
+                modalState.startTranslateY = modalState.translateY;
+                
+                // Add dragging class for cursor change
+                this.classList.add('dragging');
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (modalState.isDragging) {
+                const deltaX = e.clientX - modalState.startX;
+                const deltaY = e.clientY - modalState.startY;
+                
+                modalState.translateX = modalState.startTranslateX + deltaX;
+                modalState.translateY = modalState.startTranslateY + deltaY;
+                
+                updateImageTransform();
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (modalState.isDragging) {
+                modalState.isDragging = false;
+                // Remove dragging class
+                const container = document.getElementById('imageContainer');
+                if (container) {
+                    container.classList.remove('dragging');
+                }
+            }
+        });
+
+        // Wheel zoom
+        document.getElementById('imageContainer').addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const centerX = e.clientX;
+            const centerY = e.clientY;
+            
+            zoomImage(-e.deltaY, centerX, centerY);
+        });
+
+        // Double click to fit
+        document.getElementById('modalImage').addEventListener('dblclick', function() {
+            resetModalState();
+            updateImageTransform();
+            updateZoomLevel();
+        });
+
+        // Zoom controls
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for the modal to be in DOM, then add event listeners
+            setTimeout(() => {
+                const zoomInBtn = document.getElementById('zoomInBtn');
+                const zoomOutBtn = document.getElementById('zoomOutBtn');
+                const resetZoomBtn = document.getElementById('resetZoomBtn');
+
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', function() {
+                        zoomImage(1);
+                    });
+                }
+
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', function() {
+                        zoomImage(-1);
+                    });
+                }
+
+                if (resetZoomBtn) {
+                    resetZoomBtn.addEventListener('click', function() {
+                        resetModalState();
+                        updateImageTransform();
+                        updateZoomLevel();
+                    });
+                }
+            }, 100);
+        });
+
+        // Close modal when clicking outside the image
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this || e.target.id === 'imageContainer') {
+                closeImageModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
 
@@ -387,8 +606,17 @@
                 thumbnailBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
                         mainImage.src = btn.dataset.imageSrc;
-                        thumbnailBtns.forEach(b => b.classList.remove('border-purple-600', 'border-gray-200'));
+                        thumbnailBtns.forEach(b => {
+                            b.classList.remove('border-purple-600');
+                            b.classList.add('border-gray-200');
+                        });
+                        btn.classList.remove('border-gray-200');
                         btn.classList.add('border-purple-600');
+                    });
+                    
+                    // Add double-click to open modal
+                    btn.addEventListener('dblclick', () => {
+                        openImageModal(btn.dataset.imageSrc);
                     });
                 });
 
