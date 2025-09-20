@@ -50,7 +50,7 @@ namespace BusinessObject.Mappings
 
             CreateMap<Order, OrderDetailsDto>()
             .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => $"ORD{src.Id.ToString().Substring(0, 3).ToUpper()}"))
-            .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => DateTime.SpecifyKind(src.CreatedAt, DateTimeKind.Utc)))
+            .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => src.CreatedAt))
             .ForMember(dest => dest.RentalStartDate, opt => opt.MapFrom(src => src.RentalStart))
             .ForMember(dest => dest.RentalEndDate, opt => opt.MapFrom(src => src.RentalEnd))
             .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))

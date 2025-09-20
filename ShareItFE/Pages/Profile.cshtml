@@ -199,7 +199,7 @@
                                         <div class="order-header">
                                             <div class="order-header-info">
                                                 <h3 class="order-id">Order #@order.OrderCode</h3>
-                                                <p class="order-date">Placed on: @TimeZoneInfo.ConvertTimeFromUtc(order.CreatedAt, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).ToString("dd/M/yyyy")</p>
+                                                <p class="order-date">Placed on: @order.CreatedAt.ToString("dd/M/yyyy")</p>
                                             </div>
                                             <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
                                         </div>
@@ -823,7 +823,7 @@
                             headers['Authorization'] = `Bearer ${accessToken}`;
                         }
 
-                        const response = await fetch(`${backendBaseUrl}/api/orders/rent-again`, {
+                        const response = await fetch(`${backendBaseUrl}/orders/rent-again`, {
                             method: 'POST',
                             headers: headers,
                             credentials: 'include',

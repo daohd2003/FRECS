@@ -54,10 +54,33 @@ namespace ShareItFE.Pages
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
         public string AccessToken { get; set; }
 
-        public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile")
+        public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile", string paymentStatus = null, string vnp_TxnRef = null, string vnp_Message = null)
         {
             CurrentPage = pageNum;
             FavoritesPageNum = favPage;
+
+            // Handle VNPay payment status from callback
+            if (!string.IsNullOrEmpty(paymentStatus))
+            {
+                // Clear any existing TempData messages to prevent showing old toast messages
+                TempData.Remove("SuccessMessage");
+                TempData.Remove("ErrorMessage");
+                
+                switch (paymentStatus.ToLower())
+                {
+                    case "success":
+                        SuccessMessage = "Payment completed successfully! Your order has been confirmed.";
+                        break;
+                    case "failed":
+                        ErrorMessage = !string.IsNullOrEmpty(vnp_Message) 
+                            ? $"Payment failed: {vnp_Message}" 
+                            : "Payment failed. Please try again.";
+                        break;
+                    case "error":
+                        ErrorMessage = "An error occurred during payment processing. Please contact support if this persists.";
+                        break;
+                }
+            }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null) return RedirectToPage("/Auth");

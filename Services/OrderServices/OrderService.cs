@@ -838,7 +838,7 @@ namespace Services.OrderServices
                 CreatedAt = DateTimeHelper.GetVietnamTime(),
             };
 
-            int calculatedRentalDays = (int)(requestDto.NewRentalEndDate - requestDto.NewRentalStartDate).TotalDays + 1;
+            int calculatedRentalDays = Math.Max(1, (int)(requestDto.NewRentalEndDate - requestDto.NewRentalStartDate).TotalDays);
 
             foreach (var originalItem in originalOrder.Items)
             {
