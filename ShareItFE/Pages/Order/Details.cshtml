@@ -1,4 +1,5 @@
 ﻿@page "{id:guid}"
+@using ShareItFE.Utilities
 @model ShareItFE.Pages.Order.DetailsModel
 @{
     ViewData["Title"] = $"Order Details - {Model.Order.OrderCode}";
@@ -50,7 +51,7 @@
                 <div class="order-title">
                     <div>
                         <h1>Order @Model.Order.OrderCode</h1>
-                        <p>Placed on @TimeZoneInfo.ConvertTimeFromUtc(Model.Order.OrderDate, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                        <p>Placed on @DateTimeHelper.ToSeAsiaTimeString(Model.Order.OrderDate, "MMMM d, yyyy 'at' h:mm tt")</p>
                     </div>
                     <span class="status-badge @GetStatusColor(Model.Order.Status)">
                         @Model.Order.Status.ToString().Replace("_", " ")
