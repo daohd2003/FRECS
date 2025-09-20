@@ -823,7 +823,7 @@
                             headers['Authorization'] = `Bearer ${accessToken}`;
                         }
 
-                        const response = await fetch(`${backendBaseUrl}/api/orders/rent-again`, {
+                        const response = await fetch(`${backendBaseUrl}/orders/rent-again`, {
                             method: 'POST',
                             headers: headers,
                             credentials: 'include',

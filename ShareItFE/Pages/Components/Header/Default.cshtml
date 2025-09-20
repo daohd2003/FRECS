@@ -23,7 +23,7 @@
             {
                 <a asp-page="/Provider/Apply">Become a Provider</a>
             }
-            <a href="/Index#how-it-works">How it Works</a>
+            <a href="/#luxury-fashion">How it Works</a>
             @if (Model.IsUserLoggedIn && (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase)))
             {
                 <a asp-page="/Contact">Contact</a>
@@ -232,7 +232,7 @@
                 {
                     <a asp-page="/Provider/Apply">Become a Provider</a>
                 }
-                <a href="/Index#how-it-works">How it Works</a>
+                <a href="/#luxury-fashion">How it Works</a>
                 <a asp-page="/Contact">Contact</a>
             </nav>
         </div>
