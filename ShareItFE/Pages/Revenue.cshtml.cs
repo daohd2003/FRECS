@@ -41,6 +41,8 @@ namespace ShareItFE.Pages
         [TempData]
         public string ErrorMessage { get; set; }
 
+        public string UserRole { get; set; } = "customer";
+
         public async Task<IActionResult> OnGetAsync()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -48,6 +50,9 @@ namespace ShareItFE.Pages
             {
                 return RedirectToPage("/Auth");
             }
+
+            // Determine user role
+            UserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "customer";
 
             try
             {

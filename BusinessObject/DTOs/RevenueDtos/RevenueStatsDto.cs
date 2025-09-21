@@ -14,6 +14,23 @@ namespace BusinessObject.DTOs.RevenueDtos
         public decimal AverageOrderValue { get; set; }
         public decimal PreviousAverageOrderValue { get; set; }
         public decimal AvgOrderValueGrowthPercentage { get; set; }
+        
+        // New metrics for Provider
+        public int ActiveListings { get; set; }
+        public int PreviousActiveListings { get; set; }
+        public decimal ActiveListingsGrowthPercentage { get; set; }
+        public decimal CustomerRating { get; set; }
+        public decimal PreviousCustomerRating { get; set; }
+        public decimal CustomerRatingGrowthPercentage { get; set; }
+        
+        // New metrics for Customer
+        public decimal TotalSpent { get; set; }
+        public decimal PreviousTotalSpent { get; set; }
+        public decimal TotalSpentGrowthPercentage { get; set; }
+        public string FavoriteCategory { get; set; } = string.Empty;
+        public string PreviousFavoriteCategory { get; set; } = string.Empty;
+        public int FavoriteCategoryCount { get; set; }
+        
         public List<RevenueChartDataDto> ChartData { get; set; } = new List<RevenueChartDataDto>();
         public List<OrderStatusBreakdownDto> StatusBreakdown { get; set; } = new List<OrderStatusBreakdownDto>();
     }
