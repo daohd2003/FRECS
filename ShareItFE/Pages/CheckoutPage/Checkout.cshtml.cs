@@ -200,8 +200,10 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Policy agreement is now handled on Cart page, so set to true by default
-            Input.HasAgreedToPolicies = true;
+            if (!Request.Form.ContainsKey("Input.HasAgreedToPolicies"))
+            {
+                Input.HasAgreedToPolicies = false;
+            }
 
             if (!ModelState.IsValid)
             {
@@ -213,6 +215,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 Input.Address = currentInputState.Address;
                 Input.PaymentMethod = currentInputState.PaymentMethod;
                 Input.UseSameProfile = currentInputState.UseSameProfile;
+                Input.HasAgreedToPolicies = currentInputState.HasAgreedToPolicies;
                 return Page();
             }
 
@@ -444,7 +447,7 @@ namespace ShareItFE.Pages.CheckoutPage
         public string? Email { get; set; }
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
-        public bool HasAgreedToPolicies { get; set; } = true;
+        public bool HasAgreedToPolicies { get; set; } = false;
 
         public string PaymentMethod { get; set; }
     }

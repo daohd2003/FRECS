@@ -1,6 +1,6 @@
 // API Base URL - Change this to your API endpoint
 const API_BASE_URL =
-  'https://8000-dep-01k4ce57rkq640n1z4f9zzxn3c-d.cloudspaces.litng.ai'
+  'https://8000-dep-01k4ckx0cgr2mve67q80pqm43h-d.cloudspaces.litng.ai'
 
 // Elements
 const personInput = document.getElementById('personInput')

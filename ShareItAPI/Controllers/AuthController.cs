@@ -164,18 +164,11 @@ namespace ShareItAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            try
-            {
-                var tokenResponse = await _jwtService.RegisterAsync(request);
-                if (tokenResponse == null)
-                    return BadRequest(new ApiResponse<string>("Email is already registered", null));
+            var tokenResponse = await _jwtService.RegisterAsync(request);
+            if (tokenResponse == null)
+                return BadRequest(new ApiResponse<string>("Email is already registered", null));
 
-                return Ok(new ApiResponse<TokenResponseDto>("Registration successful! Please check your email to verify your account.", tokenResponse));
-            }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("already registered but not verified"))
-            {
-                return BadRequest(new ApiResponse<string>(ex.Message, null));
-            }
+            return Ok(new ApiResponse<TokenResponseDto>("Registration successful! Please check your email to verify your account.", tokenResponse));
         }
 
         [HttpPost("change-password")]
