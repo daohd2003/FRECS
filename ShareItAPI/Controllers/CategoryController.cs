@@ -35,6 +35,15 @@ namespace ShareItAPI.Controllers
 			return Ok(category);
 		}
 
+		[HttpGet("by-name/{name}")]
+		[AllowAnonymous]
+		public async Task<IActionResult> GetByName(string name)
+		{
+			var category = await _service.GetByNameAsync(name);
+			if (category == null) return NotFound(new ApiResponse<string>($"Category '{name}' not found", null));
+			return Ok(new ApiResponse<object>("Category found", category));
+		}
+
 		[HttpPost]
 		public async Task<IActionResult> Create([FromBody] CategoryCreateUpdateDto dto)
 		{

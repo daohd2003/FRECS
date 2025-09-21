@@ -49,6 +49,8 @@ namespace BusinessObject.Models
 
         public int PurchaseQuantity { get; set; } = 0;
 
+        public int RentalQuantity { get; set; } = 0;
+
         [Required]
         public AvailabilityStatus AvailabilityStatus { get; set; }
 

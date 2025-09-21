@@ -32,6 +32,12 @@ namespace Services.CategoryServices
             return entity == null ? null : _mapper.Map<CategoryDto>(entity);
         }
 
+        public async Task<CategoryDto?> GetByNameAsync(string name)
+        {
+            var entity = await _repository.GetByNameAsync(name);
+            return entity == null ? null : _mapper.Map<CategoryDto>(entity);
+        }
+
         public async Task<CategoryDto> CreateAsync(CategoryCreateUpdateDto dto)
         {
             var entity = _mapper.Map<Category>(dto);

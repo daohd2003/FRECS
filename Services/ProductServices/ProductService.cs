@@ -3,9 +3,9 @@ using AutoMapper.QueryableExtensions;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
-using BusinessObject.Utilities;
 
 
 namespace Services.ProductServices
@@ -69,13 +69,11 @@ namespace Services.ProductServices
                     Color = dto.Color,
                     PricePerDay = dto.PricePerDay,
                     PurchasePrice = dto.PurchasePrice ?? 0,
-                    PurchaseQuantity = dto.Quantity ?? 0,
-                    // Sẽ được gán từ Controller
-
-                    // Các giá trị mặc định khi tạo mới
+                    PurchaseQuantity = dto.PurchaseQuantity ?? 0,
+                    RentalQuantity = dto.RentalQuantity ?? 0,
                     CreatedAt = DateTimeHelper.GetVietnamTime(),
-                    AvailabilityStatus = AvailabilityStatus.pending,
-
+                    AvailabilityStatus = AvailabilityStatus.available,
+                    UpdatedAt = DateTimeHelper.GetVietnamTime(),
                     AverageRating = 0,
                     RatingCount = 0,
                     IsPromoted = false
