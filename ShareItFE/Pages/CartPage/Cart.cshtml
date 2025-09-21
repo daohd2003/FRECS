@@ -219,7 +219,6 @@
                         @* Policy Agreement Section *@
                         <div class="mb-6">
                             <input type="checkbox" id="hasAgreedToPolicies" name="HasAgreedToPolicies" value="true"
-                                   checked
                                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
                             <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
                                 I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
@@ -256,11 +255,8 @@
                 setTimeout(() => { toastError.style.display = 'none'; }, 4000);
             }
 
-            // Ensure policy checkbox is checked by default
-            const policyCheckbox = document.getElementById('hasAgreedToPolicies');
-            if (policyCheckbox) {
-                policyCheckbox.checked = true;
-            }
+            // Policy checkbox is now unchecked by default
+            // Users must manually check the agreement checkbox
 
             // Auto-submit global schedule on change
             const globalForm = document.getElementById('global-schedule-form');
