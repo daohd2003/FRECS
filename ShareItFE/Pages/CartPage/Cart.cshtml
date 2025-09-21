@@ -188,15 +188,12 @@
                                 <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
                             </div>
 
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Shipping fee</span>
-                                <span class="font-semibold">FREE</span>
-                            </div>
-
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Discount</span>
-                                <span class="font-semibold">0 VND</span>
-                            </div>
+                            @* <div class="flex justify-between">
+                                <span class="text-gray-600">Giao hàng</span>
+                                <span class="font-semibold">
+                                    @(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")
+                                </span>
+                            </div> *@
 
                             <div class="border-t pt-4">
                                 <div class="flex justify-between text-lg font-bold">
@@ -215,26 +212,29 @@
                             </div>
                         } *@
 
-                        @* Policy Agreement Section *@
-                        <div class="mb-6">
-                            <input type="checkbox" id="hasAgreedToPolicies" name="HasAgreedToPolicies" value="true"
-                                   checked 
-                                   class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                            <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
-                                I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
-                            </label>
-                            <div id="policy-error" class="text-red-600 text-sm mt-1 hidden">
-                                Please read the rental and purchase policy carefully and tick the checkbox to continue.
-                            </div>
-                        </div>
-
-                        <a href="#" onclick="handleMakePayment(event)" 
-                           id="makePaymentButton"
+                        <a asp-page="/CheckoutPage/Checkout"
                            class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-center block mb-4 flex items-center justify-center space-x-2">
                             <i class="bi bi-lock-fill h-5 w-5"></i>
                             <span>Make payment</span>
                         </a>
 
+                        @* Security Features *@
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <div class="space-y-3 text-sm text-gray-600">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>Secure Payment</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>Free returns within 24 hours</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>Includes professional cleaning service</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -255,12 +255,6 @@
                 setTimeout(() => { toastError.style.display = 'none'; }, 4000);
             }
 
-            // Ensure policy checkbox is checked by default
-            const policyCheckbox = document.getElementById('hasAgreedToPolicies');
-            if (policyCheckbox) {
-                policyCheckbox.checked = true;
-            }
-
             // Auto-submit global schedule on change
             const globalForm = document.getElementById('global-schedule-form');
             const startInput = document.getElementById('globalStartDate');
@@ -275,23 +269,5 @@
                 });
             }
         });
-
-        function handleMakePayment(event) {
-            event.preventDefault();
-            
-            const policyCheckbox = document.getElementById('hasAgreedToPolicies');
-            const errorDiv = document.getElementById('policy-error');
-            
-            if (!policyCheckbox.checked) {
-                errorDiv.classList.remove('hidden');
-                return false;
-            }
-            
-            // Hide error message if shown
-            errorDiv.classList.add('hidden');
-            
-            // Redirect to checkout page
-            window.location.href = '@Url.Page("/CheckoutPage/Checkout")';
-        }
     </script>
 }
