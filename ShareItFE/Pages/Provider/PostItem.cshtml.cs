@@ -1,4 +1,6 @@
 ﻿using BusinessObject.DTOs.ProductDto;
+// CategoryDto is in ProductDto namespace
+// using BusinessObject.DTOs.CategoryDto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net.Http.Headers;
@@ -28,7 +30,7 @@ namespace ShareItFE.Pages.Provider
         public string PrimaryImagePublicId { get; set; }
         public List<string> SecondaryImagePublicIds { get; set; } = new List<string>();
 
-        public List<string> Categories { get; } = new List<string> { "Evening Wear", "Wedding Dresses", "Cocktail Dresses", "Formal Suits", "Traditional Wear", "Casual Wear", "Accessories", "Kids Wear" };
+        public List<CategoryDto> Categories { get; set; } = new List<CategoryDto>();
         public List<string> Sizes { get; } = new List<string> { "XS", "S", "M", "L", "XL", "XXL", "2T", "3T", "4T", "5T", "6T" };
         public List<Step> Steps { get; } = new List<Step>
         {
@@ -41,7 +43,10 @@ namespace ShareItFE.Pages.Provider
         // --- QUẢN LÝ TRẠNG THÁI (TEMP DATA) ---
         private void RestoreStateFromTempData()
         {
-            if (TempData.Peek("Product") is string productData) Product = JsonSerializer.Deserialize<ProductDTO>(productData, _jsonOptions);
+            if (TempData.Peek("Product") is string productData)
+            {
+                Product = JsonSerializer.Deserialize<ProductDTO>(productData, _jsonOptions);
+            }
             if (TempData.Peek("PrimaryImageUrl") is string primaryUrl) PrimaryImageUrl = primaryUrl;
             if (TempData.Peek("SecondaryImageUrls") is string secondaryUrlsData) SecondaryImageUrls = JsonSerializer.Deserialize<List<string>>(secondaryUrlsData, _jsonOptions) ?? new List<string>();
             if (TempData.Peek("PrimaryImagePublicId") is string primaryPublicId) PrimaryImagePublicId = primaryPublicId;
@@ -59,32 +64,56 @@ namespace ShareItFE.Pages.Provider
             TempData["SecondaryImagePublicIds"] = JsonSerializer.Serialize(SecondaryImagePublicIds);
         }
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
             if (!User.Identity.IsAuthenticated) return Page();
+            await LoadCategoriesAsync();
             RestoreStateFromTempData();
             TempData.Keep();
             return Page();
         }
 
         // --- ĐIỀU HƯỚNG CÁC BƯỚC ---
-        public IActionResult OnPostPrevious()
+        public async Task<IActionResult> OnPostPreviousAsync()
         {
+            await LoadCategoriesAsync();
             RestoreStateFromTempData();
             CurrentStep = Math.Max(1, CurrentStep - 1);
             SaveStateToTempData();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostNext()
+        public async Task<IActionResult> OnPostNextAsync()
         {
+            await LoadCategoriesAsync();
+
+            // Lưu giá trị từ form trước khi restore
+            var submittedName = Product.Name;
+            var submittedDescription = Product.Description;
+            var submittedSize = Product.Size;
+            var submittedColor = Product.Color;
+            var submittedCategoryId = Product.CategoryId;
+
             RestoreStateFromTempData();
+
+            // Restore giá trị từ form
+            if (!string.IsNullOrEmpty(submittedName)) Product.Name = submittedName;
+            if (!string.IsNullOrEmpty(submittedDescription)) Product.Description = submittedDescription;
+            if (!string.IsNullOrEmpty(submittedSize)) Product.Size = submittedSize;
+            if (!string.IsNullOrEmpty(submittedColor)) Product.Color = submittedColor;
+            if (submittedCategoryId != null && submittedCategoryId != Guid.Empty) Product.CategoryId = submittedCategoryId;
 
             if (CurrentStep == 1)
             {
                 if (string.IsNullOrEmpty(Product.Name) || string.IsNullOrEmpty(Product.Description) || Product.CategoryId == Guid.Empty || string.IsNullOrEmpty(Product.Size))
                 {
                     ModelState.AddModelError("Product", "Please fill all required fields in this step.");
+                    SaveStateToTempData();
+                    return Page();
+                }
+                if (Product.CategoryId == null || Product.CategoryId == Guid.Empty)
+                {
+                    ModelState.AddModelError("Product.CategoryId", "Please select a category.");
                     SaveStateToTempData();
                     return Page();
                 }
@@ -208,12 +237,42 @@ namespace ShareItFE.Pages.Provider
         // --- SUBMIT CUỐI CÙNG ---
         public async Task<IActionResult> OnPostSubmitAsync()
         {
-            var submittedPrice = Product.PricePerDay;
+            // Lưu tất cả data từ form trước khi restore TempData
+            var formData = new
+            {
+                Name = Product.Name,
+                Description = Product.Description,
+                CategoryId = Product.CategoryId,
+                Size = Product.Size,
+                Color = Product.Color,
+                PricePerDay = Product.PricePerDay,
+                PurchasePrice = Product.PurchasePrice,
+                PurchaseQuantity = Product.PurchaseQuantity,
+                RentalQuantity = Product.RentalQuantity
+            };
+
+            // Load categories first để đảm bảo có data để map
+            await LoadCategoriesAsync();
+
             RestoreStateFromTempData();
-            Product.PricePerDay = submittedPrice;
+
+            // Restore tất cả giá trị từ form (ưu tiên form data hơn TempData)
+            Product.Name = formData.Name;
+            Product.Description = formData.Description;
+            Product.CategoryId = formData.CategoryId;
+            Product.Size = formData.Size;
+            Product.Color = formData.Color;
+            Product.PricePerDay = formData.PricePerDay;
+            Product.PurchasePrice = formData.PurchasePrice;
+            Product.PurchaseQuantity = formData.PurchaseQuantity;
+            Product.RentalQuantity = formData.RentalQuantity;
+
             ModelState.Clear();
             if (Product.PricePerDay <= 0) ModelState.AddModelError("Product.PricePerDay", "Please enter a valid price.");
             if (string.IsNullOrEmpty(PrimaryImageUrl)) ModelState.AddModelError("PrimaryImageUrl", "Primary image is required.");
+            if (Product.CategoryId == null || Product.CategoryId == Guid.Empty)
+                ModelState.AddModelError("Product.CategoryId", "Please select a category.");
+
             if (ModelState.ErrorCount > 0)
             {
                 CurrentStep = string.IsNullOrEmpty(PrimaryImageUrl) ? 2 : 3;
@@ -230,6 +289,9 @@ namespace ShareItFE.Pages.Provider
                 Size = Product.Size,
                 Color = Product.Color,
                 PricePerDay = Product.PricePerDay,
+                PurchasePrice = Product.PurchasePrice != 0 ? Product.PurchasePrice : 0,
+                PurchaseQuantity = Product.PurchaseQuantity > 0 ? Product.PurchaseQuantity : 1,
+                RentalQuantity = Product.RentalQuantity > 0 ? Product.RentalQuantity : 1,
                 Images = new List<ProductImageDTO>()
             };
 
@@ -265,6 +327,77 @@ namespace ShareItFE.Pages.Provider
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
             return client;
+        }
+
+        private async Task LoadCategoriesAsync()
+        {
+            try
+            {
+                var client = await GetAuthenticatedClientAsync();
+                var response = await client.GetAsync("api/categories");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var categories = JsonSerializer.Deserialize<List<CategoryDto>>(content, _jsonOptions);
+                    Categories = categories ?? new List<CategoryDto>();
+                }
+                else
+                {
+                    // Fallback to default categories
+                    Categories = GetDefaultCategories();
+                }
+            }
+            catch (Exception)
+            {
+                // Log error if needed, fallback to default categories
+                Categories = GetDefaultCategories();
+            }
+        }
+
+        private List<CategoryDto> GetDefaultCategories()
+        {
+            return new List<CategoryDto>
+            {
+                new CategoryDto { Id = Guid.NewGuid(), Name = "Evening Wear", Description = "Evening wear", IsActive = true },
+                new CategoryDto { Id = Guid.NewGuid(), Name = "Wedding Dresses", Description = "Wedding dresses", IsActive = true },
+                new CategoryDto { Id = Guid.NewGuid(), Name = "Formal Suits", Description = "Formal suits", IsActive = true },
+                new CategoryDto { Id = Guid.NewGuid(), Name = "Casual Wear", Description = "Casual wear", IsActive = true }
+            };
+        }
+
+        private async Task<Guid?> GetCategoryIdByNameAsync(string categoryName)
+        {
+            if (string.IsNullOrEmpty(categoryName))
+            {
+                // Use first available category if no category selected
+                return Categories.FirstOrDefault()?.Id;
+            }
+
+            try
+            {
+                var client = await GetAuthenticatedClientAsync();
+                var response = await client.GetAsync($"api/categories/by-name/{Uri.EscapeDataString(categoryName)}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<CategoryDto>>(content, _jsonOptions);
+                    return apiResponse?.Data?.Id;
+                }
+                else
+                {
+                    // Fallback: tìm trong danh sách Categories đã load
+                    var category = Categories.FirstOrDefault(c => c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
+                    return category?.Id;
+                }
+            }
+            catch (Exception)
+            {
+                // Fallback: tìm trong danh sách Categories đã load
+                var category = Categories.FirstOrDefault(c => c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
+                return category?.Id;
+            }
         }
 
         public class ApiResponse<T> { public T Data { get; set; } public string Message { get; set; } }

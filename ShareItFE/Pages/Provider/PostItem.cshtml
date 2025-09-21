@@ -129,10 +129,17 @@
                         <div class="space-y-6">
                             <div><label class="block text-sm font-medium text-gray-700 mb-2">Item Title *</label><input type="text" asp-for="Product.Name" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" /><span asp-validation-for="Product.Name" class="text-red-500 text-sm"></span></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-2">Description *</label><textarea asp-for="Product.Description" required rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea><span asp-validation-for="Product.Description" class="text-red-500 text-sm"></span></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-2">Category *</label><select asp-for="Product.Category" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"><option value="">Select a category</option>@foreach (var c in Model.Categories)
+                            <div><label class="block text-sm font-medium text-gray-700 mb-2">Category *</label><select asp-for="Product.CategoryId" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"><option value="">Select a category</option>@foreach (var c in Model.Categories)
                                     {
-                                        <option value="@c">@c</option>
-                                    }</select><span asp-validation-for="Product.Category" class="text-red-500 text-sm"></span></div>
+                                        if (Model.Product.CategoryId == c.Id)
+                                        {
+                                            <option value="@c.Id" selected>@c.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    }</select><span asp-validation-for="Product.CategoryId" class="text-red-500 text-sm"></span><p class="text-xs text-gray-500 mt-1"></p></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-3">Available Size *</label><div class="flex flex-wrap gap-3">@foreach (var s in Model.Sizes)
                                     {
                                         <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors @(Model.Product.Size==s ? "border-purple-600 bg-purple-600 text-white" : "border-gray-300 text-gray-700")" data-size="@s">@s</button>
@@ -160,10 +167,35 @@
 
                     @if (Model.CurrentStep == 3)
                     {
+                        <!-- Hidden fields để preserve data từ Step 1 và Step 2 -->
+                        <input type="hidden" asp-for="Product.Name" />
+                        <input type="hidden" asp-for="Product.Description" />
+                        <input type="hidden" asp-for="Product.CategoryId" />
+                        <input type="hidden" asp-for="Product.Size" />
+                        <input type="hidden" asp-for="Product.Color" />
+                        
                         <div class="space-y-6">
-                            <div class="text-center mb-6"><div class="h-16 w-16 text-green-500 mx-auto mb-4 flex items-center justify-center text-4xl font-bold">₫</div><h3 class="text-lg font-semibold text-gray-900 mb-2">Set Your Pricing</h3><p class="text-gray-600">Price competitively to attract more renters</p></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-2">Rental Price per Day *</label><div class="relative"><div class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 flex items-center justify-center font-semibold">₫</div><input type="number" asp-for="Product.PricePerDay" required class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" /></div><span asp-validation-for="Product.PricePerDay" class="text-red-500 text-sm"></span></div>
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-4"><h4 class="font-medium text-green-900 mb-2">Pricing Suggestions</h4><div class="text-sm text-green-800 space-y-1"><p>• Designer items: 8-15% of retail price per day</p><p>• Mid-range items: 5-10% of retail price per day</p></div></div>
+                            <div class="text-center mb-6"><i data-lucide="dollar-sign" class="h-16 w-16 text-green-500 mx-auto mb-4"></i><h3 class="text-lg font-semibold text-gray-900 mb-2">Set Your Pricing & Inventory</h3><p class="text-gray-600">Configure pricing and quantity information</p></div>
+                            
+                            <!-- Rental Information -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h4 class="font-medium text-blue-900 mb-4 flex items-center"><i data-lucide="calendar" class="h-5 w-5 mr-2"></i>Rental Information</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Rental Price per Day *</label><div class="relative"><i data-lucide="dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.PricePerDay" required class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" /></div><span asp-validation-for="Product.PricePerDay" class="text-red-500 text-sm"></span></div>
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Available for Rental (Quantity)</label><div class="relative"><i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.RentalQuantity" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="0" placeholder="0" /></div><span asp-validation-for="Product.RentalQuantity" class="text-red-500 text-sm"></span></div>
+                                </div>
+                            </div>
+
+                            <!-- Purchase Information -->
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <h4 class="font-medium text-purple-900 mb-4 flex items-center"><i data-lucide="shopping-cart" class="h-5 w-5 mr-2"></i>Purchase Information (Optional)</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Purchase Price</label><div class="relative"><i data-lucide="dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.PurchasePrice" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" placeholder="0.00" /></div><span asp-validation-for="Product.PurchasePrice" class="text-red-500 text-sm"></span></div>
+                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Available for Purchase (Quantity)</label><div class="relative"><i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.PurchaseQuantity" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="0" placeholder="0" /></div><span asp-validation-for="Product.PurchaseQuantity" class="text-red-500 text-sm"></span></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4"><h4 class="font-medium text-green-900 mb-2">Pricing Suggestions</h4><div class="text-sm text-green-800 space-y-1"><p>• Designer items: 8-15% of retail price per day</p><p>• Mid-range items: 5-10% of retail price per day</p><p>• Leave purchase fields empty if item is only for rental</p></div></div>
                         </div>
                     }
 

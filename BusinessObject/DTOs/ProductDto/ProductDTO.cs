@@ -7,13 +7,15 @@
         public string ProviderName { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public Guid CategoryId { get; set; }
+        public Guid? CategoryId { get; set; }
         public string Category { get; set; }
         public string? Size { get; set; }
         public string? Color { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal PurchasePrice { get; set; }
         public int Quantity { get; set; }
+        public int PurchaseQuantity { get; set; }
+        public int RentalQuantity { get; set; }
         public string AvailabilityStatus { get; set; }
         public bool IsPromoted { get; set; }
         public int RentCount { get; set; }
@@ -35,7 +37,8 @@
         public string? Color { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal? PurchasePrice { get; set; }
-        public int? Quantity { get; set; }
+        public int? PurchaseQuantity { get; set; }
+        public int? RentalQuantity { get; set; }
         public List<ProductImageDTO>? Images { get; set; }
     }
 }
