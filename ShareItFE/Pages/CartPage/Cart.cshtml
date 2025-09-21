@@ -31,7 +31,7 @@
         {
             <div class="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div class="text-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24 text-gray-300 mx-auto mb-6"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24 text-gray-300 mx-auto mb-6"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
                     <h2 class="text-2xl font-bold text-gray-900 mb-4">Continue shopping</h2>
                     <p class="text-gray-600 mb-8">Discover great outfits for your special occasions</p>
                     <a asp-page="/Products/Products" class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
@@ -45,7 +45,7 @@
         {
             <div class="flex items-center space-x-4 mb-8">
                 <a asp-page="/Products/Products" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
                     <span>Continue shopping</span>
                 </a>
             </div>
@@ -109,7 +109,8 @@
                                                 <span>From @globalStart.ToString("dd-MM-yyyy") To @globalEnd.ToString("dd-MM-yyyy")</span>
                                             </div>
 
-                                            <div class="flex items-center"> @* Added a flex container for controls ************ NEW ************ *@
+                                            <div class="flex items-center">
+                                                @* Added a flex container for controls ************ NEW ************ *@
                                                 @* Controls for Quantity *@
                                                 <div class="flex flex-col">
                                                     <label class="text-xs text-gray-500 mb-1">Quantity</label>
@@ -131,21 +132,21 @@
 
                                                 <div class="vertical-divider"></div> @************ NEW ************
 
-                                                @* Controls for Rental Days *@
+                                                    @* Controls for Rental Days *@
                                                 <div class="flex flex-col">
                                                     <label class="text-xs text-gray-500 mb-1">Number of rental days</label>
                                                     <span class="text-sm font-medium min-w-[3rem] text-center">@globalDays</span>
                                                 </div>
 
                                                 @* Remove Button *@
-                                                    <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Are you sure you want to remove this product from cart?');" class="ml-auto-remove-btn">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                        <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Remove product">
-                                                            <i class="bi bi-trash-fill h-5 w-5"></i>
-                                                            <span class="text-sm">Delete</span>
-                                                        </button>
-                                                    </form>
+                                                <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Are you sure you want to remove this product from cart?');" class="ml-auto-remove-btn">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="itemId" value="@item.ItemId" />
+                                                    <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Remove product">
+                                                        <i class="bi bi-trash-fill h-5 w-5"></i>
+                                                        <span class="text-sm">Delete</span>
+                                                    </button>
+                                                </form>
                                             </div> @* End of new flex container for controls ************ NEW ************ *@
                                         </div>
 
@@ -188,12 +189,15 @@
                                 <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
                             </div>
 
-                            @* <div class="flex justify-between">
-                                <span class="text-gray-600">Giao hàng</span>
-                                <span class="font-semibold">
-                                    @(Model.DeliveryFee == 0 ? "MIỄN PHÍ" : Model.DeliveryFee.ToString("N0") + " VND")
-                                </span>
-                            </div> *@
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Shipping fee</span>
+                                <span class="font-semibold">FREE</span>
+                            </div>
+
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Discount</span>
+                                <span class="font-semibold">0 VND</span>
+                            </div>
 
                             <div class="border-t pt-4">
                                 <div class="flex justify-between text-lg font-bold">
@@ -204,37 +208,34 @@
                         </div>
 
                         @* @if (Model.DeliveryFee > 0)
-                        {
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                <p class="text-sm text-blue-800">
-                                    Thêm @((100000 - Model.Subtotal).ToString("N0")) VND nữa để được miễn phí giao hàng!
-                                </p>
-                            </div>
-                        } *@
+                            {
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                    <p class="text-sm text-blue-800">
+                                        Thêm @((100000 - Model.Subtotal).ToString("N0")) VND nữa để được miễn phí giao hàng!
+                                    </p>
+                                </div>
+                            } *@
 
-                        <a asp-page="/CheckoutPage/Checkout"
+                        @* Policy Agreement Section *@
+                        <div class="mb-6">
+                            <input type="checkbox" id="hasAgreedToPolicies" name="HasAgreedToPolicies" value="true"
+                                   checked
+                                   class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                            <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
+                                I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
+                            </label>
+                            <div id="policy-error" class="text-red-600 text-sm mt-1 hidden">
+                                Please read the rental and purchase policy carefully and tick the checkbox to continue.
+                            </div>
+                        </div>
+
+                        <a href="#" onclick="handleMakePayment(event)"
+                           id="makePaymentButton"
                            class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-center block mb-4 flex items-center justify-center space-x-2">
                             <i class="bi bi-lock-fill h-5 w-5"></i>
                             <span>Make payment</span>
                         </a>
 
-                        @* Security Features *@
-                        <div class="mt-6 pt-6 border-t border-gray-200">
-                            <div class="space-y-3 text-sm text-gray-600">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Secure Payment</span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Free returns within 24 hours</span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Includes professional cleaning service</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -255,6 +256,12 @@
                 setTimeout(() => { toastError.style.display = 'none'; }, 4000);
             }
 
+            // Ensure policy checkbox is checked by default
+            const policyCheckbox = document.getElementById('hasAgreedToPolicies');
+            if (policyCheckbox) {
+                policyCheckbox.checked = true;
+            }
+
             // Auto-submit global schedule on change
             const globalForm = document.getElementById('global-schedule-form');
             const startInput = document.getElementById('globalStartDate');
@@ -269,5 +276,23 @@
                 });
             }
         });
+
+        function handleMakePayment(event) {
+            event.preventDefault();
+
+            const policyCheckbox = document.getElementById('hasAgreedToPolicies');
+            const errorDiv = document.getElementById('policy-error');
+
+            if (!policyCheckbox.checked) {
+                errorDiv.classList.remove('hidden');
+                return false;
+            }
+
+            // Hide error message if shown
+            errorDiv.classList.add('hidden');
+
+            // Redirect to checkout page
+            window.location.href = '@Url.Page("/CheckoutPage/Checkout")';
+        }
     </script>
 }

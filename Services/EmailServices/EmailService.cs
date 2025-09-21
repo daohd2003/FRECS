@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 using Repositories.EmailRepositories;
 using BusinessObject.DTOs.EmailSetiings;
 using System.Threading.Tasks;
@@ -10,13 +11,16 @@ namespace Services.EmailServices
     {
         private readonly IEmailRepository _emailRepository;
         private readonly SmtpSettings _smtpSettings;
+        private readonly IConfiguration _configuration;
 
         public EmailService(
             IEmailRepository emailRepository,
-            IOptions<SmtpSettings> smtpSettings)
+            IOptions<SmtpSettings> smtpSettings,
+            IConfiguration configuration)
         {
             _emailRepository = emailRepository;
             _smtpSettings = smtpSettings.Value;
+            _configuration = configuration;
         }
 
         public async Task SendVerificationEmailAsync(string toEmail, string verificationLink)
@@ -28,10 +32,8 @@ namespace Services.EmailServices
                         
                         <!-- Header with brand -->
                         <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; position: relative;'>
-                            <div style='background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: table; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3);'>
-                                <div style='display: table-cell; vertical-align: middle; text-align: center; color: white; font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1;'>
-                                    F
-                                </div>
+                            <div style='background: rgba(255,255,255,0.2); width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; line-height: 80px; text-align: center; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3);'>
+                                <img src='https://res.cloudinary.com/dhgxdjczg/image/upload/v1758434540/favicon-32x32_aegdwz.png' alt='FRECS' style='width: 40px; height: 40px; border-radius: 50%; vertical-align: middle;' />
                             </div>
                             <h1 style='color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;'>Welcome to FRECS!</h1>
                             <p style='color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px; font-weight: 400;'>Fashion Rental & E-commerce Platform</p>
@@ -70,9 +72,8 @@ namespace Services.EmailServices
                             <div style='background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd; 
                                         border-radius: 12px; padding: 20px; margin: 30px 0;'>
                                 <div style='display: flex; align-items: flex-start; gap: 12px;'>
-                                    <div style='background: #0ea5e9; width: 24px; height: 24px; border-radius: 50%; 
-                                                display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;'>
-                                        <svg width=""14"" height=""14"" viewBox=""0 0 24 24"" fill=""none"" stroke=""white"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"">
+                                    <div style='width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;'>
+                                        <svg width=""14"" height=""14"" viewBox=""0 0 24 24"" fill=""none"" stroke=""#0ea5e9"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"">
                                             <circle cx=""12"" cy=""12"" r=""10""></circle>
                                             <line x1=""12"" y1=""16"" x2=""12"" y2=""12""></line>
                                             <line x1=""12"" y1=""8"" x2=""12.01"" y2=""8""></line>
@@ -207,6 +208,13 @@ namespace Services.EmailServices
             <p><i>Please reply to the sender's email directly: <a href='mailto:{formData.Email}'>{formData.Email}</a></i></p>";
 
             await _emailRepository.SendEmailAsync(adminEmail, subject, body);
+        }
+
+        private string GetFrontendBaseUrl()
+        {
+            var environment = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "Development";
+            var baseUrl = _configuration[$"FrontendSettings:{environment}:BaseUrl"] ?? "https://localhost:7045";
+            return baseUrl;
         }
     }
 }

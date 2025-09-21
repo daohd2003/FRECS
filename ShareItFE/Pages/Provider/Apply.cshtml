@@ -1,11 +1,11 @@
 @page
 @model ShareItFE.Pages.Provider.ApplyModel
 @{
-    ViewData["Title"] = "Become a Provider";
+    ViewData["Title"] = "Become a provider";
 }
 
 <section class="container py-5">
-    <h1 class="mb-4">Become a Provider</h1>
+    <h1 class="mb-4">Become a provider</h1>
 
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
@@ -33,10 +33,10 @@
             transition: all 0.2s ease;
         }
 
-        .help-icon:hover {
-            background: #42a5f5;
-            transform: scale(1.1);
-        }
+            .help-icon:hover {
+                background: #42a5f5;
+                transform: scale(1.1);
+            }
     </style>
 
     <form method="post" class="card p-4">
