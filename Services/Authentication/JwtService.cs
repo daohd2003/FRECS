@@ -247,7 +247,26 @@ namespace Services.Authentication
 
             if (existingUser != null)
             {
-                return null;
+                // Nếu email đã được xác thực, không cho phép đăng ký lại
+                if (existingUser.EmailConfirmed)
+                {
+                    return null;
+                }
+
+                // Nếu email chưa được xác thực và token verification đã hết hạn
+                // hoặc không có token verification, cho phép đăng ký lại
+                if (!existingUser.EmailConfirmed && 
+                    (existingUser.EmailVerificationExpiry == null || 
+                     existingUser.EmailVerificationExpiry < DateTime.UtcNow))
+                {
+                    // Xóa user cũ chưa được verify để tạo mới
+                    await _userRepository.DeleteAsync(existingUser.Id);
+                }
+                else
+                {
+                    // Email chưa verify nhưng token vẫn còn hạn
+                    throw new InvalidOperationException("Email already registered but not verified. Please check your email or wait for the verification link to expire before registering again.");
+                }
             }
 
             var newUser = new User

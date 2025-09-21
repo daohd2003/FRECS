@@ -101,10 +101,10 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title">Order Actions</h2>
+                <h2 class="card-title">Order Status</h2>
                 <div class="actions-grid">
                     <a href="/Contact" class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</a>
-                    
+
                     <!-- Rent Again Button (for returned orders) -->
                     @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
                     {
@@ -241,10 +241,10 @@
             $('.confirm-delivery-btn').on('click', function() {
                 const orderId = $(this).data('order-id');
                 const button = $(this);
-                
+
                 if (confirm('Are you sure you want to confirm that you have received this order?')) {
                     button.prop('disabled', true).html('<i class="bi bi-hourglass"></i> Processing...');
-                    
+
                     $.ajax({
                         url: `@Model.ApiBaseUrl/orders/${orderId}/confirm-delivery`,
                         type: 'PUT',
@@ -254,7 +254,7 @@
                         },
                         success: function(response) {
                             alert('Order delivery confirmed successfully!');
-                            
+
                             // Reload notifications after order status change
                             if (window.loadNotifications) {
                                 const notificationMenu = document.querySelector('.notification-menu');
@@ -264,7 +264,7 @@
                                     setTimeout(() => window.loadNotifications(userId), 500);
                                 }
                             }
-                            
+
                             location.reload(); // Reload để cập nhật status
                         },
                         error: function(xhr) {
@@ -278,10 +278,10 @@
             $('.mark-returning-btn').on('click', function() {
                 const orderId = $(this).data('order-id');
                 const button = $(this);
-                
+
                 if (confirm('Are you sure you want to mark this order as returning?')) {
                     button.prop('disabled', true).html('<i class="bi bi-hourglass"></i> Processing...');
-                    
+
                     $.ajax({
                         url: `@Model.ApiBaseUrl/orders/${orderId}/mark-returning`,
                         type: 'PUT',
@@ -291,7 +291,7 @@
                         },
                         success: function(response) {
                             alert('Order marked as returning successfully!');
-                            
+
                             // Reload notifications after order status change
                             if (window.loadNotifications) {
                                 const notificationMenu = document.querySelector('.notification-menu');
@@ -301,7 +301,7 @@
                                     setTimeout(() => window.loadNotifications(userId), 500);
                                 }
                             }
-                            
+
                             location.reload(); // Reload để cập nhật status
                         },
                         error: function(xhr) {
@@ -316,10 +316,10 @@
             $('.cancel-order-btn').on('click', function() {
                 const orderId = $(this).data('order-id');
                 const button = $(this);
-                
+
                 if (confirm('Are you sure you want to cancel this order? Once cancelled, you can remove it from your order list.')) {
                     button.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Canceling...');
-                    
+
                     $.ajax({
                         url: `@Model.ApiBaseUrl/orders/${orderId}/cancel`,
                         type: 'PUT',
@@ -329,7 +329,7 @@
                         },
                         success: function(response) {
                             alert('Order cancelled successfully!');
-                            
+
                             // Reload notifications to reflect cancelled order status
                             if (window.loadNotifications) {
                                 const notificationMenu = document.querySelector('.notification-menu');
@@ -341,7 +341,7 @@
                                     }, 500); // Small delay to ensure cancellation is processed
                                 }
                             }
-                            
+
                             location.reload(); // Reload để cập nhật status
                         },
                         error: function(xhr) {

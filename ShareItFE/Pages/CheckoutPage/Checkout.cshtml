@@ -138,14 +138,6 @@
                         </div>
                     </div>
 
-                    <div class="mb-6">
-                        <input type="checkbox" id="hasAgreedToPolicies" name="Input.HasAgreedToPolicies" value="true"
-                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                        <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
-                            I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
-                        </label>
-                        <span asp-validation-for="Input.HasAgreedToPolicies" class="text-danger text-sm mt-1 block"></span>
-                    </div>
 
                     <button type="submit"
                             id="checkoutButton"
@@ -166,18 +158,22 @@
                         {
                             @foreach (var item in Model.Cart.Items)
                             {
-                                <div class="space-y-2">
-                                    <!-- Large product image -->
-                                    <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
-                                         alt="@item.ProductName"
-                                         class="w-full h-auto rounded-lg object-cover" />
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-start space-x-3">
+                                        <!-- Small product image on left -->
+                                        <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
+                                             alt="@item.ProductName"
+                                             class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                             style="width: 40%; margin-top: 10px;" />
 
-                                    <!-- Product information -->
-                                    <div class="text-sm text-gray-800 leading-5">
-                                        <p class="font-semibold">@item.ProductName</p>
-                                        <p>Size: <span class="font-medium">@item.ProductSize</span></p>
-                                        <p>@item.RentalDays days</p>
-                                        <p class="text-purple-600 font-bold text-base mt-1">@((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
+                                        <!-- Product information on right -->
+                                        <div class="flex-1 text-sm text-gray-800" style="margin-left: 10px; margin-top: 10px;">
+                                            <p class="font-semibold mb-1">@item.ProductName</p>
+                                            <p class="mb-1">Size: <span class="font-medium">@item.ProductSize</span></p>
+                                            <p class="mb-1">Quantity: <span class="font-medium">@item.Quantity</span></p>
+                                            <p class="mb-2">Rental period: @item.RentalDays days</p>
+                                            <p class="text-purple-600 font-bold text-base">Amount: @((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
+                                        </div>
                                     </div>
                                 </div>
                             }
@@ -185,19 +181,44 @@
                     </div>
 
                     <!-- Price summary -->
-                    <div class="space-y-3 mb-6 border-t pt-4">
-                        <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
-                        <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping fee</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "FREE" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
-                        <div class="border-t pt-3">
-                            <div class="flex justify-between text-lg font-bold"><span>Total</span><span class="text-purple-600">@Model.Total.ToString("N0") VND</span></div>
+                    <div class="space-y-4 mb-6">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Subtotal</span>
+                            <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Shipping fee</span>
+                            <span class="font-semibold">@(Model.DeliveryFee == 0 ? "FREE" : Model.DeliveryFee.ToString("N0") + " VND")</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Discount</span>
+                            <span class="font-semibold">0 VND</span>
+                        </div>
+
+                        <div class="border-t pt-4">
+                            <div class="flex justify-between text-lg font-bold">
+                                <span>Total</span>
+                                <span class="text-purple-600">@Model.Total.ToString("N0") VND</span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Commitments -->
                     <div class="space-y-3 text-sm text-gray-600">
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>SSL encrypted payment</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Money back guarantee</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>24/7 customer support</span></div>
+                        <div class="flex items-center space-x-3">
+                            <i class="bi bi-shield-check text-green-500 text-sm"></i>
+                            <span> Secure payment (SSL protected)</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="bi bi-arrow-clockwise text-blue-500 text-sm"></i>
+                            <span> Money back guarantee</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="bi bi-headset text-purple-500 text-sm"></i>
+                            <span> Support service 24/7</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -302,28 +323,6 @@
                 }
             }
 
-            // --- 4. Logic cho Checkbox "Đồng ý chính sách" và nút Thanh toán ---
-            const hasAgreedCheckbox = document.getElementById('hasAgreedToPolicies');
-            const checkoutButton = document.getElementById('checkoutButton');
-
-            // Hàm này sẽ cập nhật trạng thái của nút thanh toán
-            function updateCheckoutButtonState() {
-                if (hasAgreedCheckbox.checked) {
-                    checkoutButton.disabled = false;
-                    checkoutButton.classList.remove('bg-purple-400', 'cursor-not-allowed');
-                    checkoutButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
-                } else {
-                    checkoutButton.disabled = true;
-                    checkoutButton.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-                    checkoutButton.classList.add('bg-purple-400', 'cursor-not-allowed');
-                }
-            }
-
-            if (hasAgreedCheckbox && checkoutButton) {
-                hasAgreedCheckbox.addEventListener('change', updateCheckoutButtonState);
-                // Khởi tạo trạng thái ban đầu của nút khi trang tải
-                updateCheckoutButtonState();
-            }
         });
     </script>
 }
