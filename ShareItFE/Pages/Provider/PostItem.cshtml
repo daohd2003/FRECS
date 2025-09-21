@@ -139,7 +139,7 @@
                                         {
                                             <option value="@c.Id">@c.Name</option>
                                         }
-                                    }</select><span asp-validation-for="Product.CategoryId" class="text-red-500 text-sm"></span><p class="text-xs text-gray-500 mt-1">Current: @Model.Product.CategoryId</p></div>
+                                    }</select><span asp-validation-for="Product.CategoryId" class="text-red-500 text-sm"></span><p class="text-xs text-gray-500 mt-1"></p></div>
                             <div><label class="block text-sm font-medium text-gray-700 mb-3">Available Size *</label><div class="flex flex-wrap gap-3">@foreach (var s in Model.Sizes)
                                     {
                                         <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors @(Model.Product.Size==s ? "border-purple-600 bg-purple-600 text-white" : "border-gray-300 text-gray-700")" data-size="@s">@s</button>

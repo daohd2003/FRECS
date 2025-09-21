@@ -43,7 +43,7 @@ namespace ShareItFE.Pages.Provider
         // --- QUẢN LÝ TRẠNG THÁI (TEMP DATA) ---
         private void RestoreStateFromTempData()
         {
-            if (TempData.Peek("Product") is string productData) 
+            if (TempData.Peek("Product") is string productData)
             {
                 Product = JsonSerializer.Deserialize<ProductDTO>(productData, _jsonOptions);
             }
@@ -86,16 +86,16 @@ namespace ShareItFE.Pages.Provider
         public async Task<IActionResult> OnPostNextAsync()
         {
             await LoadCategoriesAsync();
-            
+
             // Lưu giá trị từ form trước khi restore
             var submittedName = Product.Name;
             var submittedDescription = Product.Description;
             var submittedSize = Product.Size;
             var submittedColor = Product.Color;
             var submittedCategoryId = Product.CategoryId;
-            
+
             RestoreStateFromTempData();
-            
+
             // Restore giá trị từ form
             if (!string.IsNullOrEmpty(submittedName)) Product.Name = submittedName;
             if (!string.IsNullOrEmpty(submittedDescription)) Product.Description = submittedDescription;
@@ -105,7 +105,7 @@ namespace ShareItFE.Pages.Provider
 
             if (CurrentStep == 1)
             {
-                if (string.IsNullOrEmpty(Product.Name) || string.IsNullOrEmpty(Product.Description) || string.IsNullOrEmpty(Product.Size))
+                if (string.IsNullOrEmpty(Product.Name) || string.IsNullOrEmpty(Product.Description) || Product.CategoryId == Guid.Empty || string.IsNullOrEmpty(Product.Size))
                 {
                     ModelState.AddModelError("Product", "Please fill all required fields in this step.");
                     SaveStateToTempData();
@@ -250,12 +250,12 @@ namespace ShareItFE.Pages.Provider
                 PurchaseQuantity = Product.PurchaseQuantity,
                 RentalQuantity = Product.RentalQuantity
             };
-            
+
             // Load categories first để đảm bảo có data để map
             await LoadCategoriesAsync();
-            
+
             RestoreStateFromTempData();
-            
+
             // Restore tất cả giá trị từ form (ưu tiên form data hơn TempData)
             Product.Name = formData.Name;
             Product.Description = formData.Description;
@@ -266,20 +266,20 @@ namespace ShareItFE.Pages.Provider
             Product.PurchasePrice = formData.PurchasePrice;
             Product.PurchaseQuantity = formData.PurchaseQuantity;
             Product.RentalQuantity = formData.RentalQuantity;
-            
+
             ModelState.Clear();
             if (Product.PricePerDay <= 0) ModelState.AddModelError("Product.PricePerDay", "Please enter a valid price.");
             if (string.IsNullOrEmpty(PrimaryImageUrl)) ModelState.AddModelError("PrimaryImageUrl", "Primary image is required.");
-            if (Product.CategoryId == null || Product.CategoryId == Guid.Empty) 
+            if (Product.CategoryId == null || Product.CategoryId == Guid.Empty)
                 ModelState.AddModelError("Product.CategoryId", "Please select a category.");
-            
+
             if (ModelState.ErrorCount > 0)
             {
                 CurrentStep = string.IsNullOrEmpty(PrimaryImageUrl) ? 2 : 3;
                 SaveStateToTempData();
                 return Page();
             }
-            
+
             // Tạo đối tượng ProductDTO để gửi đến API
             var productDtoToSend = new ProductRequestDTO
             {
@@ -335,7 +335,7 @@ namespace ShareItFE.Pages.Provider
             {
                 var client = await GetAuthenticatedClientAsync();
                 var response = await client.GetAsync("api/categories");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
@@ -368,17 +368,17 @@ namespace ShareItFE.Pages.Provider
 
         private async Task<Guid?> GetCategoryIdByNameAsync(string categoryName)
         {
-            if (string.IsNullOrEmpty(categoryName)) 
+            if (string.IsNullOrEmpty(categoryName))
             {
                 // Use first available category if no category selected
                 return Categories.FirstOrDefault()?.Id;
             }
-            
+
             try
             {
                 var client = await GetAuthenticatedClientAsync();
                 var response = await client.GetAsync($"api/categories/by-name/{Uri.EscapeDataString(categoryName)}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
