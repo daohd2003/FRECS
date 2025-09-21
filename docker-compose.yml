@@ -1,10 +1,25 @@
   
 services:
   web:  # Define a service named 'web'
-    container_name: shareit-app
-    image: shareit # Replace with your image name
+    container_name: shareit-be
+    image: shareit-be # Replace with your image name
     build:
       context: .  # Build context (current directory)
-      dockerfile: ./Dockerfile  # Specify the Dockerfile to use
+      dockerfile: ./ShareItAPI/Dockerfile  # Specify the Dockerfile to use
     ports:
       - "80:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      
+  frontend:
+    container_name: shareit-fe
+    image: shareit-fe
+    build:
+      context: .
+      dockerfile: ./ShareItFE/Dockerfile
+    ports:
+      - "7045:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    depends_on:
+      - web

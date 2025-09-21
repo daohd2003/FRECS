@@ -5,6 +5,7 @@ using BusinessObject.DTOs.ProviderApplications;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Provider
 {
@@ -12,11 +13,13 @@ namespace ShareItFE.Pages.Provider
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public ApplyModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
+        public ApplyModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
             _configuration = configuration;
+            _environment = environment;
         }
 
         [BindProperty]
@@ -55,7 +58,7 @@ namespace ShareItFE.Pages.Provider
             try
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
-                var root = _configuration["ApiSettings:RootUrl"] ?? _configuration["ApiSettings:BaseUrl"];
+                var root = _configuration.GetApiRootUrl(_environment);
                 var dto = new ProviderApplicationCreateDto
                 {
                     BusinessName = Input.BusinessName,

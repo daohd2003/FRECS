@@ -74,11 +74,15 @@ namespace ShareItAPI
 
             // Add services to the container.
 
+            // Configure CORS from Frontend BaseUrl based on environment
+            var environment = builder.Environment.EnvironmentName;
+            var frontendBaseUrl = builder.Configuration[$"FrontendSettings:{environment}:BaseUrl"] ?? "https://localhost:7045";
+            
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins("https://localhost:7045")
+                    policy.WithOrigins(frontendBaseUrl)
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
@@ -110,7 +114,8 @@ namespace ShareItAPI
 
             // Add DbContext with SQL Server
             builder.Services.AddDbContext<ShareItDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")),
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+                       .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning)),
                 ServiceLifetime.Scoped);
 
             builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -302,9 +307,6 @@ namespace ShareItAPI
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
 
-
-
-
             builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();
@@ -315,15 +317,13 @@ namespace ShareItAPI
             app.UseMiddleware<TokenValidationMiddleware>();
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            // Enable Swagger in both Development and Production
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
-                    c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
-                });
-            }
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
+                c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+            });
 
             app.UseHttpsRedirection();
             app.UseRouting();

@@ -5,6 +5,7 @@ using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
+using BusinessObject.Utilities;
 
 namespace Repositories.ReportRepositories
 {

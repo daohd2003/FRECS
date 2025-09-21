@@ -1,4 +1,22 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+﻿// Helper function to format date for Vietnam timezone
+function formatDateForVietnam(dateString) {
+    try {
+        // API now returns Vietnam time directly, no need to convert from UTC
+        const date = new Date(dateString);
+        
+        // Format as Vietnam locale (already Vietnam time)
+        return date.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+    } catch (e) {
+        console.error('Error formatting date:', e, 'Original dateString:', dateString);
+        return dateString; // Fallback to original string if parsing fails
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
     // --- Variables ---
     let items = [];
     let filteredItems = [];
@@ -130,7 +148,7 @@
                         <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
-                        <span>${item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</span>
+                        <span>${item.createdAt ? formatDateForVietnam(item.createdAt) : 'N/A'}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -173,7 +191,9 @@
     };
 
     // --- API Integration ---
-    const API_BASE_URL = 'https://localhost:7256/api/products'; // Define your API base URL
+    // Get API base URL from environment or use default
+    const apiBaseUrl = window.apiSettings?.baseUrl || 'https://localhost:7256/api';
+    const API_BASE_URL = `${apiBaseUrl}/products`;
 
     const fetchItems = async () => {
         try {
@@ -188,7 +208,7 @@
         } catch (error) {
             console.error('Error fetching items:', error);
             noItemsFoundDiv.classList.remove('hidden');
-            noItemsFoundDiv.textContent = 'Failed to load items. Please ensure the API is running and accessible (https://localhost:7256/api/products) and that CORS is configured correctly.';
+            noItemsFoundDiv.textContent = `Failed to load items. Please ensure the API is running and accessible (${API_BASE_URL}) and that CORS is configured correctly.`;
         }
     };
 

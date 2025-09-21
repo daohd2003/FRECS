@@ -3,6 +3,7 @@ using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.FeedbackRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
@@ -97,7 +98,7 @@ namespace Services.FeedbackServices
             feedback.TargetType = dto.TargetType;
             feedback.Id = Guid.NewGuid();
             feedback.CustomerId = customerId;
-            feedback.CreatedAt = DateTime.UtcNow;
+            feedback.CreatedAt = DateTimeHelper.GetVietnamTime();
             feedback.UpdatedAt = null;
             feedback.ProductId = productId;
             feedback.OrderId = orderId;

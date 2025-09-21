@@ -9,16 +9,9 @@
                 <path d="M12,2a4,4,0,0,0-4,4v2.4a4,4,0,0,0,8,0V6A4,4,0,0,0,12,2Z" />
                 <line x1="10" x2="14" y1="12" y2="12" />
             </svg>
-            <span class="brand-name">RentChic</span>
+            <span class="brand-name">FRECS</span>
         </a>
 
-        <div class="search-container">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" placeholder="Search for dresses, suits, accessories..." class="search-input" />
-        </div>
 
         <nav class="main-nav">
             <a asp-page="/Products/Products">Browse</a>
@@ -30,7 +23,7 @@
             {
                 <a asp-page="/Provider/Apply">Become a Provider</a>
             }
-            <a href="/Index#how-it-works">How it Works</a>
+            <a href="/#luxury-fashion">How it Works</a>
             @if (Model.IsUserLoggedIn && (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase)))
             {
                 <a asp-page="/Contact">Contact</a>
@@ -85,7 +78,7 @@
                                         <a href="/Order/Details/@notification.OrderId" class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
-                                                <span class="notification-time">@notification.CreatedAt.ToString("g")</span>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                             </div>
                                             @if (!notification.IsRead)
                                             {
@@ -98,7 +91,7 @@
                                         <div class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
-                                                <span class="notification-time">@notification.CreatedAt.ToString("g")</span>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                             </div>
                                             @if (!notification.IsRead)
                                             {
@@ -229,13 +222,6 @@
 
     <div id="mobileMenu" class="mobile-menu">
         <div style="padding: 0 1rem;">
-            <div style="position: relative; margin-bottom: 1rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" placeholder="Search..." class="search-input" />
-            </div>
             <nav>
                 <a asp-page="/Products">Browse</a>
                 @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
@@ -246,7 +232,7 @@
                 {
                     <a asp-page="/Provider/Apply">Become a Provider</a>
                 }
-                <a href="/Index#how-it-works">How it Works</a>
+                <a href="/#luxury-fashion">How it Works</a>
                 <a asp-page="/Contact">Contact</a>
             </nav>
         </div>

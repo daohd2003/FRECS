@@ -13,6 +13,9 @@ COPY ["BusinessObject/BusinessObject.csproj", "BusinessObject/"]
 COPY ["Repositories/Repositories.csproj", "Repositories/"]
 COPY ["Common/Common.csproj", "Common/"]
 COPY ["DataAccess/DataAccess.csproj", "DataAccess/"]
+COPY ["Hubs/Hubs.csproj", "Hubs/"]
+
+# Restore dependencies
 RUN dotnet restore "ShareItAPI/ShareItAPI.csproj"
 COPY . .
 WORKDIR "/src/ShareItAPI"
@@ -22,8 +25,7 @@ RUN dotnet build "ShareItAPI.csproj" -c $BUILD_CONFIGURATION -o /app/build
 # Use the .NET Runtime image for running the app
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "ShareItAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish    
-# Copy published app from build stage
+RUN dotnet publish "ShareItAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

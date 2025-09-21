@@ -34,7 +34,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-24 w-24 text-gray-300 mx-auto mb-6"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                     <h2 class="text-2xl font-bold text-gray-900 mb-4">Continue shopping</h2>
                     <p class="text-gray-600 mb-8">Discover great outfits for your special occasions</p>
-                    <a asp-page="/Products/Index" class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                    <a asp-page="/Products/Products" class="bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
                         Browse Collection
                     </a>
                 </div>
@@ -138,10 +138,10 @@
                                                 </div>
 
                                                 @* Remove Button *@
-                                                    <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?');" class="ml-auto-remove-btn">
+                                                    <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Are you sure you want to remove this product from cart?');" class="ml-auto-remove-btn">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                        <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Xóa sản phẩm">
+                                                        <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Remove product">
                                                             <i class="bi bi-trash-fill h-5 w-5"></i>
                                                             <span class="text-sm">Delete</span>
                                                         </button>

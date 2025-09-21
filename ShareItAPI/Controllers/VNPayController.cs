@@ -14,6 +14,7 @@ using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.Transactions;
 using System.Security.Claims;
+using ShareItAPI.Extensions;
 
 namespace ShareItAPI.Controllers
 {
@@ -23,17 +24,24 @@ namespace ShareItAPI.Controllers
     {
         private readonly IVnpay _vnpay;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly ILogger<VNPayController> _logger;
         private readonly IOrderService _orderService;
         private readonly ITransactionService _transactionService;
         private readonly ShareItDbContext _context;
 
-        public VNPayController(IVnpay vnpay, IConfiguration configuration, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService, ShareItDbContext context)
+        public VNPayController(IVnpay vnpay, IConfiguration configuration, IWebHostEnvironment environment, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService, ShareItDbContext context)
         {
             _vnpay = vnpay;
             _configuration = configuration;
+            _environment = environment;
 
-            _vnpay.Initialize(_configuration["Vnpay:TmnCode"], _configuration["Vnpay:HashSecret"], _configuration["Vnpay:BaseUrl"], _configuration["Vnpay:CallbackUrl"]);
+            _vnpay.Initialize(
+                _configuration["Vnpay:TmnCode"], 
+                _configuration["Vnpay:HashSecret"], 
+                _configuration["Vnpay:BaseUrl"], 
+                _configuration.GetVnpayCallbackUrl(_environment)
+            );
             _logger = logger;
             _transactionService = transactionService;
             _orderService = orderService;
@@ -226,10 +234,10 @@ namespace ShareItAPI.Controllers
             _logger.LogInformation("Callback endpoint was called at {Time}", DateTime.Now);
 
             // Lấy URL frontend từ cấu hình
-            var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
+            var frontendBaseUrl = _configuration.GetFrontendBaseUrl(_environment);
             if (string.IsNullOrEmpty(frontendBaseUrl))
             {
-                _logger.LogError("Frontend:BaseUrl is not configured.");
+                _logger.LogError("FrontendSettings:{Environment}:BaseUrl is not configured.", _environment.EnvironmentName);
                 return BadRequest(new { RspCode = "99", Message = "Frontend base URL not configured." });
             }
 

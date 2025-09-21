@@ -12,6 +12,7 @@ namespace BusinessObject.DTOs.Login
         public string Issuer { get; set; } = String.Empty;
         public string Audience { get; set; } = String.Empty;
         public double ExpiryMinutes { get; set; }
+        public double RememberMeExpiryMinutes { get; set; }
         public double RefreshTokenExpiryDays { get; set; }
     }
 }

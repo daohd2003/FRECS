@@ -182,23 +182,24 @@
                             <div class="order-list">
                                 @foreach (var order in pagedOrders)
                                 {
-                                    var statusClass = order.Status.ToString().ToLower() switch
-                                    {
-                                        "pending" => "status-pending",
-                                        "approved" => "status-approved",
-                                        "in_transit" => "status-in-transit",
-                                        "in_use" => "status-in-use",
-                                        "returned" => "status-returned",
-                                        "cancelled" => "status-cancelled",
-                                        "returned_with_issue" => "status-issue",
-                                        _ => "status-pending"
-                                    };
+                                                                    var statusClass = order.Status.ToString().ToLower() switch
+                                {
+                                    "pending" => "status-pending",
+                                    "approved" => "status-approved",
+                                    "in_transit" => "status-in-transit",
+                                    "in_use" => "status-in-use",
+                                    "returning" => "status-returning",
+                                    "returned" => "status-returned",
+                                    "cancelled" => "status-cancelled",
+                                    "returned_with_issue" => "status-issue",
+                                    _ => "status-pending"
+                                };
 
                                     <div class="order-card">
                                         <div class="order-header">
                                             <div class="order-header-info">
                                                 <h3 class="order-id">Order #@order.OrderCode</h3>
-                                                <p class="order-date">Placed on: @order.CreatedAt.ToLocalTime().ToString("dd/M/yyyy")</p>
+                                                <p class="order-date">Placed on: @order.CreatedAt.ToString("dd/M/yyyy")</p>
                                             </div>
                                             <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
                                         </div>
@@ -239,10 +240,28 @@
 
                                         <div class="order-footer">
                                             <span class="order-total">
-                                                Total: @(order.TotalAmount > 0 ? order.TotalAmount.ToString("C0") : "N/A")
+                                                Total: @(order.TotalAmount > 0 ? "₫" + order.TotalAmount.ToString("N0") : "N/A")
                                             </span>
                                             <div class="order-actions">
                                                 <a asp-page="/Order/Details" asp-route-id="@order.Id" class="btn btn-secondary">View Details</a>
+                                                @if (order.Status.ToString().ToLower() == "cancelled")
+                                                {
+                                                    <button type="button" class="btn btn-danger delete-order-btn" data-order-id="@order.Id">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                }
+                                                @if (order.Status.ToString().ToLower() == "in_transit")
+                                                {
+                                                    <button type="button" class="btn btn-success confirm-delivery-btn" data-order-id="@order.Id">
+                                                        <i class="bi bi-check-circle"></i> Confirm Received
+                                                    </button>
+                                                }
+                                                @if (order.Status.ToString().ToLower() == "in_use")
+                                                {
+                                                    <button type="button" class="btn btn-warning mark-returning-btn" data-order-id="@order.Id">
+                                                        <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                                    </button>
+                                                }
                                                 @if (order.Status.ToString().ToLower() == "returned")
                                                 {
                                                     <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@order.Id">Rent Again</button>
@@ -316,11 +335,11 @@
                                         <h4 class="favorite-name">@product?.Name</h4>
 
                                         <p class="favorite-price text-purple-600 font-semibold">
-                                            @((product?.PricePerDay ?? 0).ToString("C0"))/day
+                                            ₫@((product?.PricePerDay ?? 0).ToString("N0"))/day
                                         </p>
 
                                         <div class="favorite-actions">
-                                            <a href="/products/details/@product?.Id" class="btn btn-primary">Rent Now</a>
+                                            <a href="/products/detail/@product?.Id" class="btn btn-primary">Rent Now</a>
 
                                             <form method="post"
                                                   asp-page-handler="RemoveFavorite"
@@ -643,6 +662,100 @@
             const newRentalStartDateInput = document.getElementById('new-rental-start-date');
             const newRentalEndDateInput = document.getElementById('new-rental-end-date');
 
+            // Bắt sự kiện click vào nút "Confirm Received" trên mỗi thẻ đơn hàng
+            document.querySelectorAll('.confirm-delivery-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const orderId = button.dataset.orderId;
+                    
+                    if (confirm('Are you sure you want to confirm that you have received this order?')) {
+                        button.disabled = true;
+                        button.innerHTML = '<i class="bi bi-hourglass"></i> Processing...';
+                        
+                        try {
+                            const response = await fetch(`@Model.ApiBaseUrl/orders/${orderId}/confirm-delivery`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                        if (response.ok) {
+                            alert('Order delivery confirmed successfully!');
+                            
+                            // Reload notifications after order status change
+                            if (window.loadNotifications) {
+                                const notificationMenu = document.querySelector('.notification-menu');
+                                const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                                if (userId) {
+                                    console.log('Reloading notifications after delivery confirmation...');
+                                    setTimeout(() => window.loadNotifications(userId), 500);
+                                }
+                            }
+                            
+                            location.reload(); // Reload để cập nhật status
+                        } else {
+                                const errorData = await response.json();
+                                alert('Error confirming delivery: ' + (errorData.message || 'Unknown error'));
+                                button.disabled = false;
+                                button.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Received';
+                            }
+                        } catch (error) {
+                            alert('Error confirming delivery: ' + error.message);
+                            button.disabled = false;
+                            button.innerHTML = '<i class="bi bi-check-circle"></i> Confirm Received';
+                        }
+                    }
+                });
+            });
+
+            // Bắt sự kiện click vào nút "Mark as Returning" trên mỗi thẻ đơn hàng
+            document.querySelectorAll('.mark-returning-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const orderId = button.dataset.orderId;
+                    
+                    if (confirm('Are you sure you want to mark this order as returning?')) {
+                        button.disabled = true;
+                        button.innerHTML = '<i class="bi bi-hourglass"></i> Processing...';
+                        
+                        try {
+                            const response = await fetch(`@Model.ApiBaseUrl/orders/${orderId}/mark-returning`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                        if (response.ok) {
+                            alert('Order marked as returning successfully!');
+                            
+                            // Reload notifications after order status change
+                            if (window.loadNotifications) {
+                                const notificationMenu = document.querySelector('.notification-menu');
+                                const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                                if (userId) {
+                                    console.log('Reloading notifications after marking returning...');
+                                    setTimeout(() => window.loadNotifications(userId), 500);
+                                }
+                            }
+                            
+                            location.reload(); // Reload để cập nhật status
+                        } else {
+                                const errorData = await response.json();
+                                alert('Error marking as returning: ' + (errorData.message || 'Unknown error'));
+                                button.disabled = false;
+                                button.innerHTML = '<i class="bi bi-box-arrow-up"></i> Mark as Returning';
+                            }
+                        } catch (error) {
+                            alert('Error marking as returning: ' + error.message);
+                            button.disabled = false;
+                            button.innerHTML = '<i class="bi bi-box-arrow-up"></i> Mark as Returning';
+                        }
+                    }
+                });
+            });
+
             // Bắt sự kiện click vào nút "Rent Again" trên mỗi thẻ đơn hàng
             document.querySelectorAll('.rent-again-btn').forEach(button => {
                 button.addEventListener('click', () => {
@@ -694,7 +807,7 @@
                     const newRentalEndDate = newRentalEndDateInput.value;
 
                     if (!originalOrderId || !newRentalStartDate || !newRentalEndDate) {
-                        alert('Vui lòng cung cấp đầy đủ thông tin ngày thuê.');
+                        alert('Please provide complete rental date information.');
                         return;
                     }
 
@@ -726,22 +839,99 @@
                         if (response.ok) {
                             const newOrderId = apiResponse.data;
                             if (newOrderId) {
-                                alert(apiResponse.message || "Đơn hàng mới đã được tạo thành công! Đang chuyển hướng đến trang thanh toán.");
+                                alert(apiResponse.message || "New order created successfully! Redirecting to payment page.");
                                 window.location.href = `/CheckoutPage/Checkout?orderId=${newOrderId}`;
                             } else {
-                                alert("Không thể lấy ID đơn hàng mới từ phản hồi API. Vui lòng thử lại.");
+                                alert("Unable to get new order ID from API response. Please try again.");
                             }
                         } else {
-                            alert(apiResponse.message || "Không thể thuê lại. Đã xảy ra lỗi.");
+                            alert(apiResponse.message || "Unable to rent again. An error occurred.");
                             window.location.reload();
                         }
                     } catch (error) {
-                        console.error('Lỗi khi thực hiện thuê lại:', error);
-                        alert('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.');
+                        console.error('Error during re-rental:', error);
+                        alert('An unexpected error occurred. Please try again.');
                     }
                     closeModal();
                 });
             }
+
+            // Handle Delete Order for Cancelled orders
+            document.querySelectorAll('.delete-order-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const orderId = button.dataset.orderId;
+                    
+                    // Confirm before deleting permanently
+                    if (!confirm('Are you sure you want to permanently delete this cancelled order? This action cannot be undone and the order will be removed from the database.')) {
+                        return;
+                    }
+                    
+                    button.disabled = true;
+                    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Deleting...';
+                    
+                    try {
+                        // Debug: Log the API call details
+                        const deleteUrl = `${backendBaseUrl}/orders/${orderId}`;
+                        
+                        const response = await fetch(deleteUrl, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        console.log('DELETE Response Status:', response.status);
+                        console.log('DELETE Response OK:', response.ok);
+                        
+                        if (response.ok) {
+                            // Success - remove the order card from the UI
+                            const orderCard = button.closest('.order-card');
+                            orderCard.style.opacity = '0.5';
+                            orderCard.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                orderCard.remove();
+                            }, 300);
+                            
+                            console.log('Order deleted successfully:', orderId);
+                            
+                            // Reload notifications to remove cancelled order notifications
+                            if (window.loadNotifications) {
+                                // Get user ID from notification menu data attribute
+                                const notificationMenu = document.querySelector('.notification-menu');
+                                const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                                if (userId) {
+                                    console.log('Reloading notifications after order deletion...');
+                                    setTimeout(() => {
+                                        window.loadNotifications(userId);
+                                    }, 500); // Small delay to ensure delete is processed
+                                } else {
+                                    console.log('User ID not found, cannot reload notifications');
+                                }
+                            }
+                            
+                            alert('Order deleted permanently!');
+                        } else {
+                            const errorText = await response.text();
+                            console.error('DELETE Error Response:', errorText);
+                            
+                            try {
+                                const errorData = JSON.parse(errorText);
+                                alert(`Error: ${errorData.message || 'Failed to delete order'}`);
+                            } catch {
+                                alert(`Error: ${response.status} - ${response.statusText}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error deleting order:', error);
+                        alert('Network error occurred. Please try again.');
+                    } finally {
+                        button.disabled = false;
+                        button.innerHTML = '<i class="bi bi-trash"></i> Delete';
+                    }
+                });
+            });
         });
     </script>
 

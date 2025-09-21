@@ -22,7 +22,7 @@ namespace ShareItAPI.Controllers
             if (string.IsNullOrEmpty(question))
                 return BadRequest("Question is required.");
 
-            var answer = await _aiSearchService.AskAboutShareITAsync(question);
+            var answer = await _aiSearchService.AskAboutFRECSAsync(question);
             var responseDto = new AiSearchResponseDto
             {
                 Answer = answer

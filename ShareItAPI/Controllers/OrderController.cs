@@ -41,6 +41,20 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Order cancelled", null));
         }
 
+        [HttpDelete("{orderId:guid}")]
+        public async Task<IActionResult> DeleteOrder(Guid orderId)
+        {
+            try
+            {
+                await _orderService.DeleteOrderAsync(orderId);
+                return Ok(new ApiResponse<string>("Order deleted permanently", null));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
         [HttpPut("{orderId:guid}/items")]
         public async Task<IActionResult> UpdateOrderItems(Guid orderId, [FromBody] List<Guid> updatedItemIds, int rentalDays)
         {
@@ -90,6 +104,20 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Order marked as returned", null));
         }
 
+        [HttpPut("{orderId:guid}/mark-returning")]
+        public async Task<IActionResult> MarkAsReturning(Guid orderId)
+        {
+            try
+            {
+                await _orderService.MarkAsReturningAsync(orderId);
+                return Ok(new ApiResponse<string>("Order marked as returning", null));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
         [HttpPut("{orderId:guid}/mark-approved")]
         public async Task<IActionResult> MarkAsApproved(Guid orderId)
         {
@@ -101,6 +129,20 @@ namespace ShareItAPI.Controllers
         {
             await _orderService.MarkAsShipingAsync(orderId);
             return Ok(new ApiResponse<string>("Order marked as shipping", null));
+        }
+
+        [HttpPut("{orderId:guid}/confirm-delivery")]
+        public async Task<IActionResult> ConfirmDelivery(Guid orderId)
+        {
+            try
+            {
+                await _orderService.ConfirmDeliveryAsync(orderId);
+                return Ok(new ApiResponse<string>("Order delivery confirmed successfully", null));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
         }
 
         [HttpGet("dashboard-stats")]

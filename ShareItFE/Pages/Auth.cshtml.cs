@@ -2,6 +2,7 @@
 using BusinessObject.DTOs.Login;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using ShareItFE.Extensions;
 using System.Text;
 using System.Text.Json;
 
@@ -12,15 +13,17 @@ namespace ShareItFE.Pages
         private readonly HttpClient _httpClient;
         private readonly ILogger<AuthModel> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public string GoogleClientId { get; private set; } = string.Empty;
         public string FacebookAppId { get; private set; } = string.Empty;
 
-        public AuthModel(HttpClient httpClient, ILogger<AuthModel> logger, IConfiguration configuration)
+        public AuthModel(HttpClient httpClient, ILogger<AuthModel> logger, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
+            _environment = environment;
             GoogleClientId = _configuration["GoogleClientSettings:ClientId"]
                              ?? throw new InvalidOperationException("GoogleClientSettings:ClientId không được cấu hình.");
             FacebookAppId = _configuration["Facebook:AppId"] ?? string.Empty;
@@ -30,11 +33,12 @@ namespace ShareItFE.Pages
         [BindProperty] public string Password { get; set; } = string.Empty;
         [BindProperty] public string Name { get; set; } = string.Empty;
         [BindProperty] public bool IsLogin { get; set; } = true;
+        [BindProperty] public bool RememberMe { get; set; } = false;
 
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
 
-        private string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        private string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
         public void OnGet()
         {
@@ -51,6 +55,10 @@ namespace ShareItFE.Pages
         public async Task<IActionResult> OnPostLogin()
         {
             IsLogin = true;
+            
+            // Clear validation errors and reset fields not used in login
+            ModelState.Remove(nameof(Name));
+            Name = string.Empty; // Reset name field for login mode
 
             if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
             {
@@ -59,7 +67,7 @@ namespace ShareItFE.Pages
                 return Page();
             }
 
-            var loginRequest = new LoginRequestDto { Email = Email, Password = Password };
+            var loginRequest = new LoginRequestDto { Email = Email, Password = Password, RememberMe = RememberMe };
             var content = new StringContent(JsonSerializer.Serialize(loginRequest), Encoding.UTF8, "application/json");
 
             try
@@ -74,12 +82,13 @@ namespace ShareItFE.Pages
 
                     if (apiResponse?.Data != null)
                     {
+                        var cookieExpiry = RememberMe ? DateTimeOffset.UtcNow.AddMinutes(10080) : DateTimeOffset.UtcNow.AddMinutes(120);
                         HttpContext.Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions
                         {
                             HttpOnly = true,
                             Secure = Request.IsHttps,
                             SameSite = SameSiteMode.Lax,
-                            Expires = DateTimeOffset.UtcNow.AddMinutes(30)
+                            Expires = cookieExpiry
                         });
                         HttpContext.Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions
                         {
@@ -118,13 +127,16 @@ namespace ShareItFE.Pages
             }
 
             TempData["IsLoginState"] = true;
-            TempData["ErrorMessage"] = ErrorMessage;
+            TempData.AddErrorToast(ErrorMessage);
             return Page();
         }
 
         public async Task<IActionResult> OnPostRegister()
         {
             IsLogin = false;
+            
+            // Clear validation errors for fields that might conflict
+            ModelState.Remove(nameof(RememberMe));
 
             if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password) || string.IsNullOrWhiteSpace(Name))
             {
@@ -185,7 +197,7 @@ namespace ShareItFE.Pages
         {
             if (string.IsNullOrWhiteSpace(request.IdToken))
             {
-                TempData["ErrorMessage"] = "Google token is invalid.";
+                TempData.AddErrorToast("Google token is invalid.");
                 return RedirectToPage();
             }
 
@@ -271,7 +283,7 @@ namespace ShareItFE.Pages
             HttpContext.Response.Cookies.Delete("AccessToken");
             HttpContext.Response.Cookies.Delete("RefreshToken");
 
-            TempData["SuccessMessage"] = "You have been successfully logged out.";
+            TempData.AddSuccessToast("You have been successfully logged out.");
             return RedirectToPage("/Auth");
         }
     }
