@@ -71,6 +71,12 @@ namespace ShareItFE.Pages.Products
         public string? RatingFilter { get; set; }
 
         [BindProperty(SupportsGet = true)]
+        public string? GenderFilter { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string? ProductTypeFilter { get; set; }
+
+        [BindProperty(SupportsGet = true)]
         public bool IsFilterOpen { get; set; }
 
         public async Task<IActionResult> OnGetAsync()
@@ -85,7 +91,9 @@ namespace ShareItFE.Pages.Products
                     CategoryFilter,
                     PriceRangeFilter,
                     SizeFilter,
-                    RatingFilter
+                    RatingFilter,
+                    GenderFilter,
+                    ProductTypeFilter
                 });
 
                 if (previousFilterState != currentFilterState)
@@ -126,7 +134,7 @@ namespace ShareItFE.Pages.Products
                 var queryOptions = new List<string> { "$count=true" };
                 var filters = new List<string>();
 
-                Console.WriteLine($"SearchQuery: {SearchQuery}, CategoryFilter: {CategoryFilter}, PriceRangeFilter: {PriceRangeFilter}, SizeFilter: {SizeFilter}, RatingFilter: {RatingFilter}");
+                Console.WriteLine($"SearchQuery: {SearchQuery}, CategoryFilter: {CategoryFilter}, PriceRangeFilter: {PriceRangeFilter}, SizeFilter: {SizeFilter}, RatingFilter: {RatingFilter}, GenderFilter: {GenderFilter}, ProductTypeFilter: {ProductTypeFilter}");
                 filters.Add("AvailabilityStatus eq 'available'");
                 if (!string.IsNullOrEmpty(SearchQuery))
                 {
@@ -161,6 +169,25 @@ namespace ShareItFE.Pages.Products
                     else if (int.TryParse(PriceRangeFilter, out var startPrice))
                     {
                         filters.Add($"PricePerDay ge {startPrice}");
+                    }
+                }
+
+                // Gender filter
+                if (!string.IsNullOrEmpty(GenderFilter))
+                {
+                    filters.Add($"Gender eq '{GenderFilter}'");
+                }
+
+                // Product Type filter (Rental/Purchase)
+                if (!string.IsNullOrEmpty(ProductTypeFilter))
+                {
+                    if (ProductTypeFilter == "Rental")
+                    {
+                        filters.Add("RentalStatus eq 'Available'");
+                    }
+                    else if (ProductTypeFilter == "Purchase")
+                    {
+                        filters.Add("PurchaseStatus eq 'Available'");
                     }
                 }
 

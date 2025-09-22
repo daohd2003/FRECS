@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ProductDto;
+using BusinessObject.Enums;
 // CategoryDto is in ProductDto namespace
 // using BusinessObject.DTOs.CategoryDto;
 using Microsoft.AspNetCore.Mvc;
@@ -93,6 +94,9 @@ namespace ShareItFE.Pages.Provider
             var submittedSize = Product.Size;
             var submittedColor = Product.Color;
             var submittedCategoryId = Product.CategoryId;
+            var submittedGender = Product.Gender;
+            var submittedRentalStatus = Product.RentalStatus;
+            var submittedPurchaseStatus = Product.PurchaseStatus;
 
             RestoreStateFromTempData();
 
@@ -102,6 +106,9 @@ namespace ShareItFE.Pages.Provider
             if (!string.IsNullOrEmpty(submittedSize)) Product.Size = submittedSize;
             if (!string.IsNullOrEmpty(submittedColor)) Product.Color = submittedColor;
             if (submittedCategoryId != null && submittedCategoryId != Guid.Empty) Product.CategoryId = submittedCategoryId;
+            if (!string.IsNullOrEmpty(submittedGender)) Product.Gender = submittedGender;
+            if (!string.IsNullOrEmpty(submittedRentalStatus)) Product.RentalStatus = submittedRentalStatus;
+            if (!string.IsNullOrEmpty(submittedPurchaseStatus)) Product.PurchaseStatus = submittedPurchaseStatus;
 
             if (CurrentStep == 1)
             {
@@ -117,6 +124,7 @@ namespace ShareItFE.Pages.Provider
                     SaveStateToTempData();
                     return Page();
                 }
+                
             }
             if (CurrentStep == 2 && string.IsNullOrEmpty(PrimaryImageUrl))
             {
@@ -248,7 +256,10 @@ namespace ShareItFE.Pages.Provider
                 PricePerDay = Product.PricePerDay,
                 PurchasePrice = Product.PurchasePrice,
                 PurchaseQuantity = Product.PurchaseQuantity,
-                RentalQuantity = Product.RentalQuantity
+                RentalQuantity = Product.RentalQuantity,
+                Gender = Product.Gender,
+                RentalStatus = Product.RentalStatus,
+                PurchaseStatus = Product.PurchaseStatus
             };
 
             // Load categories first để đảm bảo có data để map
@@ -266,9 +277,40 @@ namespace ShareItFE.Pages.Provider
             Product.PurchasePrice = formData.PurchasePrice;
             Product.PurchaseQuantity = formData.PurchaseQuantity;
             Product.RentalQuantity = formData.RentalQuantity;
+            Product.Gender = formData.Gender;
+            Product.RentalStatus = formData.RentalStatus;
+            Product.PurchaseStatus = formData.PurchaseStatus;
 
             ModelState.Clear();
-            if (Product.PricePerDay <= 0) ModelState.AddModelError("Product.PricePerDay", "Please enter a valid price.");
+            
+            // Validation cho 3 fields mới ở Step 3
+            if (string.IsNullOrEmpty(Product.Gender))
+                ModelState.AddModelError("Product.Gender", "Please select gender.");
+                
+            if (string.IsNullOrEmpty(Product.RentalStatus))
+                ModelState.AddModelError("Product.RentalStatus", "Please select rental option.");
+                
+            if (string.IsNullOrEmpty(Product.PurchaseStatus))
+                ModelState.AddModelError("Product.PurchaseStatus", "Please select purchase option.");
+            
+            // Validation conditional dựa trên rental/purchase status
+            if (Product.RentalStatus == "Available")
+            {
+                if (Product.PricePerDay <= 0) 
+                    ModelState.AddModelError("Product.PricePerDay", "Please enter a valid rental price.");
+                if (Product.RentalQuantity <= 0)
+                    ModelState.AddModelError("Product.RentalQuantity", "Please enter rental quantity.");
+            }
+            
+            if (Product.PurchaseStatus == "Available")
+            {
+                if (Product.PurchasePrice <= 0)
+                    ModelState.AddModelError("Product.PurchasePrice", "Please enter a valid purchase price.");
+                if (Product.PurchaseQuantity <= 0)
+                    ModelState.AddModelError("Product.PurchaseQuantity", "Please enter purchase quantity.");
+            }
+            
+            // Validation cơ bản
             if (string.IsNullOrEmpty(PrimaryImageUrl)) ModelState.AddModelError("PrimaryImageUrl", "Primary image is required.");
             if (Product.CategoryId == null || Product.CategoryId == Guid.Empty)
                 ModelState.AddModelError("Product.CategoryId", "Please select a category.");
@@ -292,6 +334,9 @@ namespace ShareItFE.Pages.Provider
                 PurchasePrice = Product.PurchasePrice != 0 ? Product.PurchasePrice : 0,
                 PurchaseQuantity = Product.PurchaseQuantity > 0 ? Product.PurchaseQuantity : 1,
                 RentalQuantity = Product.RentalQuantity > 0 ? Product.RentalQuantity : 1,
+                Gender = Product.Gender,
+                RentalStatus = Product.RentalStatus,
+                PurchaseStatus = Product.PurchaseStatus,
                 Images = new List<ProductImageDTO>()
             };
 

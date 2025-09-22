@@ -39,6 +39,21 @@
         new SelectListItem { Value = "price-low", Text = "Price: Low to High" },
         new SelectListItem { Value = "price-high", Text = "Price: High to Low" },
     };
+
+    var genderOptions = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "", Text = "All Genders" },
+        new SelectListItem { Value = "Unisex", Text = "Unisex" },
+        new SelectListItem { Value = "Male", Text = "Male" },
+        new SelectListItem { Value = "Female", Text = "Female" },
+    };
+
+    var productTypeOptions = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "", Text = "All Types" },
+        new SelectListItem { Value = "Rental", Text = "For Rent" },
+        new SelectListItem { Value = "Purchase", Text = "For Sale" },
+    };
 }
 
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -93,7 +108,7 @@
                 </div>
 
                 <div id="filterPanel" class="@(Model.IsFilterOpen ? "" : "hidden") pt-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                         <div>
                             <label for="CategoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
                             <select id="CategoryFilter" name="CategoryFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
@@ -130,6 +145,26 @@
                                 @foreach (var option in ratings)
                                 {
                                     <option value="@option.Value" selected="@(Model.RatingFilter == option.Value)">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="GenderFilter" class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                            <select id="GenderFilter" name="GenderFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                                @foreach (var option in genderOptions)
+                                {
+                                    <option value="@option.Value" selected="@(Model.GenderFilter == option.Value)">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="ProductTypeFilter" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                            <select id="ProductTypeFilter" name="ProductTypeFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                                @foreach (var option in productTypeOptions)
+                                {
+                                    <option value="@option.Value" selected="@(Model.ProductTypeFilter == option.Value)">@option.Text</option>
                                 }
                             </select>
                         </div>
