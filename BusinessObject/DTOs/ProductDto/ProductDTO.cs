@@ -27,6 +27,7 @@
         public string PrimaryImagesUrl { get; set; }
         public decimal AverageRating { get; set; }
         public List<ProductImageDTO>? Images { get; set; }
+        public decimal SecurityDeposit { get; set; }
     }
     public class ProductRequestDTO
     {

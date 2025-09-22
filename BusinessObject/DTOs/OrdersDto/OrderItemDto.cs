@@ -12,5 +12,6 @@ namespace BusinessObject.DTOs.OrdersDto
         public int Quantity { get; set; }
         public int RentalDays { get; set; }
         public decimal DailyRate { get; set; }
+        public decimal DepositPerUnit { get; set; }
     }
 }

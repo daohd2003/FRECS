@@ -41,5 +41,9 @@ namespace BusinessObject.Models
         /// </summary>
         [Column(TypeName = "decimal(10,2)")]
         public decimal DailyRate { get; set; }
+
+        // Tiền cọc cho từng item (Lưu Lại tại thời điểm đặt hàng để tránh sai lệch)
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DepositPerUnit { get; set; } = 0m;
     }
 }
