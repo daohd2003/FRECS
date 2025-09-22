@@ -84,5 +84,8 @@ namespace BusinessObject.Models
 
         public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
         public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal SecurityDeposit { get; set; } = 0m;
     }
 }

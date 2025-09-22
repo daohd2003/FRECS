@@ -16,5 +16,7 @@ namespace BusinessObject.DTOs.OrdersDto
         public DateTime? RentalEnd { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<OrderItemDto> Items { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal TotalDeposit { get; set; }
     }
 }
