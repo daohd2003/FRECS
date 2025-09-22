@@ -175,10 +175,50 @@
                         <input type="hidden" asp-for="Product.Color" />
                         
                         <div class="space-y-6">
-                            <div class="text-center mb-6"><i data-lucide="dollar-sign" class="h-16 w-16 text-green-500 mx-auto mb-4"></i><h3 class="text-lg font-semibold text-gray-900 mb-2">Set Your Pricing & Inventory</h3><p class="text-gray-600">Configure pricing and quantity information</p></div>
+                            <div class="text-center mb-6"><i data-lucide="settings" class="h-16 w-16 text-purple-500 mx-auto mb-4"></i><h3 class="text-lg font-semibold text-gray-900 mb-2">Product Settings & Pricing</h3><p class="text-gray-600">Configure product details and pricing information</p></div>
+                            
+                            <!-- Product Configuration -->
+                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                                <h4 class="font-semibold text-purple-900 mb-4">Product Configuration</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <!-- Gender Field -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
+                                        <select asp-for="Product.Gender" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            <option value="">Select gender</option>
+                                            <option value="Unisex">Unisex</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                        <span asp-validation-for="Product.Gender" class="text-red-500 text-sm"></span>
+                                    </div>
+
+                                    <!-- Rental Status Field -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Rental Option *</label>
+                                        <select asp-for="Product.RentalStatus" id="rentalStatusSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            <option value="">Choose rental option</option>
+                                            <option value="Available">Available for Rent</option>
+                                            <option value="NotAvailable">Not for Rent</option>
+                                        </select>
+                                        <span asp-validation-for="Product.RentalStatus" class="text-red-500 text-sm"></span>
+                                    </div>
+
+                                    <!-- Purchase Status Field -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Purchase Option *</label>
+                                        <select asp-for="Product.PurchaseStatus" id="purchaseStatusSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                            <option value="">Choose purchase option</option>
+                                            <option value="NotForSale">Not for Sale</option>
+                                            <option value="Available">Available for Purchase</option>
+                                        </select>
+                                        <span asp-validation-for="Product.PurchaseStatus" class="text-red-500 text-sm"></span>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Rental Information -->
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div id="rentalSection" class="bg-blue-50 border border-blue-200 rounded-lg p-4" style="display: none;">
                                 <h4 class="font-medium text-blue-900 mb-4 flex items-center"><i data-lucide="calendar" class="h-5 w-5 mr-2"></i>Rental Information</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div><label class="block text-sm font-medium text-gray-700 mb-2">Rental Price per Day *</label><div class="relative"><i data-lucide="dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.PricePerDay" required class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" /></div><span asp-validation-for="Product.PricePerDay" class="text-red-500 text-sm"></span></div>
@@ -187,7 +227,7 @@
                             </div>
 
                             <!-- Purchase Information -->
-                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <div id="purchaseSection" class="bg-purple-50 border border-purple-200 rounded-lg p-4" style="display: none;">
                                 <h4 class="font-medium text-purple-900 mb-4 flex items-center"><i data-lucide="shopping-cart" class="h-5 w-5 mr-2"></i>Purchase Information (Optional)</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div><label class="block text-sm font-medium text-gray-700 mb-2">Purchase Price</label><div class="relative"><i data-lucide="dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.PurchasePrice" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" placeholder="0.00" /></div><span asp-validation-for="Product.PurchasePrice" class="text-red-500 text-sm"></span></div>
@@ -305,6 +345,40 @@
                 renderPrimaryImage();
                 renderSecondaryImages();
             }
+        });
+
+        // Dynamic show/hide sections based on rental/purchase status
+        function toggleSections() {
+            const rentalStatus = $('#rentalStatusSelect').val();
+            const purchaseStatus = $('#purchaseStatusSelect').val();
+            
+            // Show/hide rental section
+            if (rentalStatus === 'Available') {
+                $('#rentalSection').slideDown();
+                $('#rentalSection input').prop('required', true);
+            } else {
+                $('#rentalSection').slideUp();
+                $('#rentalSection input').prop('required', false);
+                $('#rentalSection input[type="number"]').val(''); // Clear values
+            }
+            
+            // Show/hide purchase section  
+            if (purchaseStatus === 'Available') {
+                $('#purchaseSection').slideDown();
+            } else {
+                $('#purchaseSection').slideUp();
+                $('#purchaseSection input[type="number"]').val(''); // Clear values
+            }
+        }
+
+        // Event listeners for dropdown changes
+        $(document).on('change', '#rentalStatusSelect, #purchaseStatusSelect', function() {
+            toggleSections();
+        });
+
+        // Initialize on page load
+        $(document).ready(function() {
+            toggleSections();
         });
     </script>
 }

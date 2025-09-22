@@ -13,13 +13,15 @@
         public string? Color { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal PurchasePrice { get; set; }
-        public int Quantity { get; set; }
         public int PurchaseQuantity { get; set; }
         public int RentalQuantity { get; set; }
         public string AvailabilityStatus { get; set; }
         public bool IsPromoted { get; set; }
         public int RentCount { get; set; }
         public int BuyCount { get; set; }
+        public string RentalStatus { get; set; }
+        public string PurchaseStatus { get; set; }
+        public string Gender { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string PrimaryImagesUrl { get; set; }
@@ -39,6 +41,9 @@
         public decimal? PurchasePrice { get; set; }
         public int? PurchaseQuantity { get; set; }
         public int? RentalQuantity { get; set; }
+        public string? RentalStatus { get; set; }
+        public string? PurchaseStatus { get; set; }
+        public string? Gender { get; set; }
         public List<ProductImageDTO>? Images { get; set; }
     }
 }

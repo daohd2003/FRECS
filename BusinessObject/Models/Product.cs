@@ -63,6 +63,15 @@ namespace BusinessObject.Models
 
         public int BuyCount { get; set; } = 0;
 
+        [Required]
+        public RentalStatus RentalStatus { get; set; }
+
+        [Required]
+        public PurchaseStatus PurchaseStatus { get; set; }
+
+        [Required]
+        public Gender Gender { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
