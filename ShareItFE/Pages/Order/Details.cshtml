@@ -19,6 +19,9 @@
         };
     };
     var totalRentalDays = Model.Order != null ? (Model.Order.RentalEndDate - Model.Order.RentalStartDate).Days + 1 : 0;
+    var hasRentalItems = Model.Order?.Items?.Any(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental) ?? false;
+    var isPurchaseOnly = Model.Order?.Items?.All(item => item.TransactionType == BusinessObject.Enums.TransactionType.purchase) ?? false;
+    
     Func<string, string> FormatPaymentMethod = method =>
     {
         return method?.ToLower() switch
@@ -85,10 +88,20 @@
                             </div>
                             <div class="item-price-actions">
                                 <div class="item-price">
-                                    <span>₫@item.PricePerDay.ToString("N0") / day</span>
-                                    <small class="text-muted">(@item.RentalDays days)</small>
+                                    @if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                    {
+                                        <span>₫@item.PricePerDay.ToString("N0")</span>
+                                        <small class="text-muted">(Purchase)</small>
+                                    }
+                                    else
+                                    {
+                                        <span>₫@item.PricePerDay.ToString("N0") / day</span>
+                                        <small class="text-muted">(@(item.RentalDays ?? 0) days)</small>
+                                    }
                                 </div>
-                                @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
+                                @* Show Review button based on transaction type and order status *@
+                                @if ((item.TransactionType == BusinessObject.Enums.TransactionType.rental && Model.Order.Status == BusinessObject.Enums.OrderStatus.returned) ||
+                                     (item.TransactionType == BusinessObject.Enums.TransactionType.purchase && Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use))
                                 {
                                     <div class="item-actions">
                                         <a asp-page="/Products/Detail" asp-route-id="@item.ProductId" asp-route-fromOrder="true"
@@ -108,16 +121,9 @@
                 <div class="actions-grid">
                     <a href="/Contact" class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</a>
 
-                    <!-- Rent Again Button (for returned orders) -->
-                    @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
+                    @if (isPurchaseOnly)
                     {
-                        <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@Model.Order.Id">
-                            <i class="bi bi-arrow-repeat"></i> Rent Again
-                        </button>
-                    }
-                    else
-                    {
-                        <!-- Confirm Received Button -->
+                        <!-- Purchase-only workflow -->
                         @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_transit)
                         {
                             <button class="btn btn-success confirm-delivery-btn" data-order-id="@Model.Order.Id">
@@ -130,22 +136,16 @@
                                 <i class="bi bi-check-circle"></i> Confirm Received
                             </button>
                         }
-
-                        <!-- Mark as Returning Button -->
+                        
+                        <!-- Purchase completed - show order again option -->
                         @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
                         {
-                            <button class="btn btn-warning mark-returning-btn" data-order-id="@Model.Order.Id">
-                                <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                            <button type="button" class="btn btn-success" onclick="location.href='/Products'">
+                                <i class="bi bi-bag-plus"></i> Order Again
                             </button>
                         }
-                        else
-                        {
-                            <button class="btn btn-disabled" disabled>
-                                <i class="bi bi-box-arrow-up"></i> Mark as Returning
-                            </button>
-                        }
-
-                        <!-- Cancel Order Button -->
+                        
+                        <!-- Cancel Order Button (for purchase) -->
                         @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
                         {
                             <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
@@ -158,7 +158,61 @@
                                 <i class="bi bi-x-circle"></i> Cancel Order
                             </button>
                         }
+                    }
+                    else
+                    {
+                        <!-- Rental workflow (including mixed orders) -->
+                        <!-- Rent Again Button (for returned orders) -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
+                        {
+                            <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@Model.Order.Id">
+                                <i class="bi bi-arrow-repeat"></i> Rent Again
+                            </button>
+                        }
+                        else
+                        {
+                            <!-- Confirm Received Button -->
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_transit)
+                            {
+                                <button class="btn btn-success confirm-delivery-btn" data-order-id="@Model.Order.Id">
+                                    <i class="bi bi-check-circle"></i> Confirm Received
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-disabled" disabled>
+                                    <i class="bi bi-check-circle"></i> Confirm Received
+                                </button>
+                            }
 
+                            <!-- Mark as Returning Button (only for rental) -->
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                            {
+                                <button class="btn btn-warning mark-returning-btn" data-order-id="@Model.Order.Id">
+                                    <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-disabled" disabled>
+                                    <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                </button>
+                            }
+                        }
+                        
+                        <!-- Cancel Order Button (for both purchase and rental) -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                        {
+                            <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
+                                <i class="bi bi-x-circle"></i> Cancel Order
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-disabled" disabled>
+                                <i class="bi bi-x-circle"></i> Cancel Order
+                            </button>
+                        }
                     }
                 </div>
             </div>
@@ -172,12 +226,15 @@
                         <span>Subtotal</span>
                         <span>₫@Model.Order.Subtotal.ToString("N0")</span>
                     </div>
-                    <div class="summary-item rental-period">
-                        <span>Rental Period</span>
-                        <span>
-                            @Model.Order.RentalStartDate.ToString("dd/MM/yyyy") - @Model.Order.RentalEndDate.ToString("dd/MM/yyyy")
-                        </span>
-                    </div>
+                    @if (hasRentalItems)
+                    {
+                        <div class="summary-item rental-period">
+                            <span>Rental Period</span>
+                            <span>
+                                @Model.Order.RentalStartDate.ToString("dd/MM/yyyy") - @Model.Order.RentalEndDate.ToString("dd/MM/yyyy")
+                            </span>
+                        </div>
+                    }
                     <div class="summary-item">
                         <span>Shipping</span>
                         <span>@(Model.Order.Shipping == 0 ? "FREE" : "₫" + Model.Order.Shipping.ToString("N0"))</span>

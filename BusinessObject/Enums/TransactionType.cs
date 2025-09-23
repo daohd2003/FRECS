@@ -5,7 +5,7 @@ namespace BusinessObject.Enums
     /// </summary>
     public enum TransactionType
     {
-        Rental = 0,      // Thuê
-        Purchase = 1     // Mua
+        rental,      // Thuê
+        purchase     // Mua
     }
 }

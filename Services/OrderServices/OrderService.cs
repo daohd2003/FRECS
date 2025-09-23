@@ -84,7 +84,7 @@ namespace Services.OrderServices
             if (order.Subtotal == 0 && order.Items.Any())
             {
                 order.Subtotal = order.Items.Sum(item => 
-                    item.TransactionType == BusinessObject.Enums.TransactionType.Purchase
+                    item.TransactionType == BusinessObject.Enums.TransactionType.purchase
                         ? item.DailyRate * item.Quantity
                         : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
             }
@@ -495,25 +495,50 @@ namespace Services.OrderServices
                                 throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable.");
                             }
 
-                            // Validate rental availability and pricing
-                            if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
-                                product.PricePerDay <= 0)
+                            // Validate availability based on transaction type
+                            if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
                             {
-                                throw new InvalidOperationException($"Product '{product.Name}' is not available for rental.");
+                                // Validate purchase availability
+                                if (product.PurchaseStatus != BusinessObject.Enums.PurchaseStatus.Available || 
+                                    product.PurchasePrice <= 0)
+                                {
+                                    throw new InvalidOperationException($"Product '{product.Name}' is not available for purchase.");
+                                }
+                            }
+                            else // Rental
+                            {
+                                // Validate rental availability
+                                if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
+                                    product.PricePerDay <= 0)
+                                {
+                                    throw new InvalidOperationException($"Product '{product.Name}' is not available for rental.");
+                                }
                             }
 
                             var orderItem = new OrderItem
                             {
                                 Id = Guid.NewGuid(),
                                 ProductId = cartItem.ProductId,
-                                TransactionType = BusinessObject.Enums.TransactionType.Rental,
+                                TransactionType = cartItem.TransactionType, // Get from cartItem
                                 RentalDays = cartItem.RentalDays,
                                 Quantity = cartItem.Quantity,
-                                DailyRate = product.PricePerDay
+                                // Set price based on transaction type
+                                DailyRate = cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase 
+                                    ? product.PurchasePrice 
+                                    : product.PricePerDay
                             };
 
                             orderItems.Add(orderItem);
-                            totalAmount += orderItem.DailyRate * orderItem.RentalDays.Value * orderItem.Quantity;
+                            
+                            // Calculate total amount based on transaction type
+                            if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                            {
+                                totalAmount += orderItem.DailyRate * orderItem.Quantity;
+                            }
+                            else // Rental
+                            {
+                                totalAmount += orderItem.DailyRate * (orderItem.RentalDays ?? 1) * orderItem.Quantity;
+                            }
                         }
                         var rentalStart = providerGroup.Min(ci => ci.StartDate);
                         var rentalEnd = providerGroup.Max(ci => ci.EndDate);
@@ -951,7 +976,7 @@ namespace Services.OrderServices
                 if (order.Items.Any())
                 {
                     order.Subtotal = order.Items.Sum(item => 
-                        item.TransactionType == BusinessObject.Enums.TransactionType.Purchase
+                        item.TransactionType == BusinessObject.Enums.TransactionType.purchase
                             ? item.DailyRate * item.Quantity
                             : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
                     order.UpdatedAt = DateTimeHelper.GetVietnamTime();

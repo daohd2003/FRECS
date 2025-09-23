@@ -25,14 +25,14 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType))
                 // Map PricePerUnit based on TransactionType
                 .ForMember(dest => dest.PricePerUnit, opt => opt.MapFrom(src => 
-                    src.TransactionType == BusinessObject.Enums.TransactionType.Purchase 
+                    src.TransactionType == BusinessObject.Enums.TransactionType.purchase 
                         ? src.Product.PurchasePrice 
                         : src.Product.PricePerDay))
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
                 // Calculate TotalItemPrice based on TransactionType
                 .ForMember(dest => dest.TotalItemPrice, opt => opt.MapFrom(src => 
-                    src.TransactionType == BusinessObject.Enums.TransactionType.Purchase 
+                    src.TransactionType == BusinessObject.Enums.TransactionType.purchase 
                         ? src.Product.PurchasePrice * src.Quantity
                         : src.Product.PricePerDay * src.Quantity * (src.RentalDays ?? 1)))
                 .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
@@ -50,10 +50,10 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType)) // Map TransactionType
                 // Only map RentalDays for Rental transactions
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => 
-                    src.TransactionType == BusinessObject.Enums.TransactionType.Rental ? src.RentalDays : null))
+                    src.TransactionType == BusinessObject.Enums.TransactionType.rental ? src.RentalDays : null))
                 // Only map StartDate for Rental transactions  
                 .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => 
-                    src.TransactionType == BusinessObject.Enums.TransactionType.Rental ? src.StartDate : null))
+                    src.TransactionType == BusinessObject.Enums.TransactionType.rental ? src.StartDate : null))
                 // EndDate will be calculated in service for Rental transactions
                 .ForMember(dest => dest.EndDate, opt => opt.Ignore());
 

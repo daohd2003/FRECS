@@ -35,7 +35,7 @@ namespace BusinessObject.Models
         /// Loại giao dịch: thuê (Rental) hoặc mua (Purchase)
         /// </summary>
         [Required]
-        public TransactionType TransactionType { get; set; } = TransactionType.Rental;
+        public TransactionType TransactionType { get; set; } = TransactionType.rental;
 
         /// <summary>
         /// Số ngày thuê sản phẩm trong đơn hàng (chỉ áp dụng cho Rental)

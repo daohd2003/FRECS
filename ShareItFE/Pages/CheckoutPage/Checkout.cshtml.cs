@@ -104,7 +104,10 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
 
                         // Populate totals from the single order
-                        Subtotal = SingleOrder.Items.Sum(item => item.PricePerDay * item.Quantity * item.RentalDays);
+                        Subtotal = SingleOrder.Items.Sum(item => 
+                            item.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                                ? item.PricePerDay * item.Quantity  // Purchase: just price * quantity
+                                : item.PricePerDay * item.Quantity * (item.RentalDays ?? 1)); // Rental: price * quantity * days
                         Total = Subtotal;
                         Input.UseSameProfile = true;
                         Cart = null;
@@ -276,7 +279,7 @@ namespace ShareItFE.Pages.CheckoutPage
                             CustomerEmail = Input.Email ?? "",
                             CustomerPhoneNumber = Input.PhoneNumber ?? "",
                             DeliveryAddress = Input.Address ?? "",
-                            HasAgreedToPolicies = Input.HasAgreedToPolicies
+                            HasAgreedToPolicies = true
                         };
 
                         var updateInfoResponse = await client.PutAsJsonAsync($"{backendBaseUrl}/api/orders/update-contact-info", updateContactInfoRequest);
@@ -309,7 +312,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         CustomerEmail = Input.Email,
                         CustomerPhoneNumber = Input.PhoneNumber,
                         DeliveryAddress = Input.Address,
-                        HasAgreedToPolicies = Input.HasAgreedToPolicies
+                        HasAgreedToPolicies = true
                     };
 
                     var cartCheckoutResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/cart/checkout", checkoutRequest);

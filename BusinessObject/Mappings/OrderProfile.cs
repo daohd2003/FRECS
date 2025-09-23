@@ -57,7 +57,10 @@ namespace BusinessObject.Mappings
             // Map Subtotal explicitly - calculate from order items if not set
             .ForMember(dest => dest.Subtotal, opt => opt.MapFrom(src => 
                 src.Subtotal > 0 ? src.Subtotal : 
-                src.Items.Sum(item => item.DailyRate * item.RentalDays * item.Quantity)))
+                src.Items.Sum(item => 
+                    item.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                        ? item.DailyRate * item.Quantity  // Purchase: just price * quantity
+                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity))) // Rental: price * quantity * days
             // Set default shipping (can be customized based on business logic)
             .ForMember(dest => dest.Shipping, opt => opt.MapFrom(src => 0m))  // Free shipping for now
             // Set default tax (can be customized based on business logic) 
@@ -85,7 +88,8 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
-                .ForMember(dest => dest.PricePerDay, opt => opt.MapFrom(src => src.DailyRate));
+                .ForMember(dest => dest.PricePerDay, opt => opt.MapFrom(src => src.DailyRate))
+                .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType));
 
             // Mapping cho Profile -> ShippingAddressDto
             CreateMap<Models.Profile, ShippingAddressDto>();

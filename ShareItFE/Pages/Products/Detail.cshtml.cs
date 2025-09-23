@@ -47,7 +47,7 @@ namespace ShareItFE.Pages.Products
         public string SelectedSize { get; set; }
 
         [BindProperty]
-        public BusinessObject.Enums.TransactionType TransactionType { get; set; } = BusinessObject.Enums.TransactionType.Rental;
+        public BusinessObject.Enums.TransactionType TransactionType { get; set; } = BusinessObject.Enums.TransactionType.rental;
 
         // StartDate and RentalDays moved to Cart; backend will default
         [BindProperty]
@@ -364,7 +364,7 @@ namespace ShareItFE.Pages.Products
             }
 
             // 4. Validate transaction type selection based on product availability
-            if (TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+            if (TransactionType == BusinessObject.Enums.TransactionType.purchase)
             {
                 if (Product.PurchaseStatus != "Available" || Product.PurchasePrice <= 0)
                 {
@@ -684,17 +684,17 @@ namespace ShareItFE.Pages.Products
             if (canRent && !canPurchase)
             {
                 // Only rental available
-                TransactionType = BusinessObject.Enums.TransactionType.Rental;
+                TransactionType = BusinessObject.Enums.TransactionType.rental;
             }
             else if (!canRent && canPurchase)
             {
                 // Only purchase available
-                TransactionType = BusinessObject.Enums.TransactionType.Purchase;
+                TransactionType = BusinessObject.Enums.TransactionType.purchase;
             }
             else if (canRent && canPurchase)
             {
                 // Both available, default to rental
-                TransactionType = BusinessObject.Enums.TransactionType.Rental;
+                TransactionType = BusinessObject.Enums.TransactionType.rental;
             }
             // If neither is available, keep the default (Rental) - the form will be disabled anyway
         }

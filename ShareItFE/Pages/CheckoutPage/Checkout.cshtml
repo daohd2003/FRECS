@@ -171,25 +171,23 @@
                                             <p class="font-semibold mb-1">@item.ProductName</p>
                                             <p class="mb-1">Size: <span class="font-medium">@item.ProductSize</span></p>
                                             <p class="mb-1">Quantity: <span class="font-medium">@item.Quantity</span></p>
-                                            
+
                                             @* Show transaction type *@
-                                            <div class="mb-1">
-                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
-                                                {
-                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Purchase</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">Rental</span>
-                                                }
-                                            </div>
-                                            
+                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                            {
+                                                <span class="mb-2">Type: Purchase</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="mb-2">Type: Rental</span>
+                                            }
+
                                             @* Only show rental period for rental items *@
-                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.Rental)
+                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
                                             {
                                                 <p class="mb-2">Rental period: @item.RentalDays days</p>
                                             }
-                                            
+
                                             <p class="text-purple-600 font-bold text-base">Amount: @item.TotalItemPrice.ToString("N0") VND</p>
                                         </div>
                                     </div>

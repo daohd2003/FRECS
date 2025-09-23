@@ -68,7 +68,7 @@ namespace Services.CartServices
             }
 
             // Validate transaction type availability
-            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.purchase)
             {
                 if (product.PurchaseStatus != BusinessObject.Enums.PurchaseStatus.Available || 
                     product.PurchaseQuantity <= 0)
@@ -93,7 +93,7 @@ namespace Services.CartServices
             }
 
             // Handle rental-specific logic
-            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.Rental)
+            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.rental)
             {
                 // Defaults if not provided from Product Detail page
                 int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
@@ -108,7 +108,7 @@ namespace Services.CartServices
                 // Find existing rental item with same ProductId, StartDate, RentalDays
                 var existingCartItem = cart.Items.FirstOrDefault(ci =>
                     ci.ProductId == cartAddRequestDto.ProductId &&
-                    ci.TransactionType == BusinessObject.Enums.TransactionType.Rental &&
+                    ci.TransactionType == BusinessObject.Enums.TransactionType.rental &&
                     ci.StartDate.HasValue && ci.StartDate.Value.Date == startDate && 
                     ci.RentalDays == rentalDays);
 
@@ -136,7 +136,7 @@ namespace Services.CartServices
                 // Find existing purchase item with same ProductId
                 var existingCartItem = cart.Items.FirstOrDefault(ci =>
                     ci.ProductId == cartAddRequestDto.ProductId &&
-                    ci.TransactionType == BusinessObject.Enums.TransactionType.Purchase);
+                    ci.TransactionType == BusinessObject.Enums.TransactionType.purchase);
 
                 if (existingCartItem != null)
                 {

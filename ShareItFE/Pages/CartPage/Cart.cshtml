@@ -60,12 +60,12 @@
                         </div>
 
                         @* Global rental schedule section - only show if there are rental items *@
-                        @if (Model.Cart?.Items != null && Model.Cart.Items.Any(item => item.TransactionType == BusinessObject.Enums.TransactionType.Rental))
+                        @if (Model.Cart?.Items != null && Model.Cart.Items.Any(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental))
                         {
                             <div class="p-6 border-b border-gray-200">
                                 @* Global rental schedule for rental items only *@
                                 @{
-                                    var firstRentalItem = Model.Cart.Items.First(item => item.TransactionType == BusinessObject.Enums.TransactionType.Rental);
+                                    var firstRentalItem = Model.Cart.Items.First(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental);
                                 }
                                 <form id="global-schedule-form" method="post" asp-page-handler="UpdateCartSchedule" class="grid grid-cols-1 md:grid-cols-3 items-end gap-4 md:gap-6" onsubmit="saveScrollPosition()">
                                     @Html.AntiForgeryToken()
@@ -110,7 +110,7 @@
                                             
                                             @* Show transaction type *@
                                             <div class="text-sm mb-2">
-                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
                                                 {
                                                     <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Purchase</span>
                                                 }
@@ -121,7 +121,7 @@
                                             </div>
                                             
                                             @* Show rental dates only for rental items *@
-                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.Rental && item.StartDate.HasValue && item.EndDate.HasValue)
+                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.rental && item.StartDate.HasValue && item.EndDate.HasValue)
                                             {
                                                 <div class="text-sm text-gray-500 mb-3">
                                                     <span>From @item.StartDate.Value.ToString("dd-MM-yyyy") To @item.EndDate.Value.ToString("dd-MM-yyyy")</span>
@@ -147,7 +147,7 @@
                                                 </div>
 
                                                 @* Show rental days only for rental items *@
-                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Rental)
+                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
                                                 {
                                                     <div class="vertical-divider"></div>
                                                     <div class="flex flex-col">
@@ -172,7 +172,7 @@
                                                 @item.TotalItemPrice.ToString("N0") VND
                                             </div>
                                             <div class="text-sm text-gray-500">
-                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
                                                 {
                                                     <span>@item.PricePerUnit.ToString("N0") VND each</span>
                                                 }
