@@ -64,7 +64,7 @@
                             @if (Model.Cart?.Items != null && Model.Cart.Items.Any())
                             {
                                 var firstItem = Model.Cart.Items.First();
-                                <form id="global-schedule-form" method="post" asp-page-handler="UpdateCartSchedule" class="grid grid-cols-1 md:grid-cols-3 items-end gap-4 md:gap-6">
+                                <form id="global-schedule-form" method="post" asp-page-handler="UpdateCartSchedule" class="grid grid-cols-1 md:grid-cols-3 items-end gap-4 md:gap-6" onsubmit="saveScrollPosition()">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="itemId" value="@firstItem.ItemId" />
                                     <div class="flex flex-col w-full">
@@ -114,20 +114,17 @@
                                                 @* Controls for Quantity *@
                                                 <div class="flex flex-col">
                                                     <label class="text-xs text-gray-500 mb-1">Quantity</label>
-                                                    <form method="post" asp-page-handler="UpdateQuantity" class="inline-flex items-center space-x-2">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                        <input type="hidden" name="currentQuantity" value="@item.Quantity" />
-                                                        <button type="submit" name="action" value="decrease" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Giảm số lượng">
+                                                    <div class="inline-flex items-center space-x-2">
+                                                        <button type="button" onclick="updateQuantityAjax('@item.ItemId', @item.Quantity, @item.RentalDays, @item.PricePerUnit, 'decrease')" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Giảm số lượng">
                                                             <i class="bi bi-dash-lg w-4 h-4"></i>
                                                         </button>
-                                                        <span class="text-sm font-medium w-12 text-center">
+                                                        <span class="text-sm font-medium w-12 text-center" id="quantity-@item.ItemId">
                                                             @item.Quantity
                                                         </span>
-                                                        <button type="submit" name="action" value="increase" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Tăng số lượng">
+                                                        <button type="button" onclick="updateQuantityAjax('@item.ItemId', @item.Quantity, @item.RentalDays, @item.PricePerUnit, 'increase')" class="p-1 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500" aria-label="Tăng số lượng">
                                                             <i class="bi bi-plus-lg w-4 h-4"></i>
                                                         </button>
-                                                    </form>
+                                                    </div>
                                                 </div>
 
                                                 <div class="vertical-divider"></div> @************ NEW ************
@@ -139,20 +136,18 @@
                                                 </div>
 
                                                 @* Remove Button *@
-                                                <form method="post" asp-page-handler="RemoveFromCart" onsubmit="return confirm('Are you sure you want to remove this product from cart?');" class="ml-auto-remove-btn">
-                                                    @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="itemId" value="@item.ItemId" />
-                                                    <button type="submit" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Remove product">
+                                                <div class="ml-auto-remove-btn">
+                                                    <button type="button" onclick="if(confirm('Are you sure you want to remove this product from cart?')) { removeItemFromCart('@item.ItemId'); }" class="flex items-center space-x-1 text-red-600 hover:text-red-700 transition-colors px-2 py-1 rounded" aria-label="Remove product">
                                                         <i class="bi bi-trash-fill h-5 w-5"></i>
                                                         <span class="text-sm">Delete</span>
                                                     </button>
-                                                </form>
+                                                </div>
                                             </div> @* End of new flex container for controls ************ NEW ************ *@
                                         </div>
 
                                         @* Item Total Price Display *@
                                         <div class="text-right">
-                                            <div class="text-lg font-bold text-purple-600">
+                                            <div class="text-lg font-bold text-purple-600" id="total-price-@item.ItemId">
                                                 @((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND
                                             </div>
                                             <div class="text-sm text-gray-500">
@@ -186,7 +181,7 @@
                         <div class="space-y-4 mb-6">
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Subtotal</span>
-                                <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
+                                <span class="font-semibold" id="cart-subtotal">@Model.Subtotal.ToString("N0") VND</span>
                             </div>
 
                             <div class="flex justify-between">
@@ -202,7 +197,7 @@
                             <div class="border-t pt-4">
                                 <div class="flex justify-between text-lg font-bold">
                                     <span>Total</span>
-                                    <span class="text-purple-600">@Model.Total.ToString("N0") VND</span>
+                                    <span class="text-purple-600" id="cart-total">@Model.Total.ToString("N0") VND</span>
                                 </div>
                             </div>
                         </div>
@@ -258,6 +253,9 @@
             // Policy checkbox is now unchecked by default
             // Users must manually check the agreement checkbox
 
+            // Restore scroll position after quantity update
+            restoreScrollPosition();
+
             // Auto-submit global schedule on change
             const globalForm = document.getElementById('global-schedule-form');
             const startInput = document.getElementById('globalStartDate');
@@ -271,6 +269,11 @@
                     submit();
                 });
             }
+        });
+
+        // Also try to restore scroll position on window load as backup
+        window.addEventListener('load', () => {
+            restoreScrollPosition();
         });
 
         function handleMakePayment(event) {
@@ -289,6 +292,211 @@
 
             // Redirect to checkout page
             window.location.href = '@Url.Page("/CheckoutPage/Checkout")';
+        }
+
+        // Function to save scroll position before form submission
+        function saveScrollPosition() {
+            localStorage.setItem('cartScrollPosition', window.pageYOffset);
+            localStorage.setItem('cartScrollTimestamp', Date.now().toString());
+            return true; // Allow form submission to continue
+        }
+
+        // Function to restore scroll position after page load
+        function restoreScrollPosition() {
+            const scrollPosition = localStorage.getItem('cartScrollPosition');
+            const timestamp = localStorage.getItem('cartScrollTimestamp');
+            
+            if (scrollPosition && timestamp) {
+                // Only restore if the timestamp is recent (within 5 seconds)
+                const timeDiff = Date.now() - parseInt(timestamp);
+                if (timeDiff < 5000) {
+                    setTimeout(() => {
+                        window.scrollTo(0, parseInt(scrollPosition));
+                        localStorage.removeItem('cartScrollPosition');
+                        localStorage.removeItem('cartScrollTimestamp');
+                    }, 50);
+                } else {
+                    localStorage.removeItem('cartScrollPosition');
+                    localStorage.removeItem('cartScrollTimestamp');
+                }
+            }
+        }
+
+        // Function to update quantity via AJAX without page reload
+        async function updateQuantityAjax(itemId, currentQuantity, rentalDays, pricePerUnit, action) {
+            try {
+                // Disable buttons to prevent multiple clicks
+                const buttons = document.querySelectorAll(`button[onclick*="${itemId}"]`);
+                buttons.forEach(btn => btn.disabled = true);
+
+                // Calculate new quantity
+                let newQuantity = currentQuantity;
+                if (action === 'increase') {
+                    newQuantity = currentQuantity + 1;
+                } else if (action === 'decrease') {
+                    newQuantity = currentQuantity - 1;
+                    if (newQuantity < 1) {
+                        // If quantity becomes 0, remove the item
+                        if (confirm('Remove this item from cart?')) {
+                            await removeItemFromCart(itemId);
+                        }
+                        buttons.forEach(btn => btn.disabled = false);
+                        return;
+                    }
+                }
+
+                const formData = new FormData();
+                formData.append('itemId', itemId);
+                formData.append('currentQuantity', currentQuantity);
+                formData.append('action', action);
+                formData.append('__RequestVerificationToken', document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+                const response = await fetch('@Url.Page("/CartPage/Cart", "UpdateQuantity")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // Update quantity display
+                    const quantitySpan = document.getElementById(`quantity-${itemId}`);
+                    if (quantitySpan) {
+                        quantitySpan.textContent = newQuantity;
+                    }
+
+                    // Update button onclick handlers with new quantity
+                    buttons.forEach(btn => {
+                        const onclick = btn.getAttribute('onclick');
+                        if (onclick.includes('decrease')) {
+                            btn.setAttribute('onclick', `updateQuantityAjax('${itemId}', ${newQuantity}, ${rentalDays}, ${pricePerUnit}, 'decrease')`);
+                        } else if (onclick.includes('increase')) {
+                            btn.setAttribute('onclick', `updateQuantityAjax('${itemId}', ${newQuantity}, ${rentalDays}, ${pricePerUnit}, 'increase')`);
+                        }
+                    });
+
+                    // Update item total price
+                    const itemTotalElement = document.getElementById(`total-price-${itemId}`);
+                    if (itemTotalElement) {
+                        const newTotal = (pricePerUnit * rentalDays * newQuantity);
+                        itemTotalElement.textContent = newTotal.toLocaleString() + ' VND';
+                    }
+
+                    // Recalculate cart totals (you might need to fetch this from server or calculate client-side)
+                    updateCartTotals();
+                    
+                    // Update product count in header (in case quantity affects count display)
+                    updateProductCount();
+
+                    // Show success message
+                    showToast('Product quantity updated successfully!', 'success');
+                } else {
+                    const errorText = await response.text();
+                    console.error('Error updating quantity:', errorText);
+                    showToast('Failed to update quantity. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating quantity:', error);
+                showToast('Failed to update quantity. Please try again.', 'error');
+            } finally {
+                // Re-enable buttons
+                const buttons = document.querySelectorAll(`button[onclick*="${itemId}"]`);
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // Function to update cart totals (simple version - might need server call for accuracy)
+        function updateCartTotals() {
+            let newSubtotal = 0;
+            
+            // Calculate new subtotal from all item totals
+            document.querySelectorAll('[id^="total-price-"]').forEach(element => {
+                const priceText = element.textContent.replace(/[^\d]/g, '');
+                newSubtotal += parseInt(priceText) || 0;
+            });
+
+            // Update subtotal display
+            const subtotalElement = document.getElementById('cart-subtotal');
+            if (subtotalElement) {
+                subtotalElement.textContent = newSubtotal.toLocaleString() + ' VND';
+            }
+
+            // Update total display (assuming no additional fees)
+            const totalElement = document.getElementById('cart-total');
+            if (totalElement) {
+                totalElement.textContent = newSubtotal.toLocaleString() + ' VND';
+            }
+        }
+
+        // Function to update product count in cart header
+        function updateProductCount() {
+            const remainingItems = document.querySelectorAll('[id^="quantity-"]');
+            const productCount = remainingItems.length;
+            
+            // Update the cart header with new count
+            const cartHeaderElement = document.querySelector('.text-gray-600');
+            if (cartHeaderElement && cartHeaderElement.textContent.includes('product')) {
+                cartHeaderElement.textContent = `${productCount} ${productCount === 1 ? 'product' : 'products'}`;
+            }
+        }
+
+        // Function to show toast messages
+        function showToast(message, type) {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast-message ${type === 'success' ? 'bg-success' : 'bg-danger'} text-white p-3 position-fixed top-0 end-0 m-3 rounded`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Function to remove item from cart via AJAX
+        async function removeItemFromCart(itemId) {
+            try {
+                const formData = new FormData();
+                formData.append('itemId', itemId);
+                formData.append('__RequestVerificationToken', document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+                const response = await fetch('@Url.Page("/CartPage/Cart", "RemoveFromCart")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // Remove the item from DOM
+                    const itemElement = document.querySelector(`[id="quantity-${itemId}"]`).closest('.p-6');
+                    if (itemElement) {
+                        itemElement.style.transition = 'opacity 0.3s ease';
+                        itemElement.style.opacity = '0';
+                        setTimeout(() => {
+                            itemElement.remove();
+                            // Update cart totals after removing item
+                            updateCartTotals();
+                            
+                            // Update product count in header
+                            updateProductCount();
+                            
+                            // Check if cart is empty and reload if needed
+                            const remainingItems = document.querySelectorAll('[id^="quantity-"]');
+                            if (remainingItems.length === 0) {
+                                window.location.reload(); // Reload to show empty cart state
+                            }
+                        }, 300);
+                    }
+
+                    showToast('Product removed from cart successfully!', 'success');
+                } else {
+                    const errorText = await response.text();
+                    console.error('Error removing item:', errorText);
+                    showToast('Failed to remove product. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Error removing item:', error);
+                showToast('Failed to remove product. Please try again.', 'error');
+            }
         }
     </script>
 }

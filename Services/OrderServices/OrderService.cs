@@ -80,6 +80,12 @@ namespace Services.OrderServices
                 item.OrderId = order.Id;
             }
 
+            // Calculate and set subtotal if not already set
+            if (order.Subtotal == 0 && order.Items.Any())
+            {
+                order.Subtotal = order.Items.Sum(item => item.DailyRate * item.RentalDays * item.Quantity);
+            }
+
             // Gọi repository để thêm vào DB
             await _orderRepo.AddAsync(order);
 
@@ -508,6 +514,7 @@ namespace Services.OrderServices
                             ProviderId = providerId,
                             Status = OrderStatus.pending,
                             TotalAmount = totalAmount,
+                            Subtotal = totalAmount, // Set subtotal equal to total rental amount
                             RentalStart = rentalStart,
                             RentalEnd = rentalEnd,
                             Items = orderItems,
@@ -856,6 +863,9 @@ namespace Services.OrderServices
 
             newOrder.TotalAmount = newOrder.Items.Sum(item =>
                 item.DailyRate * item.Quantity * calculatedRentalDays);
+            
+            // Set subtotal equal to total amount (rental fees only, no additional charges)
+            newOrder.Subtotal = newOrder.TotalAmount;
 
             await _orderRepo.AddAsync(newOrder);
 
@@ -899,6 +909,29 @@ namespace Services.OrderServices
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             return await _orderRepo.UpdateOrderContactInfoAsync(order);
+        }
+
+        /// <summary>
+        /// Updates subtotal for all orders that have subtotal = 0
+        /// This is a utility method to fix existing orders
+        /// </summary>
+        public async Task UpdateOrderSubtotalsAsync()
+        {
+            var orders = await _context.Orders
+                .Where(o => o.Subtotal == 0)
+                .Include(o => o.Items)
+                .ToListAsync();
+
+            foreach (var order in orders)
+            {
+                if (order.Items.Any())
+                {
+                    order.Subtotal = order.Items.Sum(item => item.DailyRate * item.RentalDays * item.Quantity);
+                    order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                }
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public Task<string> GetOrderItemId(Guid customerId, Guid productId)

@@ -179,6 +179,10 @@
                         <span>Shipping</span>
                         <span>@(Model.Order.Shipping == 0 ? "FREE" : "₫" + Model.Order.Shipping.ToString("N0"))</span>
                     </div>
+                    <div class="summary-item">
+                        <span>Discount</span>
+                        <span>₫0</span>
+                    </div>
                     <div class="summary-total"><span>Total</span><span>₫@Model.Order.TotalAmount.ToString("N0")</span></div>
                 </div>
             </div>

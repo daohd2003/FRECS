@@ -54,6 +54,14 @@ namespace BusinessObject.Mappings
             .ForMember(dest => dest.RentalStartDate, opt => opt.MapFrom(src => src.RentalStart))
             .ForMember(dest => dest.RentalEndDate, opt => opt.MapFrom(src => src.RentalEnd))
             .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))
+            // Map Subtotal explicitly - calculate from order items if not set
+            .ForMember(dest => dest.Subtotal, opt => opt.MapFrom(src => 
+                src.Subtotal > 0 ? src.Subtotal : 
+                src.Items.Sum(item => item.DailyRate * item.RentalDays * item.Quantity)))
+            // Set default shipping (can be customized based on business logic)
+            .ForMember(dest => dest.Shipping, opt => opt.MapFrom(src => 0m))  // Free shipping for now
+            // Set default tax (can be customized based on business logic) 
+            .ForMember(dest => dest.Tax, opt => opt.MapFrom(src => 0m))  // No tax for now
             // AutoMapper sẽ tự động map List<OrderItem> sang List<OrderItemDetailsDto> nếu bạn đã định nghĩa mapping cho item
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
             // Map từ thông tin Profile của Customer

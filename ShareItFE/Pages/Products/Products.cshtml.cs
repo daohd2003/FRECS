@@ -290,14 +290,26 @@ namespace ShareItFE.Pages.Products
 
         public async Task<IActionResult> OnPostAddFavoriteAsync(string productId)
         {
+            // Check if this is an AJAX request
+            bool isAjaxRequest = Request.Headers["X-Requested-With"] == "XMLHttpRequest" || 
+                                Request.Headers.ContainsKey("RequestVerificationToken");
+
             if (!User.Identity.IsAuthenticated)
             {
+                if (isAjaxRequest)
+                {
+                    return new JsonResult(new { success = false, message = "User not authenticated" }) { StatusCode = 401 };
+                }
                 return RedirectToPage("/Auth", new { returnUrl = "/products" });
             }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
+                if (isAjaxRequest)
+                {
+                    return new JsonResult(new { success = false, message = "User is not logged in" }) { StatusCode = 400 };
+                }
                 TempData["ErrorMessage"] = "User is not logged in.";
                 return RedirectToPage();
             }
@@ -308,6 +320,10 @@ namespace ShareItFE.Pages.Products
                 var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
                 if (string.IsNullOrEmpty(authToken))
                 {
+                    if (isAjaxRequest)
+                    {
+                        return new JsonResult(new { success = false, message = "Authentication token not found" }) { StatusCode = 401 };
+                    }
                     TempData["ErrorMessage"] = "Authentication token not found.";
                     return RedirectToPage();
                 }
@@ -327,6 +343,10 @@ namespace ShareItFE.Pages.Products
 
                         if (deleteResponse.IsSuccessStatusCode)
                         {
+                            if (isAjaxRequest)
+                            {
+                                return new JsonResult(new { success = true, action = "removed", message = "Removed from favorites" });
+                            }
                             TempData["FavoriteAction"] = "removed";
                             TempData["LastActionProductId"] = productId;
                             return RedirectToPage();
@@ -334,6 +354,10 @@ namespace ShareItFE.Pages.Products
                         else
                         {
                             var errorContent = await deleteResponse.Content.ReadAsStringAsync();
+                            if (isAjaxRequest)
+                            {
+                                return new JsonResult(new { success = false, message = $"Error removing from favorites: {errorContent}" }) { StatusCode = 400 };
+                            }
                             TempData["ErrorMessage"] = $"Error removing from favorites: {errorContent}";
                             return RedirectToPage();
                         }
@@ -346,20 +370,30 @@ namespace ShareItFE.Pages.Products
                 var addResponse = await client.PostAsync(favoriteAddUri, content);
 
                 if (addResponse.IsSuccessStatusCode)
-                {/*
-                    TempData["SuccessMessage"] = "Added to favorites successfully.";*/
+                {
+                    if (isAjaxRequest)
+                    {
+                        return new JsonResult(new { success = true, action = "added", message = "Added to favorites successfully" });
+                    }
                     TempData["LastAddedProductId"] = productId.ToString();
                     return RedirectToPage();
                 }
                 else
                 {
                     var errorContent = await addResponse.Content.ReadAsStringAsync();
-                    /* TempData["ErrorMessage"] = $"This product has been added to Favorites";*/
+                    if (isAjaxRequest)
+                    {
+                        return new JsonResult(new { success = false, message = $"Error adding to favorites: {errorContent}" }) { StatusCode = 400 };
+                    }
                     return RedirectToPage();
                 }
             }
             catch (Exception ex)
             {
+                if (isAjaxRequest)
+                {
+                    return new JsonResult(new { success = false, message = $"Server error: {ex.Message}" }) { StatusCode = 500 };
+                }
                 TempData["ErrorMessage"] = $"Server error: {ex.Message}";
                 return RedirectToPage();
             }

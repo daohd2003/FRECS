@@ -341,10 +341,32 @@
 
         // Initialize password requirements component when mode changes
         function initPasswordRequirements() {
-            if (!isLoginMode && !window.passwordRequirements) {
-                window.passwordRequirements = new PasswordRequirements('password', 'password-requirements', {
-                    autoHide: false // Don't auto-hide in registration mode
-                });
+            const requirementsDiv = document.getElementById('password-requirements');
+            console.log('initPasswordRequirements called, isLoginMode:', isLoginMode, 'requirementsDiv found:', !!requirementsDiv); // Debug log
+            
+            if (!isLoginMode) {
+                // In register mode, show and initialize password requirements
+                if (requirementsDiv) {
+                    requirementsDiv.style.display = 'block';
+                    requirementsDiv.classList.remove('login-mode');
+                    console.log('Register mode: showing password requirements'); // Debug log
+                }
+                if (!window.passwordRequirements) {
+                    window.passwordRequirements = new PasswordRequirements('password', 'password-requirements', {
+                        autoHide: false // Don't auto-hide in registration mode
+                    });
+                }
+            } else {
+                // In login mode, force hide password requirements
+                if (requirementsDiv) {
+                    requirementsDiv.style.display = 'none';
+                    requirementsDiv.classList.add('login-mode');
+                    console.log('Login mode: hiding password requirements'); // Debug log
+                }
+                // Cleanup password requirements component
+                if (window.passwordRequirements) {
+                    window.passwordRequirements = null;
+                }
             }
         }
 
@@ -367,6 +389,7 @@
         }
 
         function updateAuthModeUI() {
+            console.log('updateAuthModeUI called, isLoginMode:', isLoginMode); // Debug log
             document.getElementById('isLogin').value = isLoginMode;
             const authTitle = document.getElementById('auth-title');
             const authSubtitle = document.getElementById('auth-subtitle');
@@ -393,7 +416,12 @@
                 authTogglePrompt.innerText = "Don't have an account?";
                 authToggleButton.innerText = 'Sign up';
                 termsPrivacy.style.display = 'none';
-                if (requirementsDiv) requirementsDiv.style.display = 'none';
+                // Hide password requirements in login mode
+                if (requirementsDiv) {
+                    requirementsDiv.style.display = 'none';
+                    requirementsDiv.classList.add('login-mode');
+                    console.log('updateAuthModeUI: Added login-mode class, display set to none'); // Debug log
+                }
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
                 
                 // Clear name field when switching to login
@@ -409,7 +437,12 @@
                 authTogglePrompt.innerText = "Already have an account?";
                 authToggleButton.innerText = 'Sign in';
                 termsPrivacy.style.display = 'block';
-                if (requirementsDiv) requirementsDiv.style.display = 'none';
+                // Show password requirements in register mode
+                if (requirementsDiv) {
+                    requirementsDiv.style.display = 'block';
+                    requirementsDiv.classList.remove('login-mode');
+                    console.log('updateAuthModeUI: Removed login-mode class, display set to block'); // Debug log
+                }
                 submitButton.setAttribute('formaction', `/Auth?handler=${handlerString}`);
             }
         }
@@ -565,8 +598,35 @@
 
         // Initialize UI and password requirements when page loads
         document.addEventListener('DOMContentLoaded', function () {
+            console.log('Page loaded, isLoginMode:', isLoginMode); // Debug log
             updateAuthModeUI();
             initPasswordRequirements();
+            
+            // Add event listener to password field to prevent auto-showing requirements in login mode
+            const passwordInput = document.getElementById('password');
+            if (passwordInput) {
+                passwordInput.addEventListener('focus', function() {
+                    if (isLoginMode) {
+                        const requirementsDiv = document.getElementById('password-requirements');
+                        if (requirementsDiv) {
+                            requirementsDiv.style.display = 'none';
+                            requirementsDiv.classList.add('login-mode');
+                            console.log('Force hiding password requirements on focus'); // Debug log
+                        }
+                    }
+                });
+                
+                passwordInput.addEventListener('input', function() {
+                    if (isLoginMode) {
+                        const requirementsDiv = document.getElementById('password-requirements');
+                        if (requirementsDiv) {
+                            requirementsDiv.style.display = 'none';
+                            requirementsDiv.classList.add('login-mode');
+                            console.log('Force hiding password requirements on input'); // Debug log
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>
