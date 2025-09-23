@@ -20,9 +20,9 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div class="space-y-4">
                     <div class="product-image-container relative bg-gray-100 rounded-lg overflow-hidden" style="height: 600px;">
-                        <img id="mainProductImage" 
-                             src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")" 
-                             alt="@Model.Product.Name" 
+                        <img id="mainProductImage"
+                             src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")"
+                             alt="@Model.Product.Name"
                              class="product-image-main w-full h-full object-contain cursor-pointer" 
                              onclick="openImageModal(this.src)" />
                         <button class="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity" onclick="openImageModal(document.getElementById('mainProductImage').src)">
@@ -31,7 +31,7 @@
                     </div>
                     <div class="thumbnail-container">
                         @if (Model.Product.Images != null)
-                        {
+                    {
                             @for (int i = 0; i < Model.Product.Images.Count; i++)
                             {
                                 var image = Model.Product.Images[i];
@@ -39,7 +39,7 @@
                                     <img src="@image.ImageUrl" alt="@($"{Model.Product.Name} {i + 1}")" class="w-full h-full object-contain" />
                                 </button>
                             }
-                        }
+                    }
                     </div>
                 </div>
 
@@ -64,33 +64,79 @@
                             <div class="flex items-center justify-between mb-4">
                                 <h1 class="text-3xl font-bold text-gray-900">@Model.Product.Name</h1>
                                 <button type="button" id="tryOnBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                                    <i data-lucide="sparkles" class="h-4 w-4"></i>
-                                    <span>Try On</span>
-                                </button>
-                            </div>
+                            <i data-lucide="sparkles" class="h-4 w-4"></i>
+                            <span>Try On</span>
+                        </button>
+                    </div>
                             <div class="flex items-center space-x-4 mb-4">
                                 <div class="flex items-center space-x-1">
                                     <div class="flex">
-                                        @for (int i = 1; i <= 5; i++)
-                                        {
-                                            <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
-                                        }
-                                    </div>
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                                    }
+                                </div>
                                     <span class="text-sm text-gray-600">
-                                        @Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)
+                                    @Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)
                                     </span>
                                 </div>
                                 <span class="text-sm text-gray-500">Rented @Model.Product.RentCount times</span>
                             </div>
-                            <!-- Price Display -->
+                            <!-- Choose Option Section -->
                             <div class="mb-6">
-                                <div class="text-3xl font-bold text-purple-600">₫@Model.Product.PricePerDay.ToString("N0")/day</div>
-                            </div>
+                                <h3 class="text-lg font-semibold mb-4">Choose Option</h3>
+                                @{
+                                    bool canRent = Model.Product.RentalStatus == "Available" && Model.Product.PricePerDay > 0;
+                                    bool canPurchase = Model.Product.PurchaseStatus == "Available" && Model.Product.PurchasePrice > 0;
+                                    bool canAddToCart = canRent || canPurchase;
+                                }
+
+                                @Html.AntiForgeryToken()
+
+                                @if (canRent || canPurchase)
+                                {
+                                    <div class="space-y-3">
+                                        @if (canRent)
+                                        {
+                                            <label class="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                                                <div class="flex items-center">
+                                                    <input type="radio" name="TransactionType" value="0" asp-for="TransactionType" class="h-4 w-4 text-purple-600 focus:ring-purple-500" />
+                                                    <div class="ml-3">
+                                                        <div class="font-medium">Rental</div>
+                                                        <div class="text-sm text-gray-500">Daily rental service</div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-lg font-bold text-purple-600">₫@Model.Product.PricePerDay.ToString("N0")/day</div>
+                                            </label>
+                                        }
+
+                                        @if (canPurchase)
+                                        {
+                                            <label class="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-green-600 has-[:checked]:bg-green-50">
+                                                <div class="flex items-center">
+                                                    <input type="radio" name="TransactionType" value="1" asp-for="TransactionType" class="h-4 w-4 text-green-600 focus:ring-green-500" />
+                                                    <div class="ml-3">
+                                                        <div class="font-medium">Purchase</div>
+                                                        <div class="text-sm text-gray-500">Buy to own</div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-lg font-bold text-green-600">₫@Model.Product.PurchasePrice.ToString("N0")</div>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-8 text-gray-500">
+                                        <p>This item is currently unavailable for rent or purchase.</p>
+                                    </div>
+                                }
+
                         </div>
 
                         <div class="bg-gray-50 rounded-lg p-4">
                             <div class="flex items-center justify-between">
-                                <div>
+                                    <div>
                                     <h4 class="font-medium text-gray-900">Provided by</h4>
                                     <p class="text-purple-600 font-semibold">@Model.Product.ProviderName</p>
                                     @if (!string.IsNullOrEmpty(Model.ProviderEmail))
@@ -98,21 +144,21 @@
                                         <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
                                             <i data-lucide="mail" class="h-4 w-4"></i>
                                             <a class="text-gray-700 hover:text-purple-600 underline" href="mailto:@Model.ProviderEmail">@Model.ProviderEmail</a>
-                                        </div>
-                                    }
-                                </div>
+                                                </div>
+                                        }
+                                    </div>
                                 <button type="button" id="openChatBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
                                     <i data-lucide="message-circle" class="h-4 w-4"></i>
                                     <span>Message</span>
                                 </button>
-                            </div>
-                        </div>
+                                    </div>
+                                </div>
 
                         <div class="space-y-4">
-                            <div>
+                                    <div>
                                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Description</h3>
                                 <p class="text-gray-600 leading-relaxed">@Model.Product.Description</p>
-                            </div>
+                                    </div>
                             <div class="grid grid-cols-2 gap-4 text-sm">
                                 <div><span class="font-medium text-gray-900">Color:</span><span class="ml-2 text-gray-600">@Model.Product.Color</span></div>
                                 <div><span class="font-medium text-gray-900">Category:</span><span class="ml-2 text-gray-600 capitalize">@Model.Product.Category</span></div>
@@ -131,11 +177,11 @@
                                     }
                                 </div>
                             </div>
-                            <!-- Rental selection moved to Cart; we keep add-to-cart simple -->
-                            <button type="submit"
-                                    disabled="@(!string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase))"
+                            <!-- Add to Cart Button -->
+                            <button type="submit" id="addToCartBtn"
+                                    disabled="@(!canAddToCart)"
                                     class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
-                                @(string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase) ? "Add to Cart" : "Not Available")
+                                <span>@(canAddToCart ? "Add to Cart" : "No Options Available")</span>
                             </button>
                           
                             <div class="grid grid-cols-3 gap-4 pt-6 border-t">
@@ -149,10 +195,10 @@
                     @if (@Model.CanBeFeedbacked)
                     {
                         <button id="openFeedbackBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2">
-                            <i data-lucide="message-square-plus" class="h-4 w-4"></i>
-                            <span>Leave Feedback</span>
-                        </button>
-                    }
+                                <i data-lucide="message-square-plus" class="h-4 w-4"></i>
+                                <span>Leave Feedback</span>
+                            </button>
+                        }
                 </div>
             </div>
 
@@ -160,18 +206,18 @@
             {
                 <div class="mt-16 border-t pt-16">
                     <div class="flex items-center justify-between mb-8">
-                        <h2 class="text-2xl font-bold text-gray-900">Customer Reviews</h2>
-                        <div class="flex items-center space-x-2">
+                    <h2 class="text-2xl font-bold text-gray-900">Customer Reviews</h2>
+                    <div class="flex items-center space-x-2">
                             <div class="flex">
-                                @for (int i = 1; i <= 5; i++)
-                                {
-                                    <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
-                                }
-                            </div>
-                            <span class="text-lg font-semibold">@Model.Product.AverageRating.ToString("F1")</span>
-                            <span class="text-gray-500">(@(Model.Feedbacks?.Count ?? 0) reviews)</span>
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                            }
                         </div>
+                            <span class="text-lg font-semibold">@Model.Product.AverageRating.ToString("F1")</span>
+                        <span class="text-gray-500">(@(Model.Feedbacks?.Count ?? 0) reviews)</span>
                     </div>
+                </div>
 
                     <div class="space-y-6">
                         @foreach (var feedback in Model.Feedbacks)
@@ -184,20 +230,20 @@
                                             <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.UserName</span></div>
                                             <div class="flex items-center space-x-2">
                                                 <div class="flex">
-                                                    @for (int i = 1; i <= 5; i++)
-                                                    {
-                                                        <i data-lucide="star" class="h-4 w-4 @(i <= feedback.Rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
-                                                    }
-                                                </div>
-                                                <span class="text-sm text-gray-500">@feedback.CreatedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
+                                                @for (int i = 1; i <= 5; i++)
+                                                {
+                                                    <i data-lucide="star" class="h-4 w-4 @(i <= feedback.Rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                                                }
                                             </div>
+                                                <span class="text-sm text-gray-500">@feedback.CreatedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
                                         </div>
                                     </div>
                                 </div>
-                                <p class="text-gray-700">@feedback.Comment</p>
                             </div>
-                        }
+                                <p class="text-gray-700">@feedback.Comment</p>
                     </div>
+                }
+            </div>
                 </div>
             }
         </div>
@@ -450,6 +496,64 @@
 
         // Zoom controls
         document.addEventListener('DOMContentLoaded', function() {
+            // --- Transaction Type Selection Logic ---
+            const transactionRadios = document.querySelectorAll('input[name="TransactionType"]');
+            const addToCartBtn = document.getElementById('addToCartBtn');
+
+            function updateTransactionUI() {
+                const selectedOption = document.querySelector('input[name="TransactionType"]:checked');
+                if (selectedOption && addToCartBtn) {
+                    const isRental = selectedOption.value === '0';
+                    const buttonText = addToCartBtn.querySelector('span');
+                    if (buttonText) {
+                        buttonText.textContent = `Add to Cart (${isRental ? 'Rental' : 'Purchase'})`;
+                    }
+                }
+            }
+
+            // Add event listeners to transaction type radio buttons
+            if (transactionRadios.length > 0) {
+                transactionRadios.forEach(radio => {
+                    radio.addEventListener('change', updateTransactionUI);
+                });
+                
+                // Set initial UI state based on default selection from backend
+                updateTransactionUI();
+            }
+
+            // --- Size Selection Logic ---
+            const sizeBtns = document.querySelectorAll('.size-btn');
+            const selectedSizeInput = document.getElementById('selectedSizeInput');
+
+            if (sizeBtns.length > 0 && selectedSizeInput) {
+                sizeBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        selectedSizeInput.value = btn.dataset.size;
+                        
+                        // Update visual state
+                        sizeBtns.forEach(b => {
+                            b.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                            b.classList.add('border-gray-300', 'text-gray-700');
+                        });
+                        btn.classList.remove('border-gray-300', 'text-gray-700');
+                        btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                    });
+                });
+            }
+
+            // --- Try On Button Logic ---
+            const tryOnBtn = document.getElementById('tryOnBtn');
+            if (tryOnBtn) {
+                tryOnBtn.addEventListener('click', () => {
+                    const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product?.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
+                    if (garmentImageUrls.length > 0) {
+                        window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
+                    } else {
+                        alert('No garment image available for try-on.');
+                    }
+                });
+            }
+
             // Wait for the modal to be in DOM, then add event listeners
             setTimeout(() => {
                 const zoomInBtn = document.getElementById('zoomInBtn');
@@ -576,9 +680,9 @@
             }
 
             starRatingContainer.addEventListener('click', (event) => {
-                const clickedButton = event.target.closest('.feedback-star-btn');
-                if (clickedButton) {
-                    const rating = parseInt(clickedButton.dataset.rating, 10);
+                    const clickedButton = event.target.closest('.feedback-star-btn');
+                    if (clickedButton) {
+                        const rating = parseInt(clickedButton.dataset.rating, 10);
                     updateStarRating(rating);
                 }
             });
@@ -601,8 +705,8 @@
                                 // --- PHẦN 1: LOGIC CHO TRANG SẢN PHẨM ---
 
                                 // Image gallery logic
-                                const mainImage = document.getElementById('mainProductImage');
-                const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
+            const mainImage = document.getElementById('mainProductImage');
+            const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
                 thumbnailBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
                         mainImage.src = btn.dataset.imageSrc;
@@ -640,18 +744,15 @@
                 if (addToCartForm) {
                     addToCartForm.addEventListener('submit', function (event) {
                         const sizeValue = document.getElementById('selectedSizeInput').value;
-                        const dateValue = document.querySelector('input[name="StartDate"]').value;
-
+                        
+                        // Validate size selection
                         if (!sizeValue) {
                             event.preventDefault();
                             alert('Please select a size');
                             return;
                         }
-                        if (!dateValue) {
-                            event.preventDefault();
-                            alert('Please select a start date');
-                            return;
-                        }
+                        
+                        // No need to validate rental dates here - they will be handled in Cart page
                     });
                 }
 
@@ -663,9 +764,9 @@
                         const productId = favoriteForm.querySelector('input[name="productId"]').value;
                         if (productId) {
                             favoriteForm.submit();
-                        }
-                    });
-                }
+                    }
+                });
+            }
 
                 // Try On button logic
                 const tryOnBtn = document.getElementById('tryOnBtn');
@@ -750,7 +851,7 @@
                             messages.reverse().forEach(prependOldMessage);
                             messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
                             currentPage++;
-                        } else {
+                            } else {
                             allMessagesLoaded = true;
                         }
                     } catch (error) {
@@ -815,18 +916,18 @@
                         e.preventDefault();
                         if (!accessToken) {
                             alert("Please log in to chat.");
-                            return;
-                        }
-                        chatModal.classList.remove('hidden');
-                        document.body.classList.add('overflow-hidden');
-                        initializeChat();
-                    });
+                        return;
+                    }
+                    chatModal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    initializeChat();
+                });
                 }
 
                 if (closeChatBtn) {
                     closeChatBtn.addEventListener('click', () => {
-                        chatModal.classList.add('hidden');
-                        document.body.classList.remove('overflow-hidden');
+                    chatModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                         if (signalRConnection) {
                             signalRConnection.stop().then(() => signalRConnection = null);
                         }
@@ -856,7 +957,7 @@
                 });
             </text>
         }
-                });
+        });
     </script>
 }
 

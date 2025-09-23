@@ -1,7 +1,7 @@
 ﻿@page "{id:guid}"
 @model ShareItFE.Pages.Order.DetailsModel
 @{
-    ViewData["Title"] = $"Order Details - {Model.Order.OrderCode}";
+    ViewData["Title"] = Model.Order != null ? $"Order Details - {Model.Order.OrderCode}" : "Order Details";
 
     // --- Helper functions ---
     Func<BusinessObject.Enums.OrderStatus, string> GetStatusColor = status =>
@@ -18,7 +18,7 @@
             _ => "status-default"
         };
     };
-    var totalRentalDays = (Model.Order.RentalEndDate - Model.Order.RentalStartDate).Days + 1;
+    var totalRentalDays = Model.Order != null ? (Model.Order.RentalEndDate - Model.Order.RentalStartDate).Days + 1 : 0;
     Func<string, string> FormatPaymentMethod = method =>
     {
         return method?.ToLower() switch
@@ -44,7 +44,9 @@
         </a>
     </div>
 
-    <div class="order-detail-grid">
+    @if (Model.Order != null)
+    {
+        <div class="order-detail-grid">
         <div class="main-content">
             <div class="card">
                 <div class="order-title">
@@ -83,7 +85,8 @@
                             </div>
                             <div class="item-price-actions">
                                 <div class="item-price">
-                                    <span>@item.PricePerDay.ToString("N0") / day</span>
+                                    <span>₫@item.PricePerDay.ToString("N0") / day</span>
+                                    <small class="text-muted">(@item.RentalDays days)</small>
                                 </div>
                                 @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
                                 {
@@ -207,7 +210,16 @@
                 <p>@FormatPaymentMethod(Model.Order.PaymentMethod)</p>
             </div>
         </aside>
-    </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            <h4>Order Not Found</h4>
+            <p>The requested order could not be found or you don't have permission to view it.</p>
+            <a asp-page="/Profile" asp-route-tab="orders" class="btn btn-primary">Back to Orders</a>
+        </div>
+    }
 </div>
 
 <!-- Rent Again Modal -->

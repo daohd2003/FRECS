@@ -65,7 +65,7 @@ namespace ShareItFE.Pages.CartPage
                     if (Cart != null && Cart.Items != null)
                     {
                         // Cập nhật tính toán Subtotal: Price * Days * Quantity
-                        Subtotal = Cart.Items.Sum(item => item.PricePerUnit * item.RentalDays * item.Quantity);
+                        Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
                         //DeliveryFee = Subtotal > 100000 ? 0 : 15000; // Ví dụ: miễn phí giao hàng nếu tổng tiền > 100
                         //Total = Subtotal + DeliveryFee;
                         Total = Subtotal;

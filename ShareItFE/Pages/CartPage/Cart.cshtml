@@ -59,39 +59,41 @@
                             <p class="text-gray-600">@Model.Cart.Items.Count @(Model.Cart.Items.Count == 1 ? "product" : "products")</p>
                         </div>
 
-                        <div class="p-6 border-b border-gray-200">
-                            @* Global rental schedule for entire cart *@
-                            @if (Model.Cart?.Items != null && Model.Cart.Items.Any())
-                            {
-                                var firstItem = Model.Cart.Items.First();
+                        @* Global rental schedule section - only show if there are rental items *@
+                        @if (Model.Cart?.Items != null && Model.Cart.Items.Any(item => item.TransactionType == BusinessObject.Enums.TransactionType.Rental))
+                        {
+                            <div class="p-6 border-b border-gray-200">
+                                @* Global rental schedule for rental items only *@
+                                @{
+                                    var firstRentalItem = Model.Cart.Items.First(item => item.TransactionType == BusinessObject.Enums.TransactionType.Rental);
+                                }
                                 <form id="global-schedule-form" method="post" asp-page-handler="UpdateCartSchedule" class="grid grid-cols-1 md:grid-cols-3 items-end gap-4 md:gap-6" onsubmit="saveScrollPosition()">
                                     @Html.AntiForgeryToken()
-                                    <input type="hidden" name="itemId" value="@firstItem.ItemId" />
+                                    <input type="hidden" name="itemId" value="@firstRentalItem.ItemId" />
                                     <div class="flex flex-col w-full">
-                                        <label class="text-sm font-medium text-gray-700 mb-2">Start Date (all items)</label>
-                                        <input id="globalStartDate" type="date" name="startDate" value="@firstItem.StartDate.ToString("yyyy-MM-dd")" min="@DateTime.Now.ToString("yyyy-MM-dd")" class="h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                                        <label class="text-sm font-medium text-gray-700 mb-2">Start Date (rental items)</label>
+                                        <input id="globalStartDate" type="date" name="startDate" value="@firstRentalItem.StartDate?.ToString("yyyy-MM-dd")" min="@DateTime.Now.ToString("yyyy-MM-dd")" class="h-10 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
                                     </div>
                                     <div class="flex flex-col w-full">
-                                        <label class="text-sm font-medium text-gray-700 mb-2">Rental Days (all items)</label>
+                                        <label class="text-sm font-medium text-gray-700 mb-2">Rental Days (rental items)</label>
                                         <div class="inline-flex items-center space-x-2">
                                             <button type="submit" name="action" value="decreaseDays" class="h-10 px-3 border border-gray-300 rounded-lg hover:bg-gray-50" aria-label="Decrease rental days">
                                                 <i class="bi bi-dash-lg w-4 h-4"></i>
                                             </button>
-                                            <input id="globalRentalDays" type="number" name="rentalDays" value="@firstItem.RentalDays" min="1" class="h-10 w-24 text-center px-3 border border-gray-300 rounded-lg" />
+                                            <input id="globalRentalDays" type="number" name="rentalDays" value="@firstRentalItem.RentalDays" min="1" class="h-10 w-24 text-center px-3 border border-gray-300 rounded-lg" />
                                             <button type="submit" name="action" value="increaseDays" class="h-10 px-3 border border-gray-300 rounded-lg hover:bg-gray-50" aria-label="Increase rental days">
                                                 <i class="bi bi-plus-lg w-4 h-4"></i>
                                             </button>
                                         </div>
                                     </div>
                                     <div class="flex md:justify-end">
-                                        <button type="submit" name="action" value="apply" class="h-10 bg-gray-900 text-white px-6 rounded-lg hover:bg-gray-800 transition-colors">Apply to all</button>
+                                        <button type="submit" name="action" value="apply" class="h-10 bg-gray-900 text-white px-6 rounded-lg hover:bg-gray-800 transition-colors">Apply to rental items</button>
                                     </div>
                                 </form>
-                            }
-                        </div>
+                            </div>
+                        }
 
                         <div class="divide-y divide-gray-200">
-                            @{ var globalStart = Model.Cart.Items.First().StartDate; var globalEnd = Model.Cart.Items.First().EndDate; var globalDays = Model.Cart.Items.First().RentalDays; }
                             @foreach (var item in Model.Cart.Items)
                             {
                                 <div class="p-6">
@@ -105,9 +107,26 @@
                                                 @item.ProductName
                                             </h3>
                                             <p class="text-gray-600 mb-2">Size: @item.ProductSize</p>
-                                            <div class="text-sm text-gray-500 mb-3">
-                                                <span>From @globalStart.ToString("dd-MM-yyyy") To @globalEnd.ToString("dd-MM-yyyy")</span>
+                                            
+                                            @* Show transaction type *@
+                                            <div class="text-sm mb-2">
+                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+                                                {
+                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Purchase</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">Rental</span>
+                                                }
                                             </div>
+                                            
+                                            @* Show rental dates only for rental items *@
+                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.Rental && item.StartDate.HasValue && item.EndDate.HasValue)
+                                            {
+                                                <div class="text-sm text-gray-500 mb-3">
+                                                    <span>From @item.StartDate.Value.ToString("dd-MM-yyyy") To @item.EndDate.Value.ToString("dd-MM-yyyy")</span>
+                                                </div>
+                                            }
 
                                             <div class="flex items-center">
                                                 @* Added a flex container for controls ************ NEW ************ *@
@@ -127,13 +146,15 @@
                                                     </div>
                                                 </div>
 
-                                                <div class="vertical-divider"></div> @************ NEW ************
-
-                                                    @* Controls for Rental Days *@
-                                                <div class="flex flex-col">
-                                                    <label class="text-xs text-gray-500 mb-1">Number of rental days</label>
-                                                    <span class="text-sm font-medium min-w-[3rem] text-center">@globalDays</span>
-                                                </div>
+                                                @* Show rental days only for rental items *@
+                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Rental)
+                                                {
+                                                    <div class="vertical-divider"></div>
+                                                    <div class="flex flex-col">
+                                                        <label class="text-xs text-gray-500 mb-1">Number of rental days</label>
+                                                        <span class="text-sm font-medium min-w-[3rem] text-center">@item.RentalDays</span>
+                                                    </div>
+                                                }
 
                                                 @* Remove Button *@
                                                 <div class="ml-auto-remove-btn">
@@ -148,10 +169,17 @@
                                         @* Item Total Price Display *@
                                         <div class="text-right">
                                             <div class="text-lg font-bold text-purple-600" id="total-price-@item.ItemId">
-                                                @((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND
+                                                @item.TotalItemPrice.ToString("N0") VND
                                             </div>
                                             <div class="text-sm text-gray-500">
-                                                @item.PricePerUnit.ToString("N0") VND/day
+                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+                                                {
+                                                    <span>@item.PricePerUnit.ToString("N0") VND each</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@item.PricePerUnit.ToString("N0") VND/day</span>
+                                                }
                                             </div>
                                         </div>
                                     </div>

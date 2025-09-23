@@ -83,7 +83,10 @@ namespace Services.OrderServices
             // Calculate and set subtotal if not already set
             if (order.Subtotal == 0 && order.Items.Any())
             {
-                order.Subtotal = order.Items.Sum(item => item.DailyRate * item.RentalDays * item.Quantity);
+                order.Subtotal = order.Items.Sum(item => 
+                    item.TransactionType == BusinessObject.Enums.TransactionType.Purchase
+                        ? item.DailyRate * item.Quantity
+                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
             }
 
             // Gọi repository để thêm vào DB
@@ -487,22 +490,30 @@ namespace Services.OrderServices
                         {
                             var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
 
-                            if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available || product.PricePerDay <= 0)
+                            if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available)
                             {
-                                throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable or has an invalid price.");
+                                throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable.");
+                            }
+
+                            // Validate rental availability and pricing
+                            if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
+                                product.PricePerDay <= 0)
+                            {
+                                throw new InvalidOperationException($"Product '{product.Name}' is not available for rental.");
                             }
 
                             var orderItem = new OrderItem
                             {
                                 Id = Guid.NewGuid(),
                                 ProductId = cartItem.ProductId,
+                                TransactionType = BusinessObject.Enums.TransactionType.Rental,
                                 RentalDays = cartItem.RentalDays,
                                 Quantity = cartItem.Quantity,
                                 DailyRate = product.PricePerDay
                             };
 
                             orderItems.Add(orderItem);
-                            totalAmount += orderItem.DailyRate * orderItem.RentalDays * orderItem.Quantity;
+                            totalAmount += orderItem.DailyRate * orderItem.RentalDays.Value * orderItem.Quantity;
                         }
                         var rentalStart = providerGroup.Min(ci => ci.StartDate);
                         var rentalEnd = providerGroup.Max(ci => ci.EndDate);
@@ -732,35 +743,48 @@ namespace Services.OrderServices
 
         public async Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId)
         {
-            // Reduce tracking and payload size: AsNoTracking + filtered includes
-            var order = await _context.Orders
-                .AsNoTracking()
-                .Where(o => o.Id == orderId)
-                .Include(o => o.Items)
-                    .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
-                .Include(o => o.Customer)
-                    .ThenInclude(c => c.Profile)
-                .FirstOrDefaultAsync();
-
-            if (order == null)
+            try
             {
-                return null;
-            }
+                // Reduce tracking and payload size: AsNoTracking + filtered includes
+                var order = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => o.Id == orderId)
+                    .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                            .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
+                    .Include(o => o.Customer)
+                        .ThenInclude(c => c.Profile)
+                    .FirstOrDefaultAsync();
 
-            var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-            // Fetch latest payment method without loading entire transactions collection
-            var latestPaymentMethod = await _context.Transactions
-                .AsNoTracking()
-                .Where(t => t.Orders.Any(o => o.Id == orderId))
-                .OrderByDescending(t => t.TransactionDate)
-                .Select(t => t.PaymentMethod)
-                .FirstOrDefaultAsync();
-            if (!string.IsNullOrEmpty(latestPaymentMethod))
-            {
-                orderDetailsDto.PaymentMethod = latestPaymentMethod;
+                if (order == null)
+                {
+                    return null;
+                }
+
+                var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
+                
+                // Fetch latest payment method without loading entire transactions collection
+                var latestPaymentMethod = await _context.Transactions
+                    .AsNoTracking()
+                    .Where(t => t.Orders.Any(o => o.Id == orderId))
+                    .OrderByDescending(t => t.TransactionDate)
+                    .Select(t => t.PaymentMethod)
+                    .FirstOrDefaultAsync();
+                    
+                if (!string.IsNullOrEmpty(latestPaymentMethod))
+                {
+                    orderDetailsDto.PaymentMethod = latestPaymentMethod;
+                }
+                
+                return orderDetailsDto;
             }
-            return orderDetailsDto;
+            catch (Exception ex)
+            {
+                // Log the error for debugging
+                Console.WriteLine($"Error in GetOrderDetailsAsync for orderId {orderId}: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                throw new Exception($"Failed to get order details: {ex.Message}", ex);
+            }
         }
         public async Task ClearCartItemsForOrderAsync(Order order)
         {
@@ -926,7 +950,10 @@ namespace Services.OrderServices
             {
                 if (order.Items.Any())
                 {
-                    order.Subtotal = order.Items.Sum(item => item.DailyRate * item.RentalDays * item.Quantity);
+                    order.Subtotal = order.Items.Sum(item => 
+                        item.TransactionType == BusinessObject.Enums.TransactionType.Purchase
+                            ? item.DailyRate * item.Quantity
+                            : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
                     order.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 }
             }

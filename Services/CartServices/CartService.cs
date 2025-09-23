@@ -39,15 +39,14 @@ namespace Services.CartServices
 
             var cartDto = _mapper.Map<CartDto>(cart);
 
-            // Get cart items with discounted prices
+            // Get cart items with correct pricing based on transaction type
             var cartItemDtos = new List<CartItemDto>();
             foreach (var cartItem in cart.Items)
             {
                 var cartItemDto = _mapper.Map<CartItemDto>(cartItem);
                 
-                // Use original price
-                cartItemDto.PricePerUnit = cartItem.Product.PricePerDay;
-                cartItemDto.TotalItemPrice = cartItem.Product.PricePerDay * cartItem.Quantity * cartItem.RentalDays;
+                // Set price and total based on transaction type - AutoMapper will handle this now
+                // but we'll keep this for any additional processing if needed
                 
                 cartItemDtos.Add(cartItemDto);
             }
@@ -68,6 +67,24 @@ namespace Services.CartServices
                 throw new ArgumentException("Product not found.");
             }
 
+            // Validate transaction type availability
+            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+            {
+                if (product.PurchaseStatus != BusinessObject.Enums.PurchaseStatus.Available || 
+                    product.PurchaseQuantity <= 0)
+                {
+                    throw new ArgumentException("Product is not available for purchase.");
+                }
+            }
+            else // Rental
+            {
+                if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
+                    product.RentalQuantity <= 0)
+                {
+                    throw new ArgumentException("Product is not available for rental.");
+                }
+            }
+
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
@@ -75,40 +92,69 @@ namespace Services.CartServices
                 await _cartRepository.CreateCartAsync(cart);
             }
 
-            // Defaults if not provided from Product Detail page
-            int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
-                ? cartAddRequestDto.RentalDays.Value
-                : 1;
-            DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
-            if (startDate < DateTime.UtcNow.Date)
+            // Handle rental-specific logic
+            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.Rental)
             {
-                startDate = DateTime.UtcNow.Date.AddDays(1);
+                // Defaults if not provided from Product Detail page
+                int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
+                    ? cartAddRequestDto.RentalDays.Value
+                    : 1;
+                DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
+                if (startDate < DateTime.UtcNow.Date)
+                {
+                    startDate = DateTime.UtcNow.Date.AddDays(1);
+                }
+
+                // Find existing rental item with same ProductId, StartDate, RentalDays
+                var existingCartItem = cart.Items.FirstOrDefault(ci =>
+                    ci.ProductId == cartAddRequestDto.ProductId &&
+                    ci.TransactionType == BusinessObject.Enums.TransactionType.Rental &&
+                    ci.StartDate.HasValue && ci.StartDate.Value.Date == startDate && 
+                    ci.RentalDays == rentalDays);
+
+                if (existingCartItem != null)
+                {
+                    existingCartItem.Quantity += cartAddRequestDto.Quantity;
+                    existingCartItem.EndDate = existingCartItem.StartDate.Value.AddDays(existingCartItem.RentalDays.Value);
+                    await _cartRepository.UpdateCartItemAsync(existingCartItem);
+                }
+                else
+                {
+                    var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
+                    newCartItem.CartId = cart.Id;
+                    newCartItem.Id = Guid.NewGuid();
+                    // Apply rental defaults
+                    newCartItem.StartDate = startDate;
+                    newCartItem.RentalDays = rentalDays;
+                    newCartItem.EndDate = newCartItem.StartDate.Value.AddDays(newCartItem.RentalDays.Value);
+
+                    await _cartRepository.AddCartItemAsync(newCartItem);
+                }
             }
-
-            // Lấy CartItem hiện có (nếu có cùng ProductId, StartDate, RentalDays)
-            var existingCartItem = cart.Items.FirstOrDefault(ci =>
-                ci.ProductId == cartAddRequestDto.ProductId &&
-                ci.StartDate.Date == startDate && // So sánh ngày
-                ci.RentalDays == rentalDays);// So sánh số ngày thuê)
-
-            if (existingCartItem != null)
+            else // Purchase
             {
-                existingCartItem.Quantity += cartAddRequestDto.Quantity; // Cộng thêm số lượng
-                existingCartItem.EndDate = existingCartItem.StartDate.AddDays(existingCartItem.RentalDays); // Cập nhật lại EndDate
-                await _cartRepository.UpdateCartItemAsync(existingCartItem);
-            }
-            else
-            {
-                var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto); // Ánh xạ từ DTO
-                newCartItem.CartId = cart.Id;
-                newCartItem.Id = Guid.NewGuid(); // Gán Id mới
-                // Apply defaults
-                newCartItem.StartDate = startDate;
-                newCartItem.RentalDays = rentalDays;
-                newCartItem.EndDate = newCartItem.StartDate.AddDays(newCartItem.RentalDays);
+                // Find existing purchase item with same ProductId
+                var existingCartItem = cart.Items.FirstOrDefault(ci =>
+                    ci.ProductId == cartAddRequestDto.ProductId &&
+                    ci.TransactionType == BusinessObject.Enums.TransactionType.Purchase);
 
-                // EndDate đã được tính toán trong Mapper Profile khi map từ CartAddRequestDto
-                await _cartRepository.AddCartItemAsync(newCartItem);
+                if (existingCartItem != null)
+                {
+                    existingCartItem.Quantity += cartAddRequestDto.Quantity;
+                    await _cartRepository.UpdateCartItemAsync(existingCartItem);
+                }
+                else
+                {
+                    var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
+                    newCartItem.CartId = cart.Id;
+                    newCartItem.Id = Guid.NewGuid();
+                    // For purchase: no rental dates needed
+                    newCartItem.StartDate = null;
+                    newCartItem.RentalDays = null;
+                    newCartItem.EndDate = null;
+
+                    await _cartRepository.AddCartItemAsync(newCartItem);
+                }
             }
 
             return true;
@@ -156,7 +202,9 @@ namespace Services.CartServices
                         throw new ArgumentException("Start Date cannot be in the past.");
                     }
                     item.StartDate = newStart;
-                    item.EndDate = item.StartDate.AddDays(item.RentalDays);
+                    item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
+                        ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
+                        : null;
                 }
 
                 if (updateDto.RentalDays.HasValue)
@@ -166,7 +214,9 @@ namespace Services.CartServices
                         throw new ArgumentException("Rental Days must be at least 1.");
                     }
                     item.RentalDays = updateDto.RentalDays.Value;
-                    item.EndDate = item.StartDate.AddDays(item.RentalDays);
+                    item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
+                        ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
+                        : null;
                 }
 
                 await _cartRepository.UpdateCartItemAsync(item);

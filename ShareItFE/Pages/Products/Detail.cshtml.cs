@@ -46,6 +46,9 @@ namespace ShareItFE.Pages.Products
         [BindProperty, Required(ErrorMessage = "Please select a size")]
         public string SelectedSize { get; set; }
 
+        [BindProperty]
+        public BusinessObject.Enums.TransactionType TransactionType { get; set; } = BusinessObject.Enums.TransactionType.Rental;
+
         // StartDate and RentalDays moved to Cart; backend will default
         [BindProperty]
         public DateTime? StartDate { get; set; }
@@ -216,6 +219,9 @@ namespace ShareItFE.Pages.Products
                     }
                     if (Product == null) return NotFound();
                     
+                    // Set default transaction type based on product availability
+                    SetDefaultTransactionType();
+                    
                     // Fetch provider email via profile endpoint
                     try
                     {
@@ -339,22 +345,48 @@ namespace ShareItFE.Pages.Products
                 return Page();
             }
 
-            // 2. Kiểm tra ModelState.IsValid (Validation từ thuộc tính)
+            // 2. Load Product data first to validate
+            await LoadInitialData(id);
+            if (Product == null)
+            {
+                ErrorMessage = "Product not found.";
+                return Page();
+            }
+
+            // 3. Kiểm tra ModelState.IsValid (Validation từ thuộc tính)
             // Only size required at product detail level
             ModelState.Remove(nameof(StartDate));
             ModelState.Remove(nameof(RentalDays));
             if (!ModelState.IsValid)
             {
                 ErrorMessage = "Please select a size.";
-                await LoadInitialData(id);
                 return Page();
             }
 
-            // 3. Chuẩn bị dữ liệu và gọi API
+            // 4. Validate transaction type selection based on product availability
+            if (TransactionType == BusinessObject.Enums.TransactionType.Purchase)
+            {
+                if (Product.PurchaseStatus != "Available" || Product.PurchasePrice <= 0)
+                {
+                    ErrorMessage = "This product is not available for purchase.";
+                    return Page();
+                }
+            }
+            else // Rental
+            {
+                if (Product.RentalStatus != "Available" || Product.PricePerDay <= 0)
+                {
+                    ErrorMessage = "This product is not available for rental.";
+                    return Page();
+                }
+            }
+
+            // 5. Chuẩn bị dữ liệu và gọi API
             var cartAddRequestDto = new CartAddRequestDto
             {
                 ProductId = id,
                 Size = SelectedSize,
+                TransactionType = TransactionType, // Set transaction type from user selection
                 RentalDays = RentalDays,
                 StartDate = StartDate,
                 Quantity = 1 // Mặc định số lượng là 1 từ trang chi tiết
@@ -638,6 +670,34 @@ namespace ShareItFE.Pages.Products
             }
         }
 
+        /// <summary>
+        /// Sets the default transaction type based on product availability
+        /// </summary>
+        private void SetDefaultTransactionType()
+        {
+            if (Product == null) return;
+
+            bool canRent = Product.RentalStatus == "Available" && Product.PricePerDay > 0;
+            bool canPurchase = Product.PurchaseStatus == "Available" && Product.PurchasePrice > 0;
+
+            // Set default based on availability
+            if (canRent && !canPurchase)
+            {
+                // Only rental available
+                TransactionType = BusinessObject.Enums.TransactionType.Rental;
+            }
+            else if (!canRent && canPurchase)
+            {
+                // Only purchase available
+                TransactionType = BusinessObject.Enums.TransactionType.Purchase;
+            }
+            else if (canRent && canPurchase)
+            {
+                // Both available, default to rental
+                TransactionType = BusinessObject.Enums.TransactionType.Rental;
+            }
+            // If neither is available, keep the default (Rental) - the form will be disabled anyway
+        }
 
     }
 }

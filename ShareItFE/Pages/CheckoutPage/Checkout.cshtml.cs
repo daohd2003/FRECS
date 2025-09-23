@@ -133,7 +133,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
                         else
                         {
-                            Subtotal = Cart.Items.Sum(item => item.PricePerUnit * item.RentalDays * item.Quantity);
+                            Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
                             // Giả định logic tính phí giao hàng và thuế
                             //DeliveryFee = Subtotal > 100000 ? 0 : 15000;
                             //Total = Subtotal + DeliveryFee ;
