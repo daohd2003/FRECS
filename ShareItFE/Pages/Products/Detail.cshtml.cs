@@ -30,16 +30,26 @@ namespace ShareItFE.Pages.Products
         {
             _httpClientFactory = httpClientFactory;
             _httpContextAccessor = httpContextAccessor;
-            _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            _jsonOptions = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
             _configuration = configuration;
             _environment = environment;
             _clientHelper = clientHelper;
         }
 
         public ProductDTO Product { get; set; }
-        public List<FeedbackDto> Feedbacks { get; set; } = new List<FeedbackDto>();
+        public List<FeedbackResponseDto> Feedbacks { get; set; } = new List<FeedbackResponseDto>();
         public bool IsFavorite { get; set; }
         public string? ProviderEmail { get; set; }
+        
+        // Pagination properties for feedbacks
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
+        public int TotalFeedbacks { get; set; } = 0;
+        public int PageSize { get; set; } = 5;
         
 
 
@@ -83,7 +93,7 @@ namespace ShareItFE.Pages.Products
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
                 ErrorMessage = "Please log in to add product to cart.";
-                await LoadInitialData(id);
+                await LoadInitialData(id, 1);
                 return Page();
             }
 
@@ -185,8 +195,24 @@ namespace ShareItFE.Pages.Products
 
 
 
-        public async Task<IActionResult> OnGetAsync(Guid id)
+        public async Task<IActionResult> OnGetAsync(Guid id, [FromQuery] int page = 1)
         {
+            // Debug: Print all query parameters
+            var queryParams = Request.Query.ToList();
+            Console.WriteLine($"All Query Parameters: {string.Join(", ", queryParams.Select(q => $"{q.Key}={q.Value}"))}");
+            
+            // Fallback: Get page from Request.Query if [FromQuery] doesn't work
+            if (page == 1 && Request.Query.ContainsKey("page"))
+            {
+                if (int.TryParse(Request.Query["page"], out int queryPage))
+                {
+                    page = queryPage;
+                    Console.WriteLine($"Found page in query string: {page}");
+                }
+            }
+            
+            CurrentPage = page > 0 ? page : 1;
+            Console.WriteLine($"OnGetAsync Start - ProductId: {id}, RequestedPage: {page}, CurrentPage: {CurrentPage}");
             try
             {
                 // No-op: StartDate/RentalDays handled later in Cart
@@ -251,14 +277,42 @@ namespace ShareItFE.Pages.Products
                     return NotFound();
                 }
 
-                // Fetch feedbacks
-                var feedbacksRequestUri = $"api/feedbacks/0/{id}";
+                // Fetch feedbacks with pagination using correct endpoint
+                var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
                 {
-                    var apiResponse = await feedbacksResponse.Content.ReadFromJsonAsync<ApiResponse<List<FeedbackDto>>>(_jsonOptions);
-                    Feedbacks = apiResponse?.Data ?? new List<FeedbackDto>();
+                    try
+                    {
+                        var responseContent = await feedbacksResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"Feedback API Response: {responseContent}"); // Debug log
+                        
+                        var apiResponse = JsonSerializer.Deserialize<ApiResponse<PaginatedResponse<FeedbackResponseDto>>>(responseContent, _jsonOptions);
+                        var paginatedData = apiResponse?.Data;
+                        
+                        if (paginatedData != null)
+                        {
+                            Feedbacks = paginatedData.Items ?? new List<FeedbackResponseDto>();
+                            TotalFeedbacks = paginatedData.TotalItems;
+                            TotalPages = paginatedData.TotalPages;
+                            // Don't override CurrentPage - keep the value from query parameter
+                            Console.WriteLine($"API returned page: {paginatedData.Page}, keeping CurrentPage: {CurrentPage}");
+                        }
+                        else
+                        {
+                            Feedbacks = new List<FeedbackResponseDto>();
+                            TotalFeedbacks = 0;
+                            TotalPages = 1;
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Console.WriteLine($"JSON Error parsing feedbacks: {jsonEx.Message}");
+                        Feedbacks = new List<FeedbackResponseDto>();
+                        TotalFeedbacks = 0;
+                        TotalPages = 1;
+                    }
 
                     foreach (var feedback in Feedbacks)
                     {
@@ -330,6 +384,8 @@ namespace ShareItFE.Pages.Products
             {
                 CurrentUserId = Guid.Parse(userIdString);
             }
+            
+            Console.WriteLine($"OnGetAsync Complete - ProductId: {id}, PageParam: {page}, CurrentPage: {CurrentPage}, TotalFeedbacks: {TotalFeedbacks}, TotalPages: {TotalPages}");
             return Page();
         }
 
@@ -341,12 +397,12 @@ namespace ShareItFE.Pages.Products
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
                 ErrorMessage = "Please log in to add product to cart.";
-                await LoadInitialData(id); // Tải lại dữ liệu để giữ trạng thái trang
+                await LoadInitialData(id, 1); // Tải lại dữ liệu để giữ trạng thái trang
                 return Page();
             }
 
             // 2. Load Product data first to validate
-            await LoadInitialData(id);
+            await LoadInitialData(id, CurrentPage);
             if (Product == null)
             {
                 ErrorMessage = "Product not found.";
@@ -409,14 +465,14 @@ namespace ShareItFE.Pages.Products
                     // Đọc lỗi từ API để hiển thị thông báo chính xác hơn
                     var errorContent = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
                     ErrorMessage = errorContent?.Message ?? "Cannot add to cart. Please try again.";
-                    await LoadInitialData(id);
+                    await LoadInitialData(id, 1);
                     return Page();
                 }
             }
             catch (Exception ex)
             {
                 ErrorMessage = $"An error occurred: {ex.Message}";
-                await LoadInitialData(id);
+                await LoadInitialData(id, 1);
                 return Page();
             }
         }
@@ -495,8 +551,11 @@ namespace ShareItFE.Pages.Products
                 return RedirectToPage(new { id = productId });
             }
         }
-        private async Task LoadInitialData(Guid id)
+        private async Task LoadInitialData(Guid id, int page = 1)
         {
+            CurrentPage = page > 0 ? page : 1;
+            Console.WriteLine($"LoadInitialData - ProductId: {id}, Page: {page}, CurrentPage: {CurrentPage}");
+            
             ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
             SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
 
@@ -559,14 +618,42 @@ namespace ShareItFE.Pages.Products
                     Product = new ProductDTO(); // Khởi tạo Product rỗng để tránh null
                 }
 
-                // Fetch feedbacks
-                var feedbacksRequestUri = $"api/feedbacks/0/{id}";
+                // Fetch feedbacks with pagination using correct endpoint
+                var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
                 {
-                    var apiResponse = await feedbacksResponse.Content.ReadFromJsonAsync<ApiResponse<List<FeedbackDto>>>(_jsonOptions);
-                    Feedbacks = apiResponse?.Data ?? new List<FeedbackDto>();
+                    try
+                    {
+                        var responseContent = await feedbacksResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"LoadInitialData - Feedback API Response: {responseContent}"); // Debug log
+                        
+                        var apiResponse = JsonSerializer.Deserialize<ApiResponse<PaginatedResponse<FeedbackResponseDto>>>(responseContent, _jsonOptions);
+                        var paginatedData = apiResponse?.Data;
+                        
+                        if (paginatedData != null)
+                        {
+                            Feedbacks = paginatedData.Items ?? new List<FeedbackResponseDto>();
+                            TotalFeedbacks = paginatedData.TotalItems;
+                            TotalPages = paginatedData.TotalPages;
+                            // Don't override CurrentPage - keep the value from query parameter
+                            Console.WriteLine($"API returned page: {paginatedData.Page}, keeping CurrentPage: {CurrentPage}");
+                        }
+                        else
+                        {
+                            Feedbacks = new List<FeedbackResponseDto>();
+                            TotalFeedbacks = 0;
+                            TotalPages = 1;
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Console.WriteLine($"LoadInitialData - JSON Error parsing feedbacks: {jsonEx.Message}");
+                        Feedbacks = new List<FeedbackResponseDto>();
+                        TotalFeedbacks = 0;
+                        TotalPages = 1;
+                    }
 
                     foreach (var feedback in Feedbacks)
                     {

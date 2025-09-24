@@ -25,5 +25,8 @@ namespace BusinessObject.DTOs.FeedbackDto
         public DateTime? ProviderResponseAt { get; set; }
         public Guid? ProviderResponseById { get; set; }
         public string? ProviderResponderName { get; set; }
+        
+        // Added for frontend display
+        public string? ProfilePictureUrl { get; set; }
     }
 }

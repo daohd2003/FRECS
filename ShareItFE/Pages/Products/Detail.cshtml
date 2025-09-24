@@ -81,7 +81,7 @@
                                 }
                             </div>
                             <span class="text-sm text-gray-600">
-                                @Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)
+                                @Model.Product.AverageRating.ToString("F1") (@Model.TotalFeedbacks reviews)
                             </span>
                         </div>
                         <div class="flex flex-wrap gap-4 text-sm text-gray-500">
@@ -221,7 +221,7 @@
 
             @if (Model.Feedbacks != null && Model.Feedbacks.Any())
             {
-                <div class="mt-8 border-t pt-16">
+                <div id="reviews" class="mt-8 border-t pt-16">
                     <div class="flex items-center justify-between mb-8">
                         <h2 class="text-2xl font-bold text-gray-900">Customer Reviews</h2>
                         <div class="flex items-center space-x-2">
@@ -232,7 +232,7 @@
                                 }
                             </div>
                             <span class="text-lg font-semibold">@Model.Product.AverageRating.ToString("F1")</span>
-                            <span class="text-gray-500">(@(Model.Feedbacks?.Count ?? 0) reviews)</span>
+                            <span class="text-gray-500">(@Model.TotalFeedbacks reviews)</span>
                         </div>
                     </div>
 
@@ -242,9 +242,9 @@
                             <div class="bg-gray-50 rounded-lg p-6">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center space-x-3">
-                                        <img src="@feedback.ProfilePictureUrl" alt="@feedback.UserName's avatar" class="w-10 h-10 rounded-full object-cover" />
+                                        <img src="@feedback.ProfilePictureUrl" alt="@feedback.CustomerName's avatar" class="w-10 h-10 rounded-full object-cover" />
                                         <div>
-                                            <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.UserName</span></div>
+                                            <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.CustomerName</span></div>
                                             <div class="flex items-center space-x-2">
                                                 <div class="flex">
                                                     @for (int i = 1; i <= 5; i++)
@@ -252,7 +252,7 @@
                                                         <i data-lucide="star" class="h-4 w-4 @(i <= feedback.Rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
                                                     }
                                                 </div>
-                                                <span class="text-sm text-gray-500">@feedback.CreatedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
+                                                <span class="text-sm text-gray-500">@feedback.SubmittedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
                                             </div>
                                         </div>
                                     </div>
@@ -261,6 +261,54 @@
                             </div>
                         }
                     </div>
+                    
+                    @* Pagination Controls *@
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div id="pagination-container" class="mt-8 flex justify-center">
+                            <nav class="flex items-center space-x-2">
+                                @* Previous Button *@
+                                @if (Model.CurrentPage > 1)
+                                {
+                                    <button type="button" data-page="@(Model.CurrentPage - 1)" 
+                                            class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                        Previous
+                                    </button>
+                                }
+                                
+                                @* Page Numbers *@
+                                @for (int i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+                                {
+                                    @if (i == Model.CurrentPage)
+                                    {
+                                        <span class="px-3 py-2 text-sm font-medium text-white bg-purple-600 border border-purple-600 rounded-md current-page">
+                                            @i
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" data-page="@i" 
+                                                class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                            @i
+                                        </button>
+                                    }
+                                }
+                                
+                                @* Next Button *@
+                                @if (Model.CurrentPage < Model.TotalPages)
+                                {
+                                    <button type="button" data-page="@(Model.CurrentPage + 1)" 
+                                            class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                        Next
+                                    </button>
+                                }
+                            </nav>
+                            <div id="loading-reviews" class="hidden ml-4 flex items-center">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                <span class="ml-2 text-sm text-gray-600">Loading...</span>
+                            </div>
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -377,6 +425,168 @@
     <script src="~/js/dist/browser/signalr.js"></script>
     <script>
         lucide.createIcons();
+
+        // Handle scroll to reviews section for pagination
+        function scrollToReviews() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageParam = urlParams.get('page');
+            const hasReviewsHash = window.location.hash === '#reviews';
+            
+            // Check if we should scroll to reviews
+            const shouldScroll = hasReviewsHash || (pageParam && parseInt(pageParam) > 1);
+            
+            if (shouldScroll) {
+                const reviewsElement = document.getElementById('reviews');
+                if (reviewsElement) {
+                    // Wait a bit for content to render
+                    setTimeout(() => {
+                        const headerOffset = 100; // Offset to account for any fixed headers
+                        const elementPosition = reviewsElement.getBoundingClientRect().top + window.pageYOffset;
+                        const offsetPosition = elementPosition - headerOffset;
+                        
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }, 100);
+                }
+            }
+        }
+
+        // AJAX Pagination functionality
+        let currentPage = @Model.CurrentPage;
+        let totalPages = @Model.TotalPages;
+        const productId = '@Model.Product.Id';
+
+        async function loadReviews(page) {
+            const loadingElement = document.getElementById('loading-reviews');
+            const reviewsContainer = document.querySelector('#reviews .space-y-6');
+            
+            try {
+                // Show loading indicator
+                loadingElement.classList.remove('hidden');
+                
+                // Fetch new reviews
+                const response = await fetch(`/products/detail/${productId}?page=${page}&handler=Reviews`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load reviews');
+                }
+                
+                const html = await response.text();
+                
+                // Parse the HTML response to extract reviews
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newReviews = doc.querySelector('#reviews .space-y-6');
+                const newPagination = doc.querySelector('#pagination-container nav');
+                
+                if (newReviews && newPagination) {
+                    // Update reviews content with smooth transition
+                    reviewsContainer.style.opacity = '0.5';
+                    setTimeout(() => {
+                        reviewsContainer.innerHTML = newReviews.innerHTML;
+                        reviewsContainer.style.opacity = '1';
+                        
+                        // Update pagination
+                        const currentPaginationNav = document.querySelector('#pagination-container nav');
+                        currentPaginationNav.innerHTML = newPagination.innerHTML;
+                        
+                        // Re-attach event listeners
+                        attachPaginationListeners();
+                        
+                        // Update current page
+                        currentPage = page;
+                        
+                        // Update URL without reload
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.set('page', page);
+                        newUrl.hash = 'reviews';
+                        window.history.pushState({ page: page }, '', newUrl.toString());
+                        
+                        // Scroll to reviews
+                        scrollToReviews();
+                    }, 150);
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                showToast('Failed to load reviews', 'error');
+            } finally {
+                // Hide loading indicator
+                loadingElement.classList.add('hidden');
+            }
+        }
+
+        function attachPaginationListeners() {
+            const paginationButtons = document.querySelectorAll('.pagination-btn');
+            paginationButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = parseInt(this.dataset.page);
+                    if (page && page !== currentPage && page >= 1 && page <= totalPages) {
+                        loadReviews(page);
+                    }
+                });
+            });
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.page) {
+                loadReviews(event.state.page);
+            }
+        });
+
+        // Call functions when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            scrollToReviews();
+            attachPaginationListeners();
+        });
+        
+        // Also call when window is fully loaded
+        window.addEventListener('load', scrollToReviews);
+        
+        // Handle hash changes (back/forward navigation)
+        window.addEventListener('hashchange', scrollToReviews);
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            // Remove existing toast if any
+            const existingToast = document.querySelector('.toast-notification');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast-notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            toast.textContent = message;
+
+            // Add to page
+            document.body.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 10);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
 
         // Image Modal Functions with Pan and Zoom
         let modalState = {
@@ -766,14 +976,58 @@
                 // Favorite button logic
                 const favoriteForm = document.querySelector('.favorite-form');
                 if (favoriteForm) {
-                    favoriteForm.addEventListener('submit', (e) => {
+                    favoriteForm.addEventListener('submit', async (e) => {
                         e.preventDefault();
+                        
+                        const button = favoriteForm.querySelector('.favorite-btn');
+                        const icon = favoriteForm.querySelector('.favorite-icon');
                         const productId = favoriteForm.querySelector('input[name="productId"]').value;
-                        if (productId) {
-                            favoriteForm.submit();
-                    }
-                });
-            }
+                        
+                        if (!productId) return;
+                        
+                        // Disable button during request
+                        button.disabled = true;
+                        
+                        try {
+                            const formData = new FormData(favoriteForm);
+                            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                            
+                            const response = await fetch(`/products/detail/${productId}?handler=AddFavorite`, {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'RequestVerificationToken': token
+                                }
+                            });
+                            
+                            if (response.ok) {
+                                // Toggle heart icon immediately
+                                const isCurrentlyFavorite = icon.classList.contains('text-red-500');
+                                
+                                if (isCurrentlyFavorite) {
+                                    // Remove from favorites
+                                    icon.classList.remove('text-red-500', 'fill-red-500');
+                                    icon.classList.add('text-gray-400', 'hover:text-red-500');
+                                    showToast('Removed from favorites', 'success');
+                                } else {
+                                    // Add to favorites
+                                    icon.classList.remove('text-gray-400', 'hover:text-red-500');
+                                    icon.classList.add('text-red-500', 'fill-red-500');
+                                    showToast('Added to favorites', 'success');
+                                }
+                            } else {
+                                console.error('Failed to update favorite status');
+                                showToast('Failed to update favorite', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error updating favorite:', error);
+                            showToast('Network error occurred', 'error');
+                        } finally {
+                            // Re-enable button
+                            button.disabled = false;
+                        }
+                    });
+                }
 
                 // Try On button logic
                 const tryOnBtn = document.getElementById('tryOnBtn');
