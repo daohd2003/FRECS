@@ -84,7 +84,10 @@
                                 @Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)
                             </span>
                         </div>
-                        <span class="text-sm text-gray-500">Rented @Model.Product.RentCount times</span>
+                        <div class="flex flex-wrap gap-4 text-sm text-gray-500">
+                            <span>Rented @Model.Product.RentCount times</span>
+                            <span>Purchased @Model.Product.BuyCount times</span>
+                        </div>
                     </div>
 
                     <!-- Description and Category -->

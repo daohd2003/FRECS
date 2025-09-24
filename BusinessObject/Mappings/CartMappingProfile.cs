@@ -37,7 +37,9 @@ namespace BusinessObject.Mappings
                         : src.Product.PricePerDay * src.Quantity * (src.RentalDays ?? 1)))
                 .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
                 .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
-                .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl));
+                .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
+                .ForMember(dest => dest.AvailableRentalStock, opt => opt.MapFrom(src => src.Product.RentalQuantity))
+                .ForMember(dest => dest.AvailablePurchaseStock, opt => opt.MapFrom(src => src.Product.PurchaseQuantity));
 
 
             CreateMap<CartAddRequestDto, CartItem>()

@@ -111,6 +111,9 @@ namespace Services.OrderServices
             order.Status = newStatus;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
+            // Update product counts based on status change
+            await UpdateProductCounts(order, oldStatus, newStatus);
+
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(orderId, oldStatus, newStatus);
 
@@ -268,6 +271,9 @@ namespace Services.OrderServices
             order.Status = OrderStatus.in_use;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
+            // Update counts if needed (no action for in_use status)
+            await UpdateProductCounts(order, OrderStatus.in_transit, OrderStatus.in_use);
+
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
 
@@ -288,18 +294,11 @@ namespace Services.OrderServices
             order.Status = OrderStatus.returned;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
-            // Increment rent count for all products in this order
-            foreach (var item in order.Items)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                if (product != null)
-                {
-
-                }
-            }
+            // Increment rent count for rental products when returned
+            await UpdateProductCounts(order, OrderStatus.in_use, OrderStatus.returned);
+            
 
             await _orderRepo.UpdateAsync(order);
-            await _context.SaveChangesAsync(); // Save product rent count changes
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returned);
 
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as returned");
@@ -309,8 +308,13 @@ namespace Services.OrderServices
         {
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
+            
             order.Status = OrderStatus.approved;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+            
+            // Update buy count for purchase orders when approved
+            await UpdateProductCounts(order, OrderStatus.pending, OrderStatus.approved);
+            
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.pending, OrderStatus.approved);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as approved");
@@ -504,6 +508,12 @@ namespace Services.OrderServices
                                 {
                                     throw new InvalidOperationException($"Product '{product.Name}' is not available for purchase.");
                                 }
+                                
+                                // Validate stock quantity for purchase
+                                if (cartItem.Quantity > product.PurchaseQuantity)
+                                {
+                                    throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.PurchaseQuantity} units available for purchase of '{product.Name}'.");
+                                }
                             }
                             else // Rental
                             {
@@ -512,6 +522,12 @@ namespace Services.OrderServices
                                     product.PricePerDay <= 0)
                                 {
                                     throw new InvalidOperationException($"Product '{product.Name}' is not available for rental.");
+                                }
+                                
+                                // Validate stock quantity for rental
+                                if (cartItem.Quantity > product.RentalQuantity)
+                                {
+                                    throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.RentalQuantity} units available for rental of '{product.Name}'.");
                                 }
                             }
 
@@ -564,6 +580,25 @@ namespace Services.OrderServices
 
                         await _orderRepo.AddAsync(newOrder);
                         createdOrders.Add(newOrder);
+
+                        // Deduct stock quantities for each ordered item
+                        foreach (var cartItem in providerGroup)
+                        {
+                            var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
+                            if (product != null)
+                            {
+                                if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                {
+                                    product.PurchaseQuantity -= cartItem.Quantity;
+                                }
+                                else // Rental
+                                {
+                                    product.RentalQuantity -= cartItem.Quantity;
+                                }
+                                
+                                await _productRepository.UpdateAsync(product);
+                            }
+                        }
 
                         //foreach (var cartItem in providerGroup)
                         //{
@@ -989,6 +1024,56 @@ namespace Services.OrderServices
         public Task<string> GetOrderItemId(Guid customerId, Guid productId)
         {
             return _orderRepo.GetOrderItemId(customerId, productId);
+        }
+
+        /// <summary>
+        /// Updates product rent count and buy count based on order status
+        /// Rent count increases whenever order status becomes 'returned' (including returned_with_issue -> returned)
+        /// Buy count increases only when purchase order first reaches 'approved'
+        /// </summary>
+        /// <param name="order">The order containing items to update counts for</param>
+        /// <param name="oldStatus">The previous order status</param>
+        /// <param name="newStatus">The new order status</param>
+        private async Task UpdateProductCounts(Order order, OrderStatus oldStatus, OrderStatus newStatus)
+        {
+
+            foreach (var item in order.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null) continue;
+
+                bool shouldUpdateRentCount = false;
+                bool shouldUpdateBuyCount = false;
+
+                // For rental transactions - increment rent count whenever status becomes 'returned'
+                if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                {
+                    if (newStatus == OrderStatus.returned)
+                    {
+                        shouldUpdateRentCount = true;
+                    }
+                }
+                // For purchase transactions - increment buy count only when first time reaching 'approved'
+                else if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                {
+                    if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                    {
+                        shouldUpdateBuyCount = true;
+                    }
+                }
+
+                // Update counts if needed
+                if (shouldUpdateRentCount)
+                {
+                    product.RentCount += item.Quantity;
+                    await _productRepository.UpdateAsync(product);
+                }
+                else if (shouldUpdateBuyCount)
+                {
+                    product.BuyCount += item.Quantity;
+                    await _productRepository.UpdateAsync(product);
+                }
+            }
         }
     }
 }

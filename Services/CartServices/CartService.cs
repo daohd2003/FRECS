@@ -114,12 +114,25 @@ namespace Services.CartServices
 
                 if (existingCartItem != null)
                 {
+                    // Validate stock before adding to existing quantity
+                    int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
+                    if (product.RentalQuantity > 0 && newTotalQuantity > product.RentalQuantity)
+                    {
+                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.RentalQuantity} units available for rental.");
+                    }
+                    
                     existingCartItem.Quantity += cartAddRequestDto.Quantity;
                     existingCartItem.EndDate = existingCartItem.StartDate.Value.AddDays(existingCartItem.RentalDays.Value);
                     await _cartRepository.UpdateCartItemAsync(existingCartItem);
                 }
                 else
                 {
+                    // Validate stock for new cart item
+                    if (product.RentalQuantity > 0 && cartAddRequestDto.Quantity > product.RentalQuantity)
+                    {
+                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.RentalQuantity} units available for rental.");
+                    }
+                    
                     var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
                     newCartItem.CartId = cart.Id;
                     newCartItem.Id = Guid.NewGuid();
@@ -140,11 +153,24 @@ namespace Services.CartServices
 
                 if (existingCartItem != null)
                 {
+                    // Validate stock before adding to existing quantity
+                    int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
+                    if (product.PurchaseQuantity > 0 && newTotalQuantity > product.PurchaseQuantity)
+                    {
+                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.PurchaseQuantity} units available for purchase.");
+                    }
+                    
                     existingCartItem.Quantity += cartAddRequestDto.Quantity;
                     await _cartRepository.UpdateCartItemAsync(existingCartItem);
                 }
                 else
                 {
+                    // Validate stock for new cart item
+                    if (product.PurchaseQuantity > 0 && cartAddRequestDto.Quantity > product.PurchaseQuantity)
+                    {
+                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.PurchaseQuantity} units available for purchase.");
+                    }
+                    
                     var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
                     newCartItem.CartId = cart.Id;
                     newCartItem.Id = Guid.NewGuid();
@@ -172,6 +198,21 @@ namespace Services.CartServices
                 }
                 if (updateDto.Quantity.Value >= 1)
                 {
+                    // Validate stock quantity before updating
+                    var product = await _productRepository.GetByIdAsync(targetItem.ProductId);
+                    if (product != null)
+                    {
+                        int availableStock = targetItem.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                            ? product.PurchaseQuantity
+                            : product.RentalQuantity;
+                            
+                        // Only validate if there's actual stock data (> 0)
+                        if (availableStock > 0 && updateDto.Quantity.Value > availableStock)
+                        {
+                            throw new InvalidOperationException($"Quantity exceeds available stock. Only {availableStock} units available.");
+                        }
+                    }
+                    
                     targetItem.Quantity = updateDto.Quantity.Value;
                     await _cartRepository.UpdateCartItemAsync(targetItem);
                     return true;

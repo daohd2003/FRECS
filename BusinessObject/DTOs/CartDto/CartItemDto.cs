@@ -39,5 +39,15 @@ namespace BusinessObject.DTOs.CartDto
         public DateTime? EndDate { get; set; }
         
         public string PrimaryImageUrl { get; set; }
+        
+        /// <summary>
+        /// Available stock quantity for rental
+        /// </summary>
+        public int AvailableRentalStock { get; set; }
+        
+        /// <summary>
+        /// Available stock quantity for purchase
+        /// </summary>
+        public int AvailablePurchaseStock { get; set; }
     }
 }
