@@ -150,28 +150,35 @@
                             </button>
                         }
                         
-                        <!-- Purchase completed - show order again option -->
-                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                        @* Hide Order Again and Cancel buttons for purchase-only orders *@
+                        @if (!isPurchaseOnly)
                         {
-                            <button type="button" class="btn btn-success" onclick="location.href='/Products'">
-                                <i class="bi bi-bag-plus"></i> Order Again
-                            </button>
-                        }
-                        
-                        <!-- Cancel Order Button (for purchase) -->
-                        @if (Model.Order.Status != BusinessObject.Enums.OrderStatus.returned)
-                        {
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                            @* Order Again button hidden for all orders (rental/mixed) *@
+                            @*
+                            <!-- Purchase completed - show order again option -->
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
                             {
-                                <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
-                                    <i class="bi bi-x-circle"></i> Cancel Order
+                                <button type="button" class="btn btn-success" onclick="location.href='/Products'">
+                                    <i class="bi bi-bag-plus"></i> Order Again
                                 </button>
                             }
-                            else
+                            *@
+                            
+                            <!-- Cancel Order Button (for purchase) -->
+                            @if (Model.Order.Status != BusinessObject.Enums.OrderStatus.returned)
                             {
-                                <button class="btn btn-disabled" disabled>
-                                    <i class="bi bi-x-circle"></i> Cancel Order
-                                </button>
+                                @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                                {
+                                    <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
+                                        <i class="bi bi-x-circle"></i> Cancel Order
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-disabled" disabled>
+                                        <i class="bi bi-x-circle"></i> Cancel Order
+                                    </button>
+                                }
                             }
                         }
                     }
@@ -201,35 +208,43 @@
                                 </button>
                             }
 
-                            <!-- Mark as Returning Button (only for rental) -->
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                            @* Hide Mark as Returning for purchase-only orders *@
+                            @if (!isPurchaseOnly)
                             {
-                                <button class="btn btn-warning mark-returning-btn" data-order-id="@Model.Order.Id">
-                                    <i class="bi bi-box-arrow-up"></i> Mark as Returning
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-disabled" disabled>
-                                    <i class="bi bi-box-arrow-up"></i> Mark as Returning
-                                </button>
+                                <!-- Mark as Returning Button (only for rental) -->
+                                @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                                {
+                                    <button class="btn btn-warning mark-returning-btn" data-order-id="@Model.Order.Id">
+                                        <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-disabled" disabled>
+                                        <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                    </button>
+                                }
                             }
                         }
                         
-                        <!-- Cancel Order Button (for both purchase and rental) -->
-                        @if (Model.Order.Status != BusinessObject.Enums.OrderStatus.returned)
+                        @* Hide Cancel Order for purchase-only orders *@
+                        @if (!isPurchaseOnly)
                         {
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                            <!-- Cancel Order Button (for both purchase and rental) -->
+                            @if (Model.Order.Status != BusinessObject.Enums.OrderStatus.returned)
                             {
-                                <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
-                                    <i class="bi bi-x-circle"></i> Cancel Order
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-disabled" disabled>
-                                    <i class="bi bi-x-circle"></i> Cancel Order
-                                </button>
+                                @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                                {
+                                    <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
+                                        <i class="bi bi-x-circle"></i> Cancel Order
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-disabled" disabled>
+                                        <i class="bi bi-x-circle"></i> Cancel Order
+                                    </button>
+                                }
                             }
                         }
                     }

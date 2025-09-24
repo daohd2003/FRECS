@@ -42,7 +42,8 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
                 .ForMember(dest => dest.ProductSize, opt => opt.MapFrom(src => src.Product.Size))
                 .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
-                .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays));
+                .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
+                .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType));
 
             CreateMap<Transaction, TransactionSummaryDto>();
 

@@ -1,5 +1,6 @@
 ﻿@page
 @model ShareItFE.Pages.ProfileModel
+@using BusinessObject.Enums
 @{
     ViewData["Title"] = "My Profile";
     var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
@@ -258,13 +259,25 @@
                                                 }
                                                 @if (order.Status.ToString().ToLower() == "in_use")
                                                 {
-                                                    <button type="button" class="btn btn-warning mark-returning-btn" data-order-id="@order.Id">
-                                                        <i class="bi bi-box-arrow-up"></i> Mark as Returning
-                                                    </button>
+                                                    @* Hide Mark as Returning for purchase-only orders *@
+                                                    var isPurchaseOnlyOrder = order.Items?.All(item => item.TransactionType == TransactionType.purchase) ?? false;
+                                                    
+                                                    if (!isPurchaseOnlyOrder)
+                                                    {
+                                                        <button type="button" class="btn btn-warning mark-returning-btn" data-order-id="@order.Id">
+                                                            <i class="bi bi-box-arrow-up"></i> Mark as Returning
+                                                        </button>
+                                                    }
                                                 }
                                                 @if (order.Status.ToString().ToLower() == "returned")
                                                 {
-                                                    <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@order.Id">Rent Again</button>
+                                                    @* Hide Rent Again for purchase-only orders *@
+                                                    var isPurchaseOnlyOrder = order.Items?.All(item => item.TransactionType == TransactionType.purchase) ?? false;
+                                                    
+                                                    if (!isPurchaseOnlyOrder)
+                                                    {
+                                                        <button type="button" class="btn btn-primary rent-again-btn" data-order-id="@order.Id">Rent Again</button>
+                                                    }
                                                 }
                                             </div>
                                         </div>
