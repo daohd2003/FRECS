@@ -55,6 +55,11 @@ namespace Services.CartServices
 
             // Sửa từ GrandTotal thành TotalAmount
             cartDto.TotalAmount = cartDto.Items.Sum(item => item.TotalItemPrice);
+            
+            // Calculate total deposit amount for all rental items
+            cartDto.TotalDepositAmount = cartDto.Items
+                .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                .Sum(item => item.TotalDepositAmount);
 
             return cartDto;
         }

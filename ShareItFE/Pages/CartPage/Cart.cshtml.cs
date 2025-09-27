@@ -23,6 +23,11 @@ namespace ShareItFE.Pages.CartPage
         public decimal Subtotal { get; set; }
         //public decimal DeliveryFee { get; set; }
         public decimal Total { get; set; }
+        
+        /// <summary>
+        /// Total deposit amount for rental items
+        /// </summary>
+        public decimal TotalDeposit { get; set; }
 
         [TempData]
         public string SuccessMessage { get; set; }
@@ -66,15 +71,19 @@ namespace ShareItFE.Pages.CartPage
                     {
                         // Cập nhật tính toán Subtotal: Price * Days * Quantity
                         Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
+                        
+                        // Calculate total deposit for rental items
+                        TotalDeposit = Cart.TotalDepositAmount;
+                        
                         //DeliveryFee = Subtotal > 100000 ? 0 : 15000; // Ví dụ: miễn phí giao hàng nếu tổng tiền > 100
-                        //Total = Subtotal + DeliveryFee;
-                        Total = Subtotal;
+                        //Total = Subtotal + DeliveryFee + TotalDeposit;
+                        Total = Subtotal + TotalDeposit;
                     }
                     else
                     {
-                        Cart = new CartDto { CustomerId = userId, Items = new List<CartItemDto>(), TotalAmount = 0 };
-                        //Subtotal = 0; DeliveryFee = 0; Total = 0;
-                        Subtotal = 0; Total = 0;
+                        Cart = new CartDto { CustomerId = userId, Items = new List<CartItemDto>(), TotalAmount = 0, TotalDepositAmount = 0 };
+                        //Subtotal = 0; DeliveryFee = 0; Total = 0 + 0;
+                        Subtotal = 0; TotalDeposit = 0; Total = Subtotal + TotalDeposit;
                     }
                 }
                 else

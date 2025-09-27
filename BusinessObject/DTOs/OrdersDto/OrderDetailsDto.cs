@@ -23,6 +23,7 @@ namespace BusinessObject.DTOs.OrdersDto
         public decimal Subtotal { get; set; }
         public decimal Shipping { get; set; }
         public decimal Tax { get; set; }
+        public decimal TotalDepositAmount { get; set; } = 0m; // Tổng tiền cọc cho các items thuê
         public decimal TotalAmount { get; set; }
         public ShippingAddressDto ShippingAddress { get; set; }
         public string? TrackingNumber { get; set; }

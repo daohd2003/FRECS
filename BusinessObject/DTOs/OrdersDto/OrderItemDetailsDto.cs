@@ -19,5 +19,6 @@ namespace BusinessObject.DTOs.OrdersDto
         public int? RentalDays { get; set; }         // Từ OrderItem.RentalDays (nullable cho purchase)
         public decimal PricePerDay { get; set; }     // Từ OrderItem.DailyRate
         public TransactionType TransactionType { get; set; } // Từ OrderItem.TransactionType
+        public decimal DepositPerUnit { get; set; } = 0m;    // Từ OrderItem.DepositPerUnit
     }
 }

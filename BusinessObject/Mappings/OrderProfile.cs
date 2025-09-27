@@ -55,17 +55,14 @@ namespace BusinessObject.Mappings
             .ForMember(dest => dest.RentalStartDate, opt => opt.MapFrom(src => src.RentalStart))
             .ForMember(dest => dest.RentalEndDate, opt => opt.MapFrom(src => src.RentalEnd))
             .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))
-            // Map Subtotal explicitly - calculate from order items if not set
-            .ForMember(dest => dest.Subtotal, opt => opt.MapFrom(src => 
-                src.Subtotal > 0 ? src.Subtotal : 
-                src.Items.Sum(item => 
-                    item.TransactionType == BusinessObject.Enums.TransactionType.purchase
-                        ? item.DailyRate * item.Quantity  // Purchase: just price * quantity
-                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity))) // Rental: price * quantity * days
+            // Map Subtotal directly from Order.Subtotal field (chỉ giá thuê/mua, không bao gồm cọc)
+            .ForMember(dest => dest.Subtotal, opt => opt.MapFrom(src => src.Subtotal))
             // Set default shipping (can be customized based on business logic)
             .ForMember(dest => dest.Shipping, opt => opt.MapFrom(src => 0m))  // Free shipping for now
             // Set default tax (can be customized based on business logic) 
             .ForMember(dest => dest.Tax, opt => opt.MapFrom(src => 0m))  // No tax for now
+            // Map total deposit amount from Order.TotalDeposit field
+            .ForMember(dest => dest.TotalDepositAmount, opt => opt.MapFrom(src => src.TotalDeposit))
             // AutoMapper sẽ tự động map List<OrderItem> sang List<OrderItemDetailsDto> nếu bạn đã định nghĩa mapping cho item
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
             // Map từ thông tin Profile của Customer
@@ -90,7 +87,8 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
                 .ForMember(dest => dest.PricePerDay, opt => opt.MapFrom(src => src.DailyRate))
-                .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType));
+                .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType))
+                .ForMember(dest => dest.DepositPerUnit, opt => opt.MapFrom(src => src.DepositPerUnit));
 
             // Mapping cho Profile -> ShippingAddressDto
             CreateMap<Models.Profile, ShippingAddressDto>();

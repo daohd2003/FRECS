@@ -35,6 +35,16 @@ namespace BusinessObject.Mappings
                     src.TransactionType == BusinessObject.Enums.TransactionType.purchase 
                         ? src.Product.PurchasePrice * src.Quantity
                         : src.Product.PricePerDay * src.Quantity * (src.RentalDays ?? 1)))
+                // Map DepositPerUnit based on TransactionType
+                .ForMember(dest => dest.DepositPerUnit, opt => opt.MapFrom(src => 
+                    src.TransactionType == BusinessObject.Enums.TransactionType.rental 
+                        ? src.Product.SecurityDeposit 
+                        : 0m))
+                // Calculate TotalDepositAmount for rental items only
+                .ForMember(dest => dest.TotalDepositAmount, opt => opt.MapFrom(src => 
+                    src.TransactionType == BusinessObject.Enums.TransactionType.rental 
+                        ? src.Product.SecurityDeposit * src.Quantity
+                        : 0m))
                 .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
                 .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
                 .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))

@@ -97,6 +97,12 @@
                                     {
                                         <span>₫@item.PricePerDay.ToString("N0") / day</span>
                                         <small class="text-muted">(@(item.RentalDays ?? 0) days)</small>
+                                        @if (item.DepositPerUnit > 0)
+                                        {
+                                            <div style="font-size: 0.75rem; color: #ea6833; margin-top: 2px;">
+                                                +₫@((item.DepositPerUnit * item.Quantity).ToString("N0")) deposit
+                                            </div>
+                                        }
                                     }
                                 </div>
                                 @* Show Review button based on transaction type and order status *@
@@ -277,7 +283,17 @@
                         <span>Discount</span>
                         <span>₫0</span>
                     </div>
-                    <div class="summary-total"><span>Total</span><span>₫@Model.Order.TotalAmount.ToString("N0")</span></div>
+                    @if (Model.Order.TotalDepositAmount > 0)
+                    {
+                        <div class="summary-item">
+                            <span>Security Deposit <small class="text-muted">(refundable)</small></span>
+                            <span>₫@Model.Order.TotalDepositAmount.ToString("N0")</span>
+                        </div>
+                    }
+                    <div class="summary-total">
+                        <span>Total <small class="text-muted" style="font-weight: normal;">(incl. deposit)</small></span>
+                        <span>₫@Model.Order.TotalAmount.ToString("N0")</span>
+                    </div>
                 </div>
             </div>
 

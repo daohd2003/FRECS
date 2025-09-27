@@ -40,6 +40,11 @@ namespace ShareItFE.Pages.CheckoutPage
         public decimal Subtotal { get; set; }
         public decimal DeliveryFee { get; set; }
         public decimal Total { get; set; }
+        
+        /// <summary>
+        /// Total deposit amount for rental items
+        /// </summary>
+        public decimal TotalDeposit { get; set; }
 
         [TempData]
         public string SuccessMessage { get; set; }
@@ -103,12 +108,10 @@ namespace ShareItFE.Pages.CheckoutPage
                             return RedirectToPage("/Profile", new { tab = "orders" });
                         }
 
-                        // Populate totals from the single order
-                        Subtotal = SingleOrder.Items.Sum(item => 
-                            item.TransactionType == BusinessObject.Enums.TransactionType.purchase
-                                ? item.PricePerDay * item.Quantity  // Purchase: just price * quantity
-                                : item.PricePerDay * item.Quantity * (item.RentalDays ?? 1)); // Rental: price * quantity * days
-                        Total = Subtotal;
+                        // Get totals from the single order (đã được tính đúng trong database)
+                        Subtotal = SingleOrder.Subtotal; // Chỉ giá thuê/mua
+                        TotalDeposit = SingleOrder.TotalDepositAmount; // Chỉ tiền cọc
+                        Total = SingleOrder.TotalAmount; // Tổng = subtotal + deposit
                         Input.UseSameProfile = true;
                         Cart = null;
 
@@ -137,10 +140,14 @@ namespace ShareItFE.Pages.CheckoutPage
                         else
                         {
                             Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
+                            
+                            // Calculate total deposit for rental items from cart
+                            TotalDeposit = Cart.TotalDepositAmount;
+                            
                             // Giả định logic tính phí giao hàng và thuế
                             //DeliveryFee = Subtotal > 100000 ? 0 : 15000;
-                            //Total = Subtotal + DeliveryFee ;
-                            Total = Subtotal;
+                            //Total = Subtotal + DeliveryFee + TotalDeposit;
+                            Total = Subtotal + TotalDeposit;
                         }
                     }
                     else

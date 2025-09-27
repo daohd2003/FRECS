@@ -27,6 +27,16 @@ namespace BusinessObject.DTOs.CartDto
         
         public decimal PricePerUnit { get; set; }
         public decimal TotalItemPrice { get; set; }
+        
+        /// <summary>
+        /// Security deposit per unit (only applies to Rental)
+        /// </summary>
+        public decimal DepositPerUnit { get; set; } = 0m;
+        
+        /// <summary>
+        /// Total deposit amount for this item (DepositPerUnit * Quantity)
+        /// </summary>
+        public decimal TotalDepositAmount { get; set; } = 0m;
 
         /// <summary>
         /// Ngày bắt đầu thuê (chỉ áp dụng cho Rental)

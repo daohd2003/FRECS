@@ -213,9 +213,18 @@
                             <span class="font-semibold">0 VND</span>
                         </div>
 
+                        @* Security Deposit for rental items *@
+                        @if (Model.TotalDeposit > 0)
+                        {
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Security Deposit <span class="text-xs text-gray-500">(refundable)</span></span>
+                                <span class="font-semibold text-orange-600">@Model.TotalDeposit.ToString("N0") VND</span>
+                            </div>
+                        }
+
                         <div class="border-t pt-4">
                             <div class="flex justify-between text-lg font-bold">
-                                <span>Total</span>
+                                <span>Total <span class="text-sm font-normal text-gray-500">(incl. deposit)</span></span>
                                 <span class="text-purple-600">@Model.Total.ToString("N0") VND</span>
                             </div>
                         </div>

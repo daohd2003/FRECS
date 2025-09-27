@@ -80,13 +80,27 @@ namespace Services.OrderServices
                 item.OrderId = order.Id;
             }
 
-            // Calculate and set subtotal if not already set
+            // Calculate and set subtotal if not already set (chỉ giá thuê/mua, không bao gồm cọc)
             if (order.Subtotal == 0 && order.Items.Any())
             {
                 order.Subtotal = order.Items.Sum(item => 
                     item.TransactionType == BusinessObject.Enums.TransactionType.purchase
                         ? item.DailyRate * item.Quantity
                         : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
+            }
+            
+            // Calculate and set total deposit (chỉ tiền cọc)
+            if (order.TotalDeposit == 0 && order.Items.Any())
+            {
+                order.TotalDeposit = order.Items
+                    .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                    .Sum(item => item.DepositPerUnit * item.Quantity);
+            }
+            
+            // Calculate total amount = subtotal + deposit
+            if (order.TotalAmount == 0)
+            {
+                order.TotalAmount = order.Subtotal + order.TotalDeposit;
             }
 
             // Gọi repository để thêm vào DB
@@ -484,7 +498,8 @@ namespace Services.OrderServices
                             throw new InvalidOperationException($"Provider with ID {providerId} not found.");
                         }
 
-                        decimal totalAmount = 0;
+                        decimal subtotalAmount = 0;
+                        decimal depositAmount = 0;
                         var orderItems = new List<OrderItem>();
 
                         DateTime? minRentalStart = null;
@@ -541,19 +556,25 @@ namespace Services.OrderServices
                                 // Set price based on transaction type
                                 DailyRate = cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase 
                                     ? product.PurchasePrice 
-                                    : product.PricePerDay
+                                    : product.PricePerDay,
+                                // Set deposit per unit for rental items
+                                DepositPerUnit = cartItem.TransactionType == BusinessObject.Enums.TransactionType.rental 
+                                    ? product.SecurityDeposit 
+                                    : 0m
                             };
 
                             orderItems.Add(orderItem);
                             
-                            // Calculate total amount based on transaction type
+                            // Calculate subtotal (chỉ giá thuê/mua, không bao gồm cọc)
                             if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
                             {
-                                totalAmount += orderItem.DailyRate * orderItem.Quantity;
+                                subtotalAmount += orderItem.DailyRate * orderItem.Quantity;
                             }
                             else // Rental
                             {
-                                totalAmount += orderItem.DailyRate * (orderItem.RentalDays ?? 1) * orderItem.Quantity;
+                                subtotalAmount += orderItem.DailyRate * (orderItem.RentalDays ?? 1) * orderItem.Quantity;
+                                // Calculate deposit separately
+                                depositAmount += orderItem.DepositPerUnit * orderItem.Quantity;
                             }
                         }
                         var rentalStart = providerGroup.Min(ci => ci.StartDate);
@@ -565,8 +586,9 @@ namespace Services.OrderServices
                             CustomerId = customerId,
                             ProviderId = providerId,
                             Status = OrderStatus.pending,
-                            TotalAmount = totalAmount,
-                            Subtotal = totalAmount, // Set subtotal equal to total rental amount
+                            Subtotal = subtotalAmount, // Chỉ giá thuê/mua
+                            TotalDeposit = depositAmount, // Chỉ tiền cọc
+                            TotalAmount = subtotalAmount + depositAmount, // Tổng = subtotal + deposit
                             RentalStart = rentalStart,
                             RentalEnd = rentalEnd,
                             Items = orderItems,
