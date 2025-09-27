@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObject.Enums;
 
 namespace BusinessObject.Models
 {
@@ -32,15 +33,26 @@ namespace BusinessObject.Models
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
         public int Quantity { get; set; }
 
+        /// <summary>
+        /// Loại giao dịch: thuê (Rental) hoặc mua (Purchase)
+        /// </summary>
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "RentalDays must be at least 1.")]
-        public int RentalDays { get; set; }
+        public TransactionType TransactionType { get; set; } = TransactionType.rental;
 
-        [Required(ErrorMessage = "Start Date is required for a cart item.")]
-        public DateTime StartDate { get; set; }
+        /// <summary>
+        /// Số ngày thuê (chỉ áp dụng cho Rental)
+        /// </summary>
+        public int? RentalDays { get; set; }
 
-        [Required(ErrorMessage = "End Date is required for a cart item.")]
-        public DateTime EndDate { get; set; }
+        /// <summary>
+        /// Ngày bắt đầu thuê (chỉ áp dụng cho Rental)
+        /// </summary>
+        public DateTime? StartDate { get; set; }
+
+        /// <summary>
+        /// Ngày kết thúc thuê (chỉ áp dụng cho Rental)
+        /// </summary>
+        public DateTime? EndDate { get; set; }
 
     }
 }

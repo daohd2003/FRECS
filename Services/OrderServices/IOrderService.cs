@@ -46,5 +46,11 @@ namespace Services.OrderServices
         Task<bool> UpdateOrderContactInfoAsync(Guid customerId, UpdateOrderContactInfoDto dto);
 
         Task<string> GetOrderItemId(Guid customerId, Guid productId);
+        
+        /// <summary>
+        /// Updates subtotal for all orders that have subtotal = 0
+        /// This is a utility method to fix existing orders
+        /// </summary>
+        Task UpdateOrderSubtotalsAsync();
     }
 }

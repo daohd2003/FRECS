@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObject.Enums;
 
 namespace BusinessObject.DTOs.CartDto
 {
@@ -16,9 +17,20 @@ namespace BusinessObject.DTOs.CartDto
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
         public int Quantity { get; set; }
 
+        /// <summary>
+        /// Loại giao dịch: thuê (Rental) hoặc mua (Purchase)
+        /// </summary>
+        public TransactionType TransactionType { get; set; } = TransactionType.rental;
+
+        /// <summary>
+        /// Số ngày thuê (chỉ áp dụng cho Rental)
+        /// </summary>
         [Range(1, int.MaxValue, ErrorMessage = "Rental Days must be at least 1.")]
         public int? RentalDays { get; set; }
 
+        /// <summary>
+        /// Ngày bắt đầu thuê (chỉ áp dụng cho Rental)
+        /// </summary>
         public DateTime? StartDate { get; set; }
 
         [Required(ErrorMessage = "Size is required when adding to cart.")]

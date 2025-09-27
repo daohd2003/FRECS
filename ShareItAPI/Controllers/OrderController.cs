@@ -311,6 +311,22 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Get Order Item Successfully ", guidString));
         }
 
+        // Temporary endpoint to fix existing orders with missing subtotals
+        [HttpPost("fix-subtotals")]
+        [Authorize(Roles = "admin")] // Only admin can call this
+        public async Task<IActionResult> FixOrderSubtotals()
+        {
+            try
+            {
+                await _orderService.UpdateOrderSubtotalsAsync();
+                return Ok(new ApiResponse<string>("Order subtotals updated successfully", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error updating subtotals: {ex.Message}", null));
+            }
+        }
+
         private Guid GetCurrentUserId()
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);

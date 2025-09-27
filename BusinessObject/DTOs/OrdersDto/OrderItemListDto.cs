@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BusinessObject.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,5 +15,6 @@ namespace BusinessObject.DTOs.OrdersDto
         public string ProductSize { get; set; }
         public string PrimaryImageUrl { get; set; }
         public int RentalDays { get; set; }
+        public TransactionType TransactionType { get; set; }
     }
 }
