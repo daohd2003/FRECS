@@ -216,15 +216,22 @@
                                     </h3>
                                 </a>
                                 <div class="flex items-center justify-between mb-3 mt-auto">
-                                    <span class="text-xl font-bold text-purple-600">₫@product.PricePerDay.ToString("N0")/day</span>
+                                    <span class="text-xl font-bold text-purple-600">@product.GetPrimaryPriceDisplay()</span>
                                     <div class="flex items-center gap-1">
                                         <i data-lucide="star" class="h-4 w-4 text-yellow-400 fill-yellow-400"></i>
                                         <span class="font-medium text-gray-700">@product.AverageRating.ToString("F1")</span>
                                     </div>
                                 </div>
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="capitalize text-gray-500">@product.Category</span>
+                                    @if(!string.IsNullOrEmpty(product.GetDepositDisplay()))
+                                    {
+                                        <span class="text-gray-600 font-semibold">@product.GetDepositDisplay()</span>
+                                    }
+                                </div>
                                 <div class="flex items-center justify-between text-sm text-gray-500">
-                                    <span>Rented @product.RentCount times</span>
-                                    <span class="capitalize">@product.Category</span>
+                                    <span>@product.GetStatsDisplay()</span>
+                                    <span></span>
                                 </div>
                             </div>
                         </div>

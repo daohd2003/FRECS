@@ -158,6 +158,44 @@ namespace ShareItAPI.Controllers
             return NoContent();
         }
 
+        [HttpGet("by-type/{productType}")]
+        [AllowAnonymous]
+        public IActionResult GetByProductType(string productType)
+        {
+            var products = _service.GetAll();
+            
+            var filteredProducts = productType.ToUpper() switch
+            {
+                "BOTH" => products.Where(p => p.ProductType == "BOTH"),
+                "RENTAL" => products.Where(p => p.ProductType == "RENTAL"),
+                "PURCHASE" => products.Where(p => p.ProductType == "PURCHASE"),
+                "UNAVAILABLE" => products.Where(p => p.ProductType == "UNAVAILABLE"),
+                _ => products
+            };
+
+            var result = filteredProducts.Select(p => new
+            {
+                p.Id,
+                p.Name,
+                p.ProductType,
+                p.PricePerDay,
+                p.PurchasePrice,
+                p.SecurityDeposit,
+                IsRentalAvailable = p.IsRentalAvailable,
+                IsPurchaseAvailable = p.IsPurchaseAvailable,
+                PrimaryPrice = p.GetPrimaryPriceDisplay(),
+                Stats = p.GetStatsDisplay(),
+                Deposit = p.GetDepositDisplay()
+            }).ToList();
+
+            return Ok(new
+            {
+                ProductType = productType.ToUpper(),
+                Count = result.Count,
+                Products = result
+            });
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(Guid id)
         {
@@ -165,8 +203,5 @@ namespace ShareItAPI.Controllers
             if (!result) return NotFound();
             return NoContent();
         }
-
-        // Debug endpoint to check rent count
-
     }
 }

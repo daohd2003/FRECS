@@ -155,7 +155,7 @@
                             <div class="rental-details">
                                 <h3 class="rental-name">@item.Name</h3>
                                 <div class="rental-price-rating">
-                                    <span class="rental-price">₫@item.PricePerDay.ToString("N0")/day</span>
+                                    <span class="rental-price">@item.GetPrimaryPriceDisplay()</span>
                                     <div class="rental-rating">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="star-icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -163,7 +163,14 @@
                                         <span class="rating-text">@item.AverageRating.ToString("F1")</span>
                                     </div>
                                 </div>
-                                <p class="rented-times">Rented @item.RentCount times</p>
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="capitalize text-gray-500">@item.Category</span>
+                                    @if(!string.IsNullOrEmpty(item.GetDepositDisplay()))
+                                    {
+                                        <span class="text-gray-600 font-semibold">@item.GetDepositDisplay()</span>
+                                    }
+                                </div>
+                                <p class="rented-times">@item.GetStatsDisplay()</p>
                             </div>
                         </div>
                     }
