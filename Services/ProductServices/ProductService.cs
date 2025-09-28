@@ -122,21 +122,58 @@ namespace Services.ProductServices
 
         public async Task<bool> UpdateAsync(ProductDTO productDto)
         {
-            var existingProduct = await _context.Products
-                .Include(p => p.Images)
-                .FirstOrDefaultAsync(p => p.Id == productDto.Id);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var existingProduct = await _context.Products
+                    .Include(p => p.Images)
+                    .FirstOrDefaultAsync(p => p.Id == productDto.Id);
 
-            if (existingProduct == null) return false;
+                if (existingProduct == null) return false;
 
-            // Map các trường từ DTO sang entity, giữ lại các trường không map nếu cần
-            _mapper.Map(productDto, existingProduct);
+                // Map các trường từ DTO sang entity, giữ lại các trường không map nếu cần
+                _mapper.Map(productDto, existingProduct);
 
-            existingProduct.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                existingProduct.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
-            _context.Products.Update(existingProduct);
-            var updated = await _context.SaveChangesAsync();
+                // Xử lý Images riêng biệt
+                if (productDto.Images != null)
+                {
+                    // Xóa tất cả images cũ
+                    _context.ProductImages.RemoveRange(existingProduct.Images);
+                    
+                    // Thêm images mới
+                    foreach (var imageDto in productDto.Images)
+                    {
+                        var productImage = new ProductImage
+                        {
+                            ProductId = existingProduct.Id,
+                            ImageUrl = imageDto.ImageUrl,
+                            IsPrimary = imageDto.IsPrimary
+                        };
+                        _context.ProductImages.Add(productImage);
+                    }
+                }
 
-            return updated > 0;
+                _context.Products.Update(existingProduct);
+                var updated = await _context.SaveChangesAsync();
+
+                if (updated > 0)
+                {
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                else
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<bool> DeleteAsync(Guid id)
@@ -168,6 +205,11 @@ namespace Services.ProductServices
             _context.Products.Update(product);
             var deleted = await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<bool> HasOrderItemsAsync(Guid productId)
+        {
+            return await _context.OrderItems.AnyAsync(oi => oi.ProductId == productId);
         }
     }
 }
