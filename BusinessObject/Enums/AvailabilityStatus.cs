@@ -8,6 +8,8 @@
         available,
         pending,
         rejected,// Có sẵn, có thể sử dụng hoặc đặt hàng
-        unavailable  // Không có sẵn, hết hàng hoặc tạm thời không sử dụng được
+        unavailable, // Không có sẵn, hết hàng hoặc tạm thời không sử dụng được
+        archived,    // Lưu trữ (không thể thuê, nhưng giữ lại cho lịch sử)
+        deleted      // Đã xóa (ẩn khỏi UI)
     }
 }

@@ -13,5 +13,6 @@ namespace Services.ProductServices
         Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request);
 
         Task<bool> DeleteAsync(Guid id);
+        Task<bool> HasOrderItemsAsync(Guid productId);
     }
 }
