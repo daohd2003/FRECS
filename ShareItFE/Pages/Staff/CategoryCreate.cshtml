@@ -1,0 +1,177 @@
+@page
+@model ShareItFE.Pages.Staff.CategoryCreateModel
+@{
+    ViewData["Title"] = "Create Category";
+    Layout = "~/Pages/Shared/_Layout.cshtml";
+}
+
+<link href="~/css/category-create.css" rel="stylesheet" />
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0">
+                    <div class="d-flex align-items-center">
+                        <h6 class="mb-0">Create New Category</h6>
+                        <div class="ms-auto">
+                            <a href="/Staff/DebugAuth" class="btn btn-outline-info btn-sm me-2">
+                                <i class="fas fa-bug me-1"></i>Debug Auth
+                            </a>
+                            <button type="button" id="testDatabaseBtn" class="btn btn-outline-warning btn-sm me-2">
+                                <i class="fas fa-database me-1"></i>Test DB
+                            </button>
+                            <button type="button" id="testUploadBtn" class="btn btn-outline-info btn-sm me-2">
+                                <i class="fas fa-upload me-1"></i>Test Upload API
+                            </button>
+                            <button type="button" id="testUploadFileBtn" class="btn btn-outline-success btn-sm me-2">
+                                <i class="fas fa-file-upload me-1"></i>Test Upload File
+                            </button>
+                            <button type="button" id="testSimpleBtn" class="btn btn-outline-secondary btn-sm me-2">
+                                <i class="fas fa-check me-1"></i>Test Simple
+                            </button>
+                            <a href="/Staff/Categories" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-arrow-left me-1"></i>Back to Categories
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>@Model.SuccessMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@Model.ErrorMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form method="post" id="categoryForm" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Category Information</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group mb-3">
+                                                    <label asp-for="CategoryInput.Name" class="form-label">Category Name <span class="text-danger">*</span></label>
+                                                    <input asp-for="CategoryInput.Name" class="form-control" placeholder="Enter category name" />
+                                                    <span asp-validation-for="CategoryInput.Name" class="text-danger"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group mb-3">
+                                                    <label asp-for="CategoryInput.Description" class="form-label">Description</label>
+                                                    <textarea asp-for="CategoryInput.Description" class="form-control" rows="4" placeholder="Enter category description"></textarea>
+                                                    <span asp-validation-for="CategoryInput.Description" class="text-danger"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group mb-3">
+                                                    <div class="form-check form-switch">
+                                                        <input asp-for="CategoryInput.IsActive" class="form-check-input" type="checkbox" />
+                                                        <label asp-for="CategoryInput.IsActive" class="form-check-label">Is Active</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Category Image</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="image-upload-section">
+                                            <div class="image-preview-container mb-3">
+                                                <div id="imagePreview" class="image-preview">
+                                                    <i class="fas fa-image fa-3x text-muted"></i>
+                                                    <p class="text-muted mt-2">No image selected</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="upload-options">
+                                                <div class="mb-3">
+                                                    <label asp-for="ImageFile" class="form-label">Upload Image</label>
+                                                    <input asp-for="ImageFile" type="file" class="form-control" accept="image/*" />
+                                                    <div class="form-text">Supported formats: JPG, PNG, GIF, WEBP (Max 5MB)</div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label">Or Image URL</label>
+                                                    <input asp-for="CategoryInput.ImageUrl" class="form-control" placeholder="https://example.com/image.jpg" />
+                                                    <div class="form-text">Enter a direct image URL</div>
+                                                </div>
+
+                                                <div class="d-grid gap-2">
+                                                    <button type="button" id="uploadBtn" class="btn btn-outline-primary btn-sm">
+                                                        <i class="fas fa-upload me-1"></i>Upload to Cloudinary
+                                                    </button>
+                                                    <button type="button" id="clearImageBtn" class="btn btn-outline-secondary btn-sm">
+                                                        <i class="fas fa-times me-1"></i>Clear Image
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="/Staff/Categories" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                                        <i class="fas fa-save me-1"></i>Create Category
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mb-0">Processing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/category-create.js"></script>
+}

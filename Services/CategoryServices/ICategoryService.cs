@@ -10,7 +10,7 @@ namespace Services.CategoryServices
 		Task<IEnumerable<CategoryDto>> GetAllAsync();
 		Task<CategoryDto?> GetByIdAsync(Guid id);
 		Task<CategoryDto?> GetByNameAsync(string name);
-		Task<CategoryDto> CreateAsync(CategoryCreateUpdateDto dto);
+		Task<CategoryDto> CreateAsync(CategoryCreateUpdateDto dto, Guid userId);
 		Task<bool> UpdateAsync(Guid id, CategoryCreateUpdateDto dto);
 		Task<bool> DeleteAsync(Guid id);
 	}

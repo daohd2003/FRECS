@@ -67,7 +67,9 @@ namespace DataAccess
 
             modelBuilder.Entity<OrderItem>()
                 .Property(oi => oi.TransactionType)
-                .HasConversion<string>();modelBuilder.Entity<Order>();
+                .HasConversion<string>();
+                
+            modelBuilder.Entity<Order>();
 
             modelBuilder.Entity<CartItem>()
                 .Property(ci => ci.TransactionType)

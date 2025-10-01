@@ -20,5 +20,8 @@ namespace Services.UserServices
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
         Task<User> GetOrCreateUserAsync(FacebookPayload payload);
         Task<IEnumerable<AdminViewModel>> GetAllAdminsAsync();
+        Task<bool> BlockUserAsync(Guid id);
+        Task<bool> UnblockUserAsync(Guid id);
+        Task<IEnumerable<User>> GetCustomersAndProvidersAsync();
     }
 }

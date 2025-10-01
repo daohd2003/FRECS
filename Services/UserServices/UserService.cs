@@ -70,5 +70,35 @@ namespace Services.UserServices
             // Dùng AutoMapper để chuyển đổi sang ViewModel
             return _mapper.Map<IEnumerable<AdminViewModel>>(admins);
         }
+
+        public async Task<bool> BlockUserAsync(Guid id)
+        {
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user == null)
+            {
+                return false;
+            }
+
+            user.IsActive = false;
+            return await _userRepository.UpdateAsync(user);
+        }
+
+        public async Task<bool> UnblockUserAsync(Guid id)
+        {
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user == null)
+            {
+                return false;
+            }
+
+            user.IsActive = true;
+            return await _userRepository.UpdateAsync(user);
+        }
+
+        public async Task<IEnumerable<User>> GetCustomersAndProvidersAsync()
+        {
+            var users = await _userRepository.GetAllAsync();
+            return users.Where(u => u.Role == UserRole.customer || u.Role == UserRole.provider);
+        }
     }
 }

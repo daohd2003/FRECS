@@ -22,6 +22,11 @@ namespace BusinessObject.Enums
         provider,
 
         /// <summary>
+        /// Nhân viên kiểm duyệt/duyệt sản phẩm
+        /// </summary>
+        staff,
+
+        /// <summary>
         /// Quản trị viên hệ thống
         /// </summary>
         admin

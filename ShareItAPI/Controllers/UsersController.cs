@@ -21,7 +21,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAll()
         {
             var users = await _userService.GetAllAsync();
@@ -91,6 +91,40 @@ namespace ShareItAPI.Controllers
         {
             var users = await _userService.GetAllAsync();
             return Ok(new ApiResponse<object>("Success", users));
+        }
+
+        [HttpGet("customers-and-providers")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> GetCustomersAndProviders()
+        {
+            var users = await _userService.GetCustomersAndProvidersAsync();
+            return Ok(new ApiResponse<object>("Success", users));
+        }
+
+        [HttpPost("{id}/block")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> BlockUser(Guid id)
+        {
+            var blocked = await _userService.BlockUserAsync(id);
+            if (!blocked)
+            {
+                return NotFound(new ApiResponse<string>("User not found", null));
+            }
+
+            return Ok(new ApiResponse<string>("User blocked (set inactive) successfully", null));
+        }
+
+        [HttpPost("{id}/unblock")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> UnblockUser(Guid id)
+        {
+            var unblocked = await _userService.UnblockUserAsync(id);
+            if (!unblocked)
+            {
+                return NotFound(new ApiResponse<string>("User not found", null));
+            }
+
+            return Ok(new ApiResponse<string>("User unblocked (set active) successfully", null));
         }
     }
 }
