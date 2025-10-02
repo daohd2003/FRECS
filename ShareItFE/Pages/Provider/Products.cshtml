@@ -234,10 +234,17 @@
                                     </td>
                                     <td class="px-4 py-4">
                                         <div class="text-sm text-gray-900">@product.Category</div>
-                                        <div class="text-sm font-semibold text-purple-600">₫@product.PricePerDay.ToString("N0")/day</div>
-                                        @if (product.PurchasePrice > 0)
+                                        @if (product.RentalStatus == "Available" && product.PricePerDay > 0)
+                                        {
+                                            <div class="text-sm font-semibold text-purple-600">₫@product.PricePerDay.ToString("N0")/day</div>
+                                        }
+                                        @if (product.PurchaseStatus == "Available" && product.PurchasePrice > 0)
                                         {
                                             <div class="text-xs text-green-600">₫@product.PurchasePrice.ToString("N0") sale</div>
+                                        }
+                                        @if (product.RentalStatus != "Available" && product.PurchaseStatus != "Available")
+                                        {
+                                            <div class="text-sm text-gray-500">Not for rent/sale</div>
                                         }
                                     </td>
                                     <td class="px-4 py-4">

@@ -194,6 +194,10 @@ namespace ShareItFE.Pages.Provider
                 {
                     ModelState.AddModelError("Product.Size", "Please select a size.");
                 }
+                if (string.IsNullOrEmpty(Product.Color))
+                {
+                    ModelState.AddModelError("Product.Color", "Color is required.");
+                }
 
                 if (ModelState.ErrorCount > 0)
                 {
@@ -439,6 +443,8 @@ namespace ShareItFE.Pages.Provider
                 validationErrors.Add("Please select a category.");
             if (string.IsNullOrEmpty(Product.Size))
                 validationErrors.Add("Please select a size.");
+            if (string.IsNullOrEmpty(Product.Color))
+                validationErrors.Add("Color is required.");
 
             // Step 2 validation
             if (string.IsNullOrEmpty(PrimaryImageUrl))
@@ -479,7 +485,7 @@ namespace ShareItFE.Pages.Provider
 
                 // Quay về step có lỗi đầu tiên
                 if (string.IsNullOrEmpty(Product.Name) || string.IsNullOrEmpty(Product.Description) ||
-                    Product.CategoryId == Guid.Empty || string.IsNullOrEmpty(Product.Size))
+                    Product.CategoryId == Guid.Empty || string.IsNullOrEmpty(Product.Size) || string.IsNullOrEmpty(Product.Color))
                     CurrentStep = 1;
                 else if (string.IsNullOrEmpty(PrimaryImageUrl))
                     CurrentStep = 2;
@@ -500,10 +506,10 @@ namespace ShareItFE.Pages.Provider
                 CategoryId = Product.CategoryId,
                 Size = Product.Size,
                 Color = Product.Color,
-                PricePerDay = Product.PricePerDay,
-                PurchasePrice = Product.PurchasePrice != 0 ? Product.PurchasePrice : 0,
-                PurchaseQuantity = Product.PurchaseQuantity > 0 ? Product.PurchaseQuantity : 1,
-                RentalQuantity = Product.RentalQuantity > 0 ? Product.RentalQuantity : 1,
+                PricePerDay = Product.RentalStatus == "Available" ? Product.PricePerDay : 0,
+                PurchasePrice = Product.PurchaseStatus == "Available" ? Product.PurchasePrice : 0,
+                PurchaseQuantity = Product.PurchaseStatus == "Available" ? Product.PurchaseQuantity : 0,
+                RentalQuantity = Product.RentalStatus == "Available" ? Product.RentalQuantity : 0,
                 Gender = Product.Gender,
                 RentalStatus = Product.RentalStatus,
                 PurchaseStatus = Product.PurchaseStatus,
@@ -622,10 +628,12 @@ namespace ShareItFE.Pages.Provider
                         Product.Size = existingProduct.Size;
                         Product.Color = existingProduct.Color;
                         Product.Gender = existingProduct.Gender;
-                        Product.PricePerDay = existingProduct.PricePerDay;
-                        Product.PurchasePrice = existingProduct.PurchasePrice;
-                        Product.RentalQuantity = existingProduct.RentalQuantity;
-                        Product.PurchaseQuantity = existingProduct.PurchaseQuantity;
+                        
+                        // Only load prices and quantities if status is Available
+                        Product.PricePerDay = existingProduct.RentalStatus == "Available" ? existingProduct.PricePerDay : 0;
+                        Product.PurchasePrice = existingProduct.PurchaseStatus == "Available" ? existingProduct.PurchasePrice : 0;
+                        Product.RentalQuantity = existingProduct.RentalStatus == "Available" ? existingProduct.RentalQuantity : 0;
+                        Product.PurchaseQuantity = existingProduct.PurchaseStatus == "Available" ? existingProduct.PurchaseQuantity : 0;
                         Product.RentalStatus = existingProduct.RentalStatus;
                         Product.PurchaseStatus = existingProduct.PurchaseStatus;
 
