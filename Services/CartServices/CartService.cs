@@ -72,6 +72,12 @@ namespace Services.CartServices
                 throw new ArgumentException("Product not found.");
             }
 
+            // Validate that user cannot add their own product to cart
+            if (product.ProviderId == customerId)
+            {
+                throw new ArgumentException("You cannot add your own product to cart.");
+            }
+
             // Validate transaction type availability
             if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.purchase)
             {
@@ -110,7 +116,7 @@ namespace Services.CartServices
                     startDate = DateTime.UtcNow.Date.AddDays(1);
                 }
 
-                // Find existing rental item with same ProductId, StartDate, RentalDays
+                // Find existing rental item with same ProductId, Size, StartDate, RentalDays
                 var existingCartItem = cart.Items.FirstOrDefault(ci =>
                     ci.ProductId == cartAddRequestDto.ProductId &&
                     ci.TransactionType == BusinessObject.Enums.TransactionType.rental &&
@@ -123,7 +129,7 @@ namespace Services.CartServices
                     int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
                     if (product.RentalQuantity > 0 && newTotalQuantity > product.RentalQuantity)
                     {
-                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.RentalQuantity} units available for rental.");
+                        throw new InvalidOperationException($"Cannot add more items. Only {product.RentalQuantity} units available for rental, but you're trying to add {newTotalQuantity} units in total.");
                     }
                     
                     existingCartItem.Quantity += cartAddRequestDto.Quantity;
@@ -135,7 +141,7 @@ namespace Services.CartServices
                     // Validate stock for new cart item
                     if (product.RentalQuantity > 0 && cartAddRequestDto.Quantity > product.RentalQuantity)
                     {
-                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.RentalQuantity} units available for rental.");
+                        throw new InvalidOperationException($"Cannot add to cart. Only {product.RentalQuantity} units available for rental, but you're trying to add {cartAddRequestDto.Quantity} units.");
                     }
                     
                     var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
@@ -151,7 +157,7 @@ namespace Services.CartServices
             }
             else // Purchase
             {
-                // Find existing purchase item with same ProductId
+                // Find existing purchase item with same ProductId and Size
                 var existingCartItem = cart.Items.FirstOrDefault(ci =>
                     ci.ProductId == cartAddRequestDto.ProductId &&
                     ci.TransactionType == BusinessObject.Enums.TransactionType.purchase);
@@ -162,7 +168,7 @@ namespace Services.CartServices
                     int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
                     if (product.PurchaseQuantity > 0 && newTotalQuantity > product.PurchaseQuantity)
                     {
-                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.PurchaseQuantity} units available for purchase.");
+                        throw new InvalidOperationException($"Cannot add more items. Only {product.PurchaseQuantity} units available for purchase, but you're trying to add {newTotalQuantity} units in total.");
                     }
                     
                     existingCartItem.Quantity += cartAddRequestDto.Quantity;
@@ -173,7 +179,7 @@ namespace Services.CartServices
                     // Validate stock for new cart item
                     if (product.PurchaseQuantity > 0 && cartAddRequestDto.Quantity > product.PurchaseQuantity)
                     {
-                        throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.PurchaseQuantity} units available for purchase.");
+                        throw new InvalidOperationException($"Cannot add to cart. Only {product.PurchaseQuantity} units available for purchase, but you're trying to add {cartAddRequestDto.Quantity} units.");
                     }
                     
                     var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);

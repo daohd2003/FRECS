@@ -12,7 +12,7 @@ namespace ShareItAPI.Controllers
 {
     [Route("api/cart")]
     [ApiController]
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
@@ -93,7 +93,11 @@ namespace ShareItAPI.Controllers
             {
                 return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
             }
-            catch (ArgumentException ex) // Catch specific exceptions for better error messages
+            catch (ArgumentException ex) // Catch validation errors (e.g., product not found, not available)
+            {
+                return BadRequest(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (InvalidOperationException ex) // Catch quantity validation errors
             {
                 return BadRequest(new ApiResponse<object>(ex.Message, null));
             }
@@ -217,7 +221,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("count")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetCartCount()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

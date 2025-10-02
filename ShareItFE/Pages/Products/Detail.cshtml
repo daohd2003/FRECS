@@ -2,6 +2,10 @@
 @model ShareItFE.Pages.Products.DetailModel
 @{
     ViewData["Title"] = Model.Product?.Name ?? "Product Detail";
+    // Debug: Check IsOwnProduct value
+    var debugIsOwnProduct = Model.IsOwnProduct;
+    var debugUserId = Model.CurrentUserId;
+    var debugProviderId = Model.Product?.ProviderId;
 }
 
 @using System.Text.Json
@@ -118,10 +122,13 @@
                                     </div>
                                 }
                             </div>
-                            <button type="button" id="openChatBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                                <i data-lucide="message-circle" class="h-4 w-4"></i>
-                                <span>Message</span>
-                            </button>
+                            @if (!Model.IsOwnProduct)
+                            {
+                                <button type="button" id="openChatBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                    <i data-lucide="message-circle" class="h-4 w-4"></i>
+                                    <span>Message</span>
+                                </button>
+                            }
                         </div>
                     </div>
 
@@ -132,46 +139,71 @@
                         <!-- Choose Option Section -->
                         <div class="mb-6">
                             <h3 class="text-lg font-semibold mb-4">Choose Option</h3>
+                            <div id="transactionTypeError" class="text-red-500 text-sm mb-2 hidden">Please select either Rental or Purchase option.</div>
                             @{
-                                bool canRent = Model.Product.RentalStatus == "Available" && Model.Product.PricePerDay > 0;
-                                bool canPurchase = Model.Product.PurchaseStatus == "Available" && Model.Product.PurchasePrice > 0;
-                                bool canAddToCart = canRent || canPurchase;
+                                bool canRent = Model.Product.RentalStatus == "Available" && Model.Product.PricePerDay > 0 && Model.Product.RentalQuantity > 0;
+                                bool canPurchase = Model.Product.PurchaseStatus == "Available" && Model.Product.PurchasePrice > 0 && Model.Product.PurchaseQuantity > 0;
+                                bool hasRentalOption = Model.Product.RentalStatus == "Available" && Model.Product.PricePerDay > 0;
+                                bool hasPurchaseOption = Model.Product.PurchaseStatus == "Available" && Model.Product.PurchasePrice > 0;
+                                bool canAddToCart = (canRent || canPurchase) && !Model.IsOwnProduct; // Disable if it's user's own product
                             }
 
-                            @if (canRent || canPurchase)
+                            @if (hasRentalOption || hasPurchaseOption)
                             {
                                 <div class="space-y-3">
-                                    @if (canRent)
+                                    @if (hasRentalOption)
                                     {
-                                        <label class="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50">
+                                        <label class="flex items-center justify-between p-4 border rounded-lg @(canRent ? "cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50" : "cursor-not-allowed bg-gray-100 opacity-60")">
                                             <div class="flex items-center">
-                                                <input type="radio" name="TransactionType" value="0" asp-for="TransactionType" class="h-4 w-4 text-purple-600 focus:ring-purple-500" />
+                                                <input type="radio" name="TransactionType" value="0" asp-for="TransactionType" 
+                                                       class="h-4 w-4 text-purple-600 focus:ring-purple-500" 
+                                                       disabled="@(!canRent)" />
                                                 <div class="ml-3">
-                                                    <div class="font-medium">Rental</div>
-                                                    <div class="text-sm text-gray-500">Daily rental service</div>
+                                                    <div class="font-medium @(canRent ? "" : "text-gray-400")">Rental</div>
+                                                    <div class="text-sm @(canRent ? "text-gray-500" : "text-gray-400")">
+                                                        @if (canRent)
+                                                        {
+                                                            <span>Daily rental service</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-red-500 font-semibold">Out of stock</span>
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="text-right">
-                                                <div class="text-lg font-bold text-purple-600">₫@Model.Product.PricePerDay.ToString("N0")/day</div>
+                                                <div class="text-lg font-bold @(canRent ? "text-purple-600" : "text-gray-400")">₫@Model.Product.PricePerDay.ToString("N0")/day</div>
                                                 @if(!string.IsNullOrEmpty(Model.Product.GetDepositDisplay()))
                                                 {
-                                                    <div class="text-sm text-purple-600">@Model.Product.GetDepositDisplay()</div>
+                                                    <div class="text-sm @(canRent ? "text-purple-600" : "text-gray-400")">@Model.Product.GetDepositDisplay()</div>
                                                 }
                                             </div>
                                         </label>
                                     }
 
-                                    @if (canPurchase)
+                                    @if (hasPurchaseOption)
                                     {
-                                        <label class="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-green-600 has-[:checked]:bg-green-50">
+                                        <label class="flex items-center justify-between p-4 border rounded-lg @(canPurchase ? "cursor-pointer hover:bg-gray-50 has-[:checked]:border-green-600 has-[:checked]:bg-green-50" : "cursor-not-allowed bg-gray-100 opacity-60")">
                                             <div class="flex items-center">
-                                                <input type="radio" name="TransactionType" value="1" asp-for="TransactionType" class="h-4 w-4 text-green-600 focus:ring-green-500" />
+                                                <input type="radio" name="TransactionType" value="1" asp-for="TransactionType" 
+                                                       class="h-4 w-4 text-green-600 focus:ring-green-500" 
+                                                       disabled="@(!canPurchase)" />
                                                 <div class="ml-3">
-                                                    <div class="font-medium">Purchase</div>
-                                                    <div class="text-sm text-gray-500">Buy to own</div>
+                                                    <div class="font-medium @(canPurchase ? "" : "text-gray-400")">Purchase</div>
+                                                    <div class="text-sm @(canPurchase ? "text-gray-500" : "text-gray-400")">
+                                                        @if (canPurchase)
+                                                        {
+                                                            <span>Buy to own</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-red-500 font-semibold">Out of stock</span>
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="text-lg font-bold text-green-600">₫@Model.Product.PurchasePrice.ToString("N0")</div>
+                                            <div class="text-lg font-bold @(canPurchase ? "text-green-600" : "text-gray-400")">₫@Model.Product.PurchasePrice.ToString("N0")</div>
                                         </label>
                                     }
                                 </div>
@@ -186,23 +218,43 @@
 
                         <!-- Size Selection and Add to Cart -->
                         <div class="border-t pt-6 space-y-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Select Size</label>
-                                <div asp-validation-for="SelectedSize" class="text-red-500 text-sm mb-2"></div>
-                                <input type="hidden" id="selectedSizeInput" asp-for="SelectedSize" />
-                                <div class="flex space-x-3">
-                                    @foreach (var size in (Model.Product.Size?.Split(',') ?? Enumerable.Empty<string>()))
-                                    {
-                                        <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors border-gray-300 text-gray-700 hover:border-purple-600" data-size="@size.Trim()">@size.Trim()</button>
-                                    }
+                            @if (!Model.IsOwnProduct)
+                            {
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-900 mb-3">Select Size</label>
+                                    <div id="sizeError" class="text-red-500 text-sm mb-2 hidden">Please select a size.</div>
+                                    <input type="hidden" id="selectedSizeInput" asp-for="SelectedSize" />
+                                    <div class="flex space-x-3">
+                                        @foreach (var size in (Model.Product.Size?.Split(',') ?? Enumerable.Empty<string>()))
+                                        {
+                                            <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors border-gray-300 text-gray-700 hover:border-purple-600" data-size="@size.Trim()">@size.Trim()</button>
+                                        }
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                            else
+                            {
+                                <!-- Provider viewing their own product - hide size selection -->
+                            }
                             
                             <!-- Add to Cart Button -->
                             <button type="submit" id="addToCartBtn"
                                     disabled="@(!canAddToCart)"
                                     class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
-                                <span>@(canAddToCart ? "Add to Cart" : "No Options Available")</span>
+                                <span>
+                                    @if (Model.IsOwnProduct)
+                                    {
+                                        @:This is your product
+                                    }
+                                    else if (canAddToCart)
+                                    {
+                                        @:Add to Cart
+                                    }
+                                    else
+                                    {
+                                        @:No Options Available
+                                    }
+                                </span>
                             </button>
                           
                             <div class="grid grid-cols-3 gap-4 pt-6 border-t">
@@ -734,6 +786,7 @@
             // --- Transaction Type Selection Logic ---
             const transactionRadios = document.querySelectorAll('input[name="TransactionType"]');
             const addToCartBtn = document.getElementById('addToCartBtn');
+            const addToCartForm = document.getElementById('addToCartForm');
 
             function updateTransactionUI() {
                 const selectedOption = document.querySelector('input[name="TransactionType"]:checked');
@@ -756,6 +809,64 @@
                 updateTransactionUI();
             }
 
+            // Validate transaction type and size selection before submit
+            if (addToCartForm) {
+                addToCartForm.addEventListener('submit', function(e) {
+                    let hasError = false;
+                    
+                    // Validate Transaction Type
+                    const selectedOption = document.querySelector('input[name="TransactionType"]:checked');
+                    const transactionErrorDiv = document.getElementById('transactionTypeError');
+                    
+                    if (!selectedOption) {
+                        hasError = true;
+                        if (transactionErrorDiv) {
+                            transactionErrorDiv.classList.remove('hidden');
+                        }
+                    } else {
+                        if (transactionErrorDiv) {
+                            transactionErrorDiv.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Validate Size
+                    const selectedSize = document.getElementById('selectedSizeInput').value;
+                    const sizeErrorDiv = document.getElementById('sizeError');
+                    
+                    if (!selectedSize || selectedSize.trim() === '') {
+                        hasError = true;
+                        if (sizeErrorDiv) {
+                            sizeErrorDiv.classList.remove('hidden');
+                        }
+                    } else {
+                        if (sizeErrorDiv) {
+                            sizeErrorDiv.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Prevent form submission if there are errors
+                    if (hasError) {
+                        e.preventDefault();
+                        // Scroll to the first error
+                        const firstError = document.querySelector('#transactionTypeError:not(.hidden), #sizeError:not(.hidden)');
+                        if (firstError) {
+                            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        return false;
+                    }
+                });
+
+                // Hide transaction type error when user selects an option
+                transactionRadios.forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        const errorDiv = document.getElementById('transactionTypeError');
+                        if (errorDiv) {
+                            errorDiv.classList.add('hidden');
+                        }
+                    });
+                });
+            }
+
             // --- Size Selection Logic ---
             const sizeBtns = document.querySelectorAll('.size-btn');
             const selectedSizeInput = document.getElementById('selectedSizeInput');
@@ -772,6 +883,12 @@
                         });
                         btn.classList.remove('border-gray-300', 'text-gray-700');
                         btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                        
+                        // Hide size error when user selects a size
+                        const sizeErrorDiv = document.getElementById('sizeError');
+                        if (sizeErrorDiv) {
+                            sizeErrorDiv.classList.add('hidden');
+                        }
                     });
                 });
             }
@@ -966,20 +1083,8 @@
 
                 // Form validation
                 const addToCartForm = document.getElementById('addToCartForm');
-                if (addToCartForm) {
-                    addToCartForm.addEventListener('submit', function (event) {
-                        const sizeValue = document.getElementById('selectedSizeInput').value;
-                        
-                        // Validate size selection
-                        if (!sizeValue) {
-                            event.preventDefault();
-                            alert('Please select a size');
-                            return;
-                        }
-                        
-                        // No need to validate rental dates here - they will be handled in Cart page
-                    });
-                }
+                // Size and transaction type validation is now handled in the DOMContentLoaded section above
+                // No need for duplicate validation here
 
                 // Favorite button logic
                 const favoriteForm = document.querySelector('.favorite-form');

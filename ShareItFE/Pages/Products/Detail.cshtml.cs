@@ -70,6 +70,7 @@ namespace ShareItFE.Pages.Products
         public string ApiBaseUrl { get; private set; }
 
         public bool CanBeFeedbacked { get; private set; }
+        public bool IsOwnProduct { get; private set; } // Check if current user is the provider of this product
         public string SignalRRootUrl { get; private set; }
         public string? AccessToken { get; private set; }
 
@@ -335,12 +336,23 @@ namespace ShareItFE.Pages.Products
                     Console.WriteLine($"Could not fetch feedbacks. Status: {feedbacksResponse.StatusCode}");
                 }
 
-                // Check favorite status
+                // Check favorite status and if user owns this product
                 if (User.Identity.IsAuthenticated)
                 {
                     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(userId))
+                    if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                     {
+                        // Check if current user is the provider of this product
+                        if (Product != null && Product.ProviderId == userGuid)
+                        {
+                            IsOwnProduct = true;
+                            Console.WriteLine($"[OnGetAsync] IsOwnProduct set to TRUE - UserId: {userGuid}, ProviderId: {Product.ProviderId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[OnGetAsync] IsOwnProduct is FALSE - UserId: {userGuid}, ProviderId: {Product?.ProviderId}");
+                        }
+
                         var favoriteUri = $"api/favorites/{userId}";
                         var favoriteResponse = await client.GetAsync(favoriteUri);
                         if (favoriteResponse.IsSuccessStatusCode)
@@ -457,21 +469,34 @@ namespace ShareItFE.Pages.Products
 
                 if (response.IsSuccessStatusCode)
                 {
-                    SuccessMessage = "Product added to cart successfully!";
+                    TempData["SuccessMessage"] = "Product added to cart successfully!";
                     return RedirectToPage("/CartPage/Cart");
                 }
                 else
                 {
                     // Đọc lỗi từ API để hiển thị thông báo chính xác hơn
                     var errorContent = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
-                    ErrorMessage = errorContent?.Message ?? "Cannot add to cart. Please try again.";
-                    await LoadInitialData(id, 1);
-                    return Page();
+                    var errorMessage = errorContent?.Message ?? "Cannot add to cart. Please try again.";
+                    
+                    // If error is related to quantity/stock, redirect to cart page to show the error
+                    // Otherwise, stay on product detail page
+                    if (errorMessage.Contains("available") || errorMessage.Contains("stock") || errorMessage.Contains("units"))
+                    {
+                        TempData["ErrorMessage"] = errorMessage;
+                        return RedirectToPage("/CartPage/Cart");
+                    }
+                    else
+                    {
+                        ErrorMessage = errorMessage;
+                        await LoadInitialData(id, 1);
+                        return Page();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"An error occurred: {ex.Message}";
+                // Use the exception message directly without adding prefix
+                ErrorMessage = ex.Message;
                 await LoadInitialData(id, 1);
                 return Page();
             }
@@ -676,12 +701,23 @@ namespace ShareItFE.Pages.Products
                     Console.WriteLine($"Could not fetch feedbacks. Status: {feedbacksResponse.StatusCode}");
                 }
 
-                // Check favorite status
+                // Check favorite status and if user owns this product
                 if (User.Identity.IsAuthenticated)
                 {
                     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(userId))
+                    if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                     {
+                        // Check if current user is the provider of this product
+                        if (Product != null && Product.ProviderId == userGuid)
+                        {
+                            IsOwnProduct = true;
+                            Console.WriteLine($"IsOwnProduct set to TRUE - UserId: {userGuid}, ProviderId: {Product.ProviderId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"IsOwnProduct is FALSE - UserId: {userGuid}, ProviderId: {Product?.ProviderId}");
+                        }
+
                         var favoriteUri = $"api/favorites/{userId}";
                         var favoriteResponse = await client.GetAsync(favoriteUri);
                         if (favoriteResponse.IsSuccessStatusCode)

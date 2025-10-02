@@ -97,8 +97,9 @@ namespace ShareItFE.ViewComponents.Header
                     Console.WriteLine($"Error fetching header info (profile/notifications): {ex.Message}");
                 }
 
-                // Lấy thông tin giỏ hàng nếu là customer
-                if (string.Equals(model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
+                // Lấy thông tin giỏ hàng nếu là customer hoặc provider
+                if (string.Equals(model.UserRole, "customer", StringComparison.OrdinalIgnoreCase) || 
+                    string.Equals(model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
