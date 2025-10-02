@@ -143,6 +143,15 @@
                     @if (isPurchaseOnly)
                     {
                         <!-- Purchase-only workflow -->
+                        
+                        <!-- Pay Now Button (for pending orders) -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                        {
+                            <button class="btn btn-success pay-now-btn" data-order-id="@Model.Order.Id" data-order-amount="@Model.Order.TotalAmount">
+                                <i class="bi bi-credit-card"></i> Pay Now
+                            </button>
+                        }
+                        
                         @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_transit)
                         {
                             <button class="btn btn-success confirm-delivery-btn" data-order-id="@Model.Order.Id">
@@ -156,41 +165,35 @@
                             </button>
                         }
                         
-                        @* Hide Order Again and Cancel buttons for purchase-only orders *@
-                        @if (!isPurchaseOnly)
+                        <!-- Cancel Order Button (for purchase-only orders) -->
+                        @if (Model.Order.Status != BusinessObject.Enums.OrderStatus.returned)
                         {
-                            @* Order Again button hidden for all orders (rental/mixed) *@
-                            @*
-                            <!-- Purchase completed - show order again option -->
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
                             {
-                                <button type="button" class="btn btn-success" onclick="location.href='/Products'">
-                                    <i class="bi bi-bag-plus"></i> Order Again
+                                <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
+                                    <i class="bi bi-x-circle"></i> Cancel Order
                                 </button>
                             }
-                            *@
-                            
-                            <!-- Cancel Order Button (for purchase) -->
-                            @if (Model.Order.Status != BusinessObject.Enums.OrderStatus.returned)
+                            else
                             {
-                                @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
-                                {
-                                    <button class="btn btn-danger cancel-order-btn" data-order-id="@Model.Order.Id">
-                                        <i class="bi bi-x-circle"></i> Cancel Order
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button class="btn btn-disabled" disabled>
-                                        <i class="bi bi-x-circle"></i> Cancel Order
-                                    </button>
-                                }
+                                <button class="btn btn-disabled" disabled>
+                                    <i class="bi bi-x-circle"></i> Cancel Order
+                                </button>
                             }
                         }
                     }
                     else
                     {
                         <!-- Rental workflow (including mixed orders) -->
+                        
+                        <!-- Pay Now Button (for pending orders) -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.pending)
+                        {
+                            <button class="btn btn-success pay-now-btn" data-order-id="@Model.Order.Id" data-order-amount="@Model.Order.TotalAmount">
+                                <i class="bi bi-credit-card"></i> Pay Now
+                            </button>
+                        }
+                        
                         <!-- Rent Again Button (for returned orders) -->
                         @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
                         {
@@ -329,6 +332,49 @@
     }
 </div>
 
+<!-- Payment Method Modal -->
+<div id="payment-method-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Select Payment Method</h3>
+            <button id="payment-method-close-btn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="payment-order-id" />
+            <input type="hidden" id="payment-order-amount" />
+            
+            <div class="payment-methods">
+                <div class="payment-method-option" data-method="vnpay">
+                    <div class="payment-method-card">
+                        <i class="bi bi-credit-card" style="font-size: 2rem; color: #0066cc;"></i>
+                        <h4>VNPay</h4>
+                        <p>Pay securely via VNPay gateway</p>
+                    </div>
+                </div>
+                <div class="payment-method-option" data-method="qr">
+                    <div class="payment-method-card">
+                        <i class="bi bi-qr-code" style="font-size: 2rem; color: #00aa00;"></i>
+                        <h4>QR Bank Transfer</h4>
+                        <p>Scan QR code to pay via bank</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="qr-code-section" class="hidden" style="text-align: center; margin-top: 20px;">
+                <h4>Scan QR Code to Pay</h4>
+                <img id="qr-code-image" src="" alt="QR Code" style="max-width: 300px; margin: 20px auto; display: block;" />
+                <p class="text-muted">Waiting for payment confirmation...</p>
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button id="payment-method-cancel-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <!-- Rent Again Modal -->
 <div id="rent-again-modal" class="modal-overlay hidden">
     <div class="modal-content">
@@ -358,9 +404,197 @@
     </div>
 </div>
 
+<style>
+    .payment-methods {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .payment-method-option {
+        cursor: pointer;
+    }
+    
+    .payment-method-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 30px 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .payment-method-card:hover {
+        border-color: #0066cc;
+        background-color: #f8f9fa;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .payment-method-card h4 {
+        margin: 10px 0 5px;
+        font-size: 1.2rem;
+        color: #333;
+    }
+    
+    .payment-method-card p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .hidden {
+        display: none !important;
+    }
+</style>
+
 @section Scripts {
     <script>
         $(document).ready(function() {
+            // === PAY NOW FUNCTIONALITY ===
+            let paymentPollingInterval = null;
+            
+            $('.pay-now-btn').on('click', function() {
+                const orderId = $(this).data('order-id');
+                const orderAmount = $(this).data('order-amount');
+                
+                $('#payment-order-id').val(orderId);
+                $('#payment-order-amount').val(orderAmount);
+                $('#payment-method-modal').removeClass('hidden');
+                $('#qr-code-section').addClass('hidden');
+                $('.payment-methods').show();
+            });
+            
+            $('#payment-method-close-btn, #payment-method-cancel-btn').on('click', function() {
+                $('#payment-method-modal').addClass('hidden');
+                if (paymentPollingInterval) {
+                    clearInterval(paymentPollingInterval);
+                    paymentPollingInterval = null;
+                }
+            });
+            
+            $('.payment-method-option').on('click', function() {
+                const method = $(this).data('method');
+                const orderId = $('#payment-order-id').val();
+                
+                console.log('Payment method selected:', method);
+                console.log('Order ID:', orderId);
+                
+                if (!orderId) {
+                    alert('Order ID is missing');
+                    return;
+                }
+                
+                if (method === 'vnpay') {
+                    // Create transaction and redirect to VNPay
+                    $.ajax({
+                        url: `@Model.ApiBaseUrl/payment/Vnpay/CreatePaymentUrl`,
+                        type: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + '@(Request.Cookies["AccessToken"])',
+                            'Content-Type': 'application/json'
+                        },
+                        data: JSON.stringify({
+                            OrderIds: [orderId],
+                            Note: `Payment for order ${orderId.substring(0, 8)}`
+                        }),
+                        success: function(response) {
+                            console.log('VNPay response:', response);
+                            const paymentUrl = response.data;
+                            if (paymentUrl) {
+                                window.location.href = paymentUrl;
+                            } else {
+                                alert('Could not get VNPay payment URL. Response: ' + JSON.stringify(response));
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('VNPay error:', xhr);
+                            const error = xhr.responseJSON;
+                            alert('Failed to initialize VNPay payment: ' + (error?.message || xhr.responseText || 'Unknown error'));
+                        }
+                    });
+                } else if (method === 'qr') {
+                    // Create transaction and show QR code
+                    $.ajax({
+                        url: `@Model.ApiBaseUrl/transactions/create`,
+                        type: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + '@(Request.Cookies["AccessToken"])',
+                            'Content-Type': 'application/json'
+                        },
+                        data: JSON.stringify({
+                            OrderIds: [orderId]
+                        }),
+                        success: function(response) {
+                            console.log('QR response:', response);
+                            const qrImageUrl = response.data.qrImageUrl;
+                            const transactionId = response.data.transactionId;
+                            
+                            if (!qrImageUrl || !transactionId) {
+                                alert('Invalid QR response. Missing qrImageUrl or transactionId. Response: ' + JSON.stringify(response));
+                                return;
+                            }
+                            
+                            // Hide payment method selection, show QR code
+                            $('.payment-methods').hide();
+                            $('#qr-code-image').attr('src', qrImageUrl);
+                            $('#qr-code-section').removeClass('hidden');
+                            
+                            // Start polling for transaction status
+                            startPaymentPolling(transactionId);
+                        },
+                        error: function(xhr) {
+                            console.error('QR error:', xhr);
+                            const error = xhr.responseJSON;
+                            alert('Failed to create QR code: ' + (error?.message || xhr.responseText || 'Unknown error'));
+                        }
+                    });
+                }
+            });
+            
+            function startPaymentPolling(transactionId) {
+                let pollCount = 0;
+                const maxPolls = 120; // Poll for 10 minutes (120 * 5 seconds)
+                
+                console.log('Starting payment polling for transaction:', transactionId);
+                
+                paymentPollingInterval = setInterval(function() {
+                    pollCount++;
+                    
+                    if (pollCount > maxPolls) {
+                        clearInterval(paymentPollingInterval);
+                        alert('Payment timeout. Please check your order status later.');
+                        $('#payment-method-modal').addClass('hidden');
+                        return;
+                    }
+                    
+                    $.ajax({
+                        url: `@Model.ApiBaseUrl/transactions/${transactionId}/status`,
+                        type: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + '@(Request.Cookies["AccessToken"])'
+                        },
+                        success: function(result) {
+                            console.log(`Polling attempt ${pollCount}:`, result);
+                            const status = result.data.status;
+                            
+                            if (status === 'completed') {
+                                clearInterval(paymentPollingInterval);
+                                alert('Payment successful! Your order has been approved.');
+                                location.reload();
+                            } else if (status === 'failed') {
+                                clearInterval(paymentPollingInterval);
+                                alert('Payment failed. Please try again.');
+                                $('#payment-method-modal').addClass('hidden');
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('Status check failed:', xhr.status);
+                        }
+                    });
+                }, 5000); // Check every 5 seconds
+            }
+            
             $('.confirm-delivery-btn').on('click', function() {
                 const orderId = $(this).data('order-id');
                 const button = $(this);
