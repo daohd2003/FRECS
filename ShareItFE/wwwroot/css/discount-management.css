@@ -10,6 +10,78 @@
     margin: 0 auto;
 }
 
+
+/* === Pagination Styles - Clean & Centered === */
+.pagination-controls {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid #e5e7eb !important;
+}
+
+.page-numbers {
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+}
+
+.pagination-controls .btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 0.5rem !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #374151 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    text-decoration: none !important;
+    margin: 0 !important;
+    transform: none !important;
+}
+
+.pagination-controls .btn.btn-secondary:not(.disabled):hover {
+    background-color: #f9fafb !important;
+    background: #f9fafb !important;
+    border-color: #d1d5db !important;
+    transform: none !important;
+}
+
+.pagination-controls .btn.btn-primary {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #4f46e5 !important;
+    border: 2px solid #4f46e5 !important;
+    font-weight: 700 !important;
+}
+
+.pagination-controls .btn.btn-primary:hover {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    transform: none !important;
+}
+
+.pagination-controls .btn.disabled {
+    background-color: #f3f4f6 !important;
+    background: #f3f4f6 !important;
+    color: #9ca3af !important;
+    border-color: #e5e7eb !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+}
+
 /* Search and Filter Styles */
 .search-filter-container {
     margin-bottom: 25px;

@@ -31,6 +31,9 @@ namespace BusinessObject.Models
         [Required]
         public DiscountStatus Status { get; set; } = DiscountStatus.Active;
 
+        [Required]
+        public DiscountUsageType UsageType { get; set; } = DiscountUsageType.Purchase;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 

@@ -4,7 +4,7 @@ let isEditMode = false;
 let allDiscountCodes = []; // Store all discount codes for filtering
 let filteredDiscountCodes = []; // Store filtered results
 let currentPage = 1;
-let pageSize = 10;
+let pageSize = 5; // Set to 1 for testing pagination
 
 // Initialize page
 $(document).ready(function() {
@@ -60,15 +60,16 @@ function initializeEventHandlers() {
     });
 
     // Filter change handlers
-    $('#filter-type, #filter-status, #filter-date-from, #filter-date-to').change(function() {
+    $('#filter-type, #filter-usage-type, #filter-status, #filter-date-from, #filter-date-to').change(function() {
         applyFilters();
     });
-
+    
     // Reset filters button
     $('#reset-filters').click(function() {
         $('#search-code').val('');
         $('#clear-search').hide();
         $('#filter-type').val('');
+        $('#filter-usage-type').val('');
         $('#filter-status').val('');
         $('#filter-date-from').val('');
         $('#filter-date-to').val('');
@@ -128,6 +129,7 @@ function loadDiscountCodes() {
 function applyFilters() {
     const searchTerm = $('#search-code').val().toLowerCase();
     const filterType = $('#filter-type').val();
+    const filterUsageType = $('#filter-usage-type').val();
     const filterStatus = $('#filter-status').val();
     const filterDateFrom = $('#filter-date-from').val();
     const filterDateTo = $('#filter-date-to').val();
@@ -141,9 +143,14 @@ function applyFilters() {
         );
     }
 
-    // Filter by type
+    // Filter by discount type
     if (filterType) {
         filtered = filtered.filter(dc => dc.discountType === filterType);
+    }
+
+    // Filter by usage type
+    if (filterUsageType) {
+        filtered = filtered.filter(dc => dc.usageType === filterUsageType);
     }
 
     // Filter by status
@@ -190,75 +197,96 @@ function displayCurrentPage() {
     displayDiscountCodes(pageData);
 }
 
-// Render pagination
+// Render pagination - Matching Profile Page Style
+// THAY THẾ HOÀN TOÀN HÀM CŨ
 function renderPagination() {
     const totalPages = Math.ceil(filteredDiscountCodes.length / pageSize);
-    const paginationNumbers = $('#pagination-numbers');
-    paginationNumbers.empty();
+    const paginationContainer = $('#pagination-container');
+    paginationContainer.empty();
 
     if (totalPages <= 1) {
-        $('#pagination-container').addClass('hidden');
+        paginationContainer.hide();
         return;
     }
 
-    $('#pagination-container').removeClass('hidden');
+    paginationContainer.show();
 
-    // Previous button
-    paginationNumbers.append(`
-        <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} 
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}">
-            <i data-lucide="chevron-left" class="h-5 w-5"></i>
+    // --- Render nút "Previous" với icon ---
+    const isFirstPage = currentPage <= 1;
+    paginationContainer.append(`
+        <button onclick="changePage(${currentPage - 1})" 
+                class="btn ${isFirstPage ? 'disabled' : ''}">
+            <i data-lucide="chevron-left"></i>
         </button>
     `);
 
-    // Page numbers
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-
-    if (startPage > 1) {
-        paginationNumbers.append(`
-            <button onclick="changePage(1)" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</button>
-        `);
-        if (startPage > 2) {
-            paginationNumbers.append(`<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>`);
+    // --- Render các số trang ---
+    const paginationItems = getPaginationItems(currentPage, totalPages);
+    paginationItems.forEach(item => {
+        if (item === '...') {
+            // Thêm class 'ellipsis' để có thể style riêng nếu muốn
+            paginationContainer.append(`
+                <span class="btn disabled ellipsis">...</span>
+            `);
+        } else {
+            const pageNum = item;
+            const isActive = pageNum === currentPage;
+            paginationContainer.append(`
+                <button onclick="changePage(${pageNum})" 
+                        class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}">
+                    ${pageNum}
+                </button>
+            `);
         }
-    }
+    });
 
-    for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === currentPage;
-        paginationNumbers.append(`
-            <button onclick="changePage(${i})" 
-                    class="relative inline-flex items-center px-4 py-2 border text-sm font-medium ${isActive ? 'z-10 bg-purple-50 border-purple-500 text-purple-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}">
-                ${i}
-            </button>
-        `);
-    }
-
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            paginationNumbers.append(`<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>`);
-        }
-        paginationNumbers.append(`
-            <button onclick="changePage(${totalPages})" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">${totalPages}</button>
-        `);
-    }
-
-    // Next button
-    paginationNumbers.append(`
-        <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} 
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}">
-            <i data-lucide="chevron-right" class="h-5 w-5"></i>
+    // --- Render nút "Next" với icon ---
+    const isLastPage = currentPage >= totalPages;
+    paginationContainer.append(`
+        <button onclick="changePage(${currentPage + 1})" 
+                class="btn ${isLastPage ? 'disabled' : ''}">
+            <i data-lucide="chevron-right"></i>
         </button>
     `);
 
-    // Mobile pagination
-    $('#prev-mobile').prop('disabled', currentPage === 1).toggleClass('opacity-50 cursor-not-allowed', currentPage === 1);
-    $('#next-mobile').prop('disabled', currentPage === totalPages).toggleClass('opacity-50 cursor-not-allowed', currentPage === totalPages);
-
-    // Reinitialize Lucide icons
+    // !!! QUAN TRỌNG: Gọi lại hàm này để render các icon vừa thêm vào
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
+}
+
+// Get pagination items (similar to PaginationHelper in C#)
+function getPaginationItems(currentPage, totalPages) {
+    const items = [];
+    
+    if (totalPages <= 7) {
+        // Show all pages
+        for (let i = 1; i <= totalPages; i++) {
+            items.push(i);
+        }
+    } else {
+        // Show first, last, current, and some neighbors
+        items.push(1);
+        
+        if (currentPage > 3) {
+            items.push('...');
+        }
+        
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(totalPages - 1, currentPage + 1);
+        
+        for (let i = start; i <= end; i++) {
+            items.push(i);
+        }
+        
+        if (currentPage < totalPages - 2) {
+            items.push('...');
+        }
+        
+        items.push(totalPages);
+    }
+    
+    return items;
 }
 
 // Change page
@@ -292,7 +320,7 @@ function displayDiscountCodes(discountCodes) {
     if (!discountCodes || discountCodes.length === 0) {
         tbody.append(`
             <tr>
-                <td colspan="6" class="px-6 py-12 text-center">
+                <td colspan="7" class="px-6 py-12 text-center">
                     <div class="flex flex-col items-center justify-center text-gray-500">
                         <i data-lucide="inbox" class="h-12 w-12 mb-3 text-gray-400"></i>
                         <p class="text-lg font-medium">No discount codes found</p>
@@ -312,6 +340,8 @@ function displayDiscountCodes(discountCodes) {
         const expirationDate = new Date(discount.expirationDate).toLocaleDateString('vi-VN');
         const valueDisplay = discount.discountType === 'Percentage' ? `${discount.value}%` : `${discount.value.toLocaleString('vi-VN')} VND`;
         const progress = Math.min((discount.usedCount / discount.quantity * 100), 100);
+        const usageTypeText = discount.usageType;
+        const usageTypeBadge = discount.usageType === 'Purchase' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
 
             const row = `
             <tr data-id="${discount.id}" class="hover:bg-gray-50 transition-colors">
@@ -329,6 +359,11 @@ function displayDiscountCodes(discountCodes) {
                         <div class="bg-purple-600 h-2 rounded-full transition-all" style="width: ${progress}%"></div>
                         </div>
                     </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${usageTypeBadge}">
+                        ${usageTypeText}
+                    </span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
                         ${discount.status}
@@ -429,6 +464,7 @@ function populateForm(discount) {
             $('#discount-value').val(discount.value);
     $('#expiration-date').val(discount.expirationDate.split('T')[0]);
             $('#quantity').val(discount.quantity);
+    $('#usage-type').val(discount.usageType);
     
     // Set status toggle
     const isActive = discount.status === 'Active' || discount.status === 0;
@@ -441,6 +477,7 @@ function populateForm(discount) {
 function clearForm() {
             $('#discount-form')[0].reset();
     $('#status-toggle').prop('checked', true); // Default to Active
+    $('#usage-type').val('Purchase'); // Default to Purchase
     updateStatusLabel();
     updateValueSymbol();
 }
@@ -481,7 +518,8 @@ function createDiscountCode() {
         value: parseFloat($('#discount-value').val()),
         expirationDate: $('#expiration-date').val(),
         quantity: parseInt($('#quantity').val()),
-        status: status
+        status: status,
+        usageType: $('#usage-type').val()
     };
 
     // Validate form
@@ -553,7 +591,8 @@ function updateDiscountCode() {
         value: parseFloat($('#discount-value').val()),
         expirationDate: $('#expiration-date').val(),
         quantity: parseInt($('#quantity').val()),
-        status: status
+        status: status,
+        usageType: $('#usage-type').val()
     };
 
     // Validate form
@@ -578,8 +617,8 @@ function updateDiscountCode() {
                     loadDiscountCodes();
                 } else {
                     showNotification('Error: ' + apiResponse.message, 'error');
-                }
-            } else {
+            }
+        } else {
                 showNotification('Error: ' + response.message, 'error');
             }
         },
@@ -628,7 +667,7 @@ function deleteDiscountCode(id) {
 // Validate form data
 function validateForm(formData) {
     // Check required fields
-    if (!formData.code || !formData.discountType || !formData.value || !formData.expirationDate || !formData.quantity) {
+    if (!formData.code || !formData.discountType || !formData.value || !formData.expirationDate || !formData.quantity || !formData.usageType) {
         showNotification('Please fill in all required fields', 'error');
         return false;
     }

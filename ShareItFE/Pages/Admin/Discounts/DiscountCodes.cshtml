@@ -58,13 +58,21 @@
 
             <!-- Filter Panel -->
             <div id="filterPanel" class="hidden pt-6 border-t border-gray-200 mt-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                     <div>
-                        <label for="filter-type" class="block text-sm font-medium text-gray-700 mb-1.5">Type</label>
+                        <label for="filter-type" class="block text-sm font-medium text-gray-700 mb-1.5">Discount Type</label>
                         <select id="filter-type" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
                             <option value="">All Types</option>
                             <option value="Percentage">Percentage</option>
                             <option value="Fixed">Fixed Amount</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-usage-type" class="block text-sm font-medium text-gray-700 mb-1.5">Usage Type</label>
+                        <select id="filter-usage-type" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            <option value="">All Usage Types</option>
+                            <option value="Purchase">Purchase</option>
+                            <option value="Rental">Rental</option>
                         </select>
                     </div>
                     <div>
@@ -104,6 +112,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount Value</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiration Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -111,7 +120,7 @@
                     <tbody id="discount-table-body" class="bg-white divide-y divide-gray-200">
                         <!-- Data will be loaded via JavaScript -->
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center">
                                     <i data-lucide="loader" class="h-8 w-8 text-gray-400 animate-spin mb-2"></i>
                                     <p class="text-gray-500">Loading discount codes...</p>
@@ -122,27 +131,8 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div id="pagination-container" class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div class="flex-1 flex justify-between sm:hidden">
-                    <button id="prev-mobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        Previous
-                    </button>
-                    <button id="next-mobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                        Next
-                    </button>
-                </div>
-                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm text-gray-700">
-                            Showing <span id="page-start" class="font-medium">1</span> to <span id="page-end" class="font-medium">10</span> of <span id="page-total" class="font-medium">0</span> results
-                        </p>
-                    </div>
-                    <div>
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" id="pagination-numbers">
-                            <!-- Pagination numbers will be generated here -->
-                        </nav>
-                    </div>
+            <div class="px-6 py-4 border-t border-gray-200">
+                <div id="pagination-container" class="pagination-controls">
                 </div>
             </div>
         </div>
@@ -189,6 +179,13 @@
                     <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                     <input type="number" id="quantity" required 
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                    <label for="usage-type" class="block text-sm font-medium text-gray-700 mb-1">Usage Type</label>
+                    <select id="usage-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="Purchase">Purchase</option>
+                        <option value="Rental">Rental</option>
+                    </select>
                 </div>
                 <div>
                     <label for="status-toggle" class="block text-sm font-medium text-gray-700 mb-1">Status</label>

@@ -337,6 +337,10 @@ namespace DataAccess
                 .Property(dc => dc.Status)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.UsageType)
+                .HasConversion<string>();
+
             // UsedDiscountCode configuration
             modelBuilder.Entity<UsedDiscountCode>()
                 .HasOne(udc => udc.User)

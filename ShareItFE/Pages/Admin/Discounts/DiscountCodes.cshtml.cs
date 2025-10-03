@@ -212,6 +212,9 @@ namespace ShareItFE.Pages.Admin.Discounts
         public int Quantity { get; set; }
 
         public string Status { get; set; } = "Active";
+
+        [Required(ErrorMessage = "Usage type is required")]
+        public string UsageType { get; set; } = "Purchase";
     }
 
     public class UpdateDiscountCodeDto
@@ -235,5 +238,8 @@ namespace ShareItFE.Pages.Admin.Discounts
         public int Quantity { get; set; }
 
         public string Status { get; set; } = "Active";
+
+        [Required(ErrorMessage = "Usage type is required")]
+        public string UsageType { get; set; } = "Purchase";
     }
 }

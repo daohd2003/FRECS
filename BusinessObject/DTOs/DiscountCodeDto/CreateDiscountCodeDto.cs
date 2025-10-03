@@ -24,5 +24,8 @@ namespace BusinessObject.DTOs.DiscountCodeDto
         public int Quantity { get; set; }
 
         public DiscountStatus Status { get; set; } = DiscountStatus.Active;
+
+        [Required(ErrorMessage = "Usage type is required")]
+        public DiscountUsageType UsageType { get; set; } = DiscountUsageType.Purchase;
     }
 }
