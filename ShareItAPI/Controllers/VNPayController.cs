@@ -52,7 +52,7 @@ namespace ShareItAPI.Controllers
         /// Create payment URL
         /// </summary>
         [HttpPost("CreatePaymentUrl")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<ActionResult<ApiResponse<string>>> CreatePaymentUrl([FromBody] CreatePaymentRequestDto requestDto)
         {
             if (requestDto.OrderIds == null || !requestDto.OrderIds.Any())

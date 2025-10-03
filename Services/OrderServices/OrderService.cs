@@ -146,6 +146,29 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
+            var oldStatus = order.Status;
+
+            // If order was approved (paid), restore stock quantities
+            if (oldStatus == OrderStatus.approved || oldStatus == OrderStatus.in_transit || oldStatus == OrderStatus.in_use)
+            {
+                foreach (var item in order.Items)
+                {
+                    var product = await _productRepository.GetByIdAsync(item.ProductId);
+                    if (product != null)
+                    {
+                        if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                        {
+                            product.PurchaseQuantity += item.Quantity; // Restore quantity
+                        }
+                        else // Rental
+                        {
+                            product.RentalQuantity += item.Quantity; // Restore quantity
+                        }
+                        await _productRepository.UpdateAsync(product);
+                    }
+                }
+            }
+
             order.Status = OrderStatus.cancelled;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
@@ -603,24 +626,9 @@ namespace Services.OrderServices
                         await _orderRepo.AddAsync(newOrder);
                         createdOrders.Add(newOrder);
 
-                        // Deduct stock quantities for each ordered item
-                        foreach (var cartItem in providerGroup)
-                        {
-                            var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
-                            if (product != null)
-                            {
-                                if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
-                                {
-                                    product.PurchaseQuantity -= cartItem.Quantity;
-                                }
-                                else // Rental
-                                {
-                                    product.RentalQuantity -= cartItem.Quantity;
-                                }
-                                
-                                await _productRepository.UpdateAsync(product);
-                            }
-                        }
+                        // NOTE: Do NOT deduct stock quantities here (order is still pending/unpaid)
+                        // Quantity will be deducted when order status changes to 'approved' (payment confirmed)
+                        // This prevents stock from being locked for unpaid/abandoned orders
 
                         //foreach (var cartItem in providerGroup)
                         //{
@@ -1049,9 +1057,10 @@ namespace Services.OrderServices
         }
 
         /// <summary>
-        /// Updates product rent count and buy count based on order status
-        /// Rent count increases whenever order status becomes 'returned' (including returned_with_issue -> returned)
-        /// Buy count increases only when purchase order first reaches 'approved'
+        /// Updates product rent count, buy count, and stock quantities based on order status
+        /// - Stock quantities (RentalQuantity/PurchaseQuantity) are deducted when order becomes 'approved' (payment confirmed)
+        /// - Rent count increases whenever order status becomes 'returned' (including returned_with_issue -> returned)
+        /// - Buy count increases only when purchase order first reaches 'approved'
         /// </summary>
         /// <param name="order">The order containing items to update counts for</param>
         /// <param name="oldStatus">The previous order status</param>
@@ -1066,6 +1075,13 @@ namespace Services.OrderServices
 
                 bool shouldUpdateRentCount = false;
                 bool shouldUpdateBuyCount = false;
+                bool shouldDeductStock = false;
+
+                // Deduct stock quantity when order is approved (payment confirmed)
+                if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                {
+                    shouldDeductStock = true;
+                }
 
                 // For rental transactions - increment rent count whenever status becomes 'returned'
                 if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
@@ -1082,6 +1098,24 @@ namespace Services.OrderServices
                     {
                         shouldUpdateBuyCount = true;
                     }
+                }
+
+                // Deduct stock quantity when approved
+                if (shouldDeductStock)
+                {
+                    if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                    {
+                        product.PurchaseQuantity -= item.Quantity;
+                        // Prevent negative quantity
+                        if (product.PurchaseQuantity < 0) product.PurchaseQuantity = 0;
+                    }
+                    else // Rental
+                    {
+                        product.RentalQuantity -= item.Quantity;
+                        // Prevent negative quantity
+                        if (product.RentalQuantity < 0) product.RentalQuantity = 0;
+                    }
+                    await _productRepository.UpdateAsync(product);
                 }
 
                 // Update counts if needed

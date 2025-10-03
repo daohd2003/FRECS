@@ -33,7 +33,7 @@
         <div class="header-actions">
             @if (Model.IsUserLoggedIn)
             {
-                @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
+                @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                 {
                     <a asp-page="/CartPage/Cart" class="cart-link" style="position: relative; display: flex; align-items: center;">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

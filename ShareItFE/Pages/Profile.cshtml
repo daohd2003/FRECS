@@ -306,12 +306,23 @@
                         </a>
 
                         <div class="page-numbers">
-                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            @{
+                                var ordersPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                            }
+                            @foreach (var item in ordersPaginationItems)
                             {
-                                <a asp-page="/Profile"
-                                   asp-route-pageNum="@i"
-                                   asp-route-tab="orders"
-                                   class="btn @(i == Model.CurrentPage ? "btn-primary" : "btn-secondary")">@i</a>
+                                if (item.ToString() == "...")
+                                {
+                                    <span class="btn btn-secondary disabled">...</span>
+                                }
+                                else
+                                {
+                                    var pageNum = (int)item;
+                                    <a asp-page="/Profile"
+                                       asp-route-pageNum="@pageNum"
+                                       asp-route-tab="orders"
+                                       class="btn @(pageNum == Model.CurrentPage ? "btn-primary" : "btn-secondary")">@pageNum</a>
+                                }
                             }
                         </div>
 
@@ -347,12 +358,39 @@
 
                                         <h4 class="favorite-name">@product?.Name</h4>
 
-                                        <p class="favorite-price text-purple-600 font-semibold">
-                                            ₫@((product?.PricePerDay ?? 0).ToString("N0"))/day
-                                        </p>
+                                        <div class="favorite-price text-purple-600 font-semibold">
+                                            @if (product?.ProductType == "RENTAL")
+                                            {
+                                                <span>₫@product.PricePerDay.ToString("N0")/day</span>
+                                            }
+                                            else if (product?.ProductType == "PURCHASE")
+                                            {
+                                                <span>₫@product.PurchasePrice.ToString("N0")</span>
+                                            }
+                                            else if (product?.ProductType == "BOTH")
+                                            {
+                                                <div style="line-height: 1.5;">
+                                                    <div>Rent: ₫@product.PricePerDay.ToString("N0")/day</div>
+                                                    <div>Buy: ₫@product.PurchasePrice.ToString("N0")</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span>Unavailable</span>
+                                            }
+                                        </div>
 
                                         <div class="favorite-actions">
-                                            <a href="/products/detail/@product?.Id" class="btn btn-primary">Rent Now</a>
+                                            @{
+                                                var actionText = product?.ProductType switch
+                                                {
+                                                    "RENTAL" => "Rent Now",
+                                                    "PURCHASE" => "Buy Now",
+                                                    "BOTH" => "View Details",
+                                                    _ => "View"
+                                                };
+                                            }
+                                            <a href="/products/detail/@product?.Id" class="btn btn-primary">@actionText</a>
 
                                             <form method="post"
                                                   asp-page-handler="RemoveFavorite"
@@ -384,13 +422,24 @@
                                 </a>
 
                                 <div class="page-numbers">
-                                    @for (int i = 1; i <= Model.FavoritesTotalPages; i++)
+                                    @{
+                                        var favoritesPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.FavoritesPageNum, Model.FavoritesTotalPages);
+                                    }
+                                    @foreach (var item in favoritesPaginationItems)
                                     {
-                                        <a asp-page="/Profile"
-                                           asp-route-pageNum="@Model.CurrentPage"
-                                           asp-route-favPage="@i"
-                                           asp-route-tab="favorites"
-                                           class="btn @(i == Model.FavoritesPageNum ? "btn-primary" : "btn-secondary")">@i</a>
+                                        if (item.ToString() == "...")
+                                        {
+                                            <span class="btn btn-secondary disabled">...</span>
+                                        }
+                                        else
+                                        {
+                                            var pageNum = (int)item;
+                                            <a asp-page="/Profile"
+                                               asp-route-pageNum="@Model.CurrentPage"
+                                               asp-route-favPage="@pageNum"
+                                               asp-route-tab="favorites"
+                                               class="btn @(pageNum == Model.FavoritesPageNum ? "btn-primary" : "btn-secondary")">@pageNum</a>
+                                        }
                                     }
                                 </div>
 

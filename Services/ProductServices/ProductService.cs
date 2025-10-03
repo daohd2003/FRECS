@@ -23,6 +23,7 @@ namespace Services.ProductServices
         public IQueryable<ProductDTO> GetAll()
         {
             return _context.Products
+                .AsNoTracking()
                 .Include(p => p.Category)
                 .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
         }
