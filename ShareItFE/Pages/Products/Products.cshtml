@@ -259,12 +259,23 @@
                             Previous
                         </button>
 
-                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        @{
+                            var paginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                        }
+                        @foreach (var item in paginationItems)
                         {
-                            <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@i)"
-                                    class="px-4 py-2 rounded-lg @(i == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
-                                @i
-                            </button>
+                            if (item.ToString() == "...")
+                            {
+                                <span class="px-4 py-2 text-gray-500">...</span>
+                            }
+                            else
+                            {
+                                var pageNum = (int)item;
+                                <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@pageNum)"
+                                        class="px-4 py-2 rounded-lg @(pageNum == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
+                                    @pageNum
+                                </button>
+                            }
                         }
 
                         <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage + 1))"
@@ -373,6 +384,9 @@
                             // Show subtle notification
                             showNotification('Added to favorites', 'success');
                         }
+                    } else if (response.status === 401) {
+                        // User not authenticated
+                        showNotification('Please login to add products to your favorites', 'error');
                     } else {
                         console.error('Failed to update favorite status');
                         showNotification('Failed to update favorite', 'error');
@@ -559,6 +573,9 @@
                                 icon.classList.add('text-red-500', 'fill-red-500');
                                 showNotification('Added to favorites', 'success');
                             }
+                        } else if (response.status === 401) {
+                            // User not authenticated
+                            showNotification('Please login to add products to your favorites', 'error');
                         } else {
                             showNotification('Failed to update favorite', 'error');
                         }

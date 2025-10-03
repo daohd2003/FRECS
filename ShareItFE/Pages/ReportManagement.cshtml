@@ -156,9 +156,20 @@
                 <div class="pagination-info">Showing <strong>@((Model.CurrentPage - 1) * Model.PageSize + 1)</strong> to <strong>@Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalCount)</strong> of <strong>@Model.TotalCount</strong> results</div>
                 <div class="pagination-controls">
                     <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@(Model.CurrentPage - 1)" class="@(Model.CurrentPage <= 1 ? "disabled" : "")"><i class="bi bi-chevron-left"></i></a>
-                    @for (var i = 1; i <= Model.TotalPages; i++)
+                    @{
+                        var reportPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                    }
+                    @foreach (var item in reportPaginationItems)
                     {
-                        <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@i" class="@(i == Model.CurrentPage ? "active" : "")">@i</a>
+                        if (item.ToString() == "...")
+                        {
+                            <span class="disabled">...</span>
+                        }
+                        else
+                        {
+                            var pageNum = (int)item;
+                            <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@pageNum" class="@(pageNum == Model.CurrentPage ? "active" : "")">@pageNum</a>
+                        }
                     }
                     <a asp-page="/ReportManagement" asp-route-tab="@Model.Tab" asp-route-SearchQuery="@Model.SearchQuery" asp-route-CurrentPage="@(Model.CurrentPage + 1)" class="@(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")"><i class="bi bi-chevron-right"></i></a>
                 </div>

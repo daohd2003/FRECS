@@ -306,12 +306,23 @@
                         </a>
 
                         <div class="page-numbers">
-                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            @{
+                                var ordersPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                            }
+                            @foreach (var item in ordersPaginationItems)
                             {
-                                <a asp-page="/Profile"
-                                   asp-route-pageNum="@i"
-                                   asp-route-tab="orders"
-                                   class="btn @(i == Model.CurrentPage ? "btn-primary" : "btn-secondary")">@i</a>
+                                if (item.ToString() == "...")
+                                {
+                                    <span class="btn btn-secondary disabled">...</span>
+                                }
+                                else
+                                {
+                                    var pageNum = (int)item;
+                                    <a asp-page="/Profile"
+                                       asp-route-pageNum="@pageNum"
+                                       asp-route-tab="orders"
+                                       class="btn @(pageNum == Model.CurrentPage ? "btn-primary" : "btn-secondary")">@pageNum</a>
+                                }
                             }
                         </div>
 
@@ -411,13 +422,24 @@
                                 </a>
 
                                 <div class="page-numbers">
-                                    @for (int i = 1; i <= Model.FavoritesTotalPages; i++)
+                                    @{
+                                        var favoritesPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.FavoritesPageNum, Model.FavoritesTotalPages);
+                                    }
+                                    @foreach (var item in favoritesPaginationItems)
                                     {
-                                        <a asp-page="/Profile"
-                                           asp-route-pageNum="@Model.CurrentPage"
-                                           asp-route-favPage="@i"
-                                           asp-route-tab="favorites"
-                                           class="btn @(i == Model.FavoritesPageNum ? "btn-primary" : "btn-secondary")">@i</a>
+                                        if (item.ToString() == "...")
+                                        {
+                                            <span class="btn btn-secondary disabled">...</span>
+                                        }
+                                        else
+                                        {
+                                            var pageNum = (int)item;
+                                            <a asp-page="/Profile"
+                                               asp-route-pageNum="@Model.CurrentPage"
+                                               asp-route-favPage="@pageNum"
+                                               asp-route-tab="favorites"
+                                               class="btn @(pageNum == Model.FavoritesPageNum ? "btn-primary" : "btn-secondary")">@pageNum</a>
+                                        }
                                     }
                                 </div>
 

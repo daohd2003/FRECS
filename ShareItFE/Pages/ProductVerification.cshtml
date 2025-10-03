@@ -247,12 +247,23 @@
                                 </a>
 
                                 <!-- Page Numbers -->
-                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                @{
+                                    var verificationPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                                }
+                                @foreach (var item in verificationPaginationItems)
                                 {
-                                    <a href="?page=@i"
-                                       class="pagination-page-link relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(i == Model.CurrentPage ? "z-10 bg-purple-50 border-purple-500 text-purple-600" : "")">
-                                        @i
-                                    </a>
+                                    if (item.ToString() == "...")
+                                    {
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500">...</span>
+                                    }
+                                    else
+                                    {
+                                        var pageNum = (int)item;
+                                        <a href="?page=@pageNum"
+                                           class="pagination-page-link relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 @(pageNum == Model.CurrentPage ? "z-10 bg-purple-50 border-purple-500 text-purple-600" : "")">
+                                            @pageNum
+                                        </a>
+                                    }
                                 }
 
                                 <!-- Next -->

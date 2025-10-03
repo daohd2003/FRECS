@@ -391,12 +391,23 @@
                                     Previous
                                 </button>
 
-                                @for (int i = 1; i <= Model.TotalPages; i++)
+                                @{
+                                    var providerPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                                }
+                                @foreach (var item in providerPaginationItems)
                                 {
-                                    <button type="submit" onclick="setPage(@i)"
-                                            class="px-4 py-2 rounded-lg @(i == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
-                                        @i
-                                    </button>
+                                    if (item.ToString() == "...")
+                                    {
+                                        <span class="px-4 py-2 text-gray-500">...</span>
+                                    }
+                                    else
+                                    {
+                                        var pageNum = (int)item;
+                                        <button type="submit" onclick="setPage(@pageNum)"
+                                                class="px-4 py-2 rounded-lg @(pageNum == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
+                                            @pageNum
+                                        </button>
+                                    }
                                 }
 
                                 <button type="submit" onclick="setPage(@(Model.CurrentPage + 1))"

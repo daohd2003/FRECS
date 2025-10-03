@@ -1128,6 +1128,9 @@
                                     icon.classList.add('text-red-500', 'fill-red-500');
                                     showToast('Added to favorites', 'success');
                                 }
+                            } else if (response.status === 401) {
+                                // User not authenticated
+                                showToast('Please login to add products to your favorites', 'error');
                             } else {
                                 console.error('Failed to update favorite status');
                                 showToast('Failed to update favorite', 'error');
