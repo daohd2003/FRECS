@@ -603,6 +603,36 @@ namespace Services.OrderServices
                         var rentalStart = providerGroup.Min(ci => ci.StartDate);
                         var rentalEnd = providerGroup.Max(ci => ci.EndDate);
 
+                        // Apply discount code if provided
+                        decimal discountAmount = 0;
+                        Guid? discountCodeIdToStore = null;
+                        
+                        if (checkoutRequestDto.DiscountCodeId.HasValue)
+                        {
+                            var discountCode = await _context.DiscountCodes.FindAsync(checkoutRequestDto.DiscountCodeId.Value);
+                            
+                            if (discountCode != null && 
+                                discountCode.Status == BusinessObject.Enums.DiscountStatus.Active &&
+                                discountCode.ExpirationDate > DateTime.UtcNow &&
+                                discountCode.UsedCount < discountCode.Quantity)
+                            {
+                                // Calculate discount amount
+                                if (discountCode.DiscountType == BusinessObject.Enums.DiscountType.Percentage)
+                                {
+                                    discountAmount = Math.Round(subtotalAmount * (discountCode.Value / 100), 2);
+                                }
+                                else // Fixed amount
+                                {
+                                    discountAmount = discountCode.Value;
+                                }
+                                
+                                // Ensure discount doesn't exceed subtotal
+                                discountAmount = Math.Min(discountAmount, subtotalAmount);
+                                
+                                discountCodeIdToStore = discountCode.Id;
+                            }
+                        }
+
                         var newOrder = new Order
                         {
                             Id = Guid.NewGuid(),
@@ -611,7 +641,9 @@ namespace Services.OrderServices
                             Status = OrderStatus.pending,
                             Subtotal = subtotalAmount, // Chỉ giá thuê/mua
                             TotalDeposit = depositAmount, // Chỉ tiền cọc
-                            TotalAmount = subtotalAmount + depositAmount, // Tổng = subtotal + deposit
+                            DiscountCodeId = discountCodeIdToStore,
+                            DiscountAmount = discountAmount,
+                            TotalAmount = subtotalAmount + depositAmount - discountAmount, // Tổng = subtotal + deposit - discount
                             RentalStart = rentalStart,
                             RentalEnd = rentalEnd,
                             Items = orderItems,
@@ -844,6 +876,7 @@ namespace Services.OrderServices
                             .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
                     .Include(o => o.Customer)
                         .ThenInclude(c => c.Profile)
+                    .Include(o => o.DiscountCode) // Include discount code để map tên
                     .FirstOrDefaultAsync();
 
                 if (order == null)

@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251003113745_AddDiscountUsageTypeColumn")]
+    partial class AddDiscountUsageTypeColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -446,12 +449,6 @@ namespace DataAccess.Migrations
                     b.Property<string>("DeliveryAddress")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<Guid?>("DiscountCodeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("HasAgreedToPolicies")
                         .HasColumnType("bit");
 
@@ -483,8 +480,6 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
-
-                    b.HasIndex("DiscountCodeId");
 
                     b.HasIndex("ProviderId");
 
@@ -1100,10 +1095,6 @@ namespace DataAccess.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BusinessObject.Models.DiscountCode", "DiscountCode")
-                        .WithMany()
-                        .HasForeignKey("DiscountCodeId");
-
                     b.HasOne("BusinessObject.Models.User", "Provider")
                         .WithMany("OrdersAsProvider")
                         .HasForeignKey("ProviderId")
@@ -1111,8 +1102,6 @@ namespace DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
-
-                    b.Navigation("DiscountCode");
 
                     b.Navigation("Provider");
                 });

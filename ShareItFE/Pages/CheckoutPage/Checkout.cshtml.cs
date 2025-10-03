@@ -46,6 +46,16 @@ namespace ShareItFE.Pages.CheckoutPage
         /// </summary>
         public decimal TotalDeposit { get; set; }
 
+        /// <summary>
+        /// Discount amount calculated from session discount code
+        /// </summary>
+        public decimal DiscountAmount { get; set; }
+
+        /// <summary>
+        /// Selected discount code from session
+        /// </summary>
+        public DiscountCodeSessionInfo? SelectedDiscountCode { get; set; }
+
         [TempData]
         public string SuccessMessage { get; set; }
 
@@ -144,10 +154,13 @@ namespace ShareItFE.Pages.CheckoutPage
                             // Calculate total deposit for rental items from cart
                             TotalDeposit = Cart.TotalDepositAmount;
                             
+                            // Load discount code from session and calculate discount
+                            LoadDiscountFromSession();
+                            
                             // Giả định logic tính phí giao hàng và thuế
                             //DeliveryFee = Subtotal > 100000 ? 0 : 15000;
                             //Total = Subtotal + DeliveryFee + TotalDeposit;
-                            Total = Subtotal + TotalDeposit;
+                            Total = Subtotal + TotalDeposit - DiscountAmount;
                         }
                     }
                     else
@@ -310,6 +323,9 @@ namespace ShareItFE.Pages.CheckoutPage
                 }
                 else // Case 2: Processing a normal cart checkout
                 {
+                    // Load discount from session before creating checkout request
+                    LoadDiscountFromSession();
+                    
                     // This section will create orders from the cart.
                     // This is where the call to api/cart/checkout is necessary.
                     var checkoutRequest = new CheckoutRequestDto
@@ -319,7 +335,10 @@ namespace ShareItFE.Pages.CheckoutPage
                         CustomerEmail = Input.Email,
                         CustomerPhoneNumber = Input.PhoneNumber,
                         DeliveryAddress = Input.Address,
-                        HasAgreedToPolicies = true
+                        HasAgreedToPolicies = true,
+                        DiscountCodeId = SelectedDiscountCode != null && Guid.TryParse(SelectedDiscountCode.Id, out var discountId) 
+                            ? discountId 
+                            : null
                     };
 
                     var cartCheckoutResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/cart/checkout", checkoutRequest);
@@ -443,6 +462,45 @@ namespace ShareItFE.Pages.CheckoutPage
             await OnGetAsync();
             return Page();
         }
+
+        /// <summary>
+        /// Load discount code from session and calculate discount amount
+        /// </summary>
+        private void LoadDiscountFromSession()
+        {
+            try
+            {
+                var discountJson = HttpContext.Session.GetString("SelectedDiscountCode");
+                
+                if (!string.IsNullOrEmpty(discountJson))
+                {
+                    var discount = JsonSerializer.Deserialize<DiscountCodeSessionInfo>(discountJson);
+                    
+                    if (discount != null)
+                    {
+                        SelectedDiscountCode = discount;
+                        
+                        // Calculate discount amount
+                        if (discount.DiscountType == "Percentage")
+                        {
+                            DiscountAmount = Math.Round(Subtotal * (discount.Value / 100));
+                        }
+                        else // Fixed amount
+                        {
+                            DiscountAmount = discount.Value;
+                        }
+                        
+                        // Ensure discount doesn't exceed subtotal
+                        DiscountAmount = Math.Min(DiscountAmount, Subtotal);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                DiscountAmount = 0;
+                SelectedDiscountCode = null;
+            }
+        }
     }
 
     public class CheckoutInputModel
@@ -456,5 +514,17 @@ namespace ShareItFE.Pages.CheckoutPage
         public bool HasAgreedToPolicies { get; set; } = false;
 
         public string PaymentMethod { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for storing discount code info from session
+    /// </summary>
+    public class DiscountCodeSessionInfo
+    {
+        public string Id { get; set; }
+        public string Code { get; set; }
+        public string DiscountType { get; set; }
+        public decimal Value { get; set; }
+        public string UsageType { get; set; }
     }
 }

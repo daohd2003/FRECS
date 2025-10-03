@@ -284,7 +284,20 @@
                     </div>
                     <div class="summary-item">
                         <span>Discount</span>
-                        <span>₫0</span>
+                        <span class="@(Model.Order.DiscountAmount > 0 ? "text-success" : "")">
+                            @if (Model.Order.DiscountAmount > 0)
+                            {
+                                <text>-₫@Model.Order.DiscountAmount.ToString("N0")</text>
+                                if (!string.IsNullOrEmpty(Model.Order.DiscountCodeName))
+                                {
+                                    <small class="text-muted ms-1">(@Model.Order.DiscountCodeName)</small>
+                                }
+                            }
+                            else
+                            {
+                                <text>₫0</text>
+                            }
+                        </span>
                     </div>
                     @if (Model.Order.TotalDepositAmount > 0)
                     {

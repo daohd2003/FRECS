@@ -32,6 +32,8 @@ namespace DataAccess
         public DbSet<Category> Categories { get; set; }
 
         public DbSet<ProviderApplication> ProviderApplications { get; set; }
+        public DbSet<DiscountCode> DiscountCodes { get; set; }
+        public DbSet<UsedDiscountCode> UsedDiscountCodes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -316,6 +318,46 @@ namespace DataAccess
                 .HasOne(p => p.ReviewedByAdmin)
                 .WithMany()
                 .HasForeignKey(p => p.ReviewedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // DiscountCode configuration
+            modelBuilder.Entity<DiscountCode>()
+                .HasIndex(dc => dc.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.Value)
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.DiscountType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.UsageType)
+                .HasConversion<string>();
+
+            // UsedDiscountCode configuration
+            modelBuilder.Entity<UsedDiscountCode>()
+                .HasOne(udc => udc.User)
+                .WithMany()
+                .HasForeignKey(udc => udc.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UsedDiscountCode>()
+                .HasOne(udc => udc.DiscountCode)
+                .WithMany(dc => dc.UsedDiscountCodes)
+                .HasForeignKey(udc => udc.DiscountCodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UsedDiscountCode>()
+                .HasOne(udc => udc.Order)
+                .WithMany()
+                .HasForeignKey(udc => udc.OrderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);

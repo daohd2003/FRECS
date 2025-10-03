@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251002171133_UpdateDiscountCodeEnums")]
+    partial class UpdateDiscountCodeEnums
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -105,7 +108,7 @@ namespace DataAccess.Migrations
                     b.Property<Guid>("CartId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("EndDate")
+                    b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid>("ProductId")
@@ -114,15 +117,11 @@ namespace DataAccess.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
-                    b.Property<int?>("RentalDays")
+                    b.Property<int>("RentalDays")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("StartDate")
+                    b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("TransactionType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -224,10 +223,6 @@ namespace DataAccess.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("UsageType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("UsedCount")
                         .HasColumnType("int");
@@ -446,12 +441,6 @@ namespace DataAccess.Migrations
                     b.Property<string>("DeliveryAddress")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<Guid?>("DiscountCodeId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<bool>("HasAgreedToPolicies")
                         .HasColumnType("bit");
 
@@ -484,8 +473,6 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.HasIndex("DiscountCodeId");
-
                     b.HasIndex("ProviderId");
 
                     b.ToTable("Orders");
@@ -512,12 +499,8 @@ namespace DataAccess.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
-                    b.Property<int?>("RentalDays")
+                    b.Property<int>("RentalDays")
                         .HasColumnType("int");
-
-                    b.Property<string>("TransactionType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -536,7 +519,7 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("AvailabilityStatus")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("AverageRating")
                         .HasColumnType("decimal(2,1)");
@@ -610,19 +593,9 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AvailabilityStatus");
-
-                    b.HasIndex("AverageRating");
-
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("PricePerDay");
-
                     b.HasIndex("ProviderId");
-
-                    b.HasIndex("RentCount");
 
                     b.ToTable("Products");
                 });
@@ -1100,10 +1073,6 @@ namespace DataAccess.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("BusinessObject.Models.DiscountCode", "DiscountCode")
-                        .WithMany()
-                        .HasForeignKey("DiscountCodeId");
-
                     b.HasOne("BusinessObject.Models.User", "Provider")
                         .WithMany("OrdersAsProvider")
                         .HasForeignKey("ProviderId")
@@ -1111,8 +1080,6 @@ namespace DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
-
-                    b.Navigation("DiscountCode");
 
                     b.Navigation("Provider");
                 });

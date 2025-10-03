@@ -26,6 +26,7 @@ using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
 using Repositories.CategoryRepositories;
 using Repositories.ConversationRepositories;
+using Repositories.DiscountCodeRepositories;
 using Repositories.EmailRepositories;
 using Repositories.FavoriteRepositories;
 using Repositories.FeedbackRepositories;
@@ -45,6 +46,7 @@ using Services.CartServices;
 using Services.CloudServices;
 using Services.CategoryServices;
 using Services.ConversationServices;
+using Services.DiscountCodeServices;
 using Services.EmailServices;
 using Services.FavoriteServices;
 using Services.FeedbackServices;
@@ -253,6 +255,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CategoryProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(DiscountCodeProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
             builder.Services.AddScoped<IEmailRepository, EmailRepository>();
@@ -306,6 +309,11 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
+
+            // Register DiscountCode services
+            builder.Services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
+            builder.Services.AddScoped<IDiscountCodeService, DiscountCodeService>();
+            builder.Services.AddHostedService<DiscountCodeExpirationService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 

@@ -6,6 +6,7 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/cart.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/discount-code-modal.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="~/css/checkout-modal.css" asp-append-version="true" />
 }
@@ -196,6 +197,7 @@
                         }
                     </div>
 
+
                     <!-- Price summary -->
                     <div class="space-y-4 mb-6">
                         <div class="flex justify-between">
@@ -210,7 +212,20 @@
 
                         <div class="flex justify-between">
                             <span class="text-gray-600">Discount</span>
-                            <span class="font-semibold">0 VND</span>
+                            <span class="font-semibold text-green-600" id="checkout-discount">
+                                @if (Model.DiscountAmount > 0)
+                                {
+                                    <text>-@Model.DiscountAmount.ToString("N0") VND</text>
+                                    @if (Model.SelectedDiscountCode != null)
+                                    {
+                                        <span class="text-xs text-gray-500 ml-2">(@Model.SelectedDiscountCode.Code)</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <text>0 VND</text>
+                                }
+                            </span>
                         </div>
 
                         @* Security Deposit for rental items *@
@@ -225,7 +240,7 @@
                         <div class="border-t pt-4">
                             <div class="flex justify-between text-lg font-bold">
                                 <span>Total <span class="text-sm font-normal text-gray-500">(incl. deposit)</span></span>
-                                <span class="text-purple-600">@Model.Total.ToString("N0") VND</span>
+                                <span class="text-purple-600" id="checkout-total">@Model.Total.ToString("N0") VND</span>
                             </div>
                         </div>
                     </div>

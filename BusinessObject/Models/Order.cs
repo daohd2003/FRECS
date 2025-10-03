@@ -56,5 +56,18 @@ namespace BusinessObject.Models
         /// Subtotal không bao gồm deposit (chỉ tiền thuê)
         [Column(TypeName = "decimal(10,2)")]
         public decimal Subtotal { get; set; } = 0m;
+
+        /// <summary>
+        /// Discount code applied to this order (nullable)
+        /// </summary>
+        public Guid? DiscountCodeId { get; set; }
+        [ForeignKey(nameof(DiscountCodeId))]
+        public DiscountCode? DiscountCode { get; set; }
+
+        /// <summary>
+        /// Discount amount applied to this order
+        /// </summary>
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DiscountAmount { get; set; } = 0m;
     }
 }

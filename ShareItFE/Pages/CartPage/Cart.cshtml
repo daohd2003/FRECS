@@ -6,6 +6,7 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/cart.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/discount-code-modal.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 }
 
@@ -195,15 +196,31 @@
                         </div>
                     </div>
 
-                    @* Promo Code Section *@
+                    @* Discount Code Section *@
                     <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Promo code</h3>
-                        <div class="flex space-x-4">
-                            <input type="text" placeholder="Enter promo code"
-                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
-                            <button type="button" class="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-                                Apply
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Discount Code</h3>
+                            <button type="button" id="selectDiscountBtn" class="text-purple-600 hover:text-purple-700 font-medium flex items-center space-x-2">
+                                <i class="bi bi-ticket-perforated"></i>
+                                <span>Select Discount</span>
                             </button>
+                        </div>
+                        <div id="selectedDiscountDisplay" class="hidden">
+                            <div class="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <i class="bi bi-check-circle-fill text-purple-600"></i>
+                                    <div>
+                                        <p class="font-semibold text-gray-900" id="selectedDiscountCode"></p>
+                                        <p class="text-sm text-gray-600" id="selectedDiscountDescription"></p>
+                                    </div>
+                                </div>
+                                <button type="button" id="removeDiscountBtn" class="text-red-600 hover:text-red-700">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="noDiscountDisplay" class="text-gray-500 text-sm">
+                            No discount code applied
                         </div>
                     </div>
                 </div>
@@ -226,7 +243,7 @@
 
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Discount</span>
-                                <span class="font-semibold">0 VND</span>
+                                <span class="font-semibold text-green-600" id="cart-discount">0 VND</span>
                             </div>
 
                             @* Security Deposit for rental items *@
@@ -278,6 +295,37 @@
                 </div>
             </div>
         }
+    </div>
+</div>
+
+@* Discount Code Selection Modal *@
+<div id="discountCodeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4" style="z-index: 9999;">
+    <div class="bg-white rounded-xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl" style="margin: auto;">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Select Discount Code</h3>
+                <button type="button" id="closeDiscountModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="bi bi-x-lg text-2xl"></i>
+                </button>
+            </div>
+            <!-- Search Box -->
+            <div class="relative">
+                <i class="bi bi-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="discountSearchInput" placeholder="Search discount code..." 
+                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+            </div>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[calc(85vh-200px)]">
+            <div id="discountCodesList" class="space-y-4">
+                <!-- Discount codes will be loaded here -->
+                <div class="flex items-center justify-center py-8">
+                    <div class="text-center">
+                        <i class="bi bi-hourglass-split text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-500">Loading available discounts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -577,5 +625,350 @@
                 showToast('Failed to remove product. Please try again.', 'error');
             }
         }
+
+        // ===== Discount Code Modal Logic =====
+        (function initDiscountCodeModal() {
+            let selectedDiscountCode = null;
+            let availableDiscountCodes = [];
+            let allDiscountCodes = [];
+            const subtotal = @Model.Subtotal;
+            const apiBaseUrl = '@Model.ApiBaseUrl';
+            const hasRentalItems = @Model.HasRentalItems.ToString().ToLower();
+            const hasPurchaseItems = @Model.HasPurchaseItems.ToString().ToLower();
+
+            console.log('Discount code logic initialized');
+            console.log('Has rental items:', hasRentalItems);
+            console.log('Has purchase items:', hasPurchaseItems);
+
+            // Restore discount from session (if exists)
+            @if (Model.SelectedDiscountCode != null)
+            {
+                <text>
+                selectedDiscountCode = {
+                    id: '@Model.SelectedDiscountCode.Id',
+                    code: '@Model.SelectedDiscountCode.Code',
+                    discountType: '@Model.SelectedDiscountCode.DiscountType',
+                    value: @Model.SelectedDiscountCode.Value,
+                    usageType: '@Model.SelectedDiscountCode.UsageType'
+                };
+                
+                console.log('Restored discount from session:', selectedDiscountCode);
+                
+                // Update UI to show selected discount
+                document.getElementById('selectedDiscountCode').textContent = selectedDiscountCode.code;
+                const valueDisplay = selectedDiscountCode.discountType === 'Percentage' 
+                    ? `Save ${selectedDiscountCode.value}%` 
+                    : `Save ${selectedDiscountCode.value.toLocaleString()} VND`;
+                document.getElementById('selectedDiscountDescription').textContent = valueDisplay;
+                
+                document.getElementById('selectedDiscountDisplay').classList.remove('hidden');
+                document.getElementById('noDiscountDisplay').classList.add('hidden');
+                
+                // Calculate and display discount
+                updateDiscountCalculation();
+                </text>
+            }
+            else
+            {
+                <text>
+                console.log('No discount code in session');
+                </text>
+            }
+
+        // Open discount code modal
+        const selectBtn = document.getElementById('selectDiscountBtn');
+        console.log('Select button found:', selectBtn);
+        
+        if (selectBtn) {
+            selectBtn.addEventListener('click', async () => {
+                console.log('Select discount button clicked');
+                const modal = document.getElementById('discountCodeModal');
+                console.log('Modal element:', modal);
+                
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    console.log('Modal should be visible now');
+                    await loadAvailableDiscountCodes();
+                } else {
+                    console.error('Modal element not found!');
+                }
+            });
+        } else {
+            console.error('Select discount button not found!');
+        }
+
+        // Close modal
+        document.getElementById('closeDiscountModal')?.addEventListener('click', () => {
+            document.getElementById('discountCodeModal').classList.add('hidden');
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('discountCodeModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'discountCodeModal') {
+                e.target.classList.add('hidden');
+            }
+        });
+
+        // Load available discount codes
+        async function loadAvailableDiscountCodes() {
+            const listContainer = document.getElementById('discountCodesList');
+            
+            try {
+                const response = await fetch('@Url.Page("/CartPage/Cart", "AvailableDiscountCodes")');
+
+                if (!response.ok) throw new Error('Failed to load discount codes');
+
+                const data = await response.json();
+                allDiscountCodes = data.data || [];
+                availableDiscountCodes = allDiscountCodes;
+
+                if (availableDiscountCodes.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="flex items-center justify-center py-12">
+                            <div class="text-center">
+                                <i class="bi bi-ticket-perforated text-4xl text-gray-400 mb-3"></i>
+                                <p class="text-gray-500 font-medium">No discount codes available</p>
+                                <p class="text-gray-400 text-sm">Check back later for promotions!</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                renderDiscountCodes(availableDiscountCodes);
+
+            } catch (error) {
+                console.error('Error loading discount codes:', error);
+                listContainer.innerHTML = `
+                    <div class="flex items-center justify-center py-12">
+                        <div class="text-center">
+                            <i class="bi bi-exclamation-circle text-4xl text-red-400 mb-3"></i>
+                            <p class="text-red-500 font-medium">Failed to load discount codes</p>
+                            <p class="text-gray-400 text-sm">Please try again later</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Render discount codes with filtering and sorting
+        function renderDiscountCodes(codes) {
+            const listContainer = document.getElementById('discountCodesList');
+            
+            // Sort by discount value (descending)
+            const sortedCodes = [...codes].sort((a, b) => {
+                const valueA = a.discountType === 'Percentage' ? a.value : a.value / 1000; // Normalize for comparison
+                const valueB = b.discountType === 'Percentage' ? b.value : b.value / 1000;
+                return valueB - valueA;
+            });
+
+            // Separate by usage type
+            const purchaseCodes = sortedCodes.filter(code => code.usageType === 'Purchase');
+            const rentalCodes = sortedCodes.filter(code => code.usageType === 'Rental');
+
+            let html = '';
+
+            // Render Purchase Codes Section
+            if (purchaseCodes.length > 0) {
+                html += `
+                    <div class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="bi bi-bag-check text-blue-600 mr-2"></i>
+                            Purchase Discount Codes
+                        </h4>
+                        <div class="space-y-3">
+                            ${purchaseCodes.map(code => renderDiscountCard(code, !hasPurchaseItems)).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Render Rental Codes Section
+            if (rentalCodes.length > 0) {
+                html += `
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <i class="bi bi-calendar-check text-green-600 mr-2"></i>
+                            Rental Discount Codes
+                        </h4>
+                        <div class="space-y-3">
+                            ${rentalCodes.map(code => renderDiscountCard(code, !hasRentalItems)).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            listContainer.innerHTML = html;
+
+            // Add event listeners
+            listContainer.querySelectorAll('.discount-code-item').forEach(item => {
+                if (item.dataset.disabled === 'false' && item.dataset.incompatible === 'false') {
+                    item.addEventListener('click', function() {
+                        selectDiscount(this.dataset.discountId);
+                    });
+                }
+            });
+        }
+
+        // Render individual discount card
+        function renderDiscountCard(code, isIncompatible) {
+            const isExpired = new Date(code.expirationDate) < new Date();
+            const isFullyUsed = code.usedCount >= code.quantity;
+            const isDisabled = isExpired || isFullyUsed || code.status !== 'Active';
+            const isFinallyDisabled = isDisabled || isIncompatible;
+            
+            const valueDisplay = code.discountType === 'Percentage' 
+                ? `${code.value}%` 
+                : `${code.value.toLocaleString()} VND`;
+
+            return `
+                <div class="border rounded-lg p-4 ${isFinallyDisabled ? 'opacity-50 bg-gray-50' : 'hover:border-purple-500 cursor-pointer discount-code-item'}" 
+                     data-discount-id="${code.id}" data-disabled="${isDisabled}" data-incompatible="${isIncompatible}"
+                     data-code="${code.code.toLowerCase()}" data-usage-type="${code.usageType}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="font-bold text-lg text-purple-600">${code.code}</span>
+                                <span class="text-xs px-2 py-1 rounded ${code.usageType === 'Purchase' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                                    ${code.usageType}
+                                </span>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-1">
+                                ${code.discountType} discount: <span class="font-semibold text-gray-900">${valueDisplay}</span>
+                            </p>
+                            <p class="text-gray-500 text-xs">
+                                Expires: ${new Date(code.expirationDate).toLocaleDateString('vi-VN')} | 
+                                Used: ${code.usedCount}/${code.quantity}
+                            </p>
+                            ${isExpired ? '<p class="text-red-600 text-xs mt-1 font-medium">Expired</p>' : ''}
+                            ${isFullyUsed ? '<p class="text-red-600 text-xs mt-1 font-medium">Fully used</p>' : ''}
+                            ${!isDisabled && isIncompatible ? '<p class="text-orange-600 text-xs mt-1 font-medium">Not applicable for current cart items</p>' : ''}
+                        </div>
+                        ${!isFinallyDisabled ? `
+                            <button class="text-purple-600 font-medium px-4 py-2 rounded-lg border border-purple-600 hover:bg-purple-50">
+                                Apply
+                            </button>
+                        ` : `
+                            <button class="text-gray-400 font-medium px-4 py-2 rounded-lg border border-gray-300 cursor-not-allowed" disabled>
+                                ${isIncompatible && !isDisabled ? 'Incompatible' : 'Unavailable'}
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Search functionality
+        document.getElementById('discountSearchInput')?.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                renderDiscountCodes(allDiscountCodes);
+            } else {
+                const filtered = allDiscountCodes.filter(code => 
+                    code.code.toLowerCase().includes(searchTerm)
+                );
+                renderDiscountCodes(filtered);
+            }
+        });
+
+        // Select discount code
+        async function selectDiscount(discountId) {
+            const discount = allDiscountCodes.find(d => d.id === discountId);
+            if (!discount) return;
+
+            selectedDiscountCode = discount;
+            
+            // Save to session
+            try {
+                const response = await fetch('@Url.Page("/CartPage/Cart", "SaveDiscountCode")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    },
+                    body: JSON.stringify({
+                        id: discount.id,
+                        code: discount.code,
+                        discountType: discount.discountType,
+                        value: discount.value,
+                        usageType: discount.usageType
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to save discount code to session');
+                }
+            } catch (error) {
+                console.error('Error saving discount code:', error);
+            }
+            
+            // Update UI
+            document.getElementById('selectedDiscountCode').textContent = discount.code;
+            const valueDisplay = discount.discountType === 'Percentage' 
+                ? `Save ${discount.value}%` 
+                : `Save ${discount.value.toLocaleString()} VND`;
+            document.getElementById('selectedDiscountDescription').textContent = valueDisplay;
+            
+            document.getElementById('selectedDiscountDisplay').classList.remove('hidden');
+            document.getElementById('noDiscountDisplay').classList.add('hidden');
+            
+            // Calculate and update discount
+            updateDiscountCalculation();
+            
+            // Close modal
+            document.getElementById('discountCodeModal').classList.add('hidden');
+            
+            showToast('Discount code applied successfully!', 'success');
+        }
+
+        // Remove discount
+        document.getElementById('removeDiscountBtn')?.addEventListener('click', async () => {
+            selectedDiscountCode = null;
+            
+            // Remove from session
+            try {
+                await fetch('@Url.Page("/CartPage/Cart", "RemoveDiscountCode")', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    }
+                });
+            } catch (error) {
+                console.error('Error removing discount code:', error);
+            }
+            
+            document.getElementById('selectedDiscountDisplay').classList.add('hidden');
+            document.getElementById('noDiscountDisplay').classList.remove('hidden');
+            updateDiscountCalculation();
+            showToast('Discount code removed', 'info');
+        });
+
+        // Calculate discount amount
+        function updateDiscountCalculation() {
+            let discountAmount = 0;
+            
+            if (selectedDiscountCode) {
+                if (selectedDiscountCode.discountType === 'Percentage') {
+                    discountAmount = Math.round(subtotal * (selectedDiscountCode.value / 100));
+                } else {
+                    discountAmount = selectedDiscountCode.value;
+                }
+                
+                // Ensure discount doesn't exceed subtotal
+                discountAmount = Math.min(discountAmount, subtotal);
+            }
+            
+            // Update discount display
+            document.getElementById('cart-discount').textContent = discountAmount > 0 
+                ? `-${discountAmount.toLocaleString()} VND` 
+                : '0 VND';
+            
+            // Update total
+            const deposit = @Model.TotalDeposit;
+            const newTotal = subtotal - discountAmount + deposit;
+            document.getElementById('cart-total').textContent = newTotal.toLocaleString() + ' VND';
+        }
+        })(); // End of initDiscountCodeModal IIFE
     </script>
 }
