@@ -23,10 +23,18 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("{userId}")]
-        public async Task<IActionResult> GetFavorites(Guid userId)
+        public async Task<IActionResult> GetFavorites(Guid userId, [FromQuery] bool includeDetails = false)
         {
-            var favorites = await _favoriteService.GetFavoritesByUserIdAsync(userId);
-            return Ok(new ApiResponse<List<Favorite>>("Get favorites list successfully", favorites));
+            if (includeDetails)
+            {
+                var favoritesWithDetails = await _favoriteService.GetFavoritesWithProductDetailsAsync(userId);
+                return Ok(new ApiResponse<object>("Get favorites list successfully", favoritesWithDetails));
+            }
+            else
+            {
+                var favorites = await _favoriteService.GetFavoritesByUserIdAsync(userId);
+                return Ok(new ApiResponse<object>("Get favorites list successfully", favorites));
+            }
         }
 
         [HttpGet("check")]

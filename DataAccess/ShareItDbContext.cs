@@ -190,6 +190,22 @@ namespace DataAccess
             modelBuilder.Entity<Product>()
                 .Property(p => p.RatingCount);
 
+            // Add indexes for frequently queried columns (OData filtering/sorting)
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.AvailabilityStatus);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.PricePerDay);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.AverageRating);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.RentCount);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.CreatedAt);
+
             modelBuilder.Entity<ProductImage>()
                 .HasOne(pi => pi.Product)
                 .WithMany(p => p.Images)

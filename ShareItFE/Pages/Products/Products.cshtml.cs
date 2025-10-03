@@ -105,36 +105,10 @@ namespace ShareItFE.Pages.Products
 
                 var client = _httpClientFactory.CreateClient("BackendApi");
 
-                // Load categories for filter dropdown
-                try
-                {
-                    var categoryResponse = await client.GetAsync("api/categories");
-                    if (categoryResponse.IsSuccessStatusCode)
-                    {
-                        var categories = await categoryResponse.Content.ReadFromJsonAsync<IEnumerable<CategoryDto>>();
-                        CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
-                        if (categories != null)
-                        {
-                            CategoryOptions.AddRange(categories
-                                .Where(c => c.IsActive)
-                                .OrderBy(c => c.Name)
-                                .Select(c => new SelectListItem { Value = c.Name, Text = c.Name }));
-                        }
-                    }
-                    else
-                    {
-                        CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
-                    }
-                }
-                catch
-                {
-                    CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
-                }
-
+                // Build query string first (before any async calls)
                 var queryOptions = new List<string> { "$count=true" };
                 var filters = new List<string>();
 
-                Console.WriteLine($"SearchQuery: {SearchQuery}, CategoryFilter: {CategoryFilter}, PriceRangeFilter: {PriceRangeFilter}, SizeFilter: {SizeFilter}, RatingFilter: {RatingFilter}, GenderFilter: {GenderFilter}, ProductTypeFilter: {ProductTypeFilter}");
                 filters.Add("AvailabilityStatus eq 'available'");
                 if (!string.IsNullOrEmpty(SearchQuery))
                 {
@@ -221,10 +195,60 @@ namespace ShareItFE.Pages.Products
 
                 string queryString = string.Join("&", queryOptions);
                 var requestUri = $"odata/products?{queryString}";
-                Console.WriteLine($"Request URI: {requestUri}");
 
-                var response = await client.GetAsync(requestUri);
+                // Prepare all API calls in parallel
+                var productsTask = client.GetAsync(requestUri);
+                var categoriesTask = client.GetAsync("api/categories");
+                
+                Task<HttpResponseMessage>? favoritesTask = null;
+                string? userId = null;
+                
+                if (User.Identity.IsAuthenticated)
+                {
+                    userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+                        if (!string.IsNullOrEmpty(authToken))
+                        {
+                            var authenticatedClient = _httpClientFactory.CreateClient("BackendApi");
+                            authenticatedClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+                            favoritesTask = authenticatedClient.GetAsync($"api/favorites/{userId}");
+                        }
+                    }
+                }
 
+                // Execute all tasks in parallel
+                await Task.WhenAll(new[] { productsTask, categoriesTask, favoritesTask }.Where(t => t != null)!);
+
+                // Process categories response
+                try
+                {
+                    var categoryResponse = await categoriesTask;
+                    if (categoryResponse.IsSuccessStatusCode)
+                    {
+                        var categories = await categoryResponse.Content.ReadFromJsonAsync<IEnumerable<CategoryDto>>();
+                        CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
+                        if (categories != null)
+                        {
+                            CategoryOptions.AddRange(categories
+                                .Where(c => c.IsActive)
+                                .OrderBy(c => c.Name)
+                                .Select(c => new SelectListItem { Value = c.Name, Text = c.Name }));
+                        }
+                    }
+                    else
+                    {
+                        CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
+                    }
+                }
+                catch
+                {
+                    CategoryOptions = new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } };
+                }
+
+                // Process products response
+                var response = await productsTask;
                 if (response.IsSuccessStatusCode)
                 {
                     var odataResponse = await response.Content.ReadFromJsonAsync<ODataApiResponse>();
@@ -232,51 +256,36 @@ namespace ShareItFE.Pages.Products
                     {
                         Products = odataResponse.Value ?? new List<ProductDTO>();
                         TotalProductsCount = odataResponse.Count;
-                        Console.WriteLine($"Fetched {Products.Count} products, Total Count: {TotalProductsCount}");
                     }
                     else
                     {
-                        Console.WriteLine("OData response is null");
                         TempData["ErrorMessage"] = "Unable to read data from API.";
                     }
                 }
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Error fetching products. Status code: {response.StatusCode}, Content: {errorContent}");
                     TempData["ErrorMessage"] = $"Error loading products: {errorContent}";
                 }
 
-                // Kiểm tra danh sách yêu thích từ API
-                if (User.Identity.IsAuthenticated)
+                // Process favorites response
+                if (favoritesTask != null)
                 {
-                    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(userId))
+                    try
                     {
-                        var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
-                        if (!string.IsNullOrEmpty(authToken))
+                        var favoriteResponse = await favoritesTask;
+                        if (favoriteResponse.IsSuccessStatusCode)
                         {
-                            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
-                            var favoriteUri = $"api/favorites/{userId}"; // Sử dụng path parameter
-                            var favoriteResponse = await client.GetAsync(favoriteUri);
-                            if (favoriteResponse.IsSuccessStatusCode)
+                            var apiResponse = await favoriteResponse.Content.ReadFromJsonAsync<ApiResponse<List<FavoriteCreateDto>>>();
+                            if (apiResponse != null && apiResponse.Data != null)
                             {
-                                var apiResponse = await favoriteResponse.Content.ReadFromJsonAsync<ApiResponse<List<FavoriteCreateDto>>>();
-                                if (apiResponse != null && apiResponse.Data != null)
-                                {
-                                    FavoriteProductIds = apiResponse.Data.Select(f => f.ProductId.ToString()).ToList();
-                                }
-                            }
-                            else
-                            {
-                                var errorContent = await favoriteResponse.Content.ReadAsStringAsync();
-                                TempData["ErrorMessage"] = $"Error loading favorites: {errorContent}";
+                                FavoriteProductIds = apiResponse.Data.Select(f => f.ProductId.ToString()).ToList();
                             }
                         }
-                        else
-                        {
-                            TempData["ErrorMessage"] = "Authentication token not found.";
-                        }
+                    }
+                    catch
+                    {
+                        // Silently fail for favorites - non-critical feature
                     }
                 }
             }

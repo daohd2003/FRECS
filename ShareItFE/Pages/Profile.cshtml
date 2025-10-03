@@ -347,12 +347,39 @@
 
                                         <h4 class="favorite-name">@product?.Name</h4>
 
-                                        <p class="favorite-price text-purple-600 font-semibold">
-                                            ₫@((product?.PricePerDay ?? 0).ToString("N0"))/day
-                                        </p>
+                                        <div class="favorite-price text-purple-600 font-semibold">
+                                            @if (product?.ProductType == "RENTAL")
+                                            {
+                                                <span>₫@product.PricePerDay.ToString("N0")/day</span>
+                                            }
+                                            else if (product?.ProductType == "PURCHASE")
+                                            {
+                                                <span>₫@product.PurchasePrice.ToString("N0")</span>
+                                            }
+                                            else if (product?.ProductType == "BOTH")
+                                            {
+                                                <div style="line-height: 1.5;">
+                                                    <div>Rent: ₫@product.PricePerDay.ToString("N0")/day</div>
+                                                    <div>Buy: ₫@product.PurchasePrice.ToString("N0")</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span>Unavailable</span>
+                                            }
+                                        </div>
 
                                         <div class="favorite-actions">
-                                            <a href="/products/detail/@product?.Id" class="btn btn-primary">Rent Now</a>
+                                            @{
+                                                var actionText = product?.ProductType switch
+                                                {
+                                                    "RENTAL" => "Rent Now",
+                                                    "PURCHASE" => "Buy Now",
+                                                    "BOTH" => "View Details",
+                                                    _ => "View"
+                                                };
+                                            }
+                                            <a href="/products/detail/@product?.Id" class="btn btn-primary">@actionText</a>
 
                                             <form method="post"
                                                   asp-page-handler="RemoveFavorite"

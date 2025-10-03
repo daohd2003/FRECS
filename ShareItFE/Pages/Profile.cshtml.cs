@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.Login;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.ProductDto;
@@ -37,7 +38,7 @@ namespace ShareItFE.Pages
         public int PageSize { get; set; } = 5;
         public int TotalPages => (int)Math.Ceiling((double)(Orders?.Count ?? 0) / PageSize);
 
-        public List<Favorite> Favorites { get; set; } = new();
+        public List<FavoriteWithProductDto> Favorites { get; set; } = new();
         public int FavoritesPageNum { get; set; } = 1;
         public int FavoritesPageSize { get; set; } = 6;
         public int FavoritesTotalPages => (int)Math.Ceiling((double)(Favorites?.Count ?? 0) / FavoritesPageSize);
@@ -120,13 +121,13 @@ namespace ShareItFE.Pages
             }
 
             // --- 3. Lấy Favorites ---
-            // Giả sử API endpoint cho favorites là 'api/favorites/{userId}'
-            var favoritesResponse = await client.GetAsync($"api/favorites/{userId}");
+            // Sử dụng includeDetails=true để lấy thông tin sản phẩm và ảnh (trả về FavoriteWithProductDto)
+            var favoritesResponse = await client.GetAsync($"api/favorites/{userId}?includeDetails=true");
             if (favoritesResponse.IsSuccessStatusCode)
             {
-                var favoritesApiResponse = JsonSerializer.Deserialize<ApiResponse<List<Favorite>>>(
+                var favoritesApiResponse = JsonSerializer.Deserialize<ApiResponse<List<FavoriteWithProductDto>>>(
                     await favoritesResponse.Content.ReadAsStringAsync(), options);
-                Favorites = favoritesApiResponse?.Data ?? new List<Favorite>();
+                Favorites = favoritesApiResponse?.Data ?? new List<FavoriteWithProductDto>();
             }
 
             /*

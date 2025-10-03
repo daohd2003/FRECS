@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Models;
 using DataAccess;
@@ -23,15 +25,36 @@ namespace Repositories.FavoriteRepositories
         public async Task<List<Favorite>> GetFavoritesByUserIdAsync(Guid userId)
         {
             return await _context.Favorites
+                .AsNoTracking()
+                .Where(f => f.UserId == userId)
+                .ToListAsync();
+        }
+
+        public async Task<List<FavoriteWithProductDto>> GetFavoritesWithProductDetailsAsync(Guid userId)
+        {
+            // Query favorites với product details và map sang DTO
+            var favorites = await _context.Favorites
+                .AsNoTracking()
                 .Where(f => f.UserId == userId)
                 .Include(f => f.Product)
-                    .ThenInclude(p => p.Images)
+                    .ThenInclude(p => p.Images.Where(img => img.IsPrimary))
+                .Include(f => f.Product.Category)
                 .ToListAsync();
+
+            // Map sang DTO
+            return favorites.Select(f => new FavoriteWithProductDto
+            {
+                UserId = f.UserId,
+                ProductId = f.ProductId,
+                CreatedAt = f.CreatedAt,
+                Product = _mapper.Map<ProductDTO>(f.Product)
+            }).ToList();
         }
 
         public async Task<bool> IsFavoriteAsync(Guid userId, Guid productId)
         {
             return await _context.Favorites
+                .AsNoTracking()
                 .AnyAsync(f => f.UserId == userId && f.ProductId == productId);
         }
 
