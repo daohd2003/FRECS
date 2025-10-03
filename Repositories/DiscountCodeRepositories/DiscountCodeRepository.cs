@@ -89,5 +89,38 @@ namespace Repositories.DiscountCodeRepositories
                 .Include(dc => dc.UsedDiscountCodes)
                 .FirstOrDefaultAsync(dc => dc.Id == id);
         }
+
+        public async Task<List<Guid>> GetUsedDiscountCodeIdsByUserAsync(Guid userId)
+        {
+            return await _context.UsedDiscountCodes
+                .Where(udc => udc.UserId == userId)
+                .Select(udc => udc.DiscountCodeId)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        public async Task RecordDiscountCodeUsageAsync(Guid userId, Guid discountCodeId, Guid orderId)
+        {
+            var usedDiscountCode = new UsedDiscountCode
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                DiscountCodeId = discountCodeId,
+                OrderId = orderId,
+                UsedAt = DateTime.UtcNow
+            };
+
+            await _context.UsedDiscountCodes.AddAsync(usedDiscountCode);
+            
+            // Increment the used count for the discount code
+            var discountCode = await _context.DiscountCodes.FindAsync(discountCodeId);
+            if (discountCode != null)
+            {
+                discountCode.UsedCount++;
+                _context.DiscountCodes.Update(discountCode);
+            }
+            
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -4,6 +4,7 @@ using BusinessObject.DTOs.ProductDto; // Ensure this is available for Product im
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
+using ShareItFE.Extensions;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization; // Required for JsonStringEnumConverter
@@ -13,10 +14,16 @@ namespace ShareItFE.Pages.CartPage
     public class CartModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public CartModel(AuthenticatedHttpClientHelper clientHelper)
+        public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
+
+        public CartModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
+            _configuration = configuration;
+            _environment = environment;
         }
 
         public CartDto? Cart { get; set; }
@@ -28,6 +35,21 @@ namespace ShareItFE.Pages.CartPage
         /// Total deposit amount for rental items
         /// </summary>
         public decimal TotalDeposit { get; set; }
+
+        /// <summary>
+        /// Check if cart has rental items
+        /// </summary>
+        public bool HasRentalItems => Cart?.Items?.Any(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental) ?? false;
+
+        /// <summary>
+        /// Check if cart has purchase items
+        /// </summary>
+        public bool HasPurchaseItems => Cart?.Items?.Any(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase) ?? false;
+
+        /// <summary>
+        /// Selected discount code from session (to restore on page load)
+        /// </summary>
+        public DiscountCodeSessionDto? SelectedDiscountCode { get; set; }
 
         [TempData]
         public string SuccessMessage { get; set; }
@@ -74,6 +96,9 @@ namespace ShareItFE.Pages.CartPage
                         
                         // Calculate total deposit for rental items
                         TotalDeposit = Cart.TotalDepositAmount;
+                        
+                        // Load discount code from session (if exists)
+                        LoadDiscountFromSession();
                         
                         //DeliveryFee = Subtotal > 100000 ? 0 : 15000; // Ví dụ: miễn phí giao hàng nếu tổng tiền > 100
                         //Total = Subtotal + DeliveryFee + TotalDeposit;
@@ -296,5 +321,136 @@ namespace ShareItFE.Pages.CartPage
             }
             return RedirectToPage();
         }
+
+        public async Task<IActionResult> OnGetAvailableDiscountCodesAsync()
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.GetAsync("api/DiscountCode/user-available");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    return Content(content, "application/json");
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, new { message = "Failed to load discount codes" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Save selected discount code to session
+        /// </summary>
+        public IActionResult OnPostSaveDiscountCodeAsync([FromBody] DiscountCodeSessionDto discountCode)
+        {
+            try
+            {
+                if (discountCode == null)
+                {
+                    return BadRequest(new { message = "Invalid discount code data" });
+                }
+
+                // Save to session as JSON
+                HttpContext.Session.SetString("SelectedDiscountCode", JsonSerializer.Serialize(discountCode));
+                
+                return new JsonResult(new { success = true, message = "Discount code saved to session" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Remove discount code from session
+        /// </summary>
+        public IActionResult OnPostRemoveDiscountCodeAsync()
+        {
+            try
+            {
+                HttpContext.Session.Remove("SelectedDiscountCode");
+                return new JsonResult(new { success = true, message = "Discount code removed from session" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Load discount code from session (to restore on page load)
+        /// </summary>
+        private async void LoadDiscountFromSession()
+        {
+            try
+            {
+                var discountJson = HttpContext.Session.GetString("SelectedDiscountCode");
+                
+                if (!string.IsNullOrEmpty(discountJson))
+                {
+                    var sessionDiscount = JsonSerializer.Deserialize<DiscountCodeSessionDto>(discountJson);
+                    
+                    if (sessionDiscount != null && Guid.TryParse(sessionDiscount.Id, out var discountId))
+                    {
+                        // Check if this discount code is still available for the user
+                        var client = await _clientHelper.GetAuthenticatedClientAsync();
+                        var response = await client.GetAsync("api/DiscountCode/user-available");
+                        
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var content = await response.Content.ReadAsStringAsync();
+                            var apiResponse = JsonSerializer.Deserialize<ApiResponse<IEnumerable<DiscountCodeSessionDto>>>(
+                                content, 
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            
+                            var availableCodes = apiResponse?.Data ?? Enumerable.Empty<DiscountCodeSessionDto>();
+                            
+                            // Check if the session discount code is still in the available list
+                            var isStillAvailable = availableCodes.Any(dc => dc.Id == sessionDiscount.Id);
+                            
+                            if (isStillAvailable)
+                            {
+                                // Discount is still available, keep it
+                                SelectedDiscountCode = sessionDiscount;
+                            }
+                            else
+                            {
+                                // Discount has been used or is no longer available, clear session
+                                HttpContext.Session.Remove("SelectedDiscountCode");
+                                SelectedDiscountCode = null;
+                            }
+                        }
+                        else
+                        {
+                            // If API call fails, keep the session discount (benefit of the doubt)
+                            SelectedDiscountCode = sessionDiscount;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SelectedDiscountCode = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// DTO for storing discount code in session
+    /// </summary>
+    public class DiscountCodeSessionDto
+    {
+        public string Id { get; set; }
+        public string Code { get; set; }
+        public string DiscountType { get; set; }
+        public decimal Value { get; set; }
+        public string UsageType { get; set; }
     }
 }

@@ -15,5 +15,7 @@ namespace Services.DiscountCodeServices
         Task<bool> IsCodeUniqueAsync(string code, Guid? excludeId = null);
         Task UpdateExpiredStatusAsync();
         Task<IEnumerable<UsedDiscountCodeDto>> GetUsageHistoryAsync(Guid discountCodeId);
+        Task<List<Guid>> GetUsedDiscountCodeIdsByUserAsync(Guid userId);
+        Task RecordDiscountCodeUsageAsync(Guid userId, Guid discountCodeId, Guid orderId);
     }
 }

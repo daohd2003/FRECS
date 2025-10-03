@@ -186,13 +186,42 @@ namespace ShareItAPI.Controllers
                             // Cập nhật transaction tổng
                             transaction.Status = BusinessObject.Enums.TransactionStatus.completed;
 
-                            // Cập nhật tất cả các order con
-                            foreach (var order in transaction.Orders)
-                            {
-                                await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
-
-                                await _orderService.ClearCartItemsForOrderAsync(order);
-                            }
+                                // Cập nhật tất cả các order con
+                                foreach (var order in transaction.Orders)
+                                {
+                                    await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
+                                    await _orderService.ClearCartItemsForOrderAsync(order);
+                                    
+                                    // Record discount code usage if order has discount code
+                                    if (order.DiscountCodeId.HasValue)
+                                    {
+                                        try
+                                        {
+                                            var usedDiscountCode = new UsedDiscountCode
+                                            {
+                                                Id = Guid.NewGuid(),
+                                                UserId = order.CustomerId,
+                                                DiscountCodeId = order.DiscountCodeId.Value,
+                                                OrderId = order.Id,
+                                                UsedAt = DateTime.UtcNow
+                                            };
+                                            await _context.UsedDiscountCodes.AddAsync(usedDiscountCode);
+                                            
+                                            // Increment the used count for the discount code
+                                            var discountCode = await _context.DiscountCodes.FindAsync(order.DiscountCodeId.Value);
+                                            if (discountCode != null)
+                                            {
+                                                discountCode.UsedCount++;
+                                                _context.DiscountCodes.Update(discountCode);
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogError(ex, "Failed to record discount code usage for Order {OrderId}", order.Id);
+                                            // Don't fail the whole transaction if discount recording fails
+                                        }
+                                    }
+                                }
                         }
                         else
                         {

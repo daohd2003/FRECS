@@ -19,6 +19,16 @@ namespace ShareItAPI.Controllers
             _discountCodeService = discountCodeService;
         }
 
+        private Guid GetCustomerId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                throw new UnauthorizedAccessException("User ID claim not found.");
+            }
+            return Guid.Parse(userIdClaim);
+        }
+
         /// <summary>
         /// Get all discount codes
         /// </summary>
@@ -246,6 +256,37 @@ namespace ShareItAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<string>("An error occurred while checking code uniqueness", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Get all available discount codes for the current user
+        /// </summary>
+        [HttpGet("user-available")]
+        [Authorize]
+        public async Task<IActionResult> GetUserAvailableDiscountCodes()
+        {
+            try
+            {
+                var userId = GetCustomerId();
+                var discountCodes = await _discountCodeService.GetActiveDiscountCodesAsync();
+                
+                // Get discount codes already used by this user
+                var usedDiscountCodeIds = await _discountCodeService.GetUsedDiscountCodeIdsByUserAsync(userId);
+                
+                // Filter only active codes that haven't expired, still have quantity, and NOT used by this user
+                var availableCodes = discountCodes.Where(dc => 
+                    dc.Status == DiscountStatus.Active && 
+                    dc.ExpirationDate > DateTime.UtcNow && 
+                    dc.UsedCount < dc.Quantity &&
+                    !usedDiscountCodeIds.Contains(dc.Id)
+                ).ToList();
+
+                return Ok(new ApiResponse<IEnumerable<DiscountCodeDto>>("Available discount codes retrieved successfully", availableCodes));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>("An error occurred while retrieving available discount codes", ex.Message));
             }
         }
     }

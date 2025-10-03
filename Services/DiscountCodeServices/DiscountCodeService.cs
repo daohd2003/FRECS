@@ -131,5 +131,15 @@ namespace Services.DiscountCodeServices
             var usageHistory = await _discountCodeRepository.GetUsageHistoryAsync(discountCodeId);
             return _mapper.Map<IEnumerable<UsedDiscountCodeDto>>(usageHistory);
         }
+
+        public async Task<List<Guid>> GetUsedDiscountCodeIdsByUserAsync(Guid userId)
+        {
+            return await _discountCodeRepository.GetUsedDiscountCodeIdsByUserAsync(userId);
+        }
+
+        public async Task RecordDiscountCodeUsageAsync(Guid userId, Guid discountCodeId, Guid orderId)
+        {
+            await _discountCodeRepository.RecordDiscountCodeUsageAsync(userId, discountCodeId, orderId);
+        }
     }
 }

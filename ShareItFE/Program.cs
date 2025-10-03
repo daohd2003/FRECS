@@ -11,7 +11,7 @@ namespace ShareItFE
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.WebHost.UseUrls($"http://*:80");
+            builder.WebHost.UseUrls($"http://*:80");  
             
             builder.Services.AddHttpClient();
 
@@ -54,6 +54,15 @@ namespace ShareItFE
 
             builder.Services.AddScoped<ShareItFE.Common.Utilities.AuthenticatedHttpClientHelper>();
 
+            // Add session support
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(30); // Session timeout
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
+
             // Add services to the container.
             builder.Services.AddRazorPages();
 
@@ -71,6 +80,8 @@ namespace ShareItFE
             app.UseStaticFiles();
 
             app.UseRouting();
+
+            app.UseSession(); // Enable session middleware
 
             app.UseAuthentication();
             app.UseAuthorization();

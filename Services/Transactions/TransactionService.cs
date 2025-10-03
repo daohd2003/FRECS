@@ -17,6 +17,7 @@ using BusinessObject.DTOs.TransactionsDto;
 using AutoMapper.QueryableExtensions;
 using AutoMapper;
 using BusinessObject.DTOs.OrdersDto;
+using Services.DiscountCodeServices;
 
 namespace LibraryManagement.Services.Payments.Transactions
 {
@@ -28,8 +29,9 @@ namespace LibraryManagement.Services.Payments.Transactions
         private readonly IOrderService _orderService;
         private readonly BankQrConfig _bankQrConfig;
         private readonly IMapper _mapper;
+        private readonly IDiscountCodeService _discountCodeService;
 
-        public TransactionService(ShareItDbContext dbContext, ILogger<TransactionService> logger, IOptions<BankQrConfig> bankQrOptions, INotificationService notificationService, IOrderService orderService, IMapper mapper)
+        public TransactionService(ShareItDbContext dbContext, ILogger<TransactionService> logger, IOptions<BankQrConfig> bankQrOptions, INotificationService notificationService, IOrderService orderService, IMapper mapper, IDiscountCodeService discountCodeService)
         {
             _dbContext = dbContext;
             _logger = logger;
@@ -37,6 +39,7 @@ namespace LibraryManagement.Services.Payments.Transactions
             _orderService = orderService;
             _bankQrConfig = bankQrOptions.Value;
             _mapper = mapper;
+            _discountCodeService = discountCodeService;
         }
 
         // Lấy danh sách giao dịch của 1 user (Customer)
@@ -153,8 +156,38 @@ namespace LibraryManagement.Services.Payments.Transactions
                         // Cập nhật trạng thái cho từng order
                         foreach (var order in transaction.Orders)
                         {
+                            _logger.LogInformation("[PAYMENT DEBUG] Processing Order {OrderId}, DiscountCodeId: {DiscountCodeId}, DiscountAmount: {DiscountAmount}", 
+                                order.Id, order.DiscountCodeId, order.DiscountAmount);
+                            
                             await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
                             await _orderService.ClearCartItemsForOrderAsync(order);
+                            
+                            // Record discount code usage if order has discount code
+                            if (order.DiscountCodeId.HasValue)
+                            {
+                                try
+                                {
+                                    _logger.LogInformation("[PAYMENT DEBUG] Recording discount code usage - UserId: {UserId}, DiscountCodeId: {DiscountCodeId}, OrderId: {OrderId}", 
+                                        order.CustomerId, order.DiscountCodeId.Value, order.Id);
+                                    
+                                    await _discountCodeService.RecordDiscountCodeUsageAsync(
+                                        order.CustomerId, 
+                                        order.DiscountCodeId.Value, 
+                                        order.Id);
+                                    
+                                    _logger.LogInformation("✅ Recorded discount code usage for Order {OrderId}, DiscountCode {DiscountCodeId}", 
+                                        order.Id, order.DiscountCodeId.Value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "❌ Failed to record discount code usage for Order {OrderId}", order.Id);
+                                    // Don't fail the whole transaction if discount recording fails
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogInformation("[PAYMENT DEBUG] Order {OrderId} has no discount code", order.Id);
+                            }
                         }
                         _logger.LogInformation("Webhook payment success for Transaction {TransactionId}. Orders: {OrderIds}", transaction.Id, string.Join(", ", orderIds));
                     }

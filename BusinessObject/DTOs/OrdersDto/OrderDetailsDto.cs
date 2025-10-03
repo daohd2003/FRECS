@@ -24,6 +24,8 @@ namespace BusinessObject.DTOs.OrdersDto
         public decimal Shipping { get; set; }
         public decimal Tax { get; set; }
         public decimal TotalDepositAmount { get; set; } = 0m; // Tổng tiền cọc cho các items thuê
+        public decimal DiscountAmount { get; set; } = 0m; // Số tiền giảm giá
+        public string? DiscountCodeName { get; set; } // Tên mã giảm giá (nếu có)
         public decimal TotalAmount { get; set; }
         public ShippingAddressDto ShippingAddress { get; set; }
         public string? TrackingNumber { get; set; }
