@@ -16,7 +16,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900">My Products</h1>
-                    <p class="text-gray-600 mt-1">Manage your rental listings and track performance</p>
+                    <p class="text-gray-600 mt-1">Manage your products listings and track performance</p>
                 </div>
                 <a href="/provider/postitem" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
                     <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
@@ -55,19 +55,6 @@
                 </div>
             </div>
 
-          @*   <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="calendar" class="h-6 w-6 text-purple-600"></i>
-                        </div>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Total Bookings</p>
-                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.TotalBookings</p>
-                    </div>
-                </div>
-            </div> *@
 
             <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div class="flex items-center">
@@ -83,34 +70,6 @@
                 </div>
             </div>
 
-            @* <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="clock" class="h-6 w-6 text-orange-600"></i>
-                        </div>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Pending Approval</p>
-                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.PendingApproval</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="alert-triangle" class="h-6 w-6 text-red-600"></i>
-                        </div>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Low Stock Alerts</p>
-                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.LowStockAlerts</p>
-                    </div>
-                </div>
-            </div> *@
-
             <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -120,7 +79,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Total Rentals</p>
-                        <p class="text-2xl font-bold text-gray-900">@(Model.Products?.Sum(p => p.RentCount) ?? 0)</p>
+                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.TotalBookings</p>
                     </div>
                 </div>
             </div>
@@ -134,7 +93,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Total Sales</p>
-                        <p class="text-2xl font-bold text-gray-900">@(Model.Products?.Sum(p => p.BuyCount) ?? 0)</p>
+                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.TotalSales</p>
                     </div>
                 </div>
             </div>
@@ -198,10 +157,6 @@
 
         <!-- Products Table -->
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-           @*  <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Product Inventory</h3>
-            </div> *@
-
             @if (Model.Products != null && Model.Products.Any())
             {
                 <div class="overflow-hidden">
@@ -228,7 +183,7 @@
                                             <div class="ml-4 min-w-0 flex-1">
                                                 <div class="text-sm font-medium text-gray-900 truncate">@product.Name</div>
                                                 <div class="text-sm text-gray-500">Size: @(product.Size ?? "N/A") • @product.Gender</div>
-                                                <div class="text-sm text-gray-500">Condition: Good</div>
+                                                <div class="text-sm text-gray-500">Color: @(product.Color ?? "N/A")</div>
                                             </div>
                                         </div>
                                     </td>
