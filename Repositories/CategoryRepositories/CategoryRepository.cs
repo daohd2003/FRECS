@@ -17,9 +17,9 @@ namespace Repositories.CategoryRepositories
 
         public async Task<List<Category>> GetAllCategoryAsync()
         {
-            // Nếu cần kèm navigation (vd: Products) có thể thêm Include ở đây
             return await _context.Categories
-                                 .OrderBy(c => c.Name)     // tuỳ bạn
+                                 .Include(c => c.Products)
+                                 .OrderBy(c => c.Name)
                                  .ToListAsync();
         }
 

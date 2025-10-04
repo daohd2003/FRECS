@@ -1,4 +1,7 @@
 ﻿using Services.Authentication;
+using Repositories.UserRepositories;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace ShareItAPI.Middlewares
 {
@@ -17,11 +20,21 @@ namespace ShareItAPI.Middlewares
         {
             using var scope = _scopeFactory.CreateScope();
             var jwtService = scope.ServiceProvider.GetRequiredService<IJwtService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 
             try
             {
+                // Skip validation for public endpoints
                 if (context.Request.Path.StartsWithSegments("/api/auth/login") ||
-                context.Request.Path.StartsWithSegments("/swagger"))
+                    context.Request.Path.StartsWithSegments("/api/auth/register") ||
+                    context.Request.Path.StartsWithSegments("/api/auth/forgot-password") ||
+                    context.Request.Path.StartsWithSegments("/api/auth/reset-password") ||
+                    context.Request.Path.StartsWithSegments("/api/auth/confirm-email") ||
+                    context.Request.Path.StartsWithSegments("/api/auth/verify-email") ||
+                    context.Request.Path.StartsWithSegments("/api/auth/google-login") ||
+                    context.Request.Path.StartsWithSegments("/api/auth/facebook-login") ||
+                    context.Request.Path.StartsWithSegments("/swagger") ||
+                    context.Request.Path.StartsWithSegments("/odata"))
                 {
                     await _next(context);
                     return;
@@ -29,9 +42,37 @@ namespace ShareItAPI.Middlewares
 
                 var token = context.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 
-                if (!string.IsNullOrEmpty(token) && !await jwtService.IsTokenValidAsync(token))
+                if (!string.IsNullOrEmpty(token))
                 {
-                    throw new UnauthorizedAccessException("Token has been logged out");
+                    // Check if token is blacklisted (logged out)
+                    if (!await jwtService.IsTokenValidAsync(token))
+                    {
+                        throw new UnauthorizedAccessException("Token has been logged out");
+                    }
+
+                    // Extract user ID from token and check if user is active
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    if (tokenHandler.CanReadToken(token))
+                    {
+                        var jwtToken = tokenHandler.ReadJwtToken(token);
+                        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+                        if (Guid.TryParse(userIdClaim, out var userId))
+                        {
+                            var user = await userRepository.GetByIdAsync(userId);
+                            
+                            // Check if user exists and is active
+                            if (user == null)
+                            {
+                                throw new UnauthorizedAccessException("User not found");
+                            }
+
+                            if (user.IsActive == false)
+                            {
+                                throw new UnauthorizedAccessException("Your account has been blocked. Please contact support.");
+                            }
+                        }
+                    }
                 }
 
                 await _next(context);

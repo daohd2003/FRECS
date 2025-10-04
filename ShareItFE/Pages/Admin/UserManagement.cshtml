@@ -1,0 +1,388 @@
+@page
+@model ShareItFE.Pages.Admin.UserManagementModel
+@{
+    ViewData["Title"] = "User Management";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/user-management.css" asp-append-version="true" />
+}
+
+<div class="user-management-container">
+    <!-- Header Section -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1 class="page-title">User Management</h1>
+                <p class="page-description">Manage customer accounts and permissions</p>
+            </div>
+            <div style="display: flex; gap: 0.75rem;">
+                <button class="export-btn" onclick="userManagement.exportToCSV()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Export CSV</span>
+                </button>
+                @if (Model.CurrentUserRole == "admin")
+                {
+                    <button id="addUserBtn" class="add-user-btn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="17" y1="11" x2="23" y2="11"></line>
+                        </svg>
+                        <span>Add User</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Total Users</p>
+                    <p class="stat-value" id="totalUsers">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Active Users</p>
+                    <p class="stat-value" id="activeUsers">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <circle cx="12" cy="16" r="1"></circle>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Inactive Users</p>
+                    <p class="stat-value" id="inactiveUsers">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">New This Month</p>
+                    <p class="stat-value" id="newThisMonth">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Section -->
+    <div class="tabs-container">
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="active">
+                Active Users (<span id="activeCount">0</span>)
+            </button>
+            <button class="tab-btn" data-tab="inactive">
+                Blocklist Users (<span id="inactiveCount">0</span>)
+            </button>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="search-filter-container">
+        <div class="search-section">
+            <div class="search-input-group">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search users by name or email..." class="search-input">
+            </div>
+        </div>
+        <div class="filter-section">
+            <select id="roleFilter" class="filter-select">
+                <option value="all">All Roles</option>
+                <option value="customer">Customers</option>
+                <option value="provider">Providers</option>
+                @if (Model.CurrentUserRole == "admin")
+                {
+                    <option value="admin">Admins</option>
+                    <option value="staff">Staff</option>
+                }
+            </select>
+            <button class="more-filters-btn">
+                <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"></polygon>
+                </svg>
+                <span>More Filters</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="table-container">
+        <div class="table-wrapper">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="name" onclick="userManagement.sortBy('name')">
+                            User
+                            <span class="sort-indicator">
+                                <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path>
+                                </svg>
+                            </span>
+                        </th>
+                        <th class="sortable" data-sort="email" onclick="userManagement.sortBy('email')">
+                            Contact
+                            <span class="sort-indicator">
+                                <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path>
+                                </svg>
+                            </span>
+                        </th>
+                        <th class="sortable" data-sort="role" onclick="userManagement.sortBy('role')">
+                            Role & Status
+                            <span class="sort-indicator">
+                                <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path>
+                                </svg>
+                            </span>
+                        </th>
+                        <th class="sortable" data-sort="created" onclick="userManagement.sortBy('created')">
+                            Activity
+                            <span class="sort-indicator">
+                                <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path>
+                                </svg>
+                            </span>
+                        </th>
+                        <th>Orders</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Users will be loaded here via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <h3 class="empty-title">No users found</h3>
+            <p class="empty-description">Try adjusting your search or filter criteria.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="addUserModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add New User</h3>
+            <button class="modal-close" id="closeAddUserModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <form id="addUserForm" class="modal-form">
+            <div class="form-group">
+                <label for="fullName" class="form-label">Full Name</label>
+                <input type="text" id="fullName" name="fullName" class="form-input" placeholder="Enter full name" required>
+            </div>
+            <div class="form-group">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="Enter email address" required>
+            </div>
+            <div class="form-group">
+                <label for="phone" class="form-label">Phone</label>
+                <input type="tel" id="phone" name="phone" class="form-input" placeholder="Enter phone number">
+            </div>
+            <div class="form-group">
+                <label for="role" class="form-label">Role</label>
+                <select id="role" name="role" class="form-select" required>
+                    <option value="customer">Customer</option>
+                    <option value="provider">Provider</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Add User</button>
+                <button type="button" class="btn btn-secondary" id="cancelAddUser">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- User Detail Modal -->
+<div id="userDetailModal" class="modal" style="display: none;">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <div class="user-header-info">
+                <img id="userDetailAvatar" src="" alt="" class="user-detail-avatar">
+                <div class="user-detail-info">
+                    <h2 id="userDetailName" class="user-detail-name"></h2>
+                    <p id="userDetailEmail" class="user-detail-email"></p>
+                    <div class="user-detail-badges">
+                        <span id="userDetailRole" class="badge"></span>
+                        <span id="userDetailStatus" class="badge"></span>
+                    </div>
+                </div>
+            </div>
+            <button class="modal-close" id="closeUserDetailModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <!-- Contact Information -->
+            <div class="info-section">
+                <h3 class="info-section-title">Contact Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <div class="info-content">
+                            <p class="info-label">Email</p>
+                            <p id="userDetailEmailInfo" class="info-value"></p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <div class="info-content">
+                            <p class="info-label">Phone</p>
+                            <p id="userDetailPhoneInfo" class="info-value"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Information -->
+            <div class="info-section">
+                <h3 class="info-section-title">Account Information</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <div class="info-content">
+                            <p class="info-label">Join Date</p>
+                            <p id="userDetailJoinDate" class="info-value"></p>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <div class="info-content">
+                            <p class="info-label">Last Login</p>
+                            <p id="userDetailLastLogin" class="info-value"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Statistics -->
+            <div class="info-section">
+                <h3 class="info-section-title">Order Statistics</h3>
+                <div class="stats-grid-small">
+                    <div class="stat-card-small">
+                        <p id="userDetailTotalOrders" class="stat-value-small">0</p>
+                        <p class="stat-label-small">Total Orders</p>
+                    </div>
+                    <div class="stat-card-small">
+                        <p id="userDetailTotalSpent" class="stat-value-small">$0</p>
+                        <p class="stat-label-small">Total Spent</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-actions">
+                <button id="lockUnlockBtn" class="btn btn-danger">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <circle cx="12" cy="16" r="1"></circle>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span id="lockUnlockText">Lock User</span>
+                </button>
+                @if (Model.CurrentUserRole == "admin")
+                {
+                    <button id="editUserBtn" class="btn btn-primary">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Edit User</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/user-management.js" asp-append-version="true"></script>
+    <script>
+        // Initialize the page with current user data
+        window.userManagementConfig = {
+            currentUserRole: '@Model.CurrentUserRole',
+            accessToken: '@Model.AccessToken',
+            apiBaseUrl: '@Model.ApiBaseUrl'
+        };
+    </script>
+}

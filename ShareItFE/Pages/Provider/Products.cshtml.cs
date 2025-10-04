@@ -36,8 +36,6 @@ namespace ShareItFE.Pages.Provider
             public int TotalBookings { get; set; }
             public int TotalSales { get; set; }
             public decimal TotalRevenue { get; set; }
-            public int PendingApproval { get; set; }
-            public int LowStockAlerts { get; set; }
         }
 
         // Properties for the page
@@ -107,11 +105,11 @@ namespace ShareItFE.Pages.Provider
                 // Load categories for filter dropdown
                 await LoadCategoriesAsync(client);
 
-                // Load provider's products
+                // Load provider's products (with pagination)
                 await LoadProviderProductsAsync(client, userId);
 
-                // Calculate stats
-                CalculateStats();
+                // Calculate stats from ALL products (not just current page)
+                await CalculateStatsAsync(client, userId);
             }
             catch (Exception ex)
             {
@@ -235,17 +233,42 @@ namespace ShareItFE.Pages.Provider
             }
         }
 
-        private void CalculateStats()
+        private async Task CalculateStatsAsync(HttpClient client, string userId)
         {
-            if (Products?.Any() == true)
+            try
             {
+                // Fetch ALL products for this provider (no pagination, no filters except providerId)
+                var queryOptions = new List<string>
+                {
+                    "$count=true",
+                    $"$filter=ProviderId eq {userId}"
+                };
+
+                string queryString = string.Join("&", queryOptions);
+                var requestUri = $"odata/products?{queryString}";
+
+                var response = await client.GetAsync(requestUri);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var odataResponse = await response.Content.ReadFromJsonAsync<ODataApiResponse>();
+                    if (odataResponse?.Value != null)
+                    {
+                        var allProducts = odataResponse.Value;
+                        
+                        // Calculate stats from ALL products
+                        Stats.TotalItems = odataResponse.Count;
+                        Stats.ActiveItems = allProducts.Count(p => p.AvailabilityStatus == "available");
+                        Stats.TotalBookings = allProducts.Sum(p => p.RentCount);
+                        Stats.TotalSales = allProducts.Sum(p => p.BuyCount);
+                        Stats.TotalRevenue = allProducts.Sum(p => p.PricePerDay * p.RentCount + p.PurchasePrice * p.BuyCount);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // If stats calculation fails, use default values (already initialized)
                 Stats.TotalItems = TotalProductsCount;
-                Stats.ActiveItems = Products.Count(p => p.AvailabilityStatus == "available");
-                Stats.TotalBookings = Products.Sum(p => p.RentCount);
-                Stats.TotalSales = Products.Sum(p => p.BuyCount);
-                Stats.TotalRevenue = Products.Sum(p => p.PricePerDay * p.RentCount + p.PurchasePrice * p.BuyCount);
-                Stats.PendingApproval = Products.Count(p => p.AvailabilityStatus == "pending");
-                Stats.LowStockAlerts = Products.Count(p => (p.RentalQuantity > 0 && p.RentalQuantity <= 2) || (p.PurchaseQuantity > 0 && p.PurchaseQuantity <= 2));
             }
         }
 
