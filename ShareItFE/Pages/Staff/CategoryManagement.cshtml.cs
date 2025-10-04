@@ -6,6 +6,7 @@ using BusinessObject.DTOs.ProductDto;
 using BusinessObject.DTOs.ApiResponses;
 using System.Text.Json;
 using System.Security.Claims;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Staff
 {
@@ -14,12 +15,20 @@ namespace ShareItFE.Pages.Staff
     {
         private readonly ILogger<CategoryManagementModel> _logger;
         private readonly AuthenticatedHttpClientHelper _clientHelper;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        public CategoryManagementModel(ILogger<CategoryManagementModel> logger, AuthenticatedHttpClientHelper clientHelper)
+        public CategoryManagementModel(
+            ILogger<CategoryManagementModel> logger, 
+            AuthenticatedHttpClientHelper clientHelper,
+            IConfiguration configuration,
+            IWebHostEnvironment environment)
         {
             _logger = logger;
             _clientHelper = clientHelper;
+            _configuration = configuration;
+            _environment = environment;
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -43,7 +52,9 @@ namespace ShareItFE.Pages.Staff
                 // Get current user info
                 CurrentUserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
                 AccessToken = HttpContext.Request.Cookies["AccessToken"] ?? string.Empty;
-                ApiBaseUrl = "https://localhost:7256/api";
+                
+                // Get API URL dynamically based on environment (Development/Production)
+                ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
 
                 // Load categories from API
                 await LoadCategoriesAsync();
