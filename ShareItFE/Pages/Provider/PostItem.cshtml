@@ -231,21 +231,150 @@
                             <div id="rentalSection" class="bg-blue-50 border border-blue-200 rounded-lg p-4" style="display: none;">
                                 <h4 class="font-medium text-blue-900 mb-4 flex items-center"><i data-lucide="calendar" class="h-5 w-5 mr-2"></i>Rental Information</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Rental Price per Day *</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₫</span><input type="number" asp-for="Product.PricePerDay" required class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="1" min="0" /></div><span asp-validation-for="Product.PricePerDay" class="text-red-500 text-sm"></span></div>
-                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Available for Rental (Quantity)</label><div class="relative"><i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.RentalQuantity" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="0" placeholder="0" /></div><span asp-validation-for="Product.RentalQuantity" class="text-red-500 text-sm"></span></div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Rental Price per Day *</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₫</span>
+                                            @{
+                                                var pricePerDayValue = "";
+                                                if (!ModelState.IsValid && Request.HasFormContentType && Request.Form.ContainsKey("Product.PricePerDay"))
+                                                {
+                                                    // Validation failed - use form value (preserve user input including "0")
+                                                    pricePerDayValue = Request.Form["Product.PricePerDay"].ToString();
+                                                }
+                                                else if (Model.Product.PricePerDay > 0)
+                                                {
+                                                    // Valid state or initial load - show integer value without .00
+                                                    pricePerDayValue = ((int)Model.Product.PricePerDay).ToString();
+                                                }
+                                                // else: empty string (default)
+                                            }
+                                            <input type="number" 
+                                                   name="Product.PricePerDay"
+                                                   id="Product_PricePerDay"
+                                                   value="@pricePerDayValue"
+                                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                                   placeholder="Enter rental price"
+                                                   step="1"
+                                                   min="0" />
+                                        </div>
+                                        <span asp-validation-for="Product.PricePerDay" class="text-red-500 text-sm"></span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Available for Rental (Quantity) *</label>
+                                        <div class="relative">
+                                            <i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i>
+                                            @{
+                                                var rentalQuantityValue = "";
+                                                if (!ModelState.IsValid && Request.HasFormContentType && Request.Form.ContainsKey("Product.RentalQuantity"))
+                                                {
+                                                    rentalQuantityValue = Request.Form["Product.RentalQuantity"].ToString();
+                                                }
+                                                else if (Model.Product.RentalQuantity > 0)
+                                                {
+                                                    rentalQuantityValue = Model.Product.RentalQuantity.ToString();
+                                                }
+                                            }
+                                            <input type="number" 
+                                                   name="Product.RentalQuantity"
+                                                   id="Product_RentalQuantity"
+                                                   value="@rentalQuantityValue"
+                                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                                   placeholder="Enter quantity"
+                                                   step="1"
+                                                   min="0" />
+                                        </div>
+                                        <span asp-validation-for="Product.RentalQuantity" class="text-red-500 text-sm"></span>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Purchase Information -->
                             <div id="purchaseSection" class="bg-purple-50 border border-purple-200 rounded-lg p-4" style="display: none;">
-                                <h4 class="font-medium text-purple-900 mb-4 flex items-center"><i data-lucide="shopping-cart" class="h-5 w-5 mr-2"></i>Purchase Information (Optional)</h4>
+                                <h4 class="font-medium text-purple-900 mb-4 flex items-center"><i data-lucide="shopping-cart" class="h-5 w-5 mr-2"></i>Purchase Information</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Purchase Price</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₫</span><input type="number" asp-for="Product.PurchasePrice" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="1" min="0" placeholder="0" /></div><span asp-validation-for="Product.PurchasePrice" class="text-red-500 text-sm"></span></div>
-                                    <div><label class="block text-sm font-medium text-gray-700 mb-2">Available for Purchase (Quantity)</label><div class="relative"><i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i><input type="number" asp-for="Product.PurchaseQuantity" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="0" placeholder="0" /></div><span asp-validation-for="Product.PurchaseQuantity" class="text-red-500 text-sm"></span></div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Purchase Price *</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">₫</span>
+                                            @{
+                                                var purchasePriceValue = "";
+                                                if (!ModelState.IsValid && Request.HasFormContentType && Request.Form.ContainsKey("Product.PurchasePrice"))
+                                                {
+                                                    purchasePriceValue = Request.Form["Product.PurchasePrice"].ToString();
+                                                }
+                                                else if (Model.Product.PurchasePrice > 0)
+                                                {
+                                                    purchasePriceValue = ((int)Model.Product.PurchasePrice).ToString();
+                                                }
+                                            }
+                                            <input type="number" 
+                                                   name="Product.PurchasePrice"
+                                                   id="Product_PurchasePrice"
+                                                   value="@purchasePriceValue"
+                                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                                   placeholder="Enter selling price"
+                                                   step="1"
+                                                   min="0" />
+                                        </div>
+                                        <span asp-validation-for="Product.PurchasePrice" class="text-red-500 text-sm"></span>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Available for Purchase (Quantity) *</label>
+                                        <div class="relative">
+                                            <i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"></i>
+                                            @{
+                                                var purchaseQuantityValue = "";
+                                                if (!ModelState.IsValid && Request.HasFormContentType && Request.Form.ContainsKey("Product.PurchaseQuantity"))
+                                                {
+                                                    purchaseQuantityValue = Request.Form["Product.PurchaseQuantity"].ToString();
+                                                }
+                                                else if (Model.Product.PurchaseQuantity > 0)
+                                                {
+                                                    purchaseQuantityValue = Model.Product.PurchaseQuantity.ToString();
+                                                }
+                                            }
+                                            <input type="number" 
+                                                   name="Product.PurchaseQuantity"
+                                                   id="Product_PurchaseQuantity"
+                                                   value="@purchaseQuantityValue"
+                                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                                   placeholder="Enter quantity"
+                                                   step="1"
+                                                   min="0" />
+                                        </div>
+                                        <span asp-validation-for="Product.PurchaseQuantity" class="text-red-500 text-sm"></span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-4"><h4 class="font-medium text-green-900 mb-2">Pricing Suggestions</h4><div class="text-sm text-green-800 space-y-1"><p>• Designer items: 8-15% of retail price per day</p><p>• Mid-range items: 5-10% of retail price per day</p><p>• Leave purchase fields empty if item is only for rental</p></div></div>
+                            <div class="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-5">
+                                <div class="flex items-start">
+                                    <div>
+                                        <h4 class="font-semibold text-purple-900 mb-3 flex items-center">
+                                            💡 Pricing Tips & Recommendations
+                                        </h4>
+                                        <div class="text-sm text-gray-700 space-y-2">
+                                            <div class="flex items-start">
+                                                <span class="text-purple-600 font-bold mr-2">📊</span>
+                                                <p><strong>Rental Price Guide:</strong> Consider item condition, brand value, and market demand when setting daily rates</p>
+                                            </div>
+                                            <div class="flex items-start">
+                                                <span class="text-blue-600 font-bold mr-2">💰</span>
+                                                <p><strong>Purchase Price:</strong> Set competitive prices based on item age, condition, and original value</p>
+                                            </div>
+                                            <div class="flex items-start">
+                                                <span class="text-green-600 font-bold mr-2">✨</span>
+                                                <p><strong>Pro Tip:</strong> Items available for both rental and purchase tend to attract more customers</p>
+                                            </div>
+                                            <div class="flex items-start">
+                                                <span class="text-orange-600 font-bold mr-2">📦</span>
+                                                <p><strong>Quantity:</strong> Higher quantities mean more availability and potential for multiple bookings</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     }
 
@@ -387,12 +516,10 @@
             // Show/hide rental section
             if (rentalStatus === 'Available') {
                 $('#rentalSection').slideDown();
-                $('#rentalSection input').prop('required', true);
             } else {
                 $('#rentalSection').slideUp();
-                $('#rentalSection input').prop('required', false);
-                // Clear values when switching to Not Available
-                $('#rentalSection input[type="number"]').val('0');
+                // Clear values when switching to Not Available (empty string, not '0')
+                $('#rentalSection input[type="number"]').val('');
             }
             
             // Show/hide purchase section  
@@ -400,8 +527,8 @@
                 $('#purchaseSection').slideDown();
             } else {
                 $('#purchaseSection').slideUp();
-                // Clear values when switching to Not Available
-                $('#purchaseSection input[type="number"]').val('0');
+                // Clear values when switching to Not Available (empty string, not '0')
+                $('#purchaseSection input[type="number"]').val('');
             }
         }
 

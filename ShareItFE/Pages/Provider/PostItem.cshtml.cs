@@ -139,7 +139,42 @@ namespace ShareItFE.Pages.Provider
         public async Task<IActionResult> OnPostPreviousAsync()
         {
             await LoadCategoriesAsync();
+
+            // Capture form data từ step 3 TRƯỚC KHI restore (để preserve data khi Previous)
+            // CHỈ capture nếu user ĐÃ NHẬP (check Request.Form có key không)
+            var formStep3Data = new
+            {
+                PricePerDay = Request.Form.ContainsKey("Product.PricePerDay") && !string.IsNullOrWhiteSpace(Request.Form["Product.PricePerDay"]) ? Product.PricePerDay : (decimal?)null,
+                PurchasePrice = Request.Form.ContainsKey("Product.PurchasePrice") && !string.IsNullOrWhiteSpace(Request.Form["Product.PurchasePrice"]) ? Product.PurchasePrice : (decimal?)null,
+                PurchaseQuantity = Request.Form.ContainsKey("Product.PurchaseQuantity") && !string.IsNullOrWhiteSpace(Request.Form["Product.PurchaseQuantity"]) ? Product.PurchaseQuantity : (int?)null,
+                RentalQuantity = Request.Form.ContainsKey("Product.RentalQuantity") && !string.IsNullOrWhiteSpace(Request.Form["Product.RentalQuantity"]) ? Product.RentalQuantity : (int?)null,
+                Gender = Product.Gender,
+                RentalStatus = Product.RentalStatus,
+                PurchaseStatus = Product.PurchaseStatus
+            };
+
             RestoreStateFromTempData();
+
+            // Nếu đang ở step 3, merge form data vào Product để preserve (CHỈ KHI ĐÃ NHẬP)
+            if (CurrentStep == 3)
+            {
+                if (formStep3Data.PricePerDay.HasValue)
+                    Product.PricePerDay = formStep3Data.PricePerDay.Value;
+                if (formStep3Data.PurchasePrice.HasValue)
+                    Product.PurchasePrice = formStep3Data.PurchasePrice.Value;
+                if (formStep3Data.PurchaseQuantity.HasValue)
+                    Product.PurchaseQuantity = formStep3Data.PurchaseQuantity.Value;
+                if (formStep3Data.RentalQuantity.HasValue)
+                    Product.RentalQuantity = formStep3Data.RentalQuantity.Value;
+                
+                if (!string.IsNullOrEmpty(formStep3Data.Gender))
+                    Product.Gender = formStep3Data.Gender;
+                if (!string.IsNullOrEmpty(formStep3Data.RentalStatus))
+                    Product.RentalStatus = formStep3Data.RentalStatus;
+                if (!string.IsNullOrEmpty(formStep3Data.PurchaseStatus))
+                    Product.PurchaseStatus = formStep3Data.PurchaseStatus;
+            }
+
             CurrentStep = Math.Max(1, CurrentStep - 1);
             SaveStateToTempData();
             return RedirectToPage("/Provider/PostItem");
@@ -382,18 +417,11 @@ namespace ShareItFE.Pages.Provider
             RestoreStateFromTempData();
 
             // Merge form data (step 3) với TempData (step 1 & 2)
-            // Form data ưu tiên hơn TempData
-            if (formStep3Data.PricePerDay > 0)
-                Product.PricePerDay = formStep3Data.PricePerDay;
-
-            if (formStep3Data.PurchasePrice > 0)
-                Product.PurchasePrice = formStep3Data.PurchasePrice;
-
-            if (formStep3Data.PurchaseQuantity > 0)
-                Product.PurchaseQuantity = formStep3Data.PurchaseQuantity;
-
-            if (formStep3Data.RentalQuantity > 0)
-                Product.RentalQuantity = formStep3Data.RentalQuantity;
+            // Form data ưu tiên hơn TempData - LUÔN ghi đè giá trị từ form
+            Product.PricePerDay = formStep3Data.PricePerDay;
+            Product.PurchasePrice = formStep3Data.PurchasePrice;
+            Product.PurchaseQuantity = formStep3Data.PurchaseQuantity;
+            Product.RentalQuantity = formStep3Data.RentalQuantity;
 
             if (!string.IsNullOrEmpty(formStep3Data.Gender))
                 Product.Gender = formStep3Data.Gender;
@@ -461,18 +489,52 @@ namespace ShareItFE.Pages.Provider
             // Validation conditional dựa trên rental/purchase status
             if (Product.RentalStatus == "Available")
             {
-                if (Product.PricePerDay <= 0)
-                    validationErrors.Add("Please enter a valid rental price.");
-                if (Product.RentalQuantity <= 0)
-                    validationErrors.Add("Please enter rental quantity.");
+                if (Product.PricePerDay == 0)
+                {
+                    ModelState.AddModelError("Product.PricePerDay", "Price must be greater than 0.");
+                    validationErrors.Add("Rental price cannot be 0.");
+                }
+                else if (Product.PricePerDay < 0)
+                {
+                    ModelState.AddModelError("Product.PricePerDay", "Price cannot be negative.");
+                    validationErrors.Add("Rental price cannot be negative.");
+                }
+                
+                if (Product.RentalQuantity == 0)
+                {
+                    ModelState.AddModelError("Product.RentalQuantity", "Quantity must be greater than 0.");
+                    validationErrors.Add("Rental quantity cannot be 0.");
+                }
+                else if (Product.RentalQuantity < 0)
+                {
+                    ModelState.AddModelError("Product.RentalQuantity", "Quantity cannot be negative.");
+                    validationErrors.Add("Rental quantity cannot be negative.");
+                }
             }
 
             if (Product.PurchaseStatus == "Available")
             {
-                if (Product.PurchasePrice <= 0)
-                    validationErrors.Add("Please enter a valid purchase price.");
-                if (Product.PurchaseQuantity <= 0)
-                    validationErrors.Add("Please enter purchase quantity.");
+                if (Product.PurchasePrice == 0)
+                {
+                    ModelState.AddModelError("Product.PurchasePrice", "Price must be greater than 0.");
+                    validationErrors.Add("Purchase price cannot be 0.");
+                }
+                else if (Product.PurchasePrice < 0)
+                {
+                    ModelState.AddModelError("Product.PurchasePrice", "Price cannot be negative.");
+                    validationErrors.Add("Purchase price cannot be negative.");
+                }
+                
+                if (Product.PurchaseQuantity == 0)
+                {
+                    ModelState.AddModelError("Product.PurchaseQuantity", "Quantity must be greater than 0.");
+                    validationErrors.Add("Purchase quantity cannot be 0.");
+                }
+                else if (Product.PurchaseQuantity < 0)
+                {
+                    ModelState.AddModelError("Product.PurchaseQuantity", "Quantity cannot be negative.");
+                    validationErrors.Add("Purchase quantity cannot be negative.");
+                }
             }
 
             // Nếu có lỗi validation, hiển thị tất cả
@@ -706,7 +768,8 @@ namespace ShareItFE.Pages.Provider
                 {
                     var content = await response.Content.ReadAsStringAsync();
                     var categories = JsonSerializer.Deserialize<List<CategoryDto>>(content, _jsonOptions);
-                    Categories = categories ?? new List<CategoryDto>();
+                    // Lọc chỉ lấy các category có IsActive = true
+                    Categories = categories?.Where(c => c.IsActive == true).ToList() ?? new List<CategoryDto>();
                 }
                 else
                 {
