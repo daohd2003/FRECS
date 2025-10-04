@@ -8,6 +8,7 @@ using Repositories.RepositoryBase;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,9 +20,36 @@ namespace Repositories.UserRepositories
         {
         }
 
+        public override async Task<IEnumerable<User>> GetAllAsync()
+        {
+            return await _context.Users
+                .Include(u => u.Profile)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<User>> GetAllWithOrdersAsync()
+        {
+            return await _context.Users
+                .Include(u => u.Profile)
+                .Include(u => u.OrdersAsCustomer)
+                .Include(u => u.OrdersAsProvider)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public override async Task<User?> GetByIdAsync(Guid id)
+        {
+            return await _context.Users
+                .Include(u => u.Profile)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == id);
+        }
+
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             return await _context.Users
+                .Include(u => u.Profile)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
@@ -150,7 +178,17 @@ namespace Repositories.UserRepositories
         public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
         {
             return await _context.Users
+                .Include(u => u.Profile)
                 .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+        }
+
+        public new async Task<IEnumerable<User>> GetByCondition(Expression<Func<User, bool>> expression)
+        {
+            return await _context.Users
+                .Include(u => u.Profile)
+                .Where(expression)
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }

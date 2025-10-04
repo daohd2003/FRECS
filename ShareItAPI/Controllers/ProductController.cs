@@ -13,7 +13,7 @@ namespace ShareItAPI.Controllers
 {
     [Route("api/products")]
     [ApiController]
-    [Authorize(Roles = "admin,provider")]
+        [Authorize(Roles = "admin,provider,staff")]
     public class ProductController : ControllerBase
     {
         private readonly IProductService _service;

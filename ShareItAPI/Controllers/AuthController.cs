@@ -34,8 +34,13 @@ namespace ShareItAPI.Controllers
                 var tokenResponse = await _jwtService.Authenticate(request.Email, request.Password, request.RememberMe);
                 return Ok(new ApiResponse<TokenResponseDto>("Login successful", tokenResponse));
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
+                // Check if it's a blocked account message
+                if (ex.Message.Contains("blocked"))
+                {
+                    return Unauthorized(new ApiResponse<string>(ex.Message, null));
+                }
                 return Unauthorized(new ApiResponse<string>("Invalid email or password", null));
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("Email not verified"))
@@ -61,12 +66,19 @@ namespace ShareItAPI.Controllers
                     return BadRequest(new ApiResponse<string>("Could not create or fetch user from Facebook payload", null));
                 }
 
+                // Check if user is blocked
+                if (user.IsActive == false)
+                {
+                    return Unauthorized(new ApiResponse<string>("Your account has been blocked. Please contact support.", null));
+                }
+
                 var tokens = _jwtService.GenerateToken(user);
                 var refreshTokens = _jwtService.GenerateRefreshToken();
                 var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
 
                 user.RefreshTokenExpiryTime = expiryTime;
                 user.RefreshToken = refreshTokens;
+                user.LastLogin = DateTime.UtcNow;
                 await _userService.UpdateAsync(user);
 
                 var response = new TokenResponseDto
@@ -103,12 +115,19 @@ namespace ShareItAPI.Controllers
                     return BadRequest(new ApiResponse<string>("Email is already registered using traditional login", null));
                 }
 
+                // Check if user is blocked
+                if (user.IsActive == false)
+                {
+                    return Unauthorized(new ApiResponse<string>("Your account has been blocked. Please contact support.", null));
+                }
+
                 var tokens = _jwtService.GenerateToken(user);
                 var refreshTokens = _jwtService.GenerateRefreshToken();
                 var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
 
                 user.RefreshTokenExpiryTime = expiryTime;
                 user.RefreshToken = refreshTokens;
+                user.LastLogin = DateTime.UtcNow;
 
                 await _userService.UpdateAsync(user);
 
