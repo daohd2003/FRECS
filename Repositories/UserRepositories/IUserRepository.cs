@@ -15,5 +15,6 @@ namespace Repositories.UserRepositories
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
         Task<User> GetOrCreateUserAsync(FacebookPayload payload);
         Task<User?> GetByRefreshTokenAsync(string refreshToken);
+        Task<IEnumerable<User>> GetAllWithOrdersAsync();
     }
 }

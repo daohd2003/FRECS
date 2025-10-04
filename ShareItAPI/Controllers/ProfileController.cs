@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace ShareItAPI.Controllers
 {
     [Route("api/profile")]
-    [Authorize(Roles = "admin,customer,provider")]
+    [Authorize(Roles = "admin,customer,provider,staff")]
     [ApiController]
     public class ProfileController : ControllerBase
     {
@@ -55,7 +55,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpPost("upload-image")]
-        [Authorize(Roles = "admin,customer,provider")]
+        [Authorize(Roles = "admin,customer,provider,staff")]
         public async Task<IActionResult> UploadAvatar(IFormFile file, string projectName = "ShareIt", string folderType = "profile_pics")
         {
             try

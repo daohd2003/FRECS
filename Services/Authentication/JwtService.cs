@@ -170,6 +170,13 @@ namespace Services.Authentication
                 return null;
             }
 
+            // Check if user is active/blocked
+            if (user.IsActive == false)
+            {
+                _logger.LogWarning("Refresh token denied for blocked user: {UserId}", userId);
+                return null;
+            }
+
             // Tạo mới token và refresh token
             var newAccessToken = GenerateToken(user);
             var newRefreshToken = GenerateRefreshToken();
@@ -177,6 +184,7 @@ namespace Services.Authentication
 
             user.RefreshToken = newRefreshToken;
             user.RefreshTokenExpiryTime = newExpiry;
+            user.LastLogin = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
 
             // Nếu accessToken cũ còn tồn tại → thêm vào danh sách blacklist
@@ -203,6 +211,12 @@ namespace Services.Authentication
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 if (!user.EmailConfirmed) throw new InvalidOperationException("Email not verified");
+                
+                // Check if user is active/blocked
+                if (user.IsActive == false)
+                {
+                    throw new UnauthorizedAccessException("Your account has been blocked. Please contact support.");
+                }
 
                 var token = GenerateToken(user, rememberMe);
                 var refreshToken = GenerateRefreshToken();
@@ -210,6 +224,7 @@ namespace Services.Authentication
 
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = refreshExpiry;
+                user.LastLogin = DateTime.UtcNow;
 
                 await _userRepository.UpdateAsync(user);
 

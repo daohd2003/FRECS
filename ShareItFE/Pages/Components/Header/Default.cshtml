@@ -160,7 +160,7 @@
                         }
 
                         @* === THAY ĐỔI NẰM Ở ĐÂY === *@
-                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase))
+                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "staff", StringComparison.OrdinalIgnoreCase))
                         {
                             <a asp-page="/Admin/UserManagement">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -194,6 +194,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
                                 </svg>
                                 <span>Product Verification</span>
+                            </a>
+                        }
+
+                        @if (string.Equals(Model.UserRole, "staff", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Staff/CategoryManagement">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.14,12.94a2,2,0,0,1,0,2.12l-1.1,1.1a2,2,0,0,1-2.83,0L12,12.83l-3.21,3.21a2,2,0,0,1-2.83,0l-1.1-1.1a2,2,0,0,1,0-2.12L8.17,12,4.86,8.79a2,2,0,0,1,0-2.12l1.1-1.1a2,2,0,0,1,2.83,0L12,8.83l3.21-3.21a2,2,0,0,1,2.83,0l1.1,1.1a2,2,0,0,1,0,2.12L15.83,12Z"></path></svg>
+                                <span>Category Management</span>
                             </a>
                         }
 
