@@ -38,6 +38,17 @@ namespace ShareItFE.Pages.CheckoutPage
         public CartDto? Cart { get; set; }
         public OrderDetailsDto? SingleOrder { get; set; }
         public decimal Subtotal { get; set; }
+        
+        /// <summary>
+        /// Subtotal for rental items only
+        /// </summary>
+        public decimal RentalSubtotal { get; set; }
+        
+        /// <summary>
+        /// Subtotal for purchase items only
+        /// </summary>
+        public decimal PurchaseSubtotal { get; set; }
+        
         public decimal DeliveryFee { get; set; }
         public decimal Total { get; set; }
         
@@ -150,6 +161,15 @@ namespace ShareItFE.Pages.CheckoutPage
                         else
                         {
                             Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
+                            
+                            // Calculate separate subtotals for rental and purchase items
+                            RentalSubtotal = Cart.Items
+                                .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                                .Sum(item => item.TotalItemPrice);
+                            
+                            PurchaseSubtotal = Cart.Items
+                                .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                .Sum(item => item.TotalItemPrice);
                             
                             // Calculate total deposit for rental items from cart
                             TotalDeposit = Cart.TotalDepositAmount;
@@ -480,18 +500,30 @@ namespace ShareItFE.Pages.CheckoutPage
                     {
                         SelectedDiscountCode = discount;
                         
+                        // Determine which subtotal to apply discount to based on UsageType
+                        decimal applicableSubtotal = 0;
+                        
+                        if (discount.UsageType == "Rental")
+                        {
+                            applicableSubtotal = RentalSubtotal;
+                        }
+                        else if (discount.UsageType == "Purchase")
+                        {
+                            applicableSubtotal = PurchaseSubtotal;
+                        }
+                        
                         // Calculate discount amount
                         if (discount.DiscountType == "Percentage")
                         {
-                            DiscountAmount = Math.Round(Subtotal * (discount.Value / 100));
+                            DiscountAmount = Math.Round(applicableSubtotal * (discount.Value / 100));
                         }
                         else // Fixed amount
                         {
                             DiscountAmount = discount.Value;
                         }
                         
-                        // Ensure discount doesn't exceed subtotal
-                        DiscountAmount = Math.Min(DiscountAmount, Subtotal);
+                        // Ensure discount doesn't exceed applicable subtotal
+                        DiscountAmount = Math.Min(DiscountAmount, applicableSubtotal);
                     }
                 }
             }

@@ -28,6 +28,17 @@ namespace ShareItFE.Pages.CartPage
 
         public CartDto? Cart { get; set; }
         public decimal Subtotal { get; set; }
+        
+        /// <summary>
+        /// Subtotal for rental items only
+        /// </summary>
+        public decimal RentalSubtotal { get; set; }
+        
+        /// <summary>
+        /// Subtotal for purchase items only
+        /// </summary>
+        public decimal PurchaseSubtotal { get; set; }
+        
         //public decimal DeliveryFee { get; set; }
         public decimal Total { get; set; }
         
@@ -94,6 +105,15 @@ namespace ShareItFE.Pages.CartPage
                         // Cập nhật tính toán Subtotal: Price * Days * Quantity
                         Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
                         
+                        // Calculate separate subtotals for rental and purchase items
+                        RentalSubtotal = Cart.Items
+                            .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                            .Sum(item => item.TotalItemPrice);
+                        
+                        PurchaseSubtotal = Cart.Items
+                            .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                            .Sum(item => item.TotalItemPrice);
+                        
                         // Calculate total deposit for rental items
                         TotalDeposit = Cart.TotalDepositAmount;
                         
@@ -108,7 +128,11 @@ namespace ShareItFE.Pages.CartPage
                     {
                         Cart = new CartDto { CustomerId = userId, Items = new List<CartItemDto>(), TotalAmount = 0, TotalDepositAmount = 0 };
                         //Subtotal = 0; DeliveryFee = 0; Total = 0 + 0;
-                        Subtotal = 0; TotalDeposit = 0; Total = Subtotal + TotalDeposit;
+                        Subtotal = 0; 
+                        RentalSubtotal = 0; 
+                        PurchaseSubtotal = 0; 
+                        TotalDeposit = 0; 
+                        Total = Subtotal + TotalDeposit;
                     }
                 }
                 else

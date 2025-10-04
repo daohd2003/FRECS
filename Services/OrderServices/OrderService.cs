@@ -616,18 +616,36 @@ namespace Services.OrderServices
                                 discountCode.ExpirationDate > DateTime.UtcNow &&
                                 discountCode.UsedCount < discountCode.Quantity)
                             {
+                                // Determine applicable subtotal based on discount code UsageType
+                                decimal applicableSubtotal = 0;
+                                
+                                if (discountCode.UsageType == BusinessObject.Enums.DiscountUsageType.Rental)
+                                {
+                                    // Only apply discount to rental items
+                                    applicableSubtotal = orderItems
+                                        .Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                                        .Sum(oi => oi.DailyRate * (oi.RentalDays ?? 0) * oi.Quantity);
+                                }
+                                else if (discountCode.UsageType == BusinessObject.Enums.DiscountUsageType.Purchase)
+                                {
+                                    // Only apply discount to purchase items
+                                    applicableSubtotal = orderItems
+                                        .Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                        .Sum(oi => oi.DailyRate * oi.Quantity);
+                                }
+                                
                                 // Calculate discount amount
                                 if (discountCode.DiscountType == BusinessObject.Enums.DiscountType.Percentage)
                                 {
-                                    discountAmount = Math.Round(subtotalAmount * (discountCode.Value / 100), 2);
+                                    discountAmount = Math.Round(applicableSubtotal * (discountCode.Value / 100), 2);
                                 }
                                 else // Fixed amount
                                 {
                                     discountAmount = discountCode.Value;
                                 }
                                 
-                                // Ensure discount doesn't exceed subtotal
-                                discountAmount = Math.Min(discountAmount, subtotalAmount);
+                                // Ensure discount doesn't exceed applicable subtotal
+                                discountAmount = Math.Min(discountAmount, applicableSubtotal);
                                 
                                 discountCodeIdToStore = discountCode.Id;
                             }
