@@ -33,7 +33,9 @@ namespace Repositories.UserRepositories
             return await _context.Users
                 .Include(u => u.Profile)
                 .Include(u => u.OrdersAsCustomer)
+                    .ThenInclude(o => o.Items)  // ✅ Include OrderItems
                 .Include(u => u.OrdersAsProvider)
+                    .ThenInclude(o => o.Items)  // ✅ Include OrderItems
                 .AsNoTracking()
                 .ToListAsync();
         }
