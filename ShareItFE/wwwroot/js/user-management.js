@@ -113,7 +113,7 @@ class UserManagement {
             
             // Use the new endpoint with order statistics
             const endpoint = '/users/with-order-stats';
-            
+                
             const response = await fetch(`${this.config.apiBaseUrl}${endpoint}`, {
                 headers: {
                     'Authorization': `Bearer ${this.config.accessToken}`,
@@ -520,8 +520,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
             return;
         }
 
-        // Prepare CSV data with completed orders
-        const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Join Date', 'Last Login', 'Completed Orders', 'Total Spent'];
+        // Prepare CSV data
+        const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Join Date', 'Last Login', 'Total Orders'];
         const rows = this.filteredUsers.map(user => {
             const profile = user.profile || {};
             return [
@@ -532,8 +532,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 user.isActive ? 'Active' : 'Inactive',
                 this.formatDate(user.createdAt),
                 this.formatDate(user.lastLogin) || 'Never',
-                user.totalCompletedOrders || 0,
-                `$${(user.totalSpent || 0).toFixed(2)}`
+                user.totalOrders || 0
             ];
         });
 
@@ -559,16 +558,21 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         this.showSuccess(`Exported ${this.filteredUsers.length} users to CSV`);
     }
 
+    formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+        }).format(amount);
+    }
+
     renderUserRow(user) {
         const profile = user.profile || {};
         const avatarUrl = profile.avatarUrl || this.getDefaultAvatar(user.email);
         const fullName = profile.fullName || 'Unknown User';
         const phone = profile.phone || 'N/A';
         
-        // Get order statistics
-        const completedOrders = user.totalCompletedOrders || 0;
+        // ✅ CHỈ HIỂN THỊ tổng số orders
         const totalOrders = user.totalOrders || 0;
-        const totalSpent = user.totalSpent || 0;
         
         return `
             <tr>
@@ -616,10 +620,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 </td>
                 <td>
                     <div class="orders-info">
-                        <div class="orders-count" title="Completed: ${completedOrders} / Total: ${totalOrders}">
-                            <strong>${completedOrders}</strong> / ${totalOrders} orders
-                        </div>
-                        <div class="orders-amount">$${totalSpent.toFixed(2)}</div>
+                        <div class="orders-count">${totalOrders} orders</div>
                     </div>
                 </td>
                 <td>
@@ -753,59 +754,198 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
 
     showUserDetail(userId) {
         const user = this.users.find(u => u.id === userId);
-        if (!user) return;
+        if (!user) {
+            console.error('User not found:', userId);
+            return;
+        }
 
+        console.log('User data:', user);
         this.selectedUser = user;
+        
+        try {
         this.populateUserDetailModal(user);
         this.showUserDetailModal();
+        } catch (error) {
+            console.error('Error populating user detail modal:', error);
+            this.showError('Failed to load user details. Please try again.');
+        }
     }
 
     populateUserDetailModal(user) {
         const profile = user.profile || {};
         const avatarUrl = profile.avatarUrl || this.getDefaultAvatar(user.email);
         
+        // Basic info
         document.getElementById('userDetailAvatar').src = avatarUrl;
         document.getElementById('userDetailAvatar').alt = profile.fullName || 'Unknown User';
         document.getElementById('userDetailName').textContent = profile.fullName || 'Unknown User';
         document.getElementById('userDetailEmail').textContent = user.email;
-        document.getElementById('userDetailEmailInfo').textContent = user.email;
-        document.getElementById('userDetailPhoneInfo').textContent = profile.phone || 'N/A';
-        document.getElementById('userDetailJoinDate').textContent = this.formatDate(user.createdAt);
-        document.getElementById('userDetailLastLogin').textContent = this.formatDate(user.lastLogin) || 'Never';
-        document.getElementById('userDetailTotalOrders').textContent = user.totalCompletedOrders || 0;
-        document.getElementById('userDetailTotalSpent').textContent = `$${(user.totalSpent || 0).toFixed(2)}`;
 
         // Update role and status badges
         const roleBadge = document.getElementById('userDetailRole');
         const statusBadge = document.getElementById('userDetailStatus');
         
-        roleBadge.textContent = this.capitalizeFirst(user.role);
-        roleBadge.className = `badge badge-${user.role}`;
+        // Handle both 'role' and 'Role' (camelCase and PascalCase)
+        const userRole = (user.role || user.Role || '').toString().toLowerCase();
+        const isActive = user.isActive !== undefined ? user.isActive : user.IsActive;
         
-        statusBadge.textContent = user.isActive ? 'Active' : 'Inactive';
-        statusBadge.className = `badge badge-${user.isActive ? 'active' : 'inactive'}`;
+        roleBadge.textContent = this.capitalizeFirst(userRole);
+        roleBadge.className = `badge badge-${userRole}`;
+        
+        statusBadge.textContent = isActive ? 'Active' : 'Inactive';
+        statusBadge.className = `badge badge-${isActive ? 'active' : 'inactive'}`;
+
+        // ✅ Hiển thị Order Statistics và Returned Orders Breakdown
+        const ordersByStatus = user.ordersByStatus || user.OrdersByStatus || {};
+        const returnedBreakdown = user.returnedOrdersBreakdown || user.ReturnedOrdersBreakdown || {};
+        
+        console.log('Orders by status:', ordersByStatus);
+        console.log('Returned breakdown:', returnedBreakdown);
+        
+        // Create or update order statistics section in modal body
+        const modalBody = document.querySelector('#userDetailModal .modal-body');
+        console.log('Modal body found:', modalBody);
+        if (!modalBody) {
+            console.error('Modal body not found!');
+            return;
+        }
+        
+        console.log('Rendering modal content...');
+        
+        // Determine breakdown title based on role
+        const breakdownTitle = userRole === 'provider' 
+            ? 'Income Analysis from Orders' 
+            : 'Spending Analysis on Orders';
+        
+        const totalLabel = userRole === 'provider' ? 'Total Earnings' : 'Total Spent';
+        
+        // Clear modal body and render Order Statistics + Returned Orders Breakdown
+        modalBody.innerHTML = `
+            <!-- Order Statistics by Status -->
+            <div class="info-section">
+                <h4 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                    Order Statistics
+                </h4>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value">${ordersByStatus.Pending || ordersByStatus.pending || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Approved</div>
+                        <div class="stat-value">${ordersByStatus.Approved || ordersByStatus.approved || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">In Transit</div>
+                        <div class="stat-value">${ordersByStatus.InTransit || ordersByStatus.inTransit || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">In Use</div>
+                        <div class="stat-value">${ordersByStatus.InUse || ordersByStatus.inUse || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Returning</div>
+                        <div class="stat-value">${ordersByStatus.Returning || ordersByStatus.returning || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Returned</div>
+                        <div class="stat-value">${ordersByStatus.Returned || ordersByStatus.returned || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Cancelled</div>
+                        <div class="stat-value">${ordersByStatus.Cancelled || ordersByStatus.cancelled || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Returned with Issue</div>
+                        <div class="stat-value">${ordersByStatus.ReturnedWithIssue || ordersByStatus.returnedWithIssue || 0}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Returned Orders Breakdown (Financial) -->
+            <div class="info-section">
+                <h4 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                        <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    ${breakdownTitle}
+                </h4>
+                <div class="earnings-breakdown">
+                    <div class="breakdown-item">
+                        <div class="breakdown-type">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            <span>Rental Orders</span>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-count">${returnedBreakdown.RentalOrdersCount || returnedBreakdown.rentalOrdersCount || 0} orders</div>
+                            <div class="breakdown-amount">${this.formatCurrency(returnedBreakdown.RentalTotalEarnings || returnedBreakdown.rentalTotalEarnings || 0)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="breakdown-item">
+                        <div class="breakdown-type">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                                <circle cx="9" cy="21" r="1"></circle>
+                                <circle cx="20" cy="21" r="1"></circle>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            </svg>
+                            <span>Purchase Orders</span>
+                        </div>
+                        <div class="breakdown-details">
+                            <div class="breakdown-count">${returnedBreakdown.PurchaseOrdersCount || returnedBreakdown.purchaseOrdersCount || 0} orders</div>
+                            <div class="breakdown-amount">${this.formatCurrency(returnedBreakdown.PurchaseTotalEarnings || returnedBreakdown.purchaseTotalEarnings || 0)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="breakdown-total">
+                        <div class="total-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            ${totalLabel}
+                        </div>
+                        <div class="total-amount">${this.formatCurrency(returnedBreakdown.TotalEarnings || returnedBreakdown.totalEarnings || 0)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
 
         // Update lock/unlock button
         const lockUnlockBtn = document.getElementById('lockUnlockBtn');
         const lockUnlockText = document.getElementById('lockUnlockText');
+        
+        if (lockUnlockBtn && lockUnlockText) {
         const lockUnlockIcon = lockUnlockBtn.querySelector('svg');
         
-        if (user.isActive) {
+            if (isActive) {
             lockUnlockBtn.className = 'btn btn-danger';
             lockUnlockText.textContent = 'Lock User';
+                if (lockUnlockIcon) {
             lockUnlockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <circle cx="12" cy="16" r="1"></circle>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             `;
+                }
         } else {
             lockUnlockBtn.className = 'btn btn-success';
             lockUnlockText.textContent = 'Unlock User';
+                if (lockUnlockIcon) {
             lockUnlockIcon.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <circle cx="12" cy="16" r="1"></circle>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             `;
+                }
+            }
+        } else {
+            console.error('Lock/Unlock button elements not found');
         }
     }
 

@@ -134,32 +134,75 @@ namespace ShareItAPI.Controllers
             var users = await _userService.GetAllWithOrdersAsync();
             
             // Calculate order statistics for each user
-            var usersWithStats = users.Select(user => new
+            var usersWithStats = users.Select(user => 
             {
-                user.Id,
-                user.Email,
-                user.Role,
-                user.IsActive,
-                user.CreatedAt,
-                user.LastLogin,
-                user.Profile,
+                // Get relevant orders based on role
+                var ordersAsCustomer = user.OrdersAsCustomer ?? new List<Order>();
+                var ordersAsProvider = user.OrdersAsProvider ?? new List<Order>();
                 
-                // Calculate order statistics
-                TotalCompletedOrders = user.OrdersAsCustomer
-                    .Count(o => o.Status == BusinessObject.Enums.OrderStatus.returned || 
-                                o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue),
-                
-                TotalSpent = user.OrdersAsCustomer
+                // For customers: count their orders as customer
+                // For providers: count their orders as provider
+                var relevantOrders = user.Role.ToString() == "provider" 
+                    ? ordersAsProvider 
+                    : ordersAsCustomer;
+
+                // Count orders by status
+                var ordersByStatus = new
+                {
+                    Pending = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.pending),
+                    Approved = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.approved),
+                    InTransit = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.in_transit),
+                    InUse = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.in_use),
+                    Returning = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returning),
+                    Returned = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returned),
+                    Cancelled = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.cancelled),
+                    ReturnedWithIssue = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                };
+
+                // Calculate earnings/spending for returned orders
+                var returnedOrders = relevantOrders
                     .Where(o => o.Status == BusinessObject.Enums.OrderStatus.returned || 
                                 o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
-                    .Sum(o => o.TotalAmount),
+                    .ToList();
+
+                var rentalOrders = returnedOrders.Where(o => o.Items != null && 
+                    o.Items.All(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental)).ToList();
                 
-                TotalOrders = user.OrdersAsCustomer.Count(),
-                
-                TotalEarned = user.OrdersAsProvider
-                    .Where(o => o.Status == BusinessObject.Enums.OrderStatus.returned || 
-                                o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
-                    .Sum(o => o.TotalAmount)
+                var purchaseOrders = returnedOrders.Where(o => o.Items != null && 
+                    o.Items.All(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase)).ToList();
+
+                // Calculate rental earnings: Subtotal - DiscountAmount
+                var rentalEarnings = rentalOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+
+                // Calculate purchase earnings: Use TotalAmount (no discount applied)
+                var purchaseEarnings = purchaseOrders.Sum(o => o.TotalAmount);
+
+                return new
+                {
+                    user.Id,
+                    user.Email,
+                    user.Role,
+                    user.IsActive,
+                    user.CreatedAt,
+                    user.LastLogin,
+                    user.Profile,
+                    
+                    // Total count
+                    TotalOrders = relevantOrders.Count(),
+                    
+                    // Orders by status
+                    OrdersByStatus = ordersByStatus,
+                    
+                    // Returned orders breakdown
+                    ReturnedOrdersBreakdown = new
+                    {
+                        RentalOrdersCount = rentalOrders.Count,
+                        RentalTotalEarnings = rentalEarnings,
+                        PurchaseOrdersCount = purchaseOrders.Count,
+                        PurchaseTotalEarnings = purchaseEarnings,
+                        TotalEarnings = rentalEarnings + purchaseEarnings
+                    }
+                };
             }).ToList();
             
             // For staff, only return customers and providers
