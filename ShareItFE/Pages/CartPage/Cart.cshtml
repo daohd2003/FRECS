@@ -503,16 +503,47 @@
             }
         }
 
+        // Global variables for tracking subtotals (needed for discount calculation)
+        let currentRentalSubtotal = @Model.RentalSubtotal;
+        let currentPurchaseSubtotal = @Model.PurchaseSubtotal;
+        let currentSubtotal = @Model.Subtotal;
+
         // Function to update cart totals (simple version - might need server call for accuracy)
-        function updateCartTotals() {
+        async function updateCartTotals() {
             let newSubtotal = 0;
+            let newRentalSubtotal = 0;
+            let newPurchaseSubtotal = 0;
             let newDeposit = 0;
             
-            // Calculate new subtotal and deposit from all item totals
+            // Calculate new subtotal by transaction type from all item totals
             document.querySelectorAll('[id^="total-price-"]').forEach(element => {
+                const itemId = element.id.replace('total-price-', '');
                 const priceText = element.textContent.replace(/[^\d]/g, '');
-                newSubtotal += parseInt(priceText) || 0;
+                const itemPrice = parseInt(priceText) || 0;
+                
+                newSubtotal += itemPrice;
+                
+                // Determine if this is rental or purchase item
+                const itemElement = element.closest('.p-6');
+                if (itemElement) {
+                    const itemText = itemElement.textContent;
+                    if (itemText.includes('deposit') || itemText.includes('VND/day')) {
+                        newRentalSubtotal += itemPrice;
+                    } else {
+                        newPurchaseSubtotal += itemPrice;
+                    }
+                }
             });
+
+            // Update global tracking variables
+            currentSubtotal = newSubtotal;
+            currentRentalSubtotal = newRentalSubtotal;
+            currentPurchaseSubtotal = newPurchaseSubtotal;
+
+            // Check if discount code should be removed (if no items of that type remain)
+            if (window.removeDiscountIfNeeded) {
+                await window.removeDiscountIfNeeded(newRentalSubtotal, newPurchaseSubtotal);
+            }
 
             // Calculate total deposit (this is a simplified approach - ideally would need server call for accuracy)
             // For now, we'll make a server call to get accurate totals
@@ -533,13 +564,11 @@
                         if (currentDepositElement) {
                             currentDepositElement.textContent = newDeposit.toLocaleString() + ' VND';
                         }
-                        
-                        // Update total with new deposit
-                        const totalElement = document.getElementById('cart-total');
-                        if (totalElement) {
-                            const newTotal = newSubtotal + newDeposit;
-                            totalElement.textContent = newTotal.toLocaleString() + ' VND';
-                        }
+                    }
+                    
+                    // Recalculate discount with new subtotals
+                    if (window.recalculateDiscount) {
+                        window.recalculateDiscount(currentRentalSubtotal, currentPurchaseSubtotal, currentSubtotal, newDeposit);
                     }
                 })
                 .catch(error => console.log('Could not update deposit:', error));
@@ -632,6 +661,8 @@
             let availableDiscountCodes = [];
             let allDiscountCodes = [];
             const subtotal = @Model.Subtotal;
+            const rentalSubtotal = @Model.RentalSubtotal;
+            const purchaseSubtotal = @Model.PurchaseSubtotal;
             const apiBaseUrl = '@Model.ApiBaseUrl';
             const hasRentalItems = @Model.HasRentalItems.ToString().ToLower();
             const hasPurchaseItems = @Model.HasPurchaseItems.ToString().ToLower();
@@ -922,8 +953,8 @@
             showToast('Discount code applied successfully!', 'success');
         }
 
-        // Remove discount
-        document.getElementById('removeDiscountBtn')?.addEventListener('click', async () => {
+        // Function to remove discount code
+        async function removeDiscountCode(showMessage = true) {
             selectedDiscountCode = null;
             
             // Remove from session
@@ -941,22 +972,60 @@
             document.getElementById('selectedDiscountDisplay').classList.add('hidden');
             document.getElementById('noDiscountDisplay').classList.remove('hidden');
             updateDiscountCalculation();
-            showToast('Discount code removed', 'info');
+            
+            if (showMessage) {
+                showToast('Discount code removed', 'info');
+            }
+        }
+        
+        // Remove discount button click handler
+        document.getElementById('removeDiscountBtn')?.addEventListener('click', async () => {
+            await removeDiscountCode(true);
         });
+        
+        // Expose removeDiscountCode globally for cart updates
+        window.removeDiscountIfNeeded = async function(newRentalSubtotal, newPurchaseSubtotal) {
+            if (selectedDiscountCode) {
+                // Check if discount code should be removed
+                if (selectedDiscountCode.usageType === 'Rental' && newRentalSubtotal === 0) {
+                    await removeDiscountCode(false);
+                    showToast('Discount code removed: No rental items in cart', 'info');
+                } else if (selectedDiscountCode.usageType === 'Purchase' && newPurchaseSubtotal === 0) {
+                    await removeDiscountCode(false);
+                    showToast('Discount code removed: No purchase items in cart', 'info');
+                }
+            }
+        };
 
-        // Calculate discount amount
-        function updateDiscountCalculation() {
+        // Calculate discount amount based on discount code usage type
+        function updateDiscountCalculation(useCurrentSubtotals = false, currentRental = null, currentPurchase = null, currentTotal = null, currentDeposit = null) {
             let discountAmount = 0;
             
+            // Use provided subtotals if available (from quantity update), otherwise use initial values
+            const effectiveRentalSubtotal = useCurrentSubtotals && currentRental !== null ? currentRental : rentalSubtotal;
+            const effectivePurchaseSubtotal = useCurrentSubtotals && currentPurchase !== null ? currentPurchase : purchaseSubtotal;
+            const effectiveSubtotal = useCurrentSubtotals && currentTotal !== null ? currentTotal : subtotal;
+            const effectiveDeposit = useCurrentSubtotals && currentDeposit !== null ? currentDeposit : @Model.TotalDeposit;
+            
             if (selectedDiscountCode) {
+                // Determine which subtotal to apply discount to based on UsageType
+                let applicableSubtotal = 0;
+                
+                if (selectedDiscountCode.usageType === 'Rental') {
+                    applicableSubtotal = effectiveRentalSubtotal;
+                } else if (selectedDiscountCode.usageType === 'Purchase') {
+                    applicableSubtotal = effectivePurchaseSubtotal;
+                }
+                
+                // Calculate discount amount
                 if (selectedDiscountCode.discountType === 'Percentage') {
-                    discountAmount = Math.round(subtotal * (selectedDiscountCode.value / 100));
+                    discountAmount = Math.round(applicableSubtotal * (selectedDiscountCode.value / 100));
                 } else {
                     discountAmount = selectedDiscountCode.value;
                 }
                 
-                // Ensure discount doesn't exceed subtotal
-                discountAmount = Math.min(discountAmount, subtotal);
+                // Ensure discount doesn't exceed applicable subtotal
+                discountAmount = Math.min(discountAmount, applicableSubtotal);
             }
             
             // Update discount display
@@ -965,10 +1034,15 @@
                 : '0 VND';
             
             // Update total
-            const deposit = @Model.TotalDeposit;
-            const newTotal = subtotal - discountAmount + deposit;
+            const newTotal = effectiveSubtotal - discountAmount + effectiveDeposit;
             document.getElementById('cart-total').textContent = newTotal.toLocaleString() + ' VND';
         }
+        
+        // Expose function globally for quantity updates
+        window.recalculateDiscount = function(newRentalSubtotal, newPurchaseSubtotal, newSubtotal, newDeposit) {
+            updateDiscountCalculation(true, newRentalSubtotal, newPurchaseSubtotal, newSubtotal, newDeposit);
+        };
+        
         })(); // End of initDiscountCodeModal IIFE
     </script>
 }

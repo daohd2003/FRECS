@@ -1,0 +1,181 @@
+@using System.Security.Claims
+@{
+    var userName = User.Identity?.Name ?? "Admin";
+    var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "admin";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ShareIt Admin</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-layout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="admin-body">
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar" id="adminSidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    <span class="sidebar-title">FRECS Admin</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="nav-section-title">Main</span>
+                    <a asp-page="/Admin/Index" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Index" ? "active" : "")">
+                        <i class="bi bi-grid-fill"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <span class="nav-section-title">Management</span>
+                    
+                    <a asp-page="/Admin/Discounts/DiscountCodes" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("DiscountCodes") == true ? "active" : "")">
+                        <i class="bi bi-ticket-perforated"></i>
+                        <span>Discount Codes</span>
+                    </a>
+
+                    <a asp-page="/ReportManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/ReportManagement" ? "active" : "")">
+                        <i class="bi bi-flag-fill"></i>
+                        <span>Reports</span>
+                    </a>
+
+                    <a asp-page="/ProductVerification" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/ProductVerification" ? "active" : "")">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Product Verification</span>
+                    </a>
+
+                    <a asp-page="/Admin/Messages" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Messages" ? "active" : "")">
+                        <i class="bi bi-chat-dots-fill"></i>
+                        <span>Messages</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <span class="nav-section-title">System</span>
+                    <a asp-page="/Index" class="nav-item">
+                        <i class="bi bi-house-door-fill"></i>
+                        <span>Back to Site</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">@userName</div>
+                        <div class="user-role">Administrator</div>
+                    </div>
+                </div>
+                <form asp-page="/Auth" asp-page-handler="Logout" method="post" class="logout-form">
+                    <button type="submit" class="logout-btn" title="Logout">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="admin-main">
+            <!-- Mobile menu button for sidebar -->
+            <button class="admin-mobile-menu-btn" id="mobileMenuBtn" aria-label="Open Admin Menu">
+                <i class="bi bi-layout-sidebar"></i>
+            </button>
+
+            <!-- Content Area -->
+            <main class="admin-content">
+                @RenderBody()
+            </main>
+
+            <!-- Footer -->
+            <footer class="admin-footer">
+                <p>&copy; @DateTime.Now.Year - FRECS Admin Panel. All rights reserved.</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/toast-manager.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        // Toast notifications will use default position (top: 20px) - no header to block them
+    </script>
+
+    <script>
+        // Sidebar toggle functionality
+        const sidebar = document.getElementById('adminSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        function openSidebar() {
+            if (sidebar && overlay) {
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeSidebar() {
+            if (sidebar && overlay) {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openSidebar();
+            });
+        }
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSidebar();
+            });
+        }
+        
+        if (overlay) {
+            // Only close sidebar when clicking overlay, don't prevent other clicks
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) {
+                    closeSidebar();
+                }
+            });
+        }
+
+        // Close sidebar on ESC key, but don't interfere with other ESC handlers
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar && sidebar.classList.contains('active')) {
+                closeSidebar();
+            }
+        });
+    </script>
+</body>
+</html>
+
