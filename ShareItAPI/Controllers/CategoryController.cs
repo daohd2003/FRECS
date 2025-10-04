@@ -92,7 +92,7 @@ namespace ShareItAPI.Controllers
 	/// <param name="name">Category name (required)</param>
 	/// <param name="description">Category description (optional)</param>
 	/// <param name="isActive">Is category active (default: true)</param>
-	/// <param name="image">Category image file (optional)</param>
+	/// <param name="ImageFile">Category image file (optional)</param>
 	/// <returns>Created category with uploaded image URL</returns>
 	/// <remarks>
 	/// Sample request:
@@ -103,7 +103,7 @@ namespace ShareItAPI.Controllers
 	/// - name: "Electronics" (required)
 	/// - description: "Electronic devices" (optional)
 	/// - isActive: true (optional, default: true)
-	/// - image: [file] (optional - JPG, PNG, GIF, WEBP, max 5MB)
+	/// - ImageFile: [file] (optional - JPG, PNG, GIF, WEBP, max 5MB)
 	/// 
 	/// Image will be uploaded to Cloudinary automatically and URL saved to database.
 	/// </remarks>
@@ -237,6 +237,25 @@ namespace ShareItAPI.Controllers
 			{
 				try
 				{
+					// Delete old image from Cloudinary if exists
+					if (!string.IsNullOrEmpty(existing.ImageUrl))
+					{
+						try
+						{
+							var oldPublicId = ExtractPublicIdFromUrl(existing.ImageUrl);
+							if (!string.IsNullOrEmpty(oldPublicId))
+							{
+								await _cloudinaryService.DeleteImageAsync(oldPublicId);
+							}
+						}
+						catch (Exception ex)
+						{
+							// Log but don't fail if old image deletion fails
+							Console.WriteLine($"Failed to delete old image: {ex.Message}");
+						}
+					}
+
+					// Upload new image
 					var uploadResult = await _cloudinaryService.UploadCategoryImageAsync(ImageFile, userId);
 					imageUrl = uploadResult.ImageUrl;
 				}
@@ -291,7 +310,25 @@ namespace ShareItAPI.Controllers
 					null));
 			}
 
-			// Delete category
+			// Delete image from Cloudinary if exists
+			if (!string.IsNullOrEmpty(category.ImageUrl))
+			{
+				try
+				{
+					var publicId = ExtractPublicIdFromUrl(category.ImageUrl);
+					if (!string.IsNullOrEmpty(publicId))
+					{
+						await _cloudinaryService.DeleteImageAsync(publicId);
+					}
+				}
+				catch (Exception ex)
+				{
+					// Log but don't fail the deletion if image removal fails
+					Console.WriteLine($"Failed to delete Cloudinary image: {ex.Message}");
+				}
+			}
+
+			// Delete category from database
 			var ok = await _service.DeleteAsync(id);
 			if (!ok) return NotFound(new ApiResponse<string>("Failed to delete category", null));
 			
@@ -302,8 +339,53 @@ namespace ShareItAPI.Controllers
 			return BadRequest(new ApiResponse<string>($"Failed to delete category: {ex.Message}", null));
 		}
 	}
+
+	/// <summary>
+	/// Extracts Cloudinary public ID from full URL
+	/// </summary>
+	/// <param name="imageUrl">Full Cloudinary URL</param>
+	/// <returns>Public ID or null if extraction fails</returns>
+	/// <example>
+	/// Input: https://res.cloudinary.com/xxx/image/upload/v123/ShareIt/categories/user123/image.jpg
+	/// Output: ShareIt/categories/user123/image
+	/// </example>
+	private string? ExtractPublicIdFromUrl(string imageUrl)
+	{
+		if (string.IsNullOrEmpty(imageUrl)) return null;
+
+		try
+		{
+			// Cloudinary URL format: .../upload/v[version]/[publicId].[extension]
+			var uri = new Uri(imageUrl);
+			var path = uri.AbsolutePath;
+			
+			// Find the upload segment
+			var uploadIndex = path.IndexOf("/upload/");
+			if (uploadIndex == -1) return null;
+			
+			// Get everything after /upload/v[version]/
+			var afterUpload = path.Substring(uploadIndex + "/upload/".Length);
+			
+			// Skip version (v123456789)
+			var versionEndIndex = afterUpload.IndexOf('/');
+			if (versionEndIndex == -1) return null;
+			
+			var publicIdWithExtension = afterUpload.Substring(versionEndIndex + 1);
+			
+			// Remove file extension
+			var lastDotIndex = publicIdWithExtension.LastIndexOf('.');
+			if (lastDotIndex != -1)
+			{
+				return publicIdWithExtension.Substring(0, lastDotIndex);
+			}
+			
+			return publicIdWithExtension;
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Failed to extract public ID from URL: {ex.Message}");
+			return null;
+		}
+	}
 	}
 }
-
-
-
