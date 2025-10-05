@@ -111,15 +111,10 @@
                                             
                                             @* Show transaction type *@
                                             <div class="text-sm mb-2">
-                                                <span class="text-gray-600 mr-2">Type:</span>
-                                                @if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
-                                                {
-                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Purchase</span>
-                                                }
+                                                <span class="text-gray-600 mr-1">Type:</span>@if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                                {<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Purchase</span>}
                                                 else
-                                                {
-                                                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">Rental</span>
-                                                }
+                                                {<span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">Rental</span>}
                                             </div>
                                             
                                             @* Show rental dates only for rental items *@

@@ -23,7 +23,7 @@ namespace ShareItAPI.Controllers.OData
             _context = context;
         }
 
-        [EnableQuery]
+        [EnableQuery(PageSize = 20, MaxExpansionDepth = 2, MaxTop = 100)]
         [HttpGet]
         public IActionResult Get()
         {

@@ -5,6 +5,7 @@ using BusinessObject.Utilities;
 using Repositories.CartRepositories;
 using Repositories.ProductRepositories;
 using Repositories.UserRepositories;
+using Repositories.OrderRepositories;
 
 using System;
 using System.Collections.Generic;
@@ -20,12 +21,14 @@ namespace Services.CartServices
         private readonly ICartRepository _cartRepository;
         private readonly IProductRepository _productRepository; // Assume you have a ProductRepository
         private readonly IUserRepository _userRepository; // Assume you have a UserRepository
+        private readonly IOrderRepository _orderRepository;
         private readonly IMapper _mapper;
-        public CartService(ICartRepository cartRepository, IProductRepository productRepository, IUserRepository userRepository, IMapper mapper)
+        public CartService(ICartRepository cartRepository, IProductRepository productRepository, IUserRepository userRepository, IOrderRepository orderRepository, IMapper mapper)
         {
             _cartRepository = cartRepository;
             _productRepository = productRepository;
             _userRepository = userRepository;
+            _orderRepository = orderRepository;
             _mapper = mapper;
         }
 
@@ -296,6 +299,122 @@ namespace Services.CartServices
             // Trả về tổng số lượng sản phẩm trong giỏ hàng (sum of Quantity), không phải số dòng
             return cart?.Items?.Sum(ci => ci.Quantity) ?? 0;
             // Nếu bạn muốn số dòng (số loại sản phẩm khác nhau): return cart?.Items?.Count ?? 0;
+        }
+
+        public async Task<bool> ClearCartAsync(Guid customerId)
+        {
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null)
+            {
+                return true; // Cart already empty
+            }
+
+            var cartItems = await _cartRepository.GetCartItemsForCustomerQuery(customerId).ToListAsync();
+            foreach (var item in cartItems)
+            {
+                await _cartRepository.DeleteCartItemAsync(item);
+            }
+
+            return true;
+        }
+
+        public async Task<(bool success, int addedCount, int issuesCount)> AddOrderItemsToCartAsync(Guid customerId, Guid orderId)
+        {
+            // Get order with items
+            var order = await _orderRepository.GetOrderWithItemsAsync(orderId);
+            if (order == null)
+            {
+                throw new ArgumentException("Order not found.");
+            }
+
+            if (order.CustomerId != customerId)
+            {
+                throw new UnauthorizedAccessException("You are not authorized to access this order.");
+            }
+
+            // Clear current cart
+            await ClearCartAsync(customerId);
+
+            // Get or create cart for customer
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null)
+            {
+                cart = new Cart
+                {
+                    Id = Guid.NewGuid(),
+                    CustomerId = customerId,
+                    CreatedAt = DateTimeHelper.GetVietnamTime()
+                };
+                await _cartRepository.CreateCartAsync(cart);
+            }
+
+            // Track items that were added or skipped
+            int addedCount = 0;
+            int skippedCount = 0;
+            int adjustedCount = 0; // Track items with adjusted quantity
+
+            // Add each order item to cart
+            foreach (var orderItem in order.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(orderItem.ProductId);
+                if (product == null)
+                {
+                    skippedCount++;
+                    continue; // Skip if product not found
+                }
+
+                // Check if product is still available
+                if (product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available)
+                {
+                    skippedCount++;
+                    continue; // Skip unavailable products
+                }
+
+                // Check quantity based on transaction type
+                int availableQuantity = orderItem.TransactionType == BusinessObject.Enums.TransactionType.rental
+                    ? product.RentalQuantity
+                    : product.PurchaseQuantity;
+
+                if (availableQuantity <= 0)
+                {
+                    skippedCount++;
+                    continue; // Skip if no quantity available
+                }
+
+                // Adjust quantity if requested quantity exceeds available quantity
+                int quantityToAdd = Math.Min(orderItem.Quantity, availableQuantity);
+                
+                // Track if quantity was adjusted
+                if (quantityToAdd < orderItem.Quantity)
+                {
+                    adjustedCount++;
+                }
+
+                var cartItem = new CartItem
+                {
+                    Id = Guid.NewGuid(),
+                    CartId = cart.Id,
+                    ProductId = orderItem.ProductId,
+                    Quantity = quantityToAdd,
+                    TransactionType = orderItem.TransactionType,
+                    RentalDays = orderItem.RentalDays,
+                    StartDate = null, // User will set this later
+                    EndDate = null
+                };
+
+                await _cartRepository.AddCartItemAsync(cartItem);
+                addedCount++;
+            }
+
+            // If no items were added, throw exception
+            if (addedCount == 0)
+            {
+                throw new InvalidOperationException("No items could be added to cart. All products are either unavailable or out of stock.");
+            }
+
+            // Count skippedCount and adjustedCount together for warning message
+            int totalIssues = skippedCount + adjustedCount;
+            return (true, addedCount, totalIssues);
         }
     }
 }

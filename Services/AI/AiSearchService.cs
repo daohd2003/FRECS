@@ -41,13 +41,21 @@ namespace Services.AI
             _cache = cache;
         }
 
-        public async Task<string> AskAboutFRECSAsync(string question)
+        public async Task<string> AskAboutFRECSAsync(string question, Guid? userId = null)
         {
-            _logger.LogInformation("Received question: {Question}", question);
+            _logger.LogInformation("Received question: {Question} from user: {UserId}", question, userId?.ToString() ?? "anonymous");
 
             var products = await GetCachedProductsAsync();
             var contextString = BuildProductContext(products);
-            var prompt = BuildPrompt(contextString, question, products.Any());
+            
+            // Get user history if logged in
+            string? userHistoryContext = null;
+            if (userId.HasValue)
+            {
+                userHistoryContext = await BuildUserHistoryContext(userId.Value);
+            }
+
+            var prompt = BuildPrompt(contextString, question, products.Any(), userHistoryContext);
 
             var responseText = await SendRequestToGeminiAsync(prompt);
 
@@ -72,7 +80,9 @@ namespace Services.AI
                     p.Name,
                     p.Size,
                     p.PricePerDay,
-                    p.Description,
+                    p.PurchasePrice,
+                    p.RentalQuantity,
+                    p.PurchaseQuantity,
                     Category = p.Category.Name,
                     p.Color
                 })
@@ -98,20 +108,112 @@ namespace Services.AI
             var lines = products.Select(p =>
             {
                 string link = $"{_baseAppUrl}/products/detail/{p.Id}";
-                return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color} | Price: {p.PricePerDay} VND\n  Description: {p.Description}\n  [Xem chi tiết]({link})";
+                
+                // Build pricing information
+                var pricingInfo = new List<string>();
+                if (p.RentalQuantity > 0 && p.PricePerDay > 0)
+                {
+                    pricingInfo.Add($"Rental: {((decimal)p.PricePerDay).ToString("N0")} VND/day");
+                }
+                if (p.PurchaseQuantity > 0 && p.PurchasePrice > 0)
+                {
+                    pricingInfo.Add($"Purchase: {((decimal)p.PurchasePrice).ToString("N0")} VND");
+                }
+                
+                var priceString = pricingInfo.Any() ? string.Join(" | ", pricingInfo) : "Contact for pricing";
+                
+                return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color}\n  {priceString}\n  [Xem chi tiết]({link})";
             });
 
             return string.Join("\n", lines);
         }
 
-        private string BuildPrompt(string context, string question, bool hasProducts)
+        private async Task<string?> BuildUserHistoryContext(Guid userId)
+        {
+            try
+            {
+                var recentOrders = await _context.Orders
+                    .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                            .ThenInclude(p => p.Category)
+                    .Where(o => o.CustomerId == userId)
+                    .OrderByDescending(o => o.CreatedAt)
+                    .Take(5) // Last 5 orders
+                    .ToListAsync();
+
+                if (!recentOrders.Any())
+                    return null;
+
+                var historyLines = new List<string>();
+                foreach (var order in recentOrders)
+                {
+                    foreach (var item in order.Items)
+                    {
+                        var transactionType = item.TransactionType == TransactionType.rental ? "Rented" : "Purchased";
+                        var additionalInfo = item.TransactionType == TransactionType.rental && item.RentalDays.HasValue
+                            ? $" (for {item.RentalDays} days)"
+                            : "";
+                        
+                        historyLines.Add($"- Previously {transactionType}: {item.Product.Name} | Category: {item.Product.Category.Name} | Color: {item.Product.Color} | Size: {item.Product.Size}{additionalInfo}");
+                    }
+                }
+
+                return string.Join("\n", historyLines.Distinct().Take(10)); // Max 10 unique items
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to build user history context for user {UserId}", userId);
+                return null;
+            }
+        }
+
+        private string BuildPrompt(string context, string question, bool hasProducts, string? userHistoryContext = null)
         {
             if (!hasProducts)
             {
-                return $"You are an assistant for the FRECS clothing rental & sales store. No product information is available currently.\n\nUser's question: {question}\n\nPlease inform the user that product details are currently unavailable. Suggest visiting the store at {_baseAppUrl}.";
+                return $"You are an assistant for the FRECS clothing rental & sales store. No product information is available currently.\n\nUser's question: {question}\n\nPlease politely inform the user in English that product details are currently unavailable. Suggest visiting the store website at {_baseAppUrl} to check for available products.";
             }
 
-            return $"You are a helpful assistant for the FRECS clothing rental & sales store. Only respond using the provided product list.\n\nProducts:\n{context}\n\nUser's question: {question}\n\nAnswer with matching items, their names, prices, and {_baseAppUrl}. If not found, say so.";
+            var historySection = string.IsNullOrEmpty(userHistoryContext)
+                ? ""
+                : $@"
+
+User's Purchase/Rental History:
+{userHistoryContext}
+
+Use this history to provide personalized recommendations when relevant.";
+
+            return $@"You are a helpful assistant for the FRECS clothing rental & sales store. Only respond using the provided product list.
+
+Products (each product already has a clickable detail link):
+{context}{historySection}
+
+User's question: {question}
+
+CRITICAL INSTRUCTIONS - MUST FOLLOW:
+1. **ALWAYS include the [View Details] link** for EVERY product you mention, regardless of how the user phrases their question.
+2. Even for simple questions like:
+   - 'Show me black clothes' 
+   - 'What products are blue'
+   - 'Do you have any shirts'
+   You MUST include the detail link provided in the product list.
+3. Copy the exact [Xem chi tiết](link) from the product information above - don't create new links, but replace the text with 'View Details'.
+4. Format your response to include product details AND the link on a new line.
+5. Products may have RENTAL price, PURCHASE price, or BOTH. Always show the pricing information clearly:
+   - Rental price format: number VND/day for rental options
+   - Purchase price format: number VND for purchase options
+   - Show both if available
+6. If no matching products are found, politely inform the user in English.
+7. Keep responses concise, helpful, and friendly.
+8. If user history is provided, use it to offer personalized suggestions (e.g., 'Based on your previous rentals, you might also like...').
+
+Example response format:
+Here are the matching products:
+- White Shirt | Size: M | Category: Shirt | Color: White
+  Rental: 50,000 VND/day | Purchase: 500,000 VND
+  [View Details](link)
+
+Answer in English:";
         }
 
         private async Task<string?> SendRequestToGeminiAsync(string prompt)
