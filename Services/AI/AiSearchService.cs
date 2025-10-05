@@ -108,10 +108,34 @@ namespace Services.AI
         {
             if (!hasProducts)
             {
-                return $"You are an assistant for the FRECS clothing rental & sales store. No product information is available currently.\n\nUser's question: {question}\n\nPlease inform the user that product details are currently unavailable. Suggest visiting the store at {_baseAppUrl}.";
+                return $"You are an assistant for the FRECS clothing rental & sales store. No product information is available currently.\n\nUser's question: {question}\n\nPlease politely inform the user in English that product details are currently unavailable. Suggest visiting the store website at {_baseAppUrl} to check for available products.";
             }
 
-            return $"You are a helpful assistant for the FRECS clothing rental & sales store. Only respond using the provided product list.\n\nProducts:\n{context}\n\nUser's question: {question}\n\nAnswer with matching items, their names, prices, and {_baseAppUrl}. If not found, say so.";
+            return $@"You are a helpful assistant for the FRECS clothing rental & sales store. Only respond using the provided product list.
+
+Products (each product already has a clickable detail link):
+{context}
+
+User's question: {question}
+
+CRITICAL INSTRUCTIONS - MUST FOLLOW:
+1. **ALWAYS include the [View Details] link** for EVERY product you mention, regardless of how the user phrases their question.
+2. Even for simple questions like:
+   - 'Show me black clothes' 
+   - 'What products are blue'
+   - 'Do you have any shirts'
+   You MUST include the detail link provided in the product list.
+3. Copy the exact [Xem chi tiết](link) from the product information above - don't create new links, but replace the text with 'View Details'.
+4. Format your response to include product details AND the link on a new line.
+5. If no matching products are found, politely inform the user in English.
+6. Keep responses concise, helpful, and friendly.
+
+Example response format:
+Here are the matching products:
+- White Shirt | Size: M | Category: Shirt | Color: White | Price: 50,000 VND
+  [View Details](link)
+
+Answer in English:";
         }
 
         private async Task<string?> SendRequestToGeminiAsync(string prompt)
