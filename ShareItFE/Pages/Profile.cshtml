@@ -644,34 +644,6 @@
     }
 </div>
 
-<div id="rent-again-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">Rent Item(s) Again</h3>
-            <button id="rent-again-close-btn" class="modal-close-btn">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="rent-again-form">
-                @Html.AntiForgeryToken() @* THÊM: Anti-forgery token cho form AJAX *@
-                <input type="hidden" id="rent-again-original-order-id" name="OriginalOrderId" />
-
-                <div class="form-group mb-3">
-                    <label for="new-rental-start-date" class="form-label">Rental Start Date</label>
-                    <input type="date" id="new-rental-start-date" class="form-input" required />
-                </div>
-                <div class="form-group mb-3">
-                    <label for="new-rental-end-date" class="form-label">Rental End Date</label>
-                    <input type="date" id="new-rental-end-date" class="form-input" required />
-                </div>
-            </form>
-        </div>
-        <div class="modal-actions">
-            <button id="rent-again-cancel-btn" class="btn btn-secondary">Cancel</button>
-            <button id="rent-again-save-btn" class="btn btn-primary">Confirm Rent</button>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     <script>
         const backendBaseUrl = "@Model.ApiBaseUrl";
@@ -714,15 +686,6 @@
                     toggleBtn.textContent = passwordForm.classList.contains('d-none') ? 'Change' : 'Cancel';
                 });
             }
-
-            // Logic cho chức năng "Rent Again"
-            const rentAgainModal = document.getElementById('rent-again-modal');
-            const rentAgainCloseBtn = document.getElementById('rent-again-close-btn');
-            const rentAgainCancelBtn = document.getElementById('rent-again-cancel-btn');
-            const rentAgainSaveBtn = document.getElementById('rent-again-save-btn');
-            const originalOrderIdInput = document.getElementById('rent-again-original-order-id');
-            const newRentalStartDateInput = document.getElementById('new-rental-start-date');
-            const newRentalEndDateInput = document.getElementById('new-rental-end-date');
 
             // Bắt sự kiện click vào nút "Confirm Received" trên mỗi thẻ đơn hàng
             document.querySelectorAll('.confirm-delivery-btn').forEach(button => {
@@ -820,103 +783,59 @@
 
             // Bắt sự kiện click vào nút "Rent Again" trên mỗi thẻ đơn hàng
             document.querySelectorAll('.rent-again-btn').forEach(button => {
-                button.addEventListener('click', () => {
+                button.addEventListener('click', async () => {
                     const orderId = button.dataset.orderId;
-                    originalOrderIdInput.value = orderId;
-
-                    const today = new Date();
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-
-                    newRentalStartDateInput.min = tomorrow.toISOString().split('T')[0];
-                    newRentalStartDateInput.value = tomorrow.toISOString().split('T')[0];
-
-                    const defaultEndDate = new Date(tomorrow);
-                    defaultEndDate.setDate(tomorrow.getDate() + 7);
-                    newRentalEndDateInput.min = defaultEndDate.toISOString().split('T')[0];
-                    newRentalEndDateInput.value = defaultEndDate.toISOString().split('T')[0];
-
-                    rentAgainModal.classList.remove('hidden');
-                });
-            });
-
-            newRentalStartDateInput.addEventListener('change', () => {
-                const startDate = new Date(newRentalStartDateInput.value);
-                const minEndDate = new Date(startDate);
-                minEndDate.setDate(startDate.getDate() + 1);
-
-                newRentalEndDateInput.min = minEndDate.toISOString().split('T')[0];
-                if (new Date(newRentalEndDateInput.value) < minEndDate) {
-                    newRentalEndDateInput.value = minEndDate.toISOString().split('T')[0];
-                }
-            });
-
-            const closeModal = () => {
-                rentAgainModal.classList.add('hidden');
-            };
-
-            if (rentAgainCloseBtn) {
-                rentAgainCloseBtn.addEventListener('click', closeModal);
-            }
-            if (rentAgainCancelBtn) {
-                rentAgainCancelBtn.addEventListener('click', closeModal);
-            }
-
-            if (rentAgainSaveBtn) {
-                rentAgainSaveBtn.addEventListener('click', async () => {
-                    const originalOrderId = originalOrderIdInput.value;
-                    const newRentalStartDate = newRentalStartDateInput.value;
-                    const newRentalEndDate = newRentalEndDateInput.value;
-
-                    if (!originalOrderId || !newRentalStartDate || !newRentalEndDate) {
-                        alert('Please provide complete rental date information.');
+                    
+                    if (!confirm('This will clear your current cart and add all items from this order. Continue?')) {
                         return;
                     }
+                    
+                    button.disabled = true;
+                    button.innerHTML = '<i class="bi bi-hourglass"></i> Processing...';
 
                     try {
-                        const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
                         const headers = {
-                            'Content-Type': 'application/json',
-                            'RequestVerificationToken': antiForgeryToken
+                            'Content-Type': 'application/json'
                         };
 
                         if (accessToken) {
                             headers['Authorization'] = `Bearer ${accessToken}`;
                         }
 
-                        const response = await fetch(`${backendBaseUrl}/orders/rent-again`, {
+                        const response = await fetch(`${backendBaseUrl}/cart/rent-again/${orderId}`, {
                             method: 'POST',
-                            headers: headers,
-                            credentials: 'include',
-                            body: JSON.stringify({
-                                OriginalOrderId: originalOrderId,
-                                NewRentalStartDate: newRentalStartDate,
-                                NewRentalEndDate: newRentalEndDate
-                            })
+                            headers: headers
                         });
 
-                        const apiResponse = await response.json();
-
                         if (response.ok) {
-                            const newOrderId = apiResponse.data;
-                            if (newOrderId) {
-                                alert(apiResponse.message || "New order created successfully! Redirecting to payment page.");
-                                window.location.href = `/CheckoutPage/Checkout?orderId=${newOrderId}`;
-                            } else {
-                                alert("Unable to get new order ID from API response. Please try again.");
-                            }
+                            const result = await response.json();
+                            alert(result.message || 'Items added to cart successfully! Redirecting to cart page.');
+                            window.location.href = '/CartPage/Cart';
                         } else {
-                            alert(apiResponse.message || "Unable to rent again. An error occurred.");
-                            window.location.reload();
+                            let errorMessage = 'Unable to process your request. Please try again.';
+                            try {
+                                const errorData = await response.json();
+                                errorMessage = errorData.message || errorMessage;
+                            } catch (jsonError) {
+                                if (response.status === 404) {
+                                    errorMessage = 'Order not found. Please refresh the page and try again.';
+                                } else if (response.status === 401) {
+                                    errorMessage = 'You are not authorized to access this order.';
+                                } else {
+                                    errorMessage = 'Unable to add items to cart. Please try again later.';
+                                }
+                            }
+                            alert(errorMessage);
+                            button.disabled = false;
+                            button.innerHTML = 'Rent Again';
                         }
                     } catch (error) {
-                        console.error('Error during re-rental:', error);
-                        alert('An unexpected error occurred. Please try again.');
+                        alert('An error occurred. Please try again.');
+                        button.disabled = false;
+                        button.innerHTML = 'Rent Again';
                     }
-                    closeModal();
                 });
-            }
+            });
 
             // Handle Delete Order for Cancelled orders
             document.querySelectorAll('.delete-order-btn').forEach(button => {
