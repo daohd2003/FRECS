@@ -1,5 +1,11 @@
 ﻿@inject IConfiguration Configuration
 @inject IWebHostEnvironment Environment
+@using System.Security.Claims
+
+@{
+    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    var isLoggedIn = User.Identity?.IsAuthenticated ?? false;
+}
 
 <div id="chatToggleBtn" class="chat-toggle-btn">
     <img src="~/images/chatbot-icon.png" alt="Open Chatbot" />
@@ -36,6 +42,8 @@
     <script>
         const API_BASE_URL = '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")';
         const CHAT_STORAGE_KEY = 'frecs_chat_history_v1';
+        const CURRENT_USER_ID = '@currentUserId';
+        const IS_LOGGED_IN = @(isLoggedIn.ToString().ToLower());
 
         document.addEventListener('DOMContentLoaded', () => {
             const chatToggleBtn = document.getElementById('chatToggleBtn');
@@ -52,7 +60,12 @@
 
             // Quick suggestion templates
             const suggestionSets = {
-                initial: [
+                initial: IS_LOGGED_IN ? [
+                    "What would you recommend for me?",
+                    "Show me similar items to my previous rentals",
+                    "What's new in my favorite categories?",
+                    "Show me items in my usual size"
+                ] : [
                     "Show me formal wear",
                     "What casual outfits do you have?",
                     "I need black clothing",
@@ -151,11 +164,17 @@
                 toggleSuggestionsBtn.title = isCollapsed ? 'Show suggestions' : 'Hide suggestions';
             }
 
+            function getGreetingMessage() {
+                return IS_LOGGED_IN 
+                    ? 'Hello! Welcome back to FRECS! I can help you find new items or recommend products based on your previous rentals. How can I assist you today?'
+                    : 'Hello! I am your FRECS assistant. How can I help you find the perfect outfit today?';
+            }
+
             function clearChatHistory() {
                 if (confirm('Are you sure you want to clear the chat history?')) {
                     localStorage.removeItem(CHAT_STORAGE_KEY);
                     localStorage.removeItem(CHAT_STORAGE_KEY + '_timestamp');
-                    history = [{ role: 'bot', content: 'Hello! I am your FRECS assistant. How can I help you find the perfect outfit today?' }];
+                    history = [{ role: 'bot', content: getGreetingMessage() }];
                     saveHistory(history);
                     renderHistory(history);
                     updateSuggestions(history);
@@ -171,7 +190,7 @@
             // Initialize history and greeting
             let history = loadHistory();
             if (history.length === 0) {
-                history.push({ role: 'bot', content: 'Hello! I am your FRECS assistant. How can I help you find the perfect outfit today?' });
+                history.push({ role: 'bot', content: getGreetingMessage() });
                 saveHistory(history);
             }
             renderHistory(history);
@@ -191,7 +210,13 @@
                 chatInput.value = '';
 
                 try {
-                    const res = await fetch(`${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`);
+                    // Build URL with userId if logged in
+                    let apiUrl = `${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`;
+                    if (IS_LOGGED_IN && CURRENT_USER_ID) {
+                        apiUrl += `&userId=${CURRENT_USER_ID}`;
+                    }
+
+                    const res = await fetch(apiUrl);
                     if (!res.ok) throw new Error(`Error ${res.status}`);
 
                     const data = await res.json();

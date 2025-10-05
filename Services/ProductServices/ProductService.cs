@@ -24,7 +24,6 @@ namespace Services.ProductServices
         {
             return _context.Products
                 .AsNoTracking()
-                .Include(p => p.Category)
                 .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
         }
 

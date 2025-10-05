@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Services.AI;
+using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
 {
@@ -17,12 +18,22 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("ask")]
-        public async Task<IActionResult> Ask([FromQuery] string question)
+        public async Task<IActionResult> Ask([FromQuery] string question, [FromQuery] Guid? userId = null)
         {
             if (string.IsNullOrEmpty(question))
                 return BadRequest("Question is required.");
 
-            var answer = await _aiSearchService.AskAboutFRECSAsync(question);
+            // If userId not provided in query, try to get from authenticated user
+            if (!userId.HasValue && User?.Identity?.IsAuthenticated == true)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (Guid.TryParse(userIdClaim, out var parsedUserId))
+                {
+                    userId = parsedUserId;
+                }
+            }
+
+            var answer = await _aiSearchService.AskAboutFRECSAsync(question, userId);
             var responseDto = new AiSearchResponseDto
             {
                 Answer = answer
