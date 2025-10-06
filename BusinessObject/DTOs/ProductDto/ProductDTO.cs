@@ -111,6 +111,7 @@
         public decimal? PurchasePrice { get; set; }
         public int? PurchaseQuantity { get; set; }
         public int? RentalQuantity { get; set; }
+        public decimal SecurityDeposit { get; set; }
         public string? RentalStatus { get; set; }
         public string? PurchaseStatus { get; set; }
         public string? Gender { get; set; }

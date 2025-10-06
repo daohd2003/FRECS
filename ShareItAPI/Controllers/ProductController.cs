@@ -154,6 +154,7 @@ namespace ShareItAPI.Controllers
                     PurchasePrice = dto.PurchasePrice ?? 0,
                     PurchaseQuantity = dto.PurchaseQuantity ?? 0,
                     RentalQuantity = dto.RentalQuantity ?? 0,
+                    SecurityDeposit = dto.SecurityDeposit,
                     Gender = dto.Gender,
                     RentalStatus = dto.RentalStatus,
                     PurchaseStatus = dto.PurchaseStatus,

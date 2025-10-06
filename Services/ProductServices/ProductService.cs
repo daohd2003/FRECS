@@ -71,6 +71,7 @@ namespace Services.ProductServices
                     PurchasePrice = dto.PurchasePrice ?? 0,
                     PurchaseQuantity = dto.PurchaseQuantity ?? 0,
                     RentalQuantity = dto.RentalQuantity ?? 0,
+                    SecurityDeposit = dto.SecurityDeposit,
                     // Map 3 fields mới từ string sang enum
                     Gender = Enum.Parse<Gender>(dto.Gender ?? "Unisex"),
                     RentalStatus = Enum.Parse<RentalStatus>(dto.RentalStatus ?? "Available"),
