@@ -148,6 +148,7 @@ namespace ShareItFE.Pages.Provider
                 PurchasePrice = Request.Form.ContainsKey("Product.PurchasePrice") && !string.IsNullOrWhiteSpace(Request.Form["Product.PurchasePrice"]) ? Product.PurchasePrice : (decimal?)null,
                 PurchaseQuantity = Request.Form.ContainsKey("Product.PurchaseQuantity") && !string.IsNullOrWhiteSpace(Request.Form["Product.PurchaseQuantity"]) ? Product.PurchaseQuantity : (int?)null,
                 RentalQuantity = Request.Form.ContainsKey("Product.RentalQuantity") && !string.IsNullOrWhiteSpace(Request.Form["Product.RentalQuantity"]) ? Product.RentalQuantity : (int?)null,
+                SecurityDeposit = Request.Form.ContainsKey("Product.SecurityDeposit") && !string.IsNullOrWhiteSpace(Request.Form["Product.SecurityDeposit"]) ? Product.SecurityDeposit : (decimal?)null,
                 Gender = Product.Gender,
                 RentalStatus = Product.RentalStatus,
                 PurchaseStatus = Product.PurchaseStatus
@@ -166,6 +167,8 @@ namespace ShareItFE.Pages.Provider
                     Product.PurchaseQuantity = formStep3Data.PurchaseQuantity.Value;
                 if (formStep3Data.RentalQuantity.HasValue)
                     Product.RentalQuantity = formStep3Data.RentalQuantity.Value;
+                if (formStep3Data.SecurityDeposit.HasValue)
+                    Product.SecurityDeposit = formStep3Data.SecurityDeposit.Value;
                 
                 if (!string.IsNullOrEmpty(formStep3Data.Gender))
                     Product.Gender = formStep3Data.Gender;
@@ -404,6 +407,7 @@ namespace ShareItFE.Pages.Provider
                 PurchasePrice = Product.PurchasePrice,
                 PurchaseQuantity = Product.PurchaseQuantity,
                 RentalQuantity = Product.RentalQuantity,
+                SecurityDeposit = Product.SecurityDeposit,
                 Gender = Product.Gender,
                 RentalStatus = Product.RentalStatus,
                 PurchaseStatus = Product.PurchaseStatus
@@ -422,6 +426,7 @@ namespace ShareItFE.Pages.Provider
             Product.PurchasePrice = formStep3Data.PurchasePrice;
             Product.PurchaseQuantity = formStep3Data.PurchaseQuantity;
             Product.RentalQuantity = formStep3Data.RentalQuantity;
+            Product.SecurityDeposit = formStep3Data.SecurityDeposit;
 
             if (!string.IsNullOrEmpty(formStep3Data.Gender))
                 Product.Gender = formStep3Data.Gender;
@@ -510,6 +515,17 @@ namespace ShareItFE.Pages.Provider
                     ModelState.AddModelError("Product.RentalQuantity", "Quantity cannot be negative.");
                     validationErrors.Add("Rental quantity cannot be negative.");
                 }
+                
+                if (Product.SecurityDeposit == 0)
+                {
+                    ModelState.AddModelError("Product.SecurityDeposit", "Security deposit must be greater than 0.");
+                    validationErrors.Add("Security deposit cannot be 0.");
+                }
+                else if (Product.SecurityDeposit < 0)
+                {
+                    ModelState.AddModelError("Product.SecurityDeposit", "Security deposit cannot be negative.");
+                    validationErrors.Add("Security deposit cannot be negative.");
+                }
             }
 
             if (Product.PurchaseStatus == "Available")
@@ -572,6 +588,7 @@ namespace ShareItFE.Pages.Provider
                 PurchasePrice = Product.PurchaseStatus == "Available" ? Product.PurchasePrice : 0,
                 PurchaseQuantity = Product.PurchaseStatus == "Available" ? Product.PurchaseQuantity : 0,
                 RentalQuantity = Product.RentalStatus == "Available" ? Product.RentalQuantity : 0,
+                SecurityDeposit = Product.RentalStatus == "Available" ? Product.SecurityDeposit : 0,
                 Gender = Product.Gender,
                 RentalStatus = Product.RentalStatus,
                 PurchaseStatus = Product.PurchaseStatus,
@@ -696,6 +713,7 @@ namespace ShareItFE.Pages.Provider
                         Product.PurchasePrice = existingProduct.PurchaseStatus == "Available" ? existingProduct.PurchasePrice : 0;
                         Product.RentalQuantity = existingProduct.RentalStatus == "Available" ? existingProduct.RentalQuantity : 0;
                         Product.PurchaseQuantity = existingProduct.PurchaseStatus == "Available" ? existingProduct.PurchaseQuantity : 0;
+                        Product.SecurityDeposit = existingProduct.RentalStatus == "Available" ? existingProduct.SecurityDeposit : 0;
                         Product.RentalStatus = existingProduct.RentalStatus;
                         Product.PurchaseStatus = existingProduct.PurchaseStatus;
 
