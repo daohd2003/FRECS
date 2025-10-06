@@ -49,6 +49,13 @@ namespace Services.CategoryServices
                 throw new ArgumentException("Category name is required");
             }
 
+            // Check for duplicate category name (regardless of IsActive status)
+            var existingCategory = await _repository.GetByNameAsync(dto.Name.Trim());
+            if (existingCategory != null)
+            {
+                throw new ArgumentException($"Category with name '{dto.Name.Trim()}' already exists");
+            }
+
             var entity = new Category
             {
                 Id = Guid.NewGuid(),
@@ -102,6 +109,17 @@ namespace Services.CategoryServices
         {
             var existing = await _repository.GetByIdAsync(id);
             if (existing == null) return false;
+
+            // Check for duplicate category name (regardless of IsActive status)
+            // Exclude the current category being updated
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                var duplicateCategory = await _repository.GetByNameAsync(dto.Name.Trim());
+                if (duplicateCategory != null && duplicateCategory.Id != id)
+                {
+                    throw new ArgumentException($"Category with name '{dto.Name.Trim()}' already exists");
+                }
+            }
 
             _mapper.Map(dto, existing);
             existing.UpdatedAt = DateTimeHelper.GetVietnamTime();
