@@ -814,8 +814,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         
         // Determine breakdown title based on role
         const breakdownTitle = userRole === 'provider' 
-            ? 'Income Analysis from Orders' 
-            : 'Spending Analysis on Orders';
+            ? 'Income Breakdown by Product Type' 
+            : 'Spending Breakdown by Product Type';
         
         const totalLabel = userRole === 'provider' ? 'Total Earnings' : 'Total Spent';
         
@@ -880,10 +880,10 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                                 <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
                                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                             </svg>
-                            <span>Rental Orders</span>
+                            <span>Rental Products</span>
                         </div>
                         <div class="breakdown-details">
-                            <div class="breakdown-count">${returnedBreakdown.RentalOrdersCount || returnedBreakdown.rentalOrdersCount || 0} orders</div>
+                            <div class="breakdown-count">${returnedBreakdown.RentalProductsCount || returnedBreakdown.rentalProductsCount || returnedBreakdown.RentalOrdersCount || returnedBreakdown.rentalOrdersCount || 0} products</div>
                             <div class="breakdown-amount">${this.formatCurrency(returnedBreakdown.RentalTotalEarnings || returnedBreakdown.rentalTotalEarnings || 0)}</div>
                         </div>
                     </div>
@@ -895,10 +895,10 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                                 <circle cx="20" cy="21" r="1"></circle>
                                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                             </svg>
-                            <span>Purchase Orders</span>
+                            <span>Purchase Products</span>
                         </div>
                         <div class="breakdown-details">
-                            <div class="breakdown-count">${returnedBreakdown.PurchaseOrdersCount || returnedBreakdown.purchaseOrdersCount || 0} orders</div>
+                            <div class="breakdown-count">${returnedBreakdown.PurchaseProductsCount || returnedBreakdown.purchaseProductsCount || returnedBreakdown.PurchaseOrdersCount || returnedBreakdown.purchaseOrdersCount || 0} products</div>
                             <div class="breakdown-amount">${this.formatCurrency(returnedBreakdown.PurchaseTotalEarnings || returnedBreakdown.purchaseTotalEarnings || 0)}</div>
                         </div>
                     </div>

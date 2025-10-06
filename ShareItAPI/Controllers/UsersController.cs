@@ -159,23 +159,35 @@ namespace ShareItAPI.Controllers
                     ReturnedWithIssue = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
                 };
 
-                // Calculate earnings/spending for returned orders
+                // Calculate earnings/spending for returned orders by PRODUCT TYPE (not order type)
                 var returnedOrders = relevantOrders
                     .Where(o => o.Status == BusinessObject.Enums.OrderStatus.returned || 
                                 o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
                     .ToList();
 
-                var rentalOrders = returnedOrders.Where(o => o.Items != null && 
-                    o.Items.All(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental)).ToList();
+                // Get all items from returned orders
+                var allReturnedItems = returnedOrders
+                    .Where(o => o.Items != null)
+                    .SelectMany(o => o.Items)
+                    .ToList();
+
+                // Count rental and purchase products (not orders)
+                var rentalProducts = allReturnedItems
+                    .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                    .ToList();
                 
-                var purchaseOrders = returnedOrders.Where(o => o.Items != null && 
-                    o.Items.All(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase)).ToList();
+                var purchaseProducts = allReturnedItems
+                    .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                    .ToList();
 
-                // Calculate rental earnings: Subtotal - DiscountAmount
-                var rentalEarnings = rentalOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+                // Calculate rental earnings: Sum of (DailyRate * RentalDays * Quantity) for rental items
+                var rentalEarnings = rentalProducts.Sum(item => 
+                    item.DailyRate * (item.RentalDays ?? 0) * item.Quantity);
 
-                // Calculate purchase earnings: Use TotalAmount (no discount applied)
-                var purchaseEarnings = purchaseOrders.Sum(o => o.TotalAmount);
+                // Calculate purchase earnings: Sum of (DailyRate * Quantity) for purchase items
+                // Note: For purchase items, DailyRate is the purchase price per item
+                var purchaseEarnings = purchaseProducts.Sum(item => 
+                    item.DailyRate * item.Quantity);
 
                 return new
                 {
@@ -193,14 +205,17 @@ namespace ShareItAPI.Controllers
                     // Orders by status
                     OrdersByStatus = ordersByStatus,
                     
-                    // Returned orders breakdown
+                    // Returned orders breakdown by PRODUCT TYPE
                     ReturnedOrdersBreakdown = new
                     {
-                        RentalOrdersCount = rentalOrders.Count,
+                        RentalProductsCount = rentalProducts.Count,
                         RentalTotalEarnings = rentalEarnings,
-                        PurchaseOrdersCount = purchaseOrders.Count,
+                        PurchaseProductsCount = purchaseProducts.Count,
                         PurchaseTotalEarnings = purchaseEarnings,
-                        TotalEarnings = rentalEarnings + purchaseEarnings
+                        TotalEarnings = rentalEarnings + purchaseEarnings,
+                        // Keep old names for backward compatibility
+                        RentalOrdersCount = rentalProducts.Count,
+                        PurchaseOrdersCount = purchaseProducts.Count
                     }
                 };
             }).ToList();
