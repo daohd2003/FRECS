@@ -35,7 +35,6 @@ namespace ShareItFE.Pages.Provider
             public int ActiveItems { get; set; }
             public int TotalBookings { get; set; }
             public int TotalSales { get; set; }
-            public decimal TotalRevenue { get; set; }
         }
 
         // Properties for the page
@@ -261,7 +260,6 @@ namespace ShareItFE.Pages.Provider
                         Stats.ActiveItems = allProducts.Count(p => p.AvailabilityStatus == "available");
                         Stats.TotalBookings = allProducts.Sum(p => p.RentCount);
                         Stats.TotalSales = allProducts.Sum(p => p.BuyCount);
-                        Stats.TotalRevenue = allProducts.Sum(p => p.PricePerDay * p.RentCount + p.PurchasePrice * p.BuyCount);
                     }
                 }
             }
