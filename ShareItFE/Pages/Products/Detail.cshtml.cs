@@ -91,9 +91,13 @@ namespace ShareItFE.Pages.Products
             Guid orderItemId;
             AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
 
+            // Clear any existing TempData to prevent confusion
+            TempData.Remove("ErrorMessage");
+            TempData.Remove("SuccessMessage");
+
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
-                ErrorMessage = "Please log in to add product to cart.";
+                ErrorMessage = "Please log in to submit feedback.";
                 await LoadInitialData(id, 1);
                 return Page();
             }
@@ -198,6 +202,12 @@ namespace ShareItFE.Pages.Products
 
         public async Task<IActionResult> OnGetAsync(Guid id, [FromQuery] int page = 1)
         {
+            // Read TempData messages if any (from redirects)
+            if (TempData["SuccessMessage"] is string successMsg)
+                SuccessMessage = successMsg;
+            if (TempData["ErrorMessage"] is string errorMsg)
+                ErrorMessage = errorMsg;
+
             // Debug: Print all query parameters
             var queryParams = Request.Query.ToList();
             Console.WriteLine($"All Query Parameters: {string.Join(", ", queryParams.Select(q => $"{q.Key}={q.Value}"))}");
@@ -405,10 +415,14 @@ namespace ShareItFE.Pages.Products
         {
             AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
 
+            // Clear any existing TempData error messages to prevent them from appearing elsewhere
+            TempData.Remove("ErrorMessage");
+            TempData.Remove("SuccessMessage");
+
             // 1. Kiểm tra xác thực người dùng
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
-                ErrorMessage = "Please log in to add product to cart.";
+                ErrorMessage = "Please log in to add products to your cart.";
                 await LoadInitialData(id, 1); // Tải lại dữ liệu để giữ trạng thái trang
                 return Page();
             }

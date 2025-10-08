@@ -80,8 +80,18 @@
                 const messageRow = document.createElement('div');
                 messageRow.className = isMe ? 'message-row me' : 'message-row them';
 
+                // Create container for bubble and timestamp
+                const bubbleContainer = document.createElement('div');
+                bubbleContainer.classList.add('message-bubble-container', isMe ? 'me' : 'them');
+
                 const bubbleDiv = document.createElement('div');
                 bubbleDiv.className = 'message-bubble';
+                if (isMe) {
+                    bubbleDiv.classList.add('me');
+                } else {
+                    bubbleDiv.classList.add('them');
+                }
+                
                 if (message.attachment) {
                     const att = message.attachment;
                     if (att.type === 'image') {
@@ -130,7 +140,61 @@
                     bubbleDiv.textContent = message.content;
                 }
 
-                messageRow.appendChild(bubbleDiv);
+                // Create timestamp element
+                const timestampDiv = document.createElement('div');
+                timestampDiv.classList.add('message-timestamp');
+                
+                // Format timestamp
+                let formattedTime = '';
+                if (message.sentAt || message.timestamp) {
+                    const msgDate = new Date(message.sentAt || message.timestamp);
+                    const now = new Date();
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+                    
+                    if (msgDateOnly.getTime() === today.getTime()) {
+                        // Today - show only time
+                        formattedTime = msgDate.toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    } else if (msgDateOnly.getTime() === today.getTime() - 24 * 60 * 60 * 1000) {
+                        // Yesterday
+                        formattedTime = 'Hôm qua ' + msgDate.toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    } else {
+                        // Older - show date and time
+                        formattedTime = msgDate.toLocaleDateString('vi-VN', { 
+                            day: '2-digit', 
+                            month: '2-digit',
+                            year: 'numeric'
+                        }) + ' ' + msgDate.toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    }
+                } else {
+                    // Fallback for messages without timestamp
+                    formattedTime = new Date().toLocaleTimeString('vi-VN', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                }
+                
+                timestampDiv.textContent = formattedTime;
+                
+                // Add click handler to toggle timestamp
+                bubbleDiv.addEventListener('click', function() {
+                    timestampDiv.classList.toggle('show');
+                });
+                
+                // Assemble the message
+                bubbleContainer.appendChild(bubbleDiv);
+                bubbleContainer.appendChild(timestampDiv);
+                messageRow.appendChild(bubbleContainer);
+                
                 return messageRow;
             }
 
@@ -253,6 +317,18 @@
                 const messageText = messageInput.value.trim();
                 if (messageText && signalRConnection) {
                     const recipientId = selectedConversation.otherParticipant.userId;
+
+                    // Create temporary message with timestamp for immediate display
+                    const tempMessage = {
+                        content: messageText,
+                        senderId: currentUserId,
+                        sentAt: new Date().toISOString()
+                    };
+                    
+                    // Display message immediately
+                    const el = createMessageElement(tempMessage, true);
+                    messagesContainerEl.appendChild(el);
+                    messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
 
                     signalRConnection.invoke("SendMessageAsync", selectedConversation.id, recipientId, messageText, null)
                         .then(() => {
@@ -393,9 +469,12 @@
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {
                             const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
-                            const el = createMessageElement(message, isMe);
-                            messagesContainerEl.appendChild(el);
-                            messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                            // Only display message if it's not from current user (to avoid duplicate with temp message)
+                            if (!isMe) {
+                                const el = createMessageElement(message, isMe);
+                                messagesContainerEl.appendChild(el);
+                                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                            }
                             if (message.productContext) {
                                 productImageEl.src = message.productContext.imageUrl || 'https://www.shutterstock.com/image-vector/image-icon-trendy-flat-style-600nw-643080895.jpg';
                                 productNameEl.textContent = message.productContext.name;

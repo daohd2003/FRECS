@@ -1,12 +1,11 @@
 ﻿/* --- Cấu trúc Layout chính --- */
 .chat-container {
     display: flex;
-    height: calc(100vh - 80px); /* Chiều cao màn hình trừ đi header */
+    min-height: 100vh; /* Chiều cao tối thiểu bằng viewport */
     font-family: sans-serif;
     background-color: #f9fafb;
-    margin-bottom: 40px;
-    display: flex;
-    height: 100%;
+    position: relative;
+    z-index: 10; /* Đảm bảo nằm trên footer */
 }
 
 /* --- Cột trái: Danh sách hội thoại --- */
@@ -17,6 +16,9 @@
     background-color: #ffffff;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
+    position: relative;
+    z-index: 11;
 }
 
 .conversation-list-header {
@@ -122,6 +124,9 @@
     flex-direction: column;
     flex-grow: 1;
     overflow: hidden;
+    min-height: 100vh;
+    position: relative;
+    z-index: 11;
 }
 
 .chat-placeholder {
@@ -137,6 +142,9 @@
     display: flex;
     flex-direction: column;
     background-color: #ffffff;
+    min-height: 100vh;
+    position: relative;
+    z-index: 11; /* Cao hơn container để đảm bảo che footer */
 }
 
 .chat-header {
@@ -174,8 +182,10 @@
 .messages-container {
     flex-grow: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem;
-    height: 400px;
+    min-height: 500px;
+    max-height: calc(100vh - 200px); /* Trừ đi space cho header và form */
 }
 
 .message-row {
@@ -194,8 +204,10 @@
 .message-bubble {
     padding: 0.5rem 1rem;
     border-radius: 1rem;
-    max-width: 70%;
+    max-width: 120% !important;
     word-wrap: break-word;
+    cursor: pointer;
+    transition: background-color 0.1s ease;
 }
 
     .message-bubble.me {
@@ -203,12 +215,28 @@
         color: white;
         border-bottom-right-radius: 0.25rem;
     }
+    
+    /* Ensure images in my messages don't inherit bubble background */
+    .message-bubble.me img {
+        background-color: transparent !important;
+        background: none !important;
+    }
 
     .message-bubble.them {
         background-color: #e5e7eb;
         color: #1f2937;
         border-bottom-left-radius: 0.25rem;
     }
+    
+    /* Ensure images in their messages don't inherit bubble background */
+    .message-bubble.them img {
+        background-color: transparent !important;
+        background: none !important;
+    }
+
+.message-bubble:hover {
+    filter: brightness(0.95);
+}
 
 .message-form {
     padding: 1rem;
@@ -261,6 +289,40 @@
 .message-bubble video {
     display: block;
     max-width: 100%;
+    background: transparent !important;
+    border-radius: 8px;
+    margin: 0;
+    padding: 0;
+}
+
+/* Remove background from image containers */
+.message-bubble img {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Link styling in messages */
+.message-bubble.me a {
+    color: white !important;
+    text-decoration: underline;
+}
+
+.message-bubble.them a {
+    color: #1f2937 !important;
+    text-decoration: underline;
+}
+
+/* Remove background from any div containing media */
+.message-bubble div:has(img),
+.message-bubble div:has(video) {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Media elements should have no background */
+.message-bubble video {
+    background: transparent !important;
+    background-color: transparent !important;
 }
 
 .hidden {
@@ -279,4 +341,38 @@
 .product-context-banner a {
     text-decoration: none; /* Bỏ gạch chân */
     color: inherit; /* Giữ màu chữ mặc định của phần tử cha */
+}
+
+/* --- Timestamp styling for messages --- */
+.message-timestamp {
+    font-size: 0.75rem; /* 12px */
+    color: #6b7280; /* gray-500 */
+    text-align: center;
+    margin-top: 0.25rem; /* 4px */
+    padding: 0.125rem 0.5rem; /* 2px 8px */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    user-select: none;
+    cursor: default;
+}
+
+.message-timestamp.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.message-bubble-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 85% !important;
+    word-wrap: break-word;
+}
+
+.message-bubble-container.me {
+    align-items: flex-end;
+}
+
+.message-bubble-container.them {
+    align-items: flex-start;
 }

@@ -319,9 +319,14 @@
         }
         @if (TempData["ErrorMessage"] != null)
         {
+            var errorMsg = TempData["ErrorMessage"]?.ToString() ?? "";
+            // Don't show cart-related errors from other pages
+            if (!errorMsg.Contains("cart", StringComparison.OrdinalIgnoreCase))
+            {
             <text>
-                    alert('@TempData["ErrorMessage"]');
+                    alert('@Html.Raw(errorMsg.Replace("'", "\\'"))');
             </text>
+            }
         }
 
                 // Kiểm tra trạng thái yêu thích từ model khi load trang
