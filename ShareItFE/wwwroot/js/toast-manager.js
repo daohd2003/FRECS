@@ -3,6 +3,8 @@
  * Handles all toast notifications with automatic cleanup on page navigation
  */
 
+// Prevent duplicate declaration
+if (typeof ToastManager === 'undefined') {
 class ToastManager {
     constructor() {
         this.toasts = new Set();
@@ -267,9 +269,12 @@ class ToastManager {
         return this.show(message, 'warning', duration);
     }
 }
+} // End of ToastManager check
 
-// Global instance
-window.toastManager = new ToastManager();
+// Global instance (only create if not exists)
+if (!window.toastManager) {
+    window.toastManager = new ToastManager();
+}
 
 // Global functions for backward compatibility
 window.showToast = (message, type, duration) => window.toastManager.show(message, type, duration);

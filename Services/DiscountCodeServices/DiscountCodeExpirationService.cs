@@ -8,7 +8,7 @@ namespace Services.DiscountCodeServices
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<DiscountCodeExpirationService> _logger;
-        private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(30); // Check every 30 minutes
+        private readonly TimeSpan _checkInterval = TimeSpan.FromHours(12); // Check every 12 hours
 
         public DiscountCodeExpirationService(
             IServiceProvider serviceProvider,

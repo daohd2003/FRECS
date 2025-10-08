@@ -1,7 +1,17 @@
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.Extensions.Configuration
+@using Microsoft.Extensions.Hosting
+@using ShareItFE.Extensions
+@inject IConfiguration Configuration
+@inject IWebHostEnvironment Environment
 @{
     var userName = User.Identity?.Name ?? "Admin";
     var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "admin";
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    
+    // Get access token from cookies (simpler approach for layout)
+    var accessToken = Context.Request.Cookies["AccessToken"] ?? "";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -9,9 +19,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ShareIt Admin</title>
+    <script>
+        // Global API settings for JavaScript
+        window.apiSettings = {
+            environment: '@Environment.EnvironmentName',
+            baseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
+            rootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")'
+        };
+        
+        // Admin chat config - available on all admin pages
+        window.adminChatConfig = {
+            currentUserId: '@userId',
+            accessToken: '@accessToken',
+            apiBaseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
+            signalRRootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")'
+        };
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-layout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/floating-chat.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -59,9 +86,9 @@
                         <span>Product Verification</span>
                     </a>
 
-                    <a asp-page="/Admin/Messages" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Messages" ? "active" : "")">
-                        <i class="bi bi-chat-dots-fill"></i>
-                        <span>Messages</span>
+                    <a asp-page="/Admin/StaffManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/StaffManagement" ? "active" : "")">
+                        <i class="bi bi-people-fill"></i>
+                        <span>Staff Management</span>
                     </a>
                 </div>
 
@@ -116,7 +143,9 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/dist/browser/signalr.js"></script>
     <script src="~/js/toast-manager.js" asp-append-version="true"></script>
+    <script src="~/js/floating-chat-manager.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 
     <script>
