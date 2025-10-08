@@ -469,9 +469,12 @@
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {
                             const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
-                            const el = createMessageElement(message, isMe);
-                            messagesContainerEl.appendChild(el);
-                            messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                            // Only display message if it's not from current user (to avoid duplicate with temp message)
+                            if (!isMe) {
+                                const el = createMessageElement(message, isMe);
+                                messagesContainerEl.appendChild(el);
+                                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                            }
                             if (message.productContext) {
                                 productImageEl.src = message.productContext.imageUrl || 'https://www.shutterstock.com/image-vector/image-icon-trendy-flat-style-600nw-643080895.jpg';
                                 productNameEl.textContent = message.productContext.name;
