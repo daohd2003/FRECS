@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.ConversationDtos;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -58,7 +59,7 @@ namespace Hubs
                 ReceiverId = receiverGuid,
                 Content = content,
                 ProductId = productGuid,
-                SentAt = DateTime.UtcNow,
+                SentAt = DateTimeHelper.GetVietnamTime(),
                 IsRead = false
             };
 
@@ -154,7 +155,7 @@ namespace Hubs
                 ReceiverId = receiverGuid,
                 Content = content ?? string.Empty,
                 ProductId = productGuid,
-                SentAt = DateTime.UtcNow,
+                SentAt = DateTimeHelper.GetVietnamTime(),
                 IsRead = false,
                 AttachmentUrl = attachmentUrl,
                 AttachmentType = attachmentType,

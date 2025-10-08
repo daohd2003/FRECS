@@ -1220,10 +1220,76 @@
                 function createMessageElement(message, isMe) {
                     const messageDiv = document.createElement('div');
                     messageDiv.classList.add('flex', 'mb-2', isMe ? 'justify-end' : 'justify-start');
+                    
+                    // Create container for bubble and timestamp
+                    const bubbleContainer = document.createElement('div');
+                    bubbleContainer.classList.add('message-bubble-container', isMe ? 'me' : 'them');
+                    
+                    // Create message bubble
                     const bubbleDiv = document.createElement('div');
-                    bubbleDiv.classList.add('px-4', 'py-2', 'rounded-lg', 'max-w-xs', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    bubbleDiv.classList.add('message-bubble', 'px-4', 'py-2', 'rounded-lg', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    if (isMe) {
+                        bubbleDiv.classList.add('me');
+                    } else {
+                        bubbleDiv.classList.add('them');
+                    }
                     bubbleDiv.textContent = message.content;
-                    messageDiv.appendChild(bubbleDiv);
+                    
+                    // Create timestamp element
+                    const timestampDiv = document.createElement('div');
+                    timestampDiv.classList.add('message-timestamp');
+                    
+                    // Format timestamp - handle both Date objects and string dates
+                    let formattedTime = '';
+                    if (message.sentAt || message.timestamp) {
+                        const msgDate = new Date(message.sentAt || message.timestamp);
+                        const now = new Date();
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+                        
+                        if (msgDateOnly.getTime() === today.getTime()) {
+                            // Today - show only time
+                            formattedTime = msgDate.toLocaleTimeString('vi-VN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                        } else if (msgDateOnly.getTime() === today.getTime() - 24 * 60 * 60 * 1000) {
+                            // Yesterday
+                            formattedTime = 'Hôm qua ' + msgDate.toLocaleTimeString('vi-VN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                        } else {
+                        // Older - show date and time
+                        formattedTime = msgDate.toLocaleDateString('vi-VN', { 
+                            day: '2-digit', 
+                            month: '2-digit',
+                            year: 'numeric'
+                        }) + ' ' + msgDate.toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                        }
+                    } else {
+                        // Fallback for messages without timestamp
+                        formattedTime = new Date().toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    }
+                    
+                    timestampDiv.textContent = formattedTime;
+                    
+                    // Add click handler to toggle timestamp
+                    bubbleDiv.addEventListener('click', function() {
+                        timestampDiv.classList.toggle('show');
+                    });
+                    
+                    // Assemble the message
+                    bubbleContainer.appendChild(bubbleDiv);
+                    bubbleContainer.appendChild(timestampDiv);
+                    messageDiv.appendChild(bubbleContainer);
+                    
                     return messageDiv;
                 }
 
@@ -1345,7 +1411,11 @@
                     e.preventDefault();
                     const messageContent = messageInput.value.trim();
                     if (messageContent && signalRConnection && currentConversationId) {
-                        const tempMessage = { content: messageContent, senderId: currentUserId };
+                        const tempMessage = { 
+                            content: messageContent, 
+                            senderId: currentUserId,
+                            sentAt: new Date().toISOString()
+                        };
                         appendNewMessage(tempMessage);
 
                         signalRConnection.invoke("SendMessageAsync", currentConversationId, providerId, messageContent, productId)
