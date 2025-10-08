@@ -45,8 +45,17 @@ namespace ShareItFE.Pages
             if (TempData["SuccessMessage"] is string successMsg)
                 SuccessMessage = successMsg;
 
+            // Only show error message if it's auth-related (not from other pages like product detail)
             if (TempData["ErrorMessage"] is string errorMsg)
-                ErrorMessage = errorMsg;
+            {
+                // Ignore messages related to "cart" as they should stay on product pages
+                if (!errorMsg.Contains("cart", StringComparison.OrdinalIgnoreCase))
+                {
+                    ErrorMessage = errorMsg;
+                }
+                // Clear it after reading to prevent it from showing again
+                TempData.Remove("ErrorMessage");
+            }
 
             if (TempData["IsLoginState"] is bool isLoginState)
                 IsLogin = isLoginState;

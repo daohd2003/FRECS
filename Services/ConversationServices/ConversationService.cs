@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.ConversationDtos;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.ConversationRepositories;
 using System;
 using System.Collections.Generic;
@@ -116,7 +117,7 @@ namespace Services.ConversationServices
                 {
                     User1Id = u1,
                     User2Id = u2,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTimeHelper.GetVietnamTime()
                 };
 
                 // Bước 2: Tải lại cuộc trò chuyện vừa tạo bằng phương thức FindAsync

@@ -486,6 +486,24 @@
     <script>
         lucide.createIcons();
 
+        // Show toast messages from Model if any
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                showToast(@Html.Raw(JsonSerializer.Serialize(Model.ErrorMessage)), 'error');
+            });
+            </text>
+        }
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                showToast(@Html.Raw(JsonSerializer.Serialize(Model.SuccessMessage)), 'success');
+            });
+            </text>
+        }
+
         // Handle scroll to reviews section for pagination
         function scrollToReviews() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -897,11 +915,18 @@
             const tryOnBtn = document.getElementById('tryOnBtn');
             if (tryOnBtn) {
                 tryOnBtn.addEventListener('click', () => {
+                    // Check if user is authenticated
+                    const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                    if (!isAuthenticated) {
+                        showToast('Please log in to use Try On feature', 'error');
+                        return;
+                    }
+                    
                     const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product?.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
                     if (garmentImageUrls.length > 0) {
                         window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
                     } else {
-                        alert('No garment image available for try-on.');
+                        showToast('No garment image available for try-on', 'error');
                     }
                 });
             }
@@ -964,6 +989,14 @@
             if (openFeedbackBtn) {
                 openFeedbackBtn.addEventListener('click', (e) => {
                     e.preventDefault(); // Prevent any default button behavior
+                    
+                    // Double-check authentication (should already be checked by backend)
+                    const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                    if (!isAuthenticated) {
+                        showToast('Please log in to leave feedback', 'error');
+                        return;
+                    }
+                    
                     feedbackModal.classList.remove('hidden');
                     document.body.classList.add('overflow-hidden');
                     // Reset form fields when opening
@@ -1092,6 +1125,13 @@
                     favoriteForm.addEventListener('submit', async (e) => {
                         e.preventDefault();
                         
+                        // Check if user is authenticated
+                        const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                        if (!isAuthenticated) {
+                            showToast('Please log in to add products to your favorites', 'error');
+                            return;
+                        }
+                        
                         const button = favoriteForm.querySelector('.favorite-btn');
                         const icon = favoriteForm.querySelector('.favorite-icon');
                         const productId = favoriteForm.querySelector('input[name="productId"]').value;
@@ -1145,18 +1185,8 @@
                     });
                 }
 
-                // Try On button logic
-                const tryOnBtn = document.getElementById('tryOnBtn');
-                if (tryOnBtn) {
-                    tryOnBtn.addEventListener('click', () => {
-                        const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
-                        if (garmentImageUrls.length > 0) {
-                            window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
-                        } else {
-                            alert('No garment image available for try-on');
-                        }
-                    });
-                }
+                // Try On button logic - already handled above in DOMContentLoaded
+                // This duplicate can be removed
 
                 // --- PHẦN 2: LOGIC CHO CHAT MODAL ---
 
@@ -1190,10 +1220,76 @@
                 function createMessageElement(message, isMe) {
                     const messageDiv = document.createElement('div');
                     messageDiv.classList.add('flex', 'mb-2', isMe ? 'justify-end' : 'justify-start');
+                    
+                    // Create container for bubble and timestamp
+                    const bubbleContainer = document.createElement('div');
+                    bubbleContainer.classList.add('message-bubble-container', isMe ? 'me' : 'them');
+                    
+                    // Create message bubble
                     const bubbleDiv = document.createElement('div');
-                    bubbleDiv.classList.add('px-4', 'py-2', 'rounded-lg', 'max-w-xs', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    bubbleDiv.classList.add('message-bubble', 'px-4', 'py-2', 'rounded-lg', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    if (isMe) {
+                        bubbleDiv.classList.add('me');
+                    } else {
+                        bubbleDiv.classList.add('them');
+                    }
                     bubbleDiv.textContent = message.content;
-                    messageDiv.appendChild(bubbleDiv);
+                    
+                    // Create timestamp element
+                    const timestampDiv = document.createElement('div');
+                    timestampDiv.classList.add('message-timestamp');
+                    
+                    // Format timestamp - handle both Date objects and string dates
+                    let formattedTime = '';
+                    if (message.sentAt || message.timestamp) {
+                        const msgDate = new Date(message.sentAt || message.timestamp);
+                        const now = new Date();
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+                        
+                        if (msgDateOnly.getTime() === today.getTime()) {
+                            // Today - show only time
+                            formattedTime = msgDate.toLocaleTimeString('vi-VN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                        } else if (msgDateOnly.getTime() === today.getTime() - 24 * 60 * 60 * 1000) {
+                            // Yesterday
+                            formattedTime = 'Hôm qua ' + msgDate.toLocaleTimeString('vi-VN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                        } else {
+                        // Older - show date and time
+                        formattedTime = msgDate.toLocaleDateString('vi-VN', { 
+                            day: '2-digit', 
+                            month: '2-digit',
+                            year: 'numeric'
+                        }) + ' ' + msgDate.toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                        }
+                    } else {
+                        // Fallback for messages without timestamp
+                        formattedTime = new Date().toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    }
+                    
+                    timestampDiv.textContent = formattedTime;
+                    
+                    // Add click handler to toggle timestamp
+                    bubbleDiv.addEventListener('click', function() {
+                        timestampDiv.classList.toggle('show');
+                    });
+                    
+                    // Assemble the message
+                    bubbleContainer.appendChild(bubbleDiv);
+                    bubbleContainer.appendChild(timestampDiv);
+                    messageDiv.appendChild(bubbleContainer);
+                    
                     return messageDiv;
                 }
 
@@ -1292,13 +1388,13 @@
                     openChatBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         if (!accessToken) {
-                            alert("Please log in to chat.");
-                        return;
-                    }
-                    chatModal.classList.remove('hidden');
-                    document.body.classList.add('overflow-hidden');
-                    initializeChat();
-                });
+                            showToast("Please log in to chat with provider", 'error');
+                            return;
+                        }
+                        chatModal.classList.remove('hidden');
+                        document.body.classList.add('overflow-hidden');
+                        initializeChat();
+                    });
                 }
 
                 if (closeChatBtn) {
@@ -1315,7 +1411,11 @@
                     e.preventDefault();
                     const messageContent = messageInput.value.trim();
                     if (messageContent && signalRConnection && currentConversationId) {
-                        const tempMessage = { content: messageContent, senderId: currentUserId };
+                        const tempMessage = { 
+                            content: messageContent, 
+                            senderId: currentUserId,
+                            sentAt: new Date().toISOString()
+                        };
                         appendNewMessage(tempMessage);
 
                         signalRConnection.invoke("SendMessageAsync", currentConversationId, providerId, messageContent, productId)
