@@ -486,6 +486,24 @@
     <script>
         lucide.createIcons();
 
+        // Show toast messages from Model if any
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                showToast(@Html.Raw(JsonSerializer.Serialize(Model.ErrorMessage)), 'error');
+            });
+            </text>
+        }
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                showToast(@Html.Raw(JsonSerializer.Serialize(Model.SuccessMessage)), 'success');
+            });
+            </text>
+        }
+
         // Handle scroll to reviews section for pagination
         function scrollToReviews() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -897,11 +915,18 @@
             const tryOnBtn = document.getElementById('tryOnBtn');
             if (tryOnBtn) {
                 tryOnBtn.addEventListener('click', () => {
+                    // Check if user is authenticated
+                    const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                    if (!isAuthenticated) {
+                        showToast('Please log in to use Try On feature', 'error');
+                        return;
+                    }
+                    
                     const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product?.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
                     if (garmentImageUrls.length > 0) {
                         window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
                     } else {
-                        alert('No garment image available for try-on.');
+                        showToast('No garment image available for try-on', 'error');
                     }
                 });
             }
@@ -964,6 +989,14 @@
             if (openFeedbackBtn) {
                 openFeedbackBtn.addEventListener('click', (e) => {
                     e.preventDefault(); // Prevent any default button behavior
+                    
+                    // Double-check authentication (should already be checked by backend)
+                    const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                    if (!isAuthenticated) {
+                        showToast('Please log in to leave feedback', 'error');
+                        return;
+                    }
+                    
                     feedbackModal.classList.remove('hidden');
                     document.body.classList.add('overflow-hidden');
                     // Reset form fields when opening
@@ -1092,6 +1125,13 @@
                     favoriteForm.addEventListener('submit', async (e) => {
                         e.preventDefault();
                         
+                        // Check if user is authenticated
+                        const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                        if (!isAuthenticated) {
+                            showToast('Please log in to add products to your favorites', 'error');
+                            return;
+                        }
+                        
                         const button = favoriteForm.querySelector('.favorite-btn');
                         const icon = favoriteForm.querySelector('.favorite-icon');
                         const productId = favoriteForm.querySelector('input[name="productId"]').value;
@@ -1145,18 +1185,8 @@
                     });
                 }
 
-                // Try On button logic
-                const tryOnBtn = document.getElementById('tryOnBtn');
-                if (tryOnBtn) {
-                    tryOnBtn.addEventListener('click', () => {
-                        const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
-                        if (garmentImageUrls.length > 0) {
-                            window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
-                        } else {
-                            alert('No garment image available for try-on');
-                        }
-                    });
-                }
+                // Try On button logic - already handled above in DOMContentLoaded
+                // This duplicate can be removed
 
                 // --- PHẦN 2: LOGIC CHO CHAT MODAL ---
 
@@ -1292,13 +1322,13 @@
                     openChatBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         if (!accessToken) {
-                            alert("Please log in to chat.");
-                        return;
-                    }
-                    chatModal.classList.remove('hidden');
-                    document.body.classList.add('overflow-hidden');
-                    initializeChat();
-                });
+                            showToast("Please log in to chat with provider", 'error');
+                            return;
+                        }
+                        chatModal.classList.remove('hidden');
+                        document.body.classList.add('overflow-hidden');
+                        initializeChat();
+                    });
                 }
 
                 if (closeChatBtn) {
