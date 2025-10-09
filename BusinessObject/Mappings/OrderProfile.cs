@@ -1,15 +1,8 @@
-﻿using AutoMapper;
-using BusinessObject.DTOs.OrdersDto;
+﻿using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.TransactionsDto;
-using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using BusinessObject.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BusinessObject.Mappings
 {
@@ -34,7 +27,10 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.Customer.Profile.Address))
                 .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Customer.Profile.Phone))
                 .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.UtcNow))
-                .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src => src.Status == OrderStatus.in_use ? src.UpdatedAt : (DateTime?)null))
+                .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src =>
+                    (src.Status == OrderStatus.in_use || src.Status == OrderStatus.returned || src.Status == OrderStatus.returned_with_issue || src.Status == OrderStatus.in_transit || src.Status == OrderStatus.returning)
+                    ? src.DeliveredDate
+                    : (DateTime?)null))
                 .ForMember(dest => dest.ReturnDate, opt => opt.MapFrom(src => src.RentalEnd));
 
             CreateMap<OrderItem, OrderItemListDto>()
@@ -52,6 +48,8 @@ namespace BusinessObject.Mappings
             CreateMap<Order, OrderDetailsDto>()
             .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => $"ORD{src.Id.ToString().Substring(0, 3).ToUpper()}"))
             .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => src.CreatedAt))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt)) // Order Placed date
+            .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src => src.DeliveredDate)) // Order Shipped date
             .ForMember(dest => dest.RentalStartDate, opt => opt.MapFrom(src => src.RentalStart))
             .ForMember(dest => dest.RentalEndDate, opt => opt.MapFrom(src => src.RentalEnd))
             .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))

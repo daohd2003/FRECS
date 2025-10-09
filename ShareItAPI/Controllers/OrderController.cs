@@ -220,6 +220,19 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<OrderDetailsDto>("Order details retrieved successfully.", orderDetails));
         }
 
+        [HttpGet("{orderId:guid}/provider-details")]
+        public async Task<IActionResult> GetOrderDetailsForProvider(Guid orderId)
+        {
+            var orderDetails = await _orderService.GetOrderDetailsForProviderAsync(orderId);
+
+            if (orderDetails == null)
+            {
+                return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            return Ok(new ApiResponse<OrderDetailsDto>("Provider order details retrieved successfully.", orderDetails));
+        }
+
         [HttpPost("rent-again")]
         public async Task<IActionResult> RentAgain([FromBody] RentAgainRequestDto requestDto)
         {
