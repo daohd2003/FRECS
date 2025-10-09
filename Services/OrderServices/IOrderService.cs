@@ -34,6 +34,8 @@ namespace Services.OrderServices
         Task SendDamageReportEmailAsync(string toEmail, string subject, string body);
         Task ConfirmDeliveryAsync(Guid orderId);
 
+        Task<OrderDetailsDto> GetOrderDetailsForProviderAsync(Guid orderId);
+        
         //New Updated Methods for Order List Display
         Task<IEnumerable<OrderListDto>> GetProviderOrdersForListDisplayAsync(Guid providerId);
         Task<IEnumerable<OrderListDto>> GetCustomerOrdersForListDisplayAsync(Guid customerId);

@@ -881,6 +881,51 @@ namespace Services.OrderServices
             return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
+        public async Task<OrderDetailsDto> GetOrderDetailsForProviderAsync(Guid orderId)
+        {
+            try
+            {
+                var order = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => o.Id == orderId)
+                    .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                            .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
+                    .Include(o => o.Customer)
+                        .ThenInclude(c => c.Profile)
+                    .Include(o => o.DiscountCode)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                {
+                    return null;
+                }
+
+                var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
+                
+                // Fetch payment info from Transaction for provider
+                var transaction = await _context.Transactions
+                    .AsNoTracking()
+                    .Where(t => t.Orders.Any(o => o.Id == orderId) && t.Status == TransactionStatus.completed)
+                    .OrderByDescending(t => t.TransactionDate)
+                    .FirstOrDefaultAsync();
+                    
+                if (transaction != null)
+                {
+                    orderDetailsDto.PaymentMethod = transaction.PaymentMethod;
+                    orderDetailsDto.PaymentConfirmedDate = transaction.TransactionDate;
+                }
+                
+                return orderDetailsDto;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetOrderDetailsForProviderAsync for orderId {orderId}: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                throw new Exception($"Failed to get order details for provider: {ex.Message}", ex);
+            }
+        }
+
         public async Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId)
         {
             try

@@ -15,6 +15,9 @@ namespace BusinessObject.DTOs.OrdersDto
         public DateTime RentalStartDate { get; set; }
         public DateTime RentalEndDate { get; set; }
         public DateTime OrderDate { get; set; }
+        public DateTime CreatedAt { get; set; } // Order Placed date
+        public DateTime? PaymentConfirmedDate { get; set; } // Payment confirmed date from Transaction
+        public DateTime? DeliveredDate { get; set; } // Order shipped/delivered date
 
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public OrderStatus Status { get; set; }
