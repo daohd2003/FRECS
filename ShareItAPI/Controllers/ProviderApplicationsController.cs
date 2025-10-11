@@ -44,24 +44,55 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAll([FromQuery] ProviderApplicationStatus? status)
         {
-            var list = await _service.GetByStatusAsync(status ?? ProviderApplicationStatus.pending);
+            var list = await _service.GetAllApplicationsAsync(status);
             return Ok(new ApiResponse<object>("Success", list));
         }
 
+        [HttpPost("approve/{id}")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> Approve(Guid id)
+        {
+            var staffIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdClaim)) return Unauthorized();
+            var staffId = Guid.Parse(staffIdClaim);
+
+            var ok = await _service.ApproveAsync(staffId, id);
+            if (!ok) return BadRequest(new ApiResponse<string>("Unable to approve application", null));
+            return Ok(new ApiResponse<string>("Application approved successfully", null));
+        }
+
+        [HttpPost("reject/{id}")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> Reject(Guid id, [FromBody] RejectApplicationDto dto)
+        {
+            var staffIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdClaim)) return Unauthorized();
+            var staffId = Guid.Parse(staffIdClaim);
+
+            var ok = await _service.RejectAsync(staffId, id, dto.RejectionReason);
+            if (!ok) return BadRequest(new ApiResponse<string>("Unable to reject application", null));
+            return Ok(new ApiResponse<string>("Application rejected successfully", null));
+        }
+
         [HttpPut("review")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> Review([FromBody] ProviderApplicationReviewDto dto)
         {
-            var adminIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(adminIdClaim)) return Unauthorized();
-            var adminId = Guid.Parse(adminIdClaim);
+            var staffIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdClaim)) return Unauthorized();
+            var staffId = Guid.Parse(staffIdClaim);
 
-            var ok = await _service.ReviewAsync(adminId, dto);
+            var ok = await _service.ReviewAsync(staffId, dto);
             if (!ok) return BadRequest(new ApiResponse<string>("Unable to review application", null));
             return Ok(new ApiResponse<string>("Application reviewed", null));
+        }
+
+        public class RejectApplicationDto
+        {
+            public string RejectionReason { get; set; } = string.Empty;
         }
     }
 }

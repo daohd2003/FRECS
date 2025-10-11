@@ -8,6 +8,7 @@ namespace Repositories.ProviderApplicationRepositories
     {
         Task<ProviderApplication?> GetPendingByUserIdAsync(Guid userId);
         Task<IEnumerable<ProviderApplication>> GetByStatusAsync(ProviderApplicationStatus status);
+        Task<IEnumerable<ProviderApplication>> GetAllWithUserDetailsAsync();
     }
 }
 

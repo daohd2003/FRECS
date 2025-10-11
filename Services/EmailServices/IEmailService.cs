@@ -13,5 +13,7 @@ namespace Services.EmailServices
         Task SendPasswordResetEmailAsync(string toEmail, string resetLink);
         Task SendBanNotificationEmailAsync(string toEmail, string reason);
         Task SendContactFormEmailAsync(ContactFormRequestDto formData);
+        Task SendProviderApplicationApprovedEmailAsync(string toEmail, string businessName);
+        Task SendProviderApplicationRejectedEmailAsync(string toEmail, string businessName, string rejectionReason);
     }
 }
