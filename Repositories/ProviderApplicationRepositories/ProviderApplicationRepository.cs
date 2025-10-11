@@ -24,7 +24,21 @@ namespace Repositories.ProviderApplicationRepositories
         {
             return await _context.ProviderApplications
                 .Include(a => a.User)
+                    .ThenInclude(u => u.Profile)
+                .Include(a => a.ReviewedByAdmin)
+                    .ThenInclude(a => a.Profile)
                 .Where(a => a.Status == status)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<ProviderApplication>> GetAllWithUserDetailsAsync()
+        {
+            return await _context.ProviderApplications
+                .Include(a => a.User)
+                    .ThenInclude(u => u.Profile)
+                .Include(a => a.ReviewedByAdmin)
+                    .ThenInclude(a => a.Profile)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
         }
