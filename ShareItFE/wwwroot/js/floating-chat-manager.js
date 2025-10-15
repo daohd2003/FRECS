@@ -66,12 +66,27 @@ class FloatingChatManager {
     createContainer() {
         if (document.getElementById('floating-chats-container')) {
             this.container = document.getElementById('floating-chats-container');
+            this.expandedContainer = document.getElementById('floating-chats-expanded');
+            this.minimizedContainer = document.getElementById('floating-chats-minimized');
             return;
         }
 
         this.container = document.createElement('div');
         this.container.id = 'floating-chats-container';
         this.container.className = 'floating-chats-container';
+        
+        // Create expanded container (horizontal)
+        this.expandedContainer = document.createElement('div');
+        this.expandedContainer.id = 'floating-chats-expanded';
+        this.expandedContainer.className = 'floating-chats-expanded';
+        
+        // Create minimized container (vertical)
+        this.minimizedContainer = document.createElement('div');
+        this.minimizedContainer.id = 'floating-chats-minimized';
+        this.minimizedContainer.className = 'floating-chats-minimized';
+        
+        this.container.appendChild(this.expandedContainer);
+        this.container.appendChild(this.minimizedContainer);
         document.body.appendChild(this.container);
     }
 
@@ -126,8 +141,13 @@ class FloatingChatManager {
         }
     }
 
-    handleIncomingMessage(message) {
-        const chat = this.chats.get(message.senderId);
+    async handleIncomingMessage(message) {
+        // Ignore messages sent by current user (prevent duplicate chat window)
+        if (message.senderId === this.currentUserId) {
+            return;
+        }
+        
+        let chat = this.chats.get(message.senderId);
         
         if (chat) {
             // Add message to existing chat
@@ -141,8 +161,50 @@ class FloatingChatManager {
                 this.scrollToBottom(chat);
             }
         } else {
-            // Could auto-open new chat window here if desired
-            console.log('Message from new user:', message);
+            // Auto-open new chat window for incoming message
+            console.log('New message from:', message);
+            
+            // Get sender info from message or fetch from API
+            await this.openChatForIncomingMessage(message);
+        }
+    }
+    
+    async openChatForIncomingMessage(message) {
+        try {
+            // Try to get user info from conversation
+            const response = await fetch(
+                `${this.apiUrl}/conversations/find-or-create`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.accessToken}`
+                    },
+                    body: JSON.stringify({ recipientId: message.senderId })
+                }
+            );
+            
+            if (response.ok) {
+                const conversation = await response.json();
+                const senderName = conversation.otherParticipant?.fullName || 'User';
+                const avatar = this.getInitials(senderName);
+                
+                // Open chat with proper name
+                await this.openChat(message.senderId, senderName, avatar, false);
+                
+                // Add the message
+                const chat = this.chats.get(message.senderId);
+                if (chat) {
+                    this.addMessageToChat(chat, message, false);
+                    this.scrollToBottom(chat);
+                }
+            }
+        } catch (error) {
+            console.error('Error opening chat for incoming message:', error);
+            // Fallback: open with basic info
+            const senderName = 'User';
+            const avatar = this.getInitials(senderName);
+            await this.openChat(message.senderId, senderName, avatar, false);
         }
     }
 
@@ -170,7 +232,13 @@ class FloatingChatManager {
 
         // Create UI
         chat.element = this.createChatWindow(chat);
-        this.container.appendChild(chat.element);
+        
+        // Add to appropriate container
+        if (chat.isMinimized) {
+            this.minimizedContainer.appendChild(chat.element);
+        } else {
+            this.expandedContainer.appendChild(chat.element);
+        }
 
         // Add to map
         this.chats.set(userId, chat);
@@ -192,15 +260,20 @@ class FloatingChatManager {
         window.innerHTML = `
             <div class="floating-chat-header">
                 <div class="chat-header-info">
-                    <div class="chat-avatar">${chat.avatar}</div>
-                    <div class="chat-user-name">${chat.userName}</div>
+                    <div class="chat-avatar">${this.escapeHtml(chat.avatar)}</div>
+                    <div class="chat-user-name">${this.escapeHtml(chat.userName)}</div>
                 </div>
                 <div class="chat-header-actions">
-                    <button class="chat-header-btn minimize-btn" title="Minimize">
-                        <i class="bi bi-dash"></i>
+                    <button type="button" class="chat-header-btn minimize-btn" title="Minimize">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
                     </button>
-                    <button class="chat-header-btn close-btn" title="Close">
-                        <i class="bi bi-x"></i>
+                    <button type="button" class="chat-header-btn close-btn" title="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
                     </button>
                 </div>
                 ${chat.unreadCount > 0 ? `<span class="chat-unread-badge">${chat.unreadCount}</span>` : ''}
@@ -208,14 +281,17 @@ class FloatingChatManager {
             <div class="floating-chat-body">
                 <div class="chat-messages-area">
                     <div class="chat-loading">
-                        <i class="bi bi-hourglass-split"></i> Loading messages...
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                        Loading messages...
                     </div>
                 </div>
                 <div class="chat-input-area">
                     <form class="chat-input-form">
                         <input type="text" class="chat-input" placeholder="Type a message..." autocomplete="off">
-                        <button type="submit" class="chat-send-btn">
-                            <i class="bi bi-send-fill"></i>
+                        <button type="submit" class="chat-send-btn" title="Send">
+                            <span class="send-icon">➤</span>
                         </button>
                     </form>
                 </div>
@@ -263,7 +339,12 @@ class FloatingChatManager {
         chat.isMinimized = !chat.isMinimized;
         chat.element.classList.toggle('minimized');
 
-        if (!chat.isMinimized) {
+        // Move to appropriate container
+        if (chat.isMinimized) {
+            this.minimizedContainer.appendChild(chat.element);
+        } else {
+            this.expandedContainer.appendChild(chat.element);
+            
             // Reset unread count when opening
             chat.unreadCount = 0;
             this.updateUnreadBadge(chat);
@@ -366,12 +447,24 @@ class FloatingChatManager {
 
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${isMe ? 'me' : 'them'}`;
-        messageEl.innerHTML = `
-            <div class="message-bubble">
-                <div>${this.escapeHtml(message.content)}</div>
-                <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
-            </div>
-        `;
+        
+        // Add avatar for messages from others
+        if (!isMe) {
+            messageEl.innerHTML = `
+                <div class="message-avatar">${this.escapeHtml(chat.avatar)}</div>
+                <div class="message-bubble">
+                    <div>${this.escapeHtml(message.content)}</div>
+                    <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
+                </div>
+            `;
+        } else {
+            messageEl.innerHTML = `
+                <div class="message-bubble">
+                    <div>${this.escapeHtml(message.content)}</div>
+                    <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
+                </div>
+            `;
+        }
 
         messagesArea.appendChild(messageEl);
 
@@ -503,6 +596,10 @@ if (document.readyState === 'loading') {
 
 // Global helper function
 window.openFloatingChat = (userId, userName, avatar) => {
-    FloatingChatManager.openChatWith(userId, userName, avatar);
+    if (window.floatingChatManager) {
+        window.floatingChatManager.openChat(userId, userName, avatar);
+    } else {
+        console.error('FloatingChatManager not initialized');
+    }
 };
 
