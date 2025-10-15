@@ -86,10 +86,18 @@
                         <span>Product Verification</span>
                     </a>
 
-                    <a asp-page="/Admin/StaffManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/StaffManagement" ? "active" : "")">
-                        <i class="bi bi-people-fill"></i>
-                        <span>Staff Management</span>
+                    <a asp-page="/Admin/Messages" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Messages" ? "active" : "")">
+                        <i class="bi bi-chat-dots-fill"></i>
+                        <span>Messages</span>
                     </a>
+                    
+                    @if (userRole == "admin")
+                    {
+                        <a asp-page="/Admin/StaffManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/StaffManagement" ? "active" : "")">
+                            <i class="bi bi-people-fill"></i>
+                            <span>Staff Management</span>
+                        </a>
+                    }
                 </div>
 
                 <div class="nav-section">
@@ -143,8 +151,8 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/dist/browser/signalr.js"></script>
     <script src="~/js/toast-manager.js" asp-append-version="true"></script>
+    <script src="~/js/dist/browser/signalr.js"></script>
     <script src="~/js/floating-chat-manager.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 

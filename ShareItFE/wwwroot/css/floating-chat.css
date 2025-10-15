@@ -4,15 +4,33 @@
 .floating-chats-container {
     position: fixed;
     bottom: 0;
-    right: 20px;
+    right: 100px; /* Dời sang trái để không đè lên AI chat */
     z-index: 9998;
+    pointer-events: none;
+}
+
+/* Wrapper cho expanded và minimized windows */
+.floating-chats-expanded,
+.floating-chats-minimized {
     display: flex;
-    flex-direction: row-reverse;
     gap: 10px;
     pointer-events: none;
 }
 
-.floating-chats-container > * {
+.floating-chats-expanded {
+    flex-direction: row-reverse; /* Expanded windows nằm ngang */
+    align-items: flex-end;
+}
+
+.floating-chats-minimized {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    flex-direction: column-reverse; /* Minimized windows xếp dọc */
+    align-items: flex-end;
+}
+
+.floating-chats-container > * > * {
     pointer-events: auto;
 }
 
@@ -33,6 +51,7 @@
     height: 60px;
     border-radius: 50%;
     cursor: pointer;
+    margin-bottom: 10px; /* Space between minimized avatars */
 }
 
 /* Chat Header */
@@ -172,7 +191,9 @@
 /* Message Bubble */
 .chat-message {
     display: flex;
+    align-items: flex-end;
     margin-bottom: 4px;
+    gap: 8px;
 }
 
 .chat-message.me {
@@ -181,6 +202,20 @@
 
 .chat-message.them {
     justify-content: flex-start;
+}
+
+.message-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
 }
 
 .message-bubble {
@@ -220,8 +255,13 @@
     padding: 20px;
     color: #999;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
+.chat-loading svg.animate-spin,
 .chat-loading i {
     animation: spin 1s linear infinite;
 }
@@ -295,6 +335,14 @@
 .chat-send-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.chat-send-btn .send-icon {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+    transform: rotate(0deg);
 }
 
 /* Unread badge */

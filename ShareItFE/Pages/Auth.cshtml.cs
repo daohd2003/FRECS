@@ -107,6 +107,11 @@ namespace ShareItFE.Pages
                             Expires = apiResponse.Data.RefreshTokenExpiryTime
                         });
 
+                        // Redirect based on role
+                        if (apiResponse.Data.Role?.ToLower() == "admin")
+                        {
+                            return RedirectToPage("/Admin/Index");
+                        }
                         return RedirectToPage("/Index");
                     }
 
@@ -232,7 +237,12 @@ namespace ShareItFE.Pages
                         Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.None });
                         Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.None });
 
-                        return RedirectToPage("/Index"); // Chuyển hướng đến trang chủ
+                        // Redirect based on role
+                        if (apiResponse.Data.Role?.ToLower() == "admin")
+                        {
+                            return RedirectToPage("/Admin/Index");
+                        }
+                        return RedirectToPage("/Index");
                     }
                 }
 
@@ -272,6 +282,12 @@ namespace ShareItFE.Pages
                     {
                         Response.Cookies.Append("AccessToken", apiResponse.Data.Token, new CookieOptions { HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Lax, Expires = DateTimeOffset.UtcNow.AddMinutes(30) });
                         Response.Cookies.Append("RefreshToken", apiResponse.Data.RefreshToken, new CookieOptions { HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Lax, Expires = apiResponse.Data.RefreshTokenExpiryTime });
+                        
+                        // Redirect based on role
+                        if (apiResponse.Data.Role?.ToLower() == "admin")
+                        {
+                            return RedirectToPage("/Admin/Index");
+                        }
                         return RedirectToPage("/Index");
                     }
                 }
