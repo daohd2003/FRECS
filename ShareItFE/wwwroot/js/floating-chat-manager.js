@@ -596,6 +596,10 @@ if (document.readyState === 'loading') {
 
 // Global helper function
 window.openFloatingChat = (userId, userName, avatar) => {
-    FloatingChatManager.openChatWith(userId, userName, avatar);
+    if (window.floatingChatManager) {
+        window.floatingChatManager.openChat(userId, userName, avatar);
+    } else {
+        console.error('FloatingChatManager not initialized');
+    }
 };
 
