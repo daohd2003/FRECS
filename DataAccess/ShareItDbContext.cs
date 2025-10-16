@@ -35,6 +35,10 @@ namespace DataAccess
         public DbSet<DiscountCode> DiscountCodes { get; set; }
         public DbSet<UsedDiscountCode> UsedDiscountCodes { get; set; }
 
+        // Rental Violation tables
+        public DbSet<RentalViolation> RentalViolations { get; set; }
+        public DbSet<RentalViolationImage> RentalViolationImages { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -361,6 +365,32 @@ namespace DataAccess
                 .WithMany()
                 .HasForeignKey(udc => udc.OrderId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // RentalViolation configuration - Convert enums to strings
+            modelBuilder.Entity<RentalViolation>()
+                .Property(rv => rv.ViolationType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<RentalViolation>()
+                .Property(rv => rv.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<RentalViolationImage>()
+                .Property(rvi => rvi.UploadedBy)
+                .HasConversion<string>();
+
+            // RentalViolation relationships
+            modelBuilder.Entity<RentalViolation>()
+                .HasOne(rv => rv.OrderItem)
+                .WithMany()
+                .HasForeignKey(rv => rv.OrderItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RentalViolationImage>()
+                .HasOne(rvi => rvi.Violation)
+                .WithMany(rv => rv.Images)
+                .HasForeignKey(rvi => rvi.ViolationId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }

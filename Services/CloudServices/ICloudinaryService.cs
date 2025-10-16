@@ -23,5 +23,8 @@ namespace Services.CloudServices
 
         // For chat attachments (image/video/file)
         Task<ChatAttachmentUploadResult> UploadChatAttachmentAsync(IFormFile file, Guid userId);
+        
+        // For violations evidence (image/video)
+        Task<ImageUploadResult> UploadMediaFileAsync(IFormFile file, Guid userId, string projectName, string folderType);
     }
 }

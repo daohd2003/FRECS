@@ -1,0 +1,758 @@
+@page "{orderId:guid}"
+@model ShareItFE.Pages.Provider.CreateViolationModel
+@{
+    ViewData["Title"] = "Báo cáo vi phạm";
+    Layout = "~/Pages/Shared/_Layout.cshtml";
+}
+
+<style>
+    .violation-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
+
+    .page-header p {
+        margin: 10px 0 0 0;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .order-item-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+
+    .order-item-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    .item-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
+
+    .item-header:hover {
+        background: #f8f9fa;
+    }
+
+    .item-checkbox {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .item-image {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+    }
+
+    .item-info {
+        flex: 1;
+    }
+
+    .item-info h5 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .item-info p {
+        margin: 4px 0;
+        font-size: 14px;
+        color: #718096;
+    }
+
+    .badge-deposit {
+        display: inline-block;
+        background: #48bb78;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .violation-form {
+        margin-top: 20px;
+        padding: 25px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border-left: 4px solid #667eea;
+        display: none;
+    }
+
+    .violation-form.active {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .violation-form h6 {
+        color: #667eea;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .form-group label .required {
+        color: #e53e3e;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    select.form-control {
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        appearance: none;
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+        font-family: inherit;
+    }
+
+    .penalty-suggestions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+
+    .penalty-suggestions button {
+        padding: 6px 14px;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: #4a5568;
+        transition: all 0.2s;
+    }
+
+    .penalty-suggestions button:hover {
+        border-color: #667eea;
+        color: #667eea;
+        background: #f7fafc;
+    }
+
+    .penalty-calculation {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        border: 2px solid #e2e8f0;
+        margin-top: 20px;
+    }
+
+    .penalty-calculation h6 {
+        color: #2d3748;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+
+    .info-row, .result-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .info-row:last-child, .result-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-row span, .result-row span {
+        color: #4a5568;
+        font-size: 14px;
+    }
+
+    .info-row strong, .result-row strong {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .text-danger {
+        color: #e53e3e !important;
+    }
+
+    .text-success {
+        color: #48bb78 !important;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #cbd5e0;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: white;
+    }
+
+    .file-upload-area:hover {
+        border-color: #667eea;
+        background: #f7fafc;
+    }
+
+    .file-upload-area.dragover {
+        border-color: #667eea;
+        background: #ebf4ff;
+    }
+
+    .file-upload-area i {
+        font-size: 48px;
+        color: #a0aec0;
+        margin-bottom: 10px;
+    }
+
+    .preview-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .preview-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: visible; /* Changed from hidden to visible - allow button to show */
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: white;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .preview-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .preview-item > img,
+    .preview-item > video {
+        border-radius: 8px; /* Add border radius to img/video instead */
+    }
+
+    .preview-item img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        display: block;
+        pointer-events: none; /* Allow clicks to pass through to button */
+    }
+
+    .preview-item video {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        display: block;
+        pointer-events: none; /* Allow clicks to pass through to button */
+    }
+
+    .preview-item .video-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .preview-item .remove-file-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;  /* Chuyển sang góc phải giống PostItem */
+        width: 1.5rem;  /* 24px - nhỏ hơn như PostItem */
+        height: 1.5rem; /* 24px */
+        background-color: rgba(239, 68, 68, 0.8); /* Giống PostItem */
+        color: white;
+        border: none; /* Bỏ border trắng */
+        border-radius: 9999px; /* Hình tròn hoàn hảo */
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1;
+        opacity: 0; /* Ẩn đi giống PostItem */
+        transition: opacity 0.2s; /* Chỉ transition opacity */
+        z-index: 10; /* Giống PostItem */
+        padding: 0;
+        pointer-events: auto; /* Ensure button can receive clicks */
+    }
+
+    /* Hiện nút X khi hover vào preview-item (giống PostItem) */
+    .preview-item:hover .remove-file-btn {
+        opacity: 1; /* Hiện khi hover vào ảnh */
+    }
+
+    .preview-item .remove-file-btn:hover {
+        background-color: rgba(220, 38, 38, 0.9); /* Đậm hơn khi hover vào nút */
+    }
+
+    .preview-item .remove-file-btn:active {
+        transform: scale(0.95);
+    }
+
+    .preview-item .file-name {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 4px 8px;
+        font-size: 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none; /* Allow clicks to pass through */
+    }
+
+    .summary-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin: 30px 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .summary-box h5 {
+        margin: 0 0 20px 0;
+        font-size: 20px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .summary-box p {
+        margin: 12px 0;
+        font-size: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .summary-box strong {
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 30px;
+        border-top: 2px solid #e2e8f0;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #2d3748;
+    }
+
+    .btn-secondary:hover {
+        background: #cbd5e0;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+    }
+
+    .btn-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(229, 62, 62, 0.4);
+    }
+
+    .btn-danger:disabled {
+        background: #cbd5e0;
+        color: #a0aec0;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+    }
+
+    .alert {
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-info {
+        background: #ebf8ff;
+        border-left: 4px solid #4299e1;
+        color: #2c5282;
+    }
+
+    .small-text {
+        font-size: 12px;
+        color: #718096;
+        margin-top: 4px;
+    }
+
+    .file-input-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0,0,0,0);
+        white-space: nowrap;
+        border: 0;
+    }
+</style>
+
+<div class="violation-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>📋 Order Violation Report</h1>
+        <p>Select violated items and fill in detailed information to submit compensation request</p>
+    </div>
+
+    <!-- Error/Success Messages -->
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert" style="background-color: #fee2e2; border-left: 4px solid #ef4444; color: #991b1b; margin-bottom: 20px;">
+            <i class="fas fa-exclamation-circle"></i>
+            @TempData["ErrorMessage"]
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert" style="background-color: #d1fae5; border-left: 4px solid #10b981; color: #065f46; margin-bottom: 20px;">
+            <i class="fas fa-check-circle"></i>
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <!-- Guidelines -->
+    <div class="alert alert-info">
+        <strong>💡 Penalty Guidelines:</strong>
+        <ul style="margin: 10px 0 0 20px; padding: 0;">
+            <li>Minor damage (&lt; 30%): Penalize 25-50% of deposit</li>
+            <li>Moderate damage (30-70%): Penalize 50-75% of deposit</li>
+            <li>Severe damage (&gt; 70%): Penalize 75-100% of deposit</li>
+            <li>Not returned: Penalize 100% of deposit</li>
+        </ul>
+    </div>
+
+    @if (Model.Order == null)
+    {
+        <div class="alert alert-danger">
+            <p><strong>Error:</strong> Unable to load order information. Please try again later.</p>
+            <a href="/Provider/OrderManagement" class="btn btn-primary">Back to order list</a>
+        </div>
+    }
+    else
+    {
+    <form method="post" enctype="multipart/form-data" id="violationForm" novalidate>
+        <input type="hidden" name="orderId" value="@Model.Order.Id" />
+
+        <!-- Order Items List -->
+        <div class="order-items-list">
+            @if (Model.Order.Items != null && Model.Order.Items.Any())
+            {
+                var availableItems = Model.Order.Items.Where(item => !Model.ReportedOrderItemIds.Contains(item.Id)).ToList();
+                
+                @if (!availableItems.Any())
+                {
+                    <div class="alert alert-info">
+                        <p><strong>ℹ️ All items have been reported</strong></p>
+                        <p>All items in this order have already been reported for violations. No more items available to report.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in availableItems)
+                    {
+                        var itemIndex = Model.Order.Items.IndexOf(item);
+                        var depositPerUnit = item.DepositPerUnit;
+                        var totalDeposit = depositPerUnit * item.Quantity;
+                        
+                        <div class="order-item-card" data-orderitem-id="@item.Id">
+                        <!-- Item Header with Checkbox -->
+                        <div class="item-header" onclick="toggleCheckbox(this, '@item.Id')">
+                            <input type="checkbox" 
+                                   class="item-checkbox violation-checkbox" 
+                                   id="item_@item.Id"
+                                   onclick="event.stopPropagation(); toggleViolationForm(this, '@item.Id')" />
+                            
+                            <img src="@(item.PrimaryImageUrl ?? "/images/default-product.jpg")" 
+                                 alt="@item.ProductName" 
+                                 class="item-image" />
+                            
+                            <div class="item-info">
+                                <h5>@item.ProductName</h5>
+                                <p>Quantity: <strong>@item.Quantity</strong> item(s)</p>
+                                <p>
+                                    Deposit: <span class="badge-deposit">@totalDeposit.ToString("N0") VND</span>
+                                    <span class="small-text">(@depositPerUnit.ToString("N0") VND/item)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Violation Form (Hidden by default) -->
+                        <div class="violation-form" id="form_@item.Id">
+                            <h6>
+                                <i class="fas fa-exclamation-triangle"></i>
+                                REPORT VIOLATION FOR THIS ITEM
+                            </h6>
+
+                            <input type="hidden" name="violations[@item.Id].OrderItemId" value="@item.Id" />
+
+                            <!-- Violation Type -->
+                            <div class="form-group">
+                                <label>
+                                    Violation Type <span class="required">*</span>
+                                </label>
+                                <select name="violations[@item.Id].ViolationType" 
+                                        class="form-control"
+                                        onchange="handleViolationTypeChange('@item.Id', this.value)">
+                                    <option value="">-- Select violation type --</option>
+                                    <option value="DAMAGED">Damaged Product</option>
+                                    <option value="LATE_RETURN">Late Return</option>
+                                    <option value="NOT_RETURNED">Not Returned</option>
+                                </select>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="form-group">
+                                <label>
+                                    Detailed Description <span class="required">*</span>
+                                </label>
+                                <textarea name="violations[@item.Id].Description" 
+                                          class="form-control"
+                                          rows="4"
+                                          maxlength="2000"
+                                          placeholder="Example: Screen cracked at top left corner, crack is about 5cm long. Customer signed for the product in perfect condition upon delivery."></textarea>
+                                <div class="small-text">Maximum 2000 characters</div>
+                            </div>
+
+                            <!-- Damage Percentage (Only for DAMAGED) -->
+                            <div class="form-group" id="damage_@item.Id" style="display: none;">
+                                <label>Damage Level (%)</label>
+                                <input type="number" 
+                                       name="violations[@item.Id].DamagePercentage"
+                                       class="form-control"
+                                       min="0" 
+                                       max="100" 
+                                       step="0.01"
+                                       placeholder="Example: 30 (means 30% damaged)" />
+                                <div class="small-text">From 0% (no damage) to 100% (completely damaged)</div>
+                            </div>
+
+                            <!-- File Upload -->
+                            <div class="form-group">
+                                <label>
+                                    Evidence (Images/Videos) <span class="required">*</span>
+                                </label>
+                                <input type="file" 
+                                       name="violations[@item.Id].EvidenceFiles"
+                                       id="files_@item.Id"
+                                       class="file-input-hidden"
+                                       multiple 
+                                       accept="image/*,video/*"
+                                       onchange="previewFiles(this, '@item.Id')" />
+                                
+                                <div class="file-upload-area" onclick="document.getElementById('files_@item.Id').click()">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
+                                        <strong>Click to select files</strong> or drag and drop here
+                                    </p>
+                                    <p class="small-text">Supported: JPG, PNG, MP4, MOV (Maximum 10 files)</p>
+                                </div>
+                                
+                                <div id="preview_@item.Id" class="preview-container"></div>
+                            </div>
+
+                            <!-- Penalty Calculation -->
+                            <div class="penalty-calculation">
+                                <h6>💰 PENALTY CALCULATION</h6>
+                                
+                                <div class="info-row">
+                                    <span>Total Deposit:</span>
+                                    <strong id="deposit_@item.Id" data-value="@totalDeposit">
+                                        @totalDeposit.ToString("N0") VND
+                                    </strong>
+                                </div>
+
+                                <div class="form-group" style="margin: 15px 0;">
+                                    <label>Penalty Rate (%) <span class="required">*</span></label>
+                                    <input type="number" 
+                                           name="violations[@item.Id].PenaltyPercentage"
+                                           id="penalty_pct_@item.Id"
+                                           class="form-control"
+                                           min="0" 
+                                           max="100" 
+                                           step="0.01"
+                                           value="50"
+                                           oninput="calculatePenalty('@item.Id')" />
+                                    
+                                    <div class="penalty-suggestions">
+                                        <small style="color: #718096;">Suggestions:</small>
+                                        <button type="button" onclick="setPenalty('@item.Id', 25)">25%</button>
+                                        <button type="button" onclick="setPenalty('@item.Id', 50)">50%</button>
+                                        <button type="button" onclick="setPenalty('@item.Id', 75)">75%</button>
+                                        <button type="button" onclick="setPenalty('@item.Id', 100)">100%</button>
+                                    </div>
+                                </div>
+
+                                <div class="result-row">
+                                    <span>Penalty Amount:</span>
+                                    <strong id="penalty_amt_@item.Id" class="text-danger">0 VND</strong>
+                                </div>
+
+                                <div class="info-row">
+                                    <span>Refund Amount to Customer:</span>
+                                    <strong id="refund_@item.Id" class="text-success">0 VND</strong>
+                                </div>
+
+                                <input type="hidden" 
+                                       name="violations[@item.Id].PenaltyAmount"
+                                       id="penalty_amt_val_@item.Id" />
+                            </div>
+                        </div>
+                    </div>
+                    }
+                }
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <p>No items in this order.</p>
+                </div>
+            }
+        </div>
+
+        <!-- Summary Box -->
+        <div class="summary-box" id="summaryBox" style="display: none;">
+            <h5>
+                <i class="fas fa-calculator"></i>
+                SUMMARY
+            </h5>
+            <p>
+                <span>Total Deposit to Process:</span>
+                <strong id="totalDeposit">0 VND</strong>
+            </p>
+            <p>
+                <span>Total Penalty:</span>
+                <strong id="totalPenalty">0 VND</strong>
+            </p>
+            <p>
+                <span>Total Refund to Customer:</span>
+                <strong id="totalRefund">0 VND</strong>
+            </p>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <a asp-page="/Provider/OrderDetail" asp-route-id="@Model.Order.Id" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-danger" id="submitBtn" disabled>
+                <i class="fas fa-paper-plane"></i> Submit violations
+            </button>
+        </div>
+    </form>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="~/js/createViolation.js"></script>
+}
+
