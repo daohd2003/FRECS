@@ -4,8 +4,8 @@
  */
 
 // Prevent duplicate declaration
-if (typeof ToastManager === 'undefined') {
-class ToastManager {
+if (typeof window.ToastManager === 'undefined') {
+window.ToastManager = class ToastManager {
     constructor() {
         this.toasts = new Set();
         this.init();
@@ -268,12 +268,12 @@ class ToastManager {
     warning(message, duration) {
         return this.show(message, 'warning', duration);
     }
-}
+};
 } // End of ToastManager check
 
 // Global instance (only create if not exists)
 if (!window.toastManager) {
-    window.toastManager = new ToastManager();
+    window.toastManager = new window.ToastManager();
 }
 
 // Global functions for backward compatibility

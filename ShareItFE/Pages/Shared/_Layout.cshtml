@@ -1,8 +1,15 @@
-﻿@using Microsoft.Extensions.Configuration
+﻿@using System.Security.Claims
+@using Microsoft.Extensions.Configuration
 @using Microsoft.Extensions.Hosting
 @using ShareItFE.Extensions
 @inject IConfiguration Configuration
 @inject IWebHostEnvironment Environment
+@{
+    var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+    var isAdminOrStaff = currentUserRole == "admin" || currentUserRole == "staff";
+}
 @RenderSection("Styles", required: false)
 <!DOCTYPE html>
 <html lang="en">
@@ -29,12 +36,29 @@
         };
         console.log('Environment:', currentEnvironment);
         console.log('API Settings:', window.apiSettings);
+        
+        @if (isAuthenticated)
+        {
+            <text>
+        // Floating chat config for authenticated users
+        window.adminChatConfig = {
+            currentUserId: '@currentUserId',
+            accessToken: '@Context.Request.Cookies["AccessToken"]',
+            apiBaseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
+            signalRRootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")'
+        };
+            </text>
+        }
     </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ShareItFE.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/chatbot.css" />
     <link rel="stylesheet" href="~/css/chat.css" asp-append-version="true" />
+    @if (isAuthenticated)
+    {
+        <link rel="stylesheet" href="~/css/floating-chat.css" asp-append-version="true" />
+    }
 </head>
 <body>
     @await Component.InvokeAsync("Header")
@@ -118,6 +142,10 @@
     <script type="application/json" id="tempdata-messages">@Html.Raw(toastMessages)</script>
 
     <script src="~/js/dist/browser/signalr.js"></script>
+    @if (isAuthenticated)
+    {
+        <script src="~/js/floating-chat-manager.js" asp-append-version="true"></script>
+    }
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Xử lý menu người dùng
