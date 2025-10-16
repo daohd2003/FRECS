@@ -10,6 +10,7 @@ namespace BusinessObject.DTOs.OrdersDto
 {
     public class OrderItemDetailsDto
     {
+        public Guid Id { get; set; }                 // OrderItem.Id
         public Guid ProductId { get; set; }
         public string ProductName { get; set; }     // Từ Product.Name
         public string? Size { get; set; }            // Từ Product.Size
@@ -18,7 +19,8 @@ namespace BusinessObject.DTOs.OrdersDto
         public int Quantity { get; set; }            // Từ OrderItem.Quantity
         public int? RentalDays { get; set; }         // Từ OrderItem.RentalDays (nullable cho purchase)
         public decimal PricePerDay { get; set; }     // Từ OrderItem.DailyRate
-        public TransactionType TransactionType { get; set; } // Từ OrderItem.TransactionType
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public TransactionType TransactionType { get; set; } // Từ OrderItem.TransactionType        
         public decimal DepositPerUnit { get; set; } = 0m;    // Từ OrderItem.DepositPerUnit
     }
 }

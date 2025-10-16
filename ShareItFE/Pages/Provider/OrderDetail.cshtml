@@ -267,17 +267,28 @@
                             <a href="/Contact" class="btn btn-primary">
                                 <i class="bi bi-chat-dots"></i> Contact Support
                             </a>
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                            
+                            @* Report Issue - Only enabled when status is "returning" *@
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returning)
                             {
-                                <button type="button" class="btn" style="background-color: #fb923c; color: white;">
-                                    <i class="bi bi-exclamation-triangle"></i> Return with Issue
-                                </button>
+                                <a asp-page="/Provider/CreateViolation" asp-route-orderId="@Model.Order.Id" class="btn" style="background-color: #fb923c; color: white;">
+                                    <i class="bi bi-exclamation-triangle"></i> Report Issue
+                                </a>
                             }
                             else
                             {
-                                <button type="button" class="btn" style="background-color: #fb923c; color: white;">
-                                    <i class="bi bi-exclamation-triangle"></i> Return with Issue
+                                <button class="btn" style="background-color: #cbd5e0; color: #a0aec0; cursor: not-allowed;" disabled title="Only available when order status is 'Returning'">
+                                    <i class="bi bi-exclamation-triangle"></i> Report Issue
                                 </button>
+                            }
+                            
+                            @* Show message if issue already reported *@
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                            {
+                                <div class="alert" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 6px;">
+                                    <i class="bi bi-info-circle" style="color: #f59e0b;"></i>
+                                    <span style="color: #92400e; font-size: 14px;">Issue reported. Waiting for customer response.</span>
+                                </div>
                             }
                         </div>
                     </div>

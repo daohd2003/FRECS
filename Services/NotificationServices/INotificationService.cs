@@ -14,7 +14,7 @@ namespace Services.NotificationServices
         Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false);
         Task MarkAsRead(Guid notificationId);
         Task MarkAllAsRead(Guid userId);
-        Task SendNotification(Guid userId, string message, NotificationType type);
+        Task SendNotification(Guid userId, string message, NotificationType type, Guid? orderId = null);
         Task<int> GetUnreadCount(Guid userId);
         Task NotifyOrderStatusChange(Guid orderId, OrderStatus oldStatus, OrderStatus newStatus);
         Task NotifyNewOrderCreated(Guid orderId);

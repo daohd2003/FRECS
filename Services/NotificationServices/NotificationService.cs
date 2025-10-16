@@ -56,7 +56,7 @@ namespace Services.NotificationServices
             return notificationResponses;
         }
 
-        public async Task SendNotification(Guid userId, string message, NotificationType type)
+        public async Task SendNotification(Guid userId, string message, NotificationType type, Guid? orderId = null)
         {
             var notification = new Notification
             {
@@ -64,6 +64,7 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
+                OrderId = orderId,
                 CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 

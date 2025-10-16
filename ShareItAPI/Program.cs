@@ -37,6 +37,7 @@ using Repositories.ProductRepositories;
 using Repositories.ProfileRepositories;
 using Repositories.ProviderApplicationRepositories;
 using Repositories.ReportRepositories;
+using Repositories.RentalViolationRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
@@ -55,6 +56,7 @@ using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.ProductServices;
 using Services.ProfileServices;
+using Services.RentalViolationServices;
 using Services.ProviderApplicationServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
@@ -314,6 +316,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
             builder.Services.AddScoped<IDiscountCodeService, DiscountCodeService>();
             builder.Services.AddHostedService<DiscountCodeExpirationService>();
+
+            // Register RentalViolation services
+            builder.Services.AddScoped<IRentalViolationRepository, RentalViolationRepository>();
+            builder.Services.AddScoped<IRentalViolationService, RentalViolationService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 
