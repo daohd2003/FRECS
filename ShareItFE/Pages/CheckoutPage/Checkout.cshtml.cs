@@ -324,13 +324,33 @@ namespace ShareItFE.Pages.CheckoutPage
             return Page();
         }
 
-        public IActionResult OnPostClearSession()
+        public async Task<IActionResult> OnPostClearSession(string? transactionId)
         {
             // Clear TempData and messages when user closes QR modal
             TempData.Clear();
             SuccessMessage = null;
             ErrorMessage = null;
             QrCodeUrl = null;
+            
+            // Send notification if transactionId is provided
+            if (!string.IsNullOrEmpty(transactionId) && Guid.TryParse(transactionId, out var txnId))
+            {
+                try
+                {
+                    var client = await _clientHelper.GetAuthenticatedClientAsync();
+                    var userId = GetUserId();
+                    
+                    // Call API to send transaction failed notification
+                    var notifyUrl = $"{backendBaseUrl}/api/notification/transaction-failed?transactionId={txnId}&userId={userId}";
+                    await client.PostAsync(notifyUrl, null);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error sending notification: {ex.Message}");
+                    // Don't fail the request if notification fails
+                }
+            }
+            
             return new JsonResult(new { success = true });
         }
 
@@ -533,7 +553,11 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (!string.IsNullOrEmpty(paymentUrl))
                         {
-                            SuccessMessage = "Redirecting to VNPay for payment...";
+                            // Clear any messages before redirecting to VNPay
+                            // (User won't see them anyway, and they shouldn't appear when user returns)
+                            SuccessMessage = null;
+                            ErrorMessage = null;
+                            TempData.Clear();
                             return Redirect(paymentUrl);
                         }
                         else

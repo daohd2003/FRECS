@@ -22,5 +22,6 @@ namespace Services.NotificationServices
         Task NotifyOrderItemsUpdate(Guid orderId, IEnumerable<Guid> updatedItemIds);
         Task NotifyTransactionCompleted(Guid orderId, Guid userId);
         Task NotifyTransactionFailed(Guid orderId, Guid userId);
+        Task NotifyTransactionFailedByTransactionId(Guid transactionId, Guid userId);
     }
 }

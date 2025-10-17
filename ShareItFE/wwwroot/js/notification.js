@@ -49,42 +49,31 @@
     }
 
     // Function to reload notifications - exposed globally
-    function loadNotifications(userIdParam = null) {
+    async function loadNotifications(userIdParam = null) {
         const targetUserId = userIdParam || userId;
-        if (!targetUserId) return;
+        if (!targetUserId) return Promise.resolve();
 
-        // Reload unread count
-        fetch(`${apiRootUrl}/api/notification/unread-count/${targetUserId}`, {
-            headers: authHeaders
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && typeof data.data === 'number') {
-                updateCountBadge(data.data);
+        try {
+            // Reload unread count
+            const countResponse = await fetch(`${apiRootUrl}/api/notification/unread-count/${targetUserId}`, {
+                headers: authHeaders
+            });
+            const countData = await countResponse.json();
+            if (countData && typeof countData.data === 'number') {
+                updateCountBadge(countData.data);
             }
-        })
-        .catch(error => {
-            console.error('Failed to reload notification count:', error);
-        });
 
-        // Always reload notification list to keep it updated
-        fetch(`${apiRootUrl}/api/notification/user/${targetUserId}?unreadOnly=false`, {
-            headers: authHeaders
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.data) {
-                console.log('Notifications reloaded:', data.data.length);
-                // Debug: Log first notification's createdAt to see format
-                if (data.data.length > 0) {
-                    console.log('First notification CreatedAt:', data.data[0].createdAt);
-                }
-                updateNotificationList(data.data);
+            // Always reload notification list to keep it updated
+            const listResponse = await fetch(`${apiRootUrl}/api/notification/user/${targetUserId}?unreadOnly=false`, {
+                headers: authHeaders
+            });
+            const listData = await listResponse.json();
+            if (listData && listData.data) {
+                updateNotificationList(listData.data);
             }
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Failed to reload notifications:', error);
-        });
+        }
     }
 
     // Function to update notification list DOM
