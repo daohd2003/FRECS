@@ -63,6 +63,7 @@ namespace ShareItFE.Pages.Provider
             new SelectListItem { Value = "in_use", Text = "In Use" },
             new SelectListItem { Value = "returning", Text = "Returning" },
             new SelectListItem { Value = "returned", Text = "Returned" },
+            new SelectListItem { Value = "returned_with_issue", Text = "Issue Reported" },
             new SelectListItem { Value = "cancelled", Text = "Cancelled" }
         };
 
@@ -262,7 +263,7 @@ namespace ShareItFE.Pages.Provider
                 OrderStatus.returning => "bg-orange-100 text-orange-700",
                 OrderStatus.returned => "bg-gray-100 text-gray-700",
                 OrderStatus.cancelled => "bg-red-100 text-red-700",
-                OrderStatus.returned_with_issue => "bg-red-100 text-red-700",
+                OrderStatus.returned_with_issue => "bg-orange-100 text-orange-800",
                 _ => "bg-gray-100 text-gray-700"
             };
         }
@@ -278,7 +279,7 @@ namespace ShareItFE.Pages.Provider
                 OrderStatus.returning => "rotate-ccw",
                 OrderStatus.returned => "check-circle",
                 OrderStatus.cancelled => "x-circle",
-                OrderStatus.returned_with_issue => "alert-circle",
+                OrderStatus.returned_with_issue => "alert-triangle",
                 _ => "circle"
             };
         }
@@ -294,7 +295,7 @@ namespace ShareItFE.Pages.Provider
                 OrderStatus.returning => "Returning",
                 OrderStatus.returned => "Returned",
                 OrderStatus.cancelled => "Cancelled",
-                OrderStatus.returned_with_issue => "Returned with Issue",
+                OrderStatus.returned_with_issue => "Issue Reported",
                 _ => status.ToString()
             };
         }

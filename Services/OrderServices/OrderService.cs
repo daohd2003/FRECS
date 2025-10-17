@@ -769,6 +769,7 @@ namespace Services.OrderServices
                                          .Include(o => o.Items)
                                              .ThenInclude(oi => oi.Product)
                                                  .ThenInclude(p => p.Images)
+                                         .OrderByDescending(o => o.CreatedAt)
                                          .ToListAsync();
 
             return _mapper.Map<IEnumerable<OrderListDto>>(orders);
