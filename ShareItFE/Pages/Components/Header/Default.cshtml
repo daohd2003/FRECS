@@ -48,7 +48,7 @@
                     </a>
                 }
 
-                <div class="notification-menu" data-userid="@Model.UserId" data-token="@Model.AccessToken">
+                <div class="notification-menu" data-userid="@Model.UserId" data-token="@Model.AccessToken" data-userrole="@Model.UserRole">
                     <button id="notificationButton" class="notification-button">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -75,7 +75,10 @@
                                 {
                                     @if (notification.OrderId.HasValue && notification.OrderId != Guid.Empty)
                                     {
-                                        <a href="/Order/Details/@notification.OrderId" class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
+                                        var orderDetailUrl = string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase) 
+                                            ? $"/provider/order/{notification.OrderId}" 
+                                            : $"/Order/Details/{notification.OrderId}";
+                                        <a href="@orderDetailUrl" class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
                                                 <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>

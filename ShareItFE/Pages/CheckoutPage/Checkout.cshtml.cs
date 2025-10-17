@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.DTOs.VNPay;
 using ShareItFE.Extensions;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShareItFE.Pages.CheckoutPage
 {
@@ -79,6 +80,12 @@ namespace ShareItFE.Pages.CheckoutPage
         [BindProperty(SupportsGet = true)]
         public Guid? OrderId { get; set; }
 
+        /// <summary>
+        /// Indicates whether the user's profile has all required information (PhoneNumber and Address)
+        /// </summary>
+        [TempData]
+        public bool HasRequiredProfileInfo { get; set; } = false;
+
         private Guid GetUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -91,6 +98,18 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnGetAsync()
         {
+            // Only clear TempData if this is a fresh GET request (not after POST with QR code)
+            // Check TempData to see if we just created a transaction
+            var hasNewTransaction = TempData.Peek("TransactionId") != null;
+            bool isAfterQRCreation = hasNewTransaction && !string.IsNullOrEmpty(SuccessMessage);
+            
+            if (!hasNewTransaction && string.IsNullOrEmpty(SuccessMessage))
+            {
+                // This is a fresh GET request, clear old data
+                QrCodeUrl = null;
+                TempData["TransactionId"] = null;
+            }
+            
             try
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
@@ -133,7 +152,42 @@ namespace ShareItFE.Pages.CheckoutPage
                         Subtotal = SingleOrder.Subtotal; // Chỉ giá thuê/mua
                         TotalDeposit = SingleOrder.TotalDepositAmount; // Chỉ tiền cọc
                         Total = SingleOrder.TotalAmount; // Tổng = subtotal + deposit
-                        Input.UseSameProfile = true;
+                        
+                        // Populate Input fields with existing shipping address from the order
+                        if (SingleOrder.ShippingAddress != null)
+                        {
+                            Input.CustomerFullName = SingleOrder.ShippingAddress.FullName;
+                            Input.Email = SingleOrder.ShippingAddress.Email;
+                            Input.PhoneNumber = SingleOrder.ShippingAddress.Phone;
+                            Input.Address = SingleOrder.ShippingAddress.Address;
+                            // Don't use profile when loading from existing order
+                            Input.UseSameProfile = false;
+                        }
+                        
+                        // Load profile to check if required info is available (for validation)
+                        var profileResponse = await client.GetAsync("api/profile/my-profile-for-checkout");
+                        if (profileResponse.IsSuccessStatusCode)
+                        {
+                            var profileApiResponse = JsonSerializer.Deserialize<ApiResponse<ProfileDetailDto>>(
+                                await profileResponse.Content.ReadAsStringAsync(), options);
+                            var profile = profileApiResponse?.Data;
+
+                            if (profile != null)
+                            {
+                                // Check if profile has required information (PhoneNumber and Address)
+                                HasRequiredProfileInfo = !string.IsNullOrWhiteSpace(profile.PhoneNumber) && 
+                                                        !string.IsNullOrWhiteSpace(profile.Address);
+                            }
+                            else
+                            {
+                                HasRequiredProfileInfo = false;
+                            }
+                        }
+                        else
+                        {
+                            HasRequiredProfileInfo = false;
+                        }
+                        
                         Cart = null;
 
                     }
@@ -191,7 +245,8 @@ namespace ShareItFE.Pages.CheckoutPage
                     }
 
                     // Lấy thông tin profile cho trang thanh toán
-                    if (string.IsNullOrEmpty(Input.CustomerFullName) && Input.UseSameProfile)
+                    // Skip profile check if we're returning after QR code creation (to preserve HasRequiredProfileInfo)
+                    if (!isAfterQRCreation && string.IsNullOrEmpty(Input.CustomerFullName) && Input.UseSameProfile)
                     {
                         var profileResponse = await client.GetAsync("api/profile/my-profile-for-checkout");
                         // Thêm logging để kiểm tra
@@ -210,13 +265,32 @@ namespace ShareItFE.Pages.CheckoutPage
                                 Input.Email = profile.Email;
                                 Input.PhoneNumber = profile.PhoneNumber;
                                 Input.Address = profile.Address;
-                                Input.UseSameProfile = true;
+                                
+                                // Check if profile has required information (PhoneNumber and Address)
+                                HasRequiredProfileInfo = !string.IsNullOrWhiteSpace(profile.PhoneNumber) && 
+                                                        !string.IsNullOrWhiteSpace(profile.Address);
+                                
+                                // If missing required info, uncheck the checkbox
+                                if (!HasRequiredProfileInfo)
+                                {
+                                    Input.UseSameProfile = false;
+                                }
+                                else
+                                {
+                                    Input.UseSameProfile = true;
+                                }
+                            }
+                            else
+                            {
+                                HasRequiredProfileInfo = false;
+                                Input.UseSameProfile = false;
                             }
                         }
                         else if (profileResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                         {
                             Console.WriteLine("No profile found for this user. Manual input required.");
                             // Nếu không tìm thấy profile, mặc định bỏ chọn "UseSameProfile"
+                            HasRequiredProfileInfo = false;
                             Input.UseSameProfile = false;
                         }
                         else
@@ -224,9 +298,18 @@ namespace ShareItFE.Pages.CheckoutPage
                             var errorContent = await profileResponse.Content.ReadAsStringAsync();
                             ErrorMessage = $"Could not load user profile: {errorContent}";
                             // Mặc định bỏ chọn "UseSameProfile" nếu có lỗi khi tải profile
+                            HasRequiredProfileInfo = false;
                             Input.UseSameProfile = false;
                         }
                     }
+                    else if (!isAfterQRCreation)
+                    {
+                        // If CustomerFullName is already populated, check if we have required info
+                        // But skip if this is after QR creation
+                        HasRequiredProfileInfo = !string.IsNullOrWhiteSpace(Input.PhoneNumber) && 
+                                                !string.IsNullOrWhiteSpace(Input.Address);
+                    }
+                    // If isAfterQRCreation = true, HasRequiredProfileInfo is already preserved from TempData
                 }
 
             }
@@ -241,9 +324,27 @@ namespace ShareItFE.Pages.CheckoutPage
             return Page();
         }
 
+        public IActionResult OnPostClearSession()
+        {
+            // Clear TempData and messages when user closes QR modal
+            TempData.Clear();
+            SuccessMessage = null;
+            ErrorMessage = null;
+            QrCodeUrl = null;
+            return new JsonResult(new { success = true });
+        }
+
         public async Task<IActionResult> OnPostAsync()
         {
             // Policy agreement is handled on Cart page - preserve the value from form submission
+            
+            // Remove validation errors for PhoneNumber and Address if UseSameProfile is true
+            // because these will be loaded from profile
+            if (Input.UseSameProfile)
+            {
+                ModelState.Remove("Input.PhoneNumber");
+                ModelState.Remove("Input.Address");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -293,7 +394,22 @@ namespace ShareItFE.Pages.CheckoutPage
                 // SỬA: Logic phân biệt giữa "Rent Again" (OrderId đã có) và "Cart Checkout"
                 if (OrderId.HasValue && OrderId.Value != Guid.Empty)
                 {
-                    // Case 1: Processing a single order from "Rent Again"
+                    // Case 1: Processing a single order from "Pay Now" or "Rent Again"
+                    // IMPORTANT: Clear cart first to prevent creating duplicate orders
+                    try
+                    {
+                        var clearCartResponse = await client.DeleteAsync($"{backendBaseUrl}/api/cart/clear");
+                        if (clearCartResponse.IsSuccessStatusCode)
+                        {
+                            Console.WriteLine("Cart cleared successfully before processing order payment.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Could not clear cart: {ex.Message}");
+                        // Continue anyway, clearing cart is not critical
+                    }
+                    
                     orderIdsToProcess.Add(OrderId.Value);
 
                     // Fetch the single order details again to get the accurate TotalAmount for payment
@@ -449,7 +565,24 @@ namespace ShareItFE.Pages.CheckoutPage
                             TempData["TransactionId"] = transactionIdFromApi;
                             SuccessMessage = "QR code created successfully. Please scan to complete payment.";
 
-                            Input = new CheckoutInputModel();
+                            // Save current input values before resetting
+                            var currentInput = Input;
+                            var currentHasRequiredInfo = HasRequiredProfileInfo;
+                            
+                            Input = new CheckoutInputModel
+                            {
+                                CustomerFullName = currentInput.CustomerFullName,
+                                Email = currentInput.Email,
+                                PhoneNumber = currentInput.PhoneNumber,
+                                Address = currentInput.Address,
+                                PaymentMethod = currentInput.PaymentMethod,
+                                // UseSameProfile should be false if profile is incomplete
+                                UseSameProfile = currentHasRequiredInfo
+                            };
+                            
+                            // Preserve HasRequiredProfileInfo state
+                            HasRequiredProfileInfo = currentHasRequiredInfo;
+                            
                             await OnGetAsync();
                             return Page();
                         }
@@ -541,8 +674,13 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public string? CustomerFullName { get; set; }
         public string? Email { get; set; }
+        
+        [Required(ErrorMessage = "Phone number is required")]
         public string? PhoneNumber { get; set; }
+        
+        [Required(ErrorMessage = "Address is required")]
         public string? Address { get; set; }
+        
         public bool HasAgreedToPolicies { get; set; } = false;
 
         public string PaymentMethod { get; set; }

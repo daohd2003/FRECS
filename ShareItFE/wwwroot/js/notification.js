@@ -9,6 +9,7 @@
     const notificationList = document.getElementById('notificationList');
     const userId = notificationMenu.dataset.userid;
     const token = notificationMenu.dataset.token;
+    const userRole = notificationMenu.dataset.userrole;
 
     const authHeaders = {
         'Content-Type': 'application/json',
@@ -102,9 +103,12 @@
             const unreadDot = isUnread ? '<div class="unread-dot"></div>' : '';
             
             if (notification.orderId && notification.orderId !== '00000000-0000-0000-0000-000000000000') {
-                // Notification with order link
+                // Notification with order link - route based on user role
+                const orderDetailUrl = (userRole && userRole.toLowerCase() === 'provider') 
+                    ? `/provider/order/${notification.orderId}` 
+                    : `/Order/Details/${notification.orderId}`;
                 html += `
-                    <a href="/Order/Details/${notification.orderId}" 
+                    <a href="${orderDetailUrl}" 
                        class="notification-item ${unreadClass}" 
                        data-id="${notification.id}">
                         <div class="notification-content">
