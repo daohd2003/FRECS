@@ -79,6 +79,12 @@ namespace ShareItFE.Pages.CheckoutPage
 
         [BindProperty(SupportsGet = true)]
         public Guid? OrderId { get; set; }
+        
+        /// <summary>
+        /// Store OrderId in TempData to persist across page navigation (e.g., back to cart)
+        /// </summary>
+        [TempData]
+        public Guid? PendingOrderId { get; set; }
 
         /// <summary>
         /// Indicates whether the user's profile has all required information (PhoneNumber and Address)
@@ -98,6 +104,51 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnGetAsync()
         {
+            // If user comes from "Pay Now", save OrderId to TempData for persistence
+            if (OrderId.HasValue && OrderId.Value != Guid.Empty)
+            {
+                PendingOrderId = OrderId.Value;
+            }
+            // If user came back from cart (OrderId is null) but we have a pending order
+            else if (!OrderId.HasValue && PendingOrderId.HasValue && PendingOrderId.Value != Guid.Empty)
+            {
+                // Check if cart has items - if yes, user wants to checkout new cart, not old order
+                try
+                {
+                    var client = await _clientHelper.GetAuthenticatedClientAsync();
+                    var userId = GetUserId();
+                    var cartResponse = await client.GetAsync($"{backendBaseUrl}/api/cart/{userId}");
+                    
+                    if (cartResponse.IsSuccessStatusCode)
+                    {
+                        var cartContent = await cartResponse.Content.ReadAsStringAsync();
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var cartData = JsonSerializer.Deserialize<ApiResponse<List<object>>>(cartContent, options);
+                        
+                        // If cart is empty, restore pending order; otherwise, user wants to checkout new cart
+                        if (cartData?.Data == null || cartData.Data.Count == 0)
+                        {
+                            return RedirectToPage("/CheckoutPage/Checkout", new { orderId = PendingOrderId.Value });
+                        }
+                        else
+                        {
+                            // Cart has items, user wants to checkout new cart, clear pending order
+                            PendingOrderId = null;
+                        }
+                    }
+                    else
+                    {
+                        // If cart API fails, assume cart is empty and restore pending order
+                        return RedirectToPage("/CheckoutPage/Checkout", new { orderId = PendingOrderId.Value });
+                    }
+                }
+                catch
+                {
+                    // If error checking cart, restore pending order to be safe
+                    return RedirectToPage("/CheckoutPage/Checkout", new { orderId = PendingOrderId.Value });
+                }
+            }
+            
             // Only clear TempData if this is a fresh GET request (not after POST with QR code)
             // Check TempData to see if we just created a transaction
             var hasNewTransaction = TempData.Peek("TransactionId") != null;
@@ -326,11 +377,20 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnPostClearSession(string? transactionId)
         {
+            // Preserve PendingOrderId before clearing TempData
+            var preservedPendingOrderId = PendingOrderId;
+            
             // Clear TempData and messages when user closes QR modal
             TempData.Clear();
             SuccessMessage = null;
             ErrorMessage = null;
             QrCodeUrl = null;
+            
+            // Restore PendingOrderId after clearing TempData
+            if (preservedPendingOrderId.HasValue)
+            {
+                PendingOrderId = preservedPendingOrderId;
+            }
             
             // Send notification if transactionId is provided
             if (!string.IsNullOrEmpty(transactionId) && Guid.TryParse(transactionId, out var txnId))
@@ -411,8 +471,11 @@ namespace ShareItFE.Pages.CheckoutPage
                 List<Guid> orderIdsToProcess = new List<Guid>();
                 decimal totalAmountForPayment = 0;
 
+                // Determine the actual order ID to process (from query string or TempData)
+                var actualOrderId = OrderId ?? PendingOrderId;
+
                 // SỬA: Logic phân biệt giữa "Rent Again" (OrderId đã có) và "Cart Checkout"
-                if (OrderId.HasValue && OrderId.Value != Guid.Empty)
+                if (actualOrderId.HasValue && actualOrderId.Value != Guid.Empty)
                 {
                     // Case 1: Processing a single order from "Pay Now" or "Rent Again"
                     // IMPORTANT: Clear cart first to prevent creating duplicate orders
@@ -430,11 +493,11 @@ namespace ShareItFE.Pages.CheckoutPage
                         // Continue anyway, clearing cart is not critical
                     }
                     
-                    orderIdsToProcess.Add(OrderId.Value);
+                    orderIdsToProcess.Add(actualOrderId.Value);
 
                     // Fetch the single order details again to get the accurate TotalAmount for payment
                     // (This ensures we have the latest total and status from the API)
-                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{OrderId.Value}/details");
+                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{actualOrderId.Value}/details");
                     if (orderResponse.IsSuccessStatusCode)
                     {
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<OrderDetailsDto>>(
@@ -450,7 +513,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         var updateContactInfoRequest = new UpdateOrderContactInfoDto
                         {
-                            OrderId = OrderId.Value,
+                            OrderId = actualOrderId.Value,
                             CustomerFullName = Input.CustomerFullName ?? "",
                             CustomerEmail = Input.Email ?? "",
                             CustomerPhoneNumber = Input.PhoneNumber ?? "",
@@ -479,6 +542,9 @@ namespace ShareItFE.Pages.CheckoutPage
                 }
                 else // Case 2: Processing a normal cart checkout
                 {
+                    // Clear pending order ID since this is a new checkout from cart
+                    PendingOrderId = null;
+                    
                     // Load discount from session before creating checkout request
                     LoadDiscountFromSession();
                     
@@ -553,11 +619,21 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (!string.IsNullOrEmpty(paymentUrl))
                         {
+                            // Preserve PendingOrderId before clearing TempData
+                            var preservedPendingOrderId = PendingOrderId;
+                            
                             // Clear any messages before redirecting to VNPay
                             // (User won't see them anyway, and they shouldn't appear when user returns)
                             SuccessMessage = null;
                             ErrorMessage = null;
                             TempData.Clear();
+                            
+                            // Restore PendingOrderId after clearing TempData
+                            if (preservedPendingOrderId.HasValue)
+                            {
+                                PendingOrderId = preservedPendingOrderId;
+                            }
+                            
                             return Redirect(paymentUrl);
                         }
                         else
