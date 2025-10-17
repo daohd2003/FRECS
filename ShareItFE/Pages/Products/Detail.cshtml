@@ -2,6 +2,10 @@
 @model ShareItFE.Pages.Products.DetailModel
 @{
     ViewData["Title"] = Model.Product?.Name ?? "Product Detail";
+    // Debug: Check IsOwnProduct value
+    var debugIsOwnProduct = Model.IsOwnProduct;
+    var debugUserId = Model.CurrentUserId;
+    var debugProviderId = Model.Product?.ProviderId;
 }
 
 @using System.Text.Json
@@ -17,27 +21,37 @@
                 <span>Back to Products</span>
             </a>
 
+            <!-- Top Section: 2 Columns -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <!-- Left Column: Image Gallery -->
                 <div class="space-y-4">
-                    <div class="aspect-w-3 aspect-h-4 bg-gray-100 rounded-lg overflow-hidden">
-                        <img id="mainProductImage" src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")" alt="@Model.Product.Name" class="w-full h-96 lg:h-[600px] object-cover" />
+                    <div class="product-image-container relative bg-gray-100 rounded-lg overflow-hidden" style="height: 600px;">
+                        <img id="mainProductImage"
+                             src="@(Model.Product.Images?.FirstOrDefault()?.ImageUrl ?? "https://via.placeholder.com/600x800.png?text=No+Image")"
+                             alt="@Model.Product.Name"
+                             class="product-image-main w-full h-full object-contain cursor-pointer" 
+                             onclick="openImageModal(this.src)" />
+                        <button class="absolute top-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity" onclick="openImageModal(document.getElementById('mainProductImage').src)">
+                            <i data-lucide="maximize-2" class="h-5 w-5"></i>
+                        </button>
                     </div>
-                    <div class="flex space-x-4">
+                    <div class="thumbnail-container">
                         @if (Model.Product.Images != null)
                         {
                             @for (int i = 0; i < Model.Product.Images.Count; i++)
                             {
                                 var image = Model.Product.Images[i];
-                                <button type="button" class="thumbnail-btn w-20 h-20 rounded-lg overflow-hidden border-2 @(i == 0 ? "border-purple-600" : "border-gray-200")" data-image-src="@image.ImageUrl">
-                                    <img src="@image.ImageUrl" alt="@($"{Model.Product.Name} {i + 1}")" class="w-full h-full object-cover" />
+                                <button type="button" class="thumbnail-btn w-20 h-20 rounded-lg overflow-hidden border-2 @(i == 0 ? "border-purple-600" : "border-gray-200") bg-gray-100 hover:border-purple-400 transition-colors" data-image-src="@image.ImageUrl">
+                                    <img src="@image.ImageUrl" alt="@($"{Model.Product.Name} {i + 1}")" class="w-full h-full object-contain" />
                                 </button>
                             }
                         }
                     </div>
                 </div>
 
+                <!-- Right Column: Basic Product Info -->
                 <div class="space-y-6">
-                    <!-- Di chuyển favorite và share ra ngoài form addToCartForm -->
+                    <!-- Favorite and Share -->
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex-grow"></div>
                         <div class="flex items-center space-x-2">
@@ -52,83 +66,195 @@
                         </div>
                     </div>
 
-                    <form method="post" id="addToCartForm" asp-page-handler="AddToCart" asp-route-id="@Model.Product.Id">
-                        <div>
-                            <div class="flex items-center justify-between mb-4">
-                                <h1 class="text-3xl font-bold text-gray-900">@Model.Product.Name</h1>
-                                <button type="button" id="tryOnBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-                                    <i data-lucide="sparkles" class="h-4 w-4"></i>
-                                    <span>Try On</span>
-                                </button>
-                            </div>
-                            <div class="flex items-center space-x-4 mb-4">
-                                <div class="flex items-center space-x-1">
-                                    <div class="flex">
-                                        @for (int i = 1; i <= 5; i++)
-                                        {
-                                            <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
-                                        }
-                                    </div>
-                                    <span class="text-sm text-gray-600">
-                                        @Model.Product.AverageRating.ToString("F1") (@(Model.Feedbacks?.Count ?? 0) reviews)
-                                    </span>
-                                </div>
-                                <span class="text-sm text-gray-500">Rented @Model.Product.RentCount times</span>
-                            </div>
-                            <!-- Price Display -->
-                            <div class="mb-6">
-                                <div class="text-3xl font-bold text-purple-600">@Model.Product.PricePerDay.ToString("C0")/day</div>
-                            </div>
-                        </div>
+                    <!-- Product Title and Try On -->
+                    <div class="flex items-center justify-between mb-4">
+                        <h1 class="text-3xl font-bold text-gray-900">@Model.Product.Name</h1>
+                        <button type="button" id="tryOnBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                            <i data-lucide="sparkles" class="h-4 w-4"></i>
+                            <span>Try On</span>
+                        </button>
+                    </div>
 
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-medium text-gray-900">Provided by</h4>
-                                    <p class="text-purple-600 font-semibold">@Model.Product.ProviderName</p>
-                                    @if (!string.IsNullOrEmpty(Model.ProviderEmail))
-                                    {
-                                        <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
-                                            <i data-lucide="mail" class="h-4 w-4"></i>
-                                            <a class="text-gray-700 hover:text-purple-600 underline" href="mailto:@Model.ProviderEmail">@Model.ProviderEmail</a>
-                                        </div>
-                                    }
-                                </div>
+                    <!-- Rating and Stats -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-1">
+                            <div class="flex">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i data-lucide="star" class="h-5 w-5 @(i <= Model.Product.AverageRating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
+                                }
+                            </div>
+                            <span class="text-sm text-gray-600">
+                                @Model.Product.AverageRating.ToString("F1") (@Model.TotalFeedbacks reviews)
+                            </span>
+                        </div>
+                        @if(!string.IsNullOrEmpty(Model.Product.GetStatsDisplay()))
+                        {
+                            <div class="text-sm text-gray-500 ml-2">
+                                @Model.Product.GetStatsDisplay()
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Description and Category -->
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                            <p class="text-gray-600 leading-relaxed">@Model.Product.Description</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div><span class="font-medium text-gray-900">Color:</span><span class="ml-2 text-gray-600">@Model.Product.Color</span></div>
+                            <div><span class="font-medium text-gray-900">Category:</span><span class="ml-2 text-gray-600 capitalize">@Model.Product.Category</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Provider Info -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-medium text-gray-900">Provided by</h4>
+                                <p class="text-purple-600 font-semibold">@Model.Product.ProviderName</p>
+                                @if (!string.IsNullOrEmpty(Model.ProviderEmail))
+                                {
+                                    <div class="mt-1 text-sm text-gray-600 flex items-center gap-2">
+                                        <i data-lucide="mail" class="h-4 w-4"></i>
+                                        <a class="text-gray-700 hover:text-purple-600 underline" href="mailto:@Model.ProviderEmail">@Model.ProviderEmail</a>
+                                    </div>
+                                }
+                            </div>
+                            @if (!Model.IsOwnProduct)
+                            {
                                 <button type="button" id="openChatBtn" class="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
                                     <i data-lucide="message-circle" class="h-4 w-4"></i>
                                     <span>Message</span>
                                 </button>
-                            </div>
+                            }
                         </div>
+                    </div>
 
-                        <div class="space-y-4">
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-                                <p class="text-gray-600 leading-relaxed">@Model.Product.Description</p>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div><span class="font-medium text-gray-900">Color:</span><span class="ml-2 text-gray-600">@Model.Product.Color</span></div>
-                                <div><span class="font-medium text-gray-900">Category:</span><span class="ml-2 text-gray-600 capitalize">@Model.Product.Category</span></div>
-                            </div>
-                        </div>
+                    <!-- Purchase/Rental Form Section -->
+                    <form method="post" id="addToCartForm" asp-page-handler="AddToCart" asp-route-id="@Model.Product.Id">
+                        @Html.AntiForgeryToken()
+                        
+                        <!-- Choose Option Section -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-4">Choose Option</h3>
+                            <div id="transactionTypeError" class="text-red-500 text-sm mb-2 hidden">Please select either Rental or Purchase option.</div>
+                            @{
+                                bool canRent = Model.Product.RentalStatus == "Available" && Model.Product.PricePerDay > 0 && Model.Product.RentalQuantity > 0;
+                                bool canPurchase = Model.Product.PurchaseStatus == "Available" && Model.Product.PurchasePrice > 0 && Model.Product.PurchaseQuantity > 0;
+                                bool hasRentalOption = Model.Product.RentalStatus == "Available" && Model.Product.PricePerDay > 0;
+                                bool hasPurchaseOption = Model.Product.PurchaseStatus == "Available" && Model.Product.PurchasePrice > 0;
+                                bool canAddToCart = (canRent || canPurchase) && !Model.IsOwnProduct; // Disable if it's user's own product
+                            }
 
-                        <div class="border-t pt-6 space-y-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-900 mb-3">Select Size</label>
-                                <div asp-validation-for="SelectedSize" class="text-red-500 text-sm mb-2"></div>
-                                <input type="hidden" id="selectedSizeInput" asp-for="SelectedSize" />
-                                <div class="flex space-x-3">
-                                    @foreach (var size in (Model.Product.Size?.Split(',') ?? Enumerable.Empty<string>()))
+                            @if (hasRentalOption || hasPurchaseOption)
+                            {
+                                <div class="space-y-3">
+                                    @if (hasRentalOption)
                                     {
-                                        <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors border-gray-300 text-gray-700 hover:border-purple-600" data-size="@size.Trim()">@size.Trim()</button>
+                                        <label class="flex items-center justify-between p-4 border rounded-lg @(canRent ? "cursor-pointer hover:bg-gray-50 has-[:checked]:border-purple-600 has-[:checked]:bg-purple-50" : "cursor-not-allowed bg-gray-100 opacity-60")">
+                                            <div class="flex items-center">
+                                                <input type="radio" name="TransactionType" value="0" asp-for="TransactionType" 
+                                                       class="h-4 w-4 text-purple-600 focus:ring-purple-500" 
+                                                       disabled="@(!canRent)" />
+                                                <div class="ml-3">
+                                                    <div class="font-medium @(canRent ? "" : "text-gray-400")">Rental</div>
+                                                    <div class="text-sm @(canRent ? "text-gray-500" : "text-gray-400")">
+                                                        @if (canRent)
+                                                        {
+                                                            <span>Daily rental service</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-red-500 font-semibold">Out of stock</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-lg font-bold @(canRent ? "text-purple-600" : "text-gray-400")">₫@Model.Product.PricePerDay.ToString("N0")/day</div>
+                                                @if(!string.IsNullOrEmpty(Model.Product.GetDepositDisplay()))
+                                                {
+                                                    <div class="text-sm @(canRent ? "text-purple-600" : "text-gray-400")">@Model.Product.GetDepositDisplay()</div>
+                                                }
+                                            </div>
+                                        </label>
+                                    }
+
+                                    @if (hasPurchaseOption)
+                                    {
+                                        <label class="flex items-center justify-between p-4 border rounded-lg @(canPurchase ? "cursor-pointer hover:bg-gray-50 has-[:checked]:border-green-600 has-[:checked]:bg-green-50" : "cursor-not-allowed bg-gray-100 opacity-60")">
+                                            <div class="flex items-center">
+                                                <input type="radio" name="TransactionType" value="1" asp-for="TransactionType" 
+                                                       class="h-4 w-4 text-green-600 focus:ring-green-500" 
+                                                       disabled="@(!canPurchase)" />
+                                                <div class="ml-3">
+                                                    <div class="font-medium @(canPurchase ? "" : "text-gray-400")">Purchase</div>
+                                                    <div class="text-sm @(canPurchase ? "text-gray-500" : "text-gray-400")">
+                                                        @if (canPurchase)
+                                                        {
+                                                            <span>Buy to own</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-red-500 font-semibold">Out of stock</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-lg font-bold @(canPurchase ? "text-green-600" : "text-gray-400")">₫@Model.Product.PurchasePrice.ToString("N0")</div>
+                                        </label>
                                     }
                                 </div>
-                            </div>
-                            <!-- Rental selection moved to Cart; we keep add-to-cart simple -->
-                            <button type="submit"
-                                    disabled="@(!string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase))"
+                            }
+                            else
+                            {
+                                <div class="text-center py-8 text-gray-500">
+                                    <p>This item is currently unavailable for rent or purchase.</p>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Size Selection and Add to Cart -->
+                        <div class="border-t pt-6 space-y-6">
+                            @if (!Model.IsOwnProduct)
+                            {
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-900 mb-3">Select Size</label>
+                                    <div id="sizeError" class="text-red-500 text-sm mb-2 hidden">Please select a size.</div>
+                                    <input type="hidden" id="selectedSizeInput" asp-for="SelectedSize" />
+                                    <div class="flex space-x-3">
+                                        @foreach (var size in (Model.Product.Size?.Split(',') ?? Enumerable.Empty<string>()))
+                                        {
+                                            <button type="button" class="size-btn px-4 py-2 border rounded-lg font-medium transition-colors border-gray-300 text-gray-700 hover:border-purple-600" data-size="@size.Trim()">@size.Trim()</button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <!-- Provider viewing their own product - hide size selection -->
+                            }
+                            
+                            <!-- Add to Cart Button -->
+                            <button type="submit" id="addToCartBtn"
+                                    disabled="@(!canAddToCart)"
                                     class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
-                                @(string.Equals(Model.Product.AvailabilityStatus, "Available", StringComparison.OrdinalIgnoreCase) ? "Add to Cart" : "Not Available")
+                                <span>
+                                    @if (Model.IsOwnProduct)
+                                    {
+                                        @:This is your product
+                                    }
+                                    else if (canAddToCart)
+                                    {
+                                        @:Add to Cart
+                                    }
+                                    else
+                                    {
+                                        @:No Options Available
+                                    }
+                                </span>
                             </button>
                           
                             <div class="grid grid-cols-3 gap-4 pt-6 border-t">
@@ -139,19 +265,23 @@
                         </div>
                     </form>
 
-                    @if (@Model.CanBeFeedbacked)
-                    {
-                        <button id="openFeedbackBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2">
-                            <i data-lucide="message-square-plus" class="h-4 w-4"></i>
-                            <span>Leave Feedback</span>
-                        </button>
-                    }
                 </div>
             </div>
 
+            <!-- Leave Feedback Button -->
+            @if (@Model.CanBeFeedbacked)
+            {
+                <div class="mt-12">
+                    <button type="button" id="openFeedbackBtn" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center space-x-2">
+                        <i data-lucide="message-square-plus" class="h-5 w-5"></i>
+                        <span>Leave Feedback</span>
+                    </button>
+                </div>
+            }
+
             @if (Model.Feedbacks != null && Model.Feedbacks.Any())
             {
-                <div class="mt-16 border-t pt-16">
+                <div id="reviews" class="mt-8 border-t pt-16">
                     <div class="flex items-center justify-between mb-8">
                         <h2 class="text-2xl font-bold text-gray-900">Customer Reviews</h2>
                         <div class="flex items-center space-x-2">
@@ -162,7 +292,7 @@
                                 }
                             </div>
                             <span class="text-lg font-semibold">@Model.Product.AverageRating.ToString("F1")</span>
-                            <span class="text-gray-500">(@(Model.Feedbacks?.Count ?? 0) reviews)</span>
+                            <span class="text-gray-500">(@Model.TotalFeedbacks reviews)</span>
                         </div>
                     </div>
 
@@ -172,9 +302,9 @@
                             <div class="bg-gray-50 rounded-lg p-6">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center space-x-3">
-                                        <img src="@feedback.ProfilePictureUrl" alt="@feedback.UserName's avatar" class="w-10 h-10 rounded-full object-cover" />
+                                        <img src="@feedback.ProfilePictureUrl" alt="@feedback.CustomerName's avatar" class="w-10 h-10 rounded-full object-cover" />
                                         <div>
-                                            <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.UserName</span></div>
+                                            <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.CustomerName</span></div>
                                             <div class="flex items-center space-x-2">
                                                 <div class="flex">
                                                     @for (int i = 1; i <= 5; i++)
@@ -182,7 +312,7 @@
                                                         <i data-lucide="star" class="h-4 w-4 @(i <= feedback.Rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
                                                     }
                                                 </div>
-                                                <span class="text-sm text-gray-500">@feedback.CreatedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
+                                                <span class="text-sm text-gray-500">@feedback.SubmittedAt.ToLocalTime().ToString("dd MMM, yyyy")</span>
                                             </div>
                                         </div>
                                     </div>
@@ -191,6 +321,54 @@
                             </div>
                         }
                     </div>
+                    
+                    @* Pagination Controls *@
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div id="pagination-container" class="mt-8 flex justify-center">
+                            <nav class="flex items-center space-x-2">
+                                @* Previous Button *@
+                                @if (Model.CurrentPage > 1)
+                                {
+                                    <button type="button" data-page="@(Model.CurrentPage - 1)" 
+                                            class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                        Previous
+                                    </button>
+                                }
+                                
+                                @* Page Numbers *@
+                                @for (int i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+                                {
+                                    @if (i == Model.CurrentPage)
+                                    {
+                                        <span class="px-3 py-2 text-sm font-medium text-white bg-purple-600 border border-purple-600 rounded-md current-page">
+                                            @i
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" data-page="@i" 
+                                                class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                            @i
+                                        </button>
+                                    }
+                                }
+                                
+                                @* Next Button *@
+                                @if (Model.CurrentPage < Model.TotalPages)
+                                {
+                                    <button type="button" data-page="@(Model.CurrentPage + 1)" 
+                                            class="pagination-btn px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                        Next
+                                    </button>
+                                }
+                            </nav>
+                            <div id="loading-reviews" class="hidden ml-4 flex items-center">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                <span class="ml-2 text-sm text-gray-600">Loading...</span>
+                            </div>
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -268,10 +446,532 @@
         </form>
     </div>
 </div>
+
+<!-- Image Modal for Full Size View -->
+<div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50">
+    <div class="relative w-full h-full overflow-hidden">
+        <!-- Top Controls -->
+        <div class="zoom-controls absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 z-20">
+            <button id="zoomOutBtn" class="text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200">
+                <i data-lucide="zoom-out" class="h-5 w-5"></i>
+            </button>
+            <span id="zoomLevel" class="text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm font-medium">100%</span>
+            <button id="zoomInBtn" class="text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200">
+                <i data-lucide="zoom-in" class="h-5 w-5"></i>
+            </button>
+            <button id="resetZoomBtn" class="text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200" title="Reset zoom and position">
+                <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+            </button>
+        </div>
+        
+        <!-- Close Button -->
+        <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-opacity z-20">
+            <i data-lucide="x" class="h-6 w-6"></i>
+        </button>
+        
+        <!-- Image Container -->
+        <div id="imageContainer" class="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing">
+            <img id="modalImage" src="" alt="Product Image" class="transition-transform duration-200 select-none" style="transform-origin: center center;" />
+        </div>
+        
+        <!-- Instructions -->
+        <div class="modal-instructions absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 px-4 py-2 rounded-full text-sm z-10">
+            <span>Drag to pan • Scroll to zoom • Double-click to fit</span>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/js/dist/browser/signalr.js"></script>
     <script>
         lucide.createIcons();
+
+        // Show toast messages from Model if any
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                showToast(@Html.Raw(JsonSerializer.Serialize(Model.ErrorMessage)), 'error');
+            });
+            </text>
+        }
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <text>
+            window.addEventListener('DOMContentLoaded', function() {
+                showToast(@Html.Raw(JsonSerializer.Serialize(Model.SuccessMessage)), 'success');
+            });
+            </text>
+        }
+
+        // Handle scroll to reviews section for pagination
+        function scrollToReviews() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageParam = urlParams.get('page');
+            const hasReviewsHash = window.location.hash === '#reviews';
+            
+            // Check if we should scroll to reviews
+            const shouldScroll = hasReviewsHash || (pageParam && parseInt(pageParam) > 1);
+            
+            if (shouldScroll) {
+                const reviewsElement = document.getElementById('reviews');
+                if (reviewsElement) {
+                    // Wait a bit for content to render
+                    setTimeout(() => {
+                        const headerOffset = 100; // Offset to account for any fixed headers
+                        const elementPosition = reviewsElement.getBoundingClientRect().top + window.pageYOffset;
+                        const offsetPosition = elementPosition - headerOffset;
+                        
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }, 100);
+                }
+            }
+        }
+
+        // AJAX Pagination functionality
+        let currentPage = @Model.CurrentPage;
+        let totalPages = @Model.TotalPages;
+        const productId = '@Model.Product.Id';
+
+        async function loadReviews(page) {
+            const loadingElement = document.getElementById('loading-reviews');
+            const reviewsContainer = document.querySelector('#reviews .space-y-6');
+            
+            try {
+                // Show loading indicator
+                loadingElement.classList.remove('hidden');
+                
+                // Fetch new reviews
+                const response = await fetch(`/products/detail/${productId}?page=${page}&handler=Reviews`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load reviews');
+                }
+                
+                const html = await response.text();
+                
+                // Parse the HTML response to extract reviews
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newReviews = doc.querySelector('#reviews .space-y-6');
+                const newPagination = doc.querySelector('#pagination-container nav');
+                
+                if (newReviews && newPagination) {
+                    // Update reviews content with smooth transition
+                    reviewsContainer.style.opacity = '0.5';
+                    setTimeout(() => {
+                        reviewsContainer.innerHTML = newReviews.innerHTML;
+                        reviewsContainer.style.opacity = '1';
+                        
+                        // Update pagination
+                        const currentPaginationNav = document.querySelector('#pagination-container nav');
+                        currentPaginationNav.innerHTML = newPagination.innerHTML;
+                        
+                        // Re-attach event listeners
+                        attachPaginationListeners();
+                        
+                        // Update current page
+                        currentPage = page;
+                        
+                        // Update URL without reload
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.set('page', page);
+                        newUrl.hash = 'reviews';
+                        window.history.pushState({ page: page }, '', newUrl.toString());
+                        
+                        // Scroll to reviews
+                        scrollToReviews();
+                    }, 150);
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                showToast('Failed to load reviews', 'error');
+            } finally {
+                // Hide loading indicator
+                loadingElement.classList.add('hidden');
+            }
+        }
+
+        function attachPaginationListeners() {
+            const paginationButtons = document.querySelectorAll('.pagination-btn');
+            paginationButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = parseInt(this.dataset.page);
+                    if (page && page !== currentPage && page >= 1 && page <= totalPages) {
+                        loadReviews(page);
+                    }
+                });
+            });
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.page) {
+                loadReviews(event.state.page);
+            }
+        });
+
+        // Call functions when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            scrollToReviews();
+            attachPaginationListeners();
+        });
+        
+        // Also call when window is fully loaded
+        window.addEventListener('load', scrollToReviews);
+        
+        // Handle hash changes (back/forward navigation)
+        window.addEventListener('hashchange', scrollToReviews);
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            // Remove existing toast if any
+            const existingToast = document.querySelector('.toast-notification');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast-notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            toast.textContent = message;
+
+            // Add to page
+            document.body.appendChild(toast);
+
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 10);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Image Modal Functions with Pan and Zoom
+        let modalState = {
+            scale: 1,
+            translateX: 0,
+            translateY: 0,
+            isDragging: false,
+            startX: 0,
+            startY: 0,
+            startTranslateX: 0,
+            startTranslateY: 0
+        };
+
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageSrc;
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            
+            // Reset modal state
+            resetModalState();
+            updateImageTransform();
+            updateZoomLevel();
+            
+            // Re-create icons for the new buttons
+            lucide.createIcons();
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            resetModalState();
+        }
+
+        function resetModalState() {
+            modalState.scale = 1;
+            modalState.translateX = 0;
+            modalState.translateY = 0;
+            modalState.isDragging = false;
+        }
+
+        function updateImageTransform() {
+            const modalImage = document.getElementById('modalImage');
+            modalImage.style.transform = `translate(${modalState.translateX}px, ${modalState.translateY}px) scale(${modalState.scale})`;
+        }
+
+        function updateZoomLevel() {
+            const zoomLevel = document.getElementById('zoomLevel');
+            zoomLevel.textContent = Math.round(modalState.scale * 100) + '%';
+        }
+
+        function zoomImage(delta, centerX = null, centerY = null) {
+            const zoomFactor = 1.2;
+            const oldScale = modalState.scale;
+            
+            if (delta > 0) {
+                modalState.scale = Math.min(modalState.scale * zoomFactor, 5); // Max 500%
+            } else {
+                modalState.scale = Math.max(modalState.scale / zoomFactor, 0.1); // Min 10%
+            }
+
+            // If zoom center is provided, adjust translation to zoom towards that point
+            if (centerX !== null && centerY !== null) {
+                const scaleChange = modalState.scale - oldScale;
+                const modalImage = document.getElementById('modalImage');
+                const rect = modalImage.getBoundingClientRect();
+                const imageCenterX = rect.left + rect.width / 2;
+                const imageCenterY = rect.top + rect.height / 2;
+                
+                modalState.translateX -= (centerX - imageCenterX) * (scaleChange / oldScale);
+                modalState.translateY -= (centerY - imageCenterY) * (scaleChange / oldScale);
+            }
+
+            updateImageTransform();
+            updateZoomLevel();
+        }
+
+        // Mouse/Touch Events
+        document.getElementById('imageContainer').addEventListener('mousedown', function(e) {
+            if (e.target.id === 'modalImage') {
+                modalState.isDragging = true;
+                modalState.startX = e.clientX;
+                modalState.startY = e.clientY;
+                modalState.startTranslateX = modalState.translateX;
+                modalState.startTranslateY = modalState.translateY;
+                
+                // Add dragging class for cursor change
+                this.classList.add('dragging');
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (modalState.isDragging) {
+                const deltaX = e.clientX - modalState.startX;
+                const deltaY = e.clientY - modalState.startY;
+                
+                modalState.translateX = modalState.startTranslateX + deltaX;
+                modalState.translateY = modalState.startTranslateY + deltaY;
+                
+                updateImageTransform();
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (modalState.isDragging) {
+                modalState.isDragging = false;
+                // Remove dragging class
+                const container = document.getElementById('imageContainer');
+                if (container) {
+                    container.classList.remove('dragging');
+                }
+            }
+        });
+
+        // Wheel zoom
+        document.getElementById('imageContainer').addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const centerX = e.clientX;
+            const centerY = e.clientY;
+            
+            zoomImage(-e.deltaY, centerX, centerY);
+        });
+
+        // Double click to fit
+        document.getElementById('modalImage').addEventListener('dblclick', function() {
+            resetModalState();
+            updateImageTransform();
+            updateZoomLevel();
+        });
+
+        // Zoom controls
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Transaction Type Selection Logic ---
+            const transactionRadios = document.querySelectorAll('input[name="TransactionType"]');
+            const addToCartBtn = document.getElementById('addToCartBtn');
+            const addToCartForm = document.getElementById('addToCartForm');
+
+            function updateTransactionUI() {
+                const selectedOption = document.querySelector('input[name="TransactionType"]:checked');
+                if (selectedOption && addToCartBtn) {
+                    const isRental = selectedOption.value === '0';
+                    const buttonText = addToCartBtn.querySelector('span');
+                    if (buttonText) {
+                        buttonText.textContent = `Add to Cart (${isRental ? 'Rental' : 'Purchase'})`;
+                    }
+                }
+            }
+
+            // Add event listeners to transaction type radio buttons
+            if (transactionRadios.length > 0) {
+                transactionRadios.forEach(radio => {
+                    radio.addEventListener('change', updateTransactionUI);
+                });
+                
+                // Set initial UI state based on default selection from backend
+                updateTransactionUI();
+            }
+
+            // Validate transaction type and size selection before submit
+            if (addToCartForm) {
+                addToCartForm.addEventListener('submit', function(e) {
+                    let hasError = false;
+                    
+                    // Validate Transaction Type
+                    const selectedOption = document.querySelector('input[name="TransactionType"]:checked');
+                    const transactionErrorDiv = document.getElementById('transactionTypeError');
+                    
+                    if (!selectedOption) {
+                        hasError = true;
+                        if (transactionErrorDiv) {
+                            transactionErrorDiv.classList.remove('hidden');
+                        }
+                    } else {
+                        if (transactionErrorDiv) {
+                            transactionErrorDiv.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Validate Size
+                    const selectedSize = document.getElementById('selectedSizeInput').value;
+                    const sizeErrorDiv = document.getElementById('sizeError');
+                    
+                    if (!selectedSize || selectedSize.trim() === '') {
+                        hasError = true;
+                        if (sizeErrorDiv) {
+                            sizeErrorDiv.classList.remove('hidden');
+                        }
+                    } else {
+                        if (sizeErrorDiv) {
+                            sizeErrorDiv.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Prevent form submission if there are errors
+                    if (hasError) {
+                        e.preventDefault();
+                        // Scroll to the first error
+                        const firstError = document.querySelector('#transactionTypeError:not(.hidden), #sizeError:not(.hidden)');
+                        if (firstError) {
+                            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        return false;
+                    }
+                });
+
+                // Hide transaction type error when user selects an option
+                transactionRadios.forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        const errorDiv = document.getElementById('transactionTypeError');
+                        if (errorDiv) {
+                            errorDiv.classList.add('hidden');
+                        }
+                    });
+                });
+            }
+
+            // --- Size Selection Logic ---
+            const sizeBtns = document.querySelectorAll('.size-btn');
+            const selectedSizeInput = document.getElementById('selectedSizeInput');
+
+            if (sizeBtns.length > 0 && selectedSizeInput) {
+                sizeBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        selectedSizeInput.value = btn.dataset.size;
+                        
+                        // Update visual state
+                        sizeBtns.forEach(b => {
+                            b.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+                            b.classList.add('border-gray-300', 'text-gray-700');
+                        });
+                        btn.classList.remove('border-gray-300', 'text-gray-700');
+                        btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+                        
+                        // Hide size error when user selects a size
+                        const sizeErrorDiv = document.getElementById('sizeError');
+                        if (sizeErrorDiv) {
+                            sizeErrorDiv.classList.add('hidden');
+                        }
+                    });
+                });
+            }
+
+            // --- Try On Button Logic ---
+            const tryOnBtn = document.getElementById('tryOnBtn');
+            if (tryOnBtn) {
+                tryOnBtn.addEventListener('click', () => {
+                    // Check if user is authenticated
+                    const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                    if (!isAuthenticated) {
+                        showToast('Please log in to use Try On feature', 'error');
+                        return;
+                    }
+                    
+                    const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product?.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
+                    if (garmentImageUrls.length > 0) {
+                        window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
+                    } else {
+                        showToast('No garment image available for try-on', 'error');
+                    }
+                });
+            }
+
+            // Wait for the modal to be in DOM, then add event listeners
+            setTimeout(() => {
+                const zoomInBtn = document.getElementById('zoomInBtn');
+                const zoomOutBtn = document.getElementById('zoomOutBtn');
+                const resetZoomBtn = document.getElementById('resetZoomBtn');
+
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', function() {
+                        zoomImage(1);
+                    });
+                }
+
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', function() {
+                        zoomImage(-1);
+                    });
+                }
+
+                if (resetZoomBtn) {
+                    resetZoomBtn.addEventListener('click', function() {
+                        resetModalState();
+                        updateImageTransform();
+                        updateZoomLevel();
+                    });
+                }
+            }, 100);
+        });
+
+        // Close modal when clicking outside the image
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this || e.target.id === 'imageContainer') {
+                closeImageModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
 
@@ -287,7 +987,16 @@
             const feedbackCommentInput = document.getElementById('feedbackComment'); // Corrected ID
 
             if (openFeedbackBtn) {
-                openFeedbackBtn.addEventListener('click', () => {
+                openFeedbackBtn.addEventListener('click', (e) => {
+                    e.preventDefault(); // Prevent any default button behavior
+                    
+                    // Double-check authentication (should already be checked by backend)
+                    const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                    if (!isAuthenticated) {
+                        showToast('Please log in to leave feedback', 'error');
+                        return;
+                    }
+                    
                     feedbackModal.classList.remove('hidden');
                     document.body.classList.add('overflow-hidden');
                     // Reset form fields when opening
@@ -357,23 +1066,12 @@
             }
 
             starRatingContainer.addEventListener('click', (event) => {
-                const clickedButton = event.target.closest('.feedback-star-btn');
-                if (clickedButton) {
-                    const rating = parseInt(clickedButton.dataset.rating, 10);
+                    const clickedButton = event.target.closest('.feedback-star-btn');
+                    if (clickedButton) {
+                        const rating = parseInt(clickedButton.dataset.rating, 10);
                     updateStarRating(rating);
                 }
             });
-
-            // IMPORTANT: Call updateStarRating(0) on modal open to ensure stars are reset
-            if (openFeedbackBtn) {
-                openFeedbackBtn.addEventListener('click', () => {
-                    feedbackModal.classList.remove('hidden');
-                    document.body.classList.add('overflow-hidden');
-                    feedbackRatingInput.value = '0';
-                    feedbackCommentInput.value = '';
-                    updateStarRating(0); // This line is crucial for resetting on open
-                });
-            }
 
                 // Chỉ thực thi JavaScript nếu Model.Product tồn tại
         @if (Model.Product != null)
@@ -382,13 +1080,22 @@
                                 // --- PHẦN 1: LOGIC CHO TRANG SẢN PHẨM ---
 
                                 // Image gallery logic
-                                const mainImage = document.getElementById('mainProductImage');
-                const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
+            const mainImage = document.getElementById('mainProductImage');
+            const thumbnailBtns = document.querySelectorAll('.thumbnail-btn');
                 thumbnailBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
                         mainImage.src = btn.dataset.imageSrc;
-                        thumbnailBtns.forEach(b => b.classList.remove('border-purple-600', 'border-gray-200'));
+                        thumbnailBtns.forEach(b => {
+                            b.classList.remove('border-purple-600');
+                            b.classList.add('border-gray-200');
+                        });
+                        btn.classList.remove('border-gray-200');
                         btn.classList.add('border-purple-600');
+                    });
+                    
+                    // Add double-click to open modal
+                    btn.addEventListener('dblclick', () => {
+                        openImageModal(btn.dataset.imageSrc);
                     });
                 });
 
@@ -409,48 +1116,77 @@
 
                 // Form validation
                 const addToCartForm = document.getElementById('addToCartForm');
-                if (addToCartForm) {
-                    addToCartForm.addEventListener('submit', function (event) {
-                        const sizeValue = document.getElementById('selectedSizeInput').value;
-                        const dateValue = document.querySelector('input[name="StartDate"]').value;
-
-                        if (!sizeValue) {
-                            event.preventDefault();
-                            alert('Please select a size');
-                            return;
-                        }
-                        if (!dateValue) {
-                            event.preventDefault();
-                            alert('Please select a start date');
-                            return;
-                        }
-                    });
-                }
+                // Size and transaction type validation is now handled in the DOMContentLoaded section above
+                // No need for duplicate validation here
 
                 // Favorite button logic
                 const favoriteForm = document.querySelector('.favorite-form');
                 if (favoriteForm) {
-                    favoriteForm.addEventListener('submit', (e) => {
+                    favoriteForm.addEventListener('submit', async (e) => {
                         e.preventDefault();
+                        
+                        // Check if user is authenticated
+                        const isAuthenticated = '@User.Identity.IsAuthenticated'.toLowerCase() === 'true';
+                        if (!isAuthenticated) {
+                            showToast('Please log in to add products to your favorites', 'error');
+                            return;
+                        }
+                        
+                        const button = favoriteForm.querySelector('.favorite-btn');
+                        const icon = favoriteForm.querySelector('.favorite-icon');
                         const productId = favoriteForm.querySelector('input[name="productId"]').value;
-                        if (productId) {
-                            favoriteForm.submit();
+                        
+                        if (!productId) return;
+                        
+                        // Disable button during request
+                        button.disabled = true;
+                        
+                        try {
+                            const formData = new FormData(favoriteForm);
+                            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                            
+                            const response = await fetch(`/products/detail/${productId}?handler=AddFavorite`, {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'RequestVerificationToken': token
+                                }
+                            });
+                            
+                            if (response.ok) {
+                                // Toggle heart icon immediately
+                                const isCurrentlyFavorite = icon.classList.contains('text-red-500');
+                                
+                                if (isCurrentlyFavorite) {
+                                    // Remove from favorites
+                                    icon.classList.remove('text-red-500', 'fill-red-500');
+                                    icon.classList.add('text-gray-400', 'hover:text-red-500');
+                                    showToast('Removed from favorites', 'success');
+                                } else {
+                                    // Add to favorites
+                                    icon.classList.remove('text-gray-400', 'hover:text-red-500');
+                                    icon.classList.add('text-red-500', 'fill-red-500');
+                                    showToast('Added to favorites', 'success');
+                                }
+                            } else if (response.status === 401) {
+                                // User not authenticated
+                                showToast('Please login to add products to your favorites', 'error');
+                            } else {
+                                console.error('Failed to update favorite status');
+                                showToast('Failed to update favorite', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error updating favorite:', error);
+                            showToast('Network error occurred', 'error');
+                        } finally {
+                            // Re-enable button
+                            button.disabled = false;
                         }
                     });
                 }
 
-                // Try On button logic
-                const tryOnBtn = document.getElementById('tryOnBtn');
-                if (tryOnBtn) {
-                    tryOnBtn.addEventListener('click', () => {
-                        const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
-                        if (garmentImageUrls.length > 0) {
-                            window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
-                        } else {
-                            alert('No garment image available for try-on');
-                        }
-                    });
-                }
+                // Try On button logic - already handled above in DOMContentLoaded
+                // This duplicate can be removed
 
                 // --- PHẦN 2: LOGIC CHO CHAT MODAL ---
 
@@ -484,10 +1220,76 @@
                 function createMessageElement(message, isMe) {
                     const messageDiv = document.createElement('div');
                     messageDiv.classList.add('flex', 'mb-2', isMe ? 'justify-end' : 'justify-start');
+                    
+                    // Create container for bubble and timestamp
+                    const bubbleContainer = document.createElement('div');
+                    bubbleContainer.classList.add('message-bubble-container', isMe ? 'me' : 'them');
+                    
+                    // Create message bubble
                     const bubbleDiv = document.createElement('div');
-                    bubbleDiv.classList.add('px-4', 'py-2', 'rounded-lg', 'max-w-xs', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    bubbleDiv.classList.add('message-bubble', 'px-4', 'py-2', 'rounded-lg', 'break-words', isMe ? 'bg-purple-600' : 'bg-gray-200', isMe ? 'text-white' : 'text-gray-800');
+                    if (isMe) {
+                        bubbleDiv.classList.add('me');
+                    } else {
+                        bubbleDiv.classList.add('them');
+                    }
                     bubbleDiv.textContent = message.content;
-                    messageDiv.appendChild(bubbleDiv);
+                    
+                    // Create timestamp element
+                    const timestampDiv = document.createElement('div');
+                    timestampDiv.classList.add('message-timestamp');
+                    
+                    // Format timestamp - handle both Date objects and string dates
+                    let formattedTime = '';
+                    if (message.sentAt || message.timestamp) {
+                        const msgDate = new Date(message.sentAt || message.timestamp);
+                        const now = new Date();
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+                        
+                        if (msgDateOnly.getTime() === today.getTime()) {
+                            // Today - show only time
+                            formattedTime = msgDate.toLocaleTimeString('vi-VN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                        } else if (msgDateOnly.getTime() === today.getTime() - 24 * 60 * 60 * 1000) {
+                            // Yesterday
+                            formattedTime = 'Hôm qua ' + msgDate.toLocaleTimeString('vi-VN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                        } else {
+                        // Older - show date and time
+                        formattedTime = msgDate.toLocaleDateString('vi-VN', { 
+                            day: '2-digit', 
+                            month: '2-digit',
+                            year: 'numeric'
+                        }) + ' ' + msgDate.toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                        }
+                    } else {
+                        // Fallback for messages without timestamp
+                        formattedTime = new Date().toLocaleTimeString('vi-VN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                    }
+                    
+                    timestampDiv.textContent = formattedTime;
+                    
+                    // Add click handler to toggle timestamp
+                    bubbleDiv.addEventListener('click', function() {
+                        timestampDiv.classList.toggle('show');
+                    });
+                    
+                    // Assemble the message
+                    bubbleContainer.appendChild(bubbleDiv);
+                    bubbleContainer.appendChild(timestampDiv);
+                    messageDiv.appendChild(bubbleContainer);
+                    
                     return messageDiv;
                 }
 
@@ -522,7 +1324,7 @@
                             messages.reverse().forEach(prependOldMessage);
                             messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
                             currentPage++;
-                        } else {
+                            } else {
                             allMessagesLoaded = true;
                         }
                     } catch (error) {
@@ -586,7 +1388,7 @@
                     openChatBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         if (!accessToken) {
-                            alert("Please log in to chat.");
+                            showToast("Please log in to chat with provider", 'error');
                             return;
                         }
                         chatModal.classList.remove('hidden');
@@ -597,8 +1399,8 @@
 
                 if (closeChatBtn) {
                     closeChatBtn.addEventListener('click', () => {
-                        chatModal.classList.add('hidden');
-                        document.body.classList.remove('overflow-hidden');
+                    chatModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                         if (signalRConnection) {
                             signalRConnection.stop().then(() => signalRConnection = null);
                         }
@@ -609,7 +1411,11 @@
                     e.preventDefault();
                     const messageContent = messageInput.value.trim();
                     if (messageContent && signalRConnection && currentConversationId) {
-                        const tempMessage = { content: messageContent, senderId: currentUserId };
+                        const tempMessage = { 
+                            content: messageContent, 
+                            senderId: currentUserId,
+                            sentAt: new Date().toISOString()
+                        };
                         appendNewMessage(tempMessage);
 
                         signalRConnection.invoke("SendMessageAsync", currentConversationId, providerId, messageContent, productId)
@@ -628,7 +1434,6 @@
                 });
             </text>
         }
-                });
+        });
     </script>
 }
-

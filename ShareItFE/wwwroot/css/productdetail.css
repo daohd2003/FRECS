@@ -29,3 +29,142 @@
         transform: translateY(0);
     }
 }
+
+/* Image display improvements */
+.product-image-container {
+    position: relative;
+    background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
+                linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
+                linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.product-image-main {
+    transition: all 0.3s ease;
+}
+
+.product-image-main:hover {
+    transform: scale(1.02);
+}
+
+.thumbnail-container {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding: 0.25rem;
+}
+
+.thumbnail-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.thumbnail-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+}
+
+.thumbnail-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+}
+
+.thumbnail-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.thumbnail-btn {
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.thumbnail-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.thumbnail-btn:hover::after {
+    opacity: 1;
+}
+
+.thumbnail-btn.border-purple-600::after {
+    opacity: 0;
+}
+
+/* Modal improvements */
+#imageModal {
+    backdrop-filter: blur(4px);
+}
+
+#modalImage {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    max-width: none !important;
+    max-height: none !important;
+    width: auto;
+    height: auto;
+}
+
+#imageContainer {
+    position: relative;
+    overflow: hidden;
+}
+
+#imageContainer.dragging {
+    cursor: grabbing !important;
+}
+
+/* Zoom controls styling */
+.zoom-controls {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.zoom-controls button:hover {
+    transform: scale(1.1);
+}
+
+.zoom-controls button:active {
+    transform: scale(0.95);
+}
+
+/* Instructions styling */
+.modal-instructions {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Prevent text selection during drag */
+#imageModal * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Smooth cursor changes */
+#imageContainer {
+    transition: cursor 0.1s ease;
+}
+
+/* Mobile touch improvements */
+@media (max-width: 768px) {
+    .zoom-controls {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .modal-instructions {
+        display: none; /* Hide on mobile to save space */
+    }
+}

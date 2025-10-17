@@ -39,6 +39,21 @@
         new SelectListItem { Value = "price-low", Text = "Price: Low to High" },
         new SelectListItem { Value = "price-high", Text = "Price: High to Low" },
     };
+
+    var genderOptions = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "", Text = "All Genders" },
+        new SelectListItem { Value = "Unisex", Text = "Unisex" },
+        new SelectListItem { Value = "Male", Text = "Male" },
+        new SelectListItem { Value = "Female", Text = "Female" },
+    };
+
+    var productTypeOptions = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "", Text = "All Types" },
+        new SelectListItem { Value = "Rental", Text = "For Rent" },
+        new SelectListItem { Value = "Purchase", Text = "For Sale" },
+    };
 }
 
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -64,7 +79,7 @@
                             <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
                         </div>
                         <input type="text" name="SearchQuery" value="@Model.SearchQuery" placeholder="Search products..."
-                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" onchange="this.form.submit()" />
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" id="searchInput" />
                     </div>
 
                     <div class="flex items-center gap-2 sm:gap-4 w-full md:w-auto">
@@ -83,7 +98,7 @@
                             </button>
                         </div>
 
-                        <select name="SortBy" onchange="this.form.submit()" class="rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 flex-grow">
+                        <select name="SortBy" id="sortBySelect" class="rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 flex-grow">
                             @foreach (var option in sortByOptions)
                             {
                                 <option value="@option.Value" selected="@(Model.SortBy == option.Value)">@option.Text</option>
@@ -93,10 +108,10 @@
                 </div>
 
                 <div id="filterPanel" class="@(Model.IsFilterOpen ? "" : "hidden") pt-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                         <div>
                             <label for="CategoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                            <select id="CategoryFilter" name="CategoryFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            <select id="CategoryFilter" name="CategoryFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 filter-select">
                                 @foreach (var option in Model.CategoryOptions ?? new List<SelectListItem> { new SelectListItem { Value = string.Empty, Text = "All Categories" } })
                                 {
                                     <option value="@option.Value" selected="@(Model.CategoryFilter == option.Value)">@option.Text</option>
@@ -106,7 +121,7 @@
 
                         <div>
                             <label for="PriceRangeFilter" class="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
-                            <select id="PriceRangeFilter" name="PriceRangeFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            <select id="PriceRangeFilter" name="PriceRangeFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 filter-select">
                                 @foreach (var option in priceRanges)
                                 {
                                     <option value="@option.Value" selected="@(Model.PriceRangeFilter == option.Value)">@option.Text</option>
@@ -116,7 +131,7 @@
 
                         <div>
                             <label for="SizeFilter" class="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                            <select id="SizeFilter" name="SizeFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            <select id="SizeFilter" name="SizeFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 filter-select">
                                 @foreach (var option in sizes)
                                 {
                                     <option value="@option.Value" selected="@(Model.SizeFilter == option.Value)">@option.Text</option>
@@ -126,10 +141,30 @@
 
                         <div>
                             <label for="RatingFilter" class="block text-sm font-medium text-gray-700 mb-1">Rating</label>
-                            <select id="RatingFilter" name="RatingFilter" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            <select id="RatingFilter" name="RatingFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 filter-select">
                                 @foreach (var option in ratings)
                                 {
                                     <option value="@option.Value" selected="@(Model.RatingFilter == option.Value)">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="GenderFilter" class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                            <select id="GenderFilter" name="GenderFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 filter-select">
+                                @foreach (var option in genderOptions)
+                                {
+                                    <option value="@option.Value" selected="@(Model.GenderFilter == option.Value)">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="ProductTypeFilter" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                            <select id="ProductTypeFilter" name="ProductTypeFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500 filter-select">
+                                @foreach (var option in productTypeOptions)
+                                {
+                                    <option value="@option.Value" selected="@(Model.ProductTypeFilter == option.Value)">@option.Text</option>
                                 }
                             </select>
                         </div>
@@ -138,95 +173,128 @@
             </form>
         </div>
 
-        <div class="mb-6">
+         <div class="mb-6 flex justify-between items-center">
             <p class="text-gray-600">
                 Showing @(Model.Products?.Count ?? 0) of @Model.TotalProductsCount products
             </p>
+            @if (ViewData.ContainsKey("ShowDebugTools") && (bool)ViewData["ShowDebugTools"] == true)
+            {
+                <div class="text-sm text-gray-500">
+                    <button onclick="testODataFilters()" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">
+                        Test OData
+                    </button>
+                    <button onclick="demoODataFilters()" class="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 ml-2">
+                        Demo Filters
+                    </button>
+                </div>
+            }
         </div>
 
-        @if (Model.Products != null && Model.Products.Any())
-        {
-            <div class="@(Model.ViewMode == "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-6")" id="productList">
-                @foreach (var product in Model.Products)
-                {
-                    <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
-                        <div class="relative">
-                            <a href="/products/detail/@product.Id">
-                                <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" alt="@product.Name" class="object-cover w-full h-80 hover:scale-105 transition-transform duration-300" />
-                            </a>
-                            <form method="post" action="/products?handler=AddFavorite" class="favorite-form" data-product-id="@product.Id">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="productId" value="@product.Id" />
-                                <button type="submit" class="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors favorite-btn" data-product-id="@product.Id">
-                                    <i data-lucide="heart" class="h-5 w-5 text-gray-600 hover:text-red-500 favorite-icon" data-initial-color="gray-600"></i>
-                                </button>
-                            </form>
-                        </div>
-                        <div class="p-4 flex flex-col flex-grow">
-                            <a href="/products/detail/@product.Id" class="flex-grow">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-purple-600 transition-colors">
-                                    @product.Name
-                                </h3>
-                            </a>
-                            <div class="flex items-center justify-between mb-3 mt-auto">
-                                <span class="text-xl font-bold text-purple-600">@product.PricePerDay.ToString("C0")/day</span>
-                                <div class="flex items-center gap-1">
-                                    <i data-lucide="star" class="h-4 w-4 text-yellow-400 fill-yellow-400"></i>
-                                    <span class="font-medium text-gray-700">@product.AverageRating.ToString("F1")</span>
+        <div id="productContainer">
+            @if (Model.Products != null && Model.Products.Any())
+            {
+                <div class="@(Model.ViewMode == "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-6")" id="productList">
+                    @foreach (var product in Model.Products)
+                    {
+                        <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
+                            <div class="relative">
+                                <a href="/products/detail/@product.Id">
+                                    <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" alt="@product.Name" class="object-cover w-full h-80 hover:scale-105 transition-transform duration-300" />
+                                </a>
+                                <form method="post" action="/products?handler=AddFavorite" class="favorite-form" data-product-id="@product.Id">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="productId" value="@product.Id" />
+                                    <button type="submit" class="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors favorite-btn" data-product-id="@product.Id">
+                                        <i data-lucide="heart" class="h-5 w-5 text-gray-600 hover:text-red-500 favorite-icon" data-initial-color="gray-600"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="p-4 flex flex-col flex-grow">
+                                <a href="/products/detail/@product.Id" class="flex-grow">
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-purple-600 transition-colors">
+                                        @product.Name
+                                    </h3>
+                                </a>
+                                <div class="flex items-center justify-between mb-3 mt-auto">
+                                    <span class="text-xl font-bold text-purple-600">@product.GetPrimaryPriceDisplay()</span>
+                                    <div class="flex items-center gap-1">
+                                        <i data-lucide="star" class="h-4 w-4 text-yellow-400 fill-yellow-400"></i>
+                                        <span class="font-medium text-gray-700">@product.AverageRating.ToString("F1")</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="capitalize text-gray-500">@product.Category</span>
+                                    @if(!string.IsNullOrEmpty(product.GetDepositDisplay()))
+                                    {
+                                        <span class="text-gray-600 font-semibold">@product.GetDepositDisplay()</span>
+                                    }
+                                </div>
+                                <div class="flex items-center justify-between text-sm text-gray-500">
+                                    <span>@product.GetStatsDisplay()</span>
+                                    <span></span>
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between text-sm text-gray-500">
-                                <span>Rented @product.RentCount times</span>
-                                <span class="capitalize">@product.Category</span>
-                            </div>
                         </div>
-                    </div>
-                }
-            </div>
-
-            <div class="mt-8 flex justify-center items-center gap-4">
-                <form method="get" id="paginationForm" class="flex items-center gap-2">
-                    <input type="hidden" name="SearchQuery" value="@Model.SearchQuery" />
-                    <input type="hidden" name="SortBy" value="@Model.SortBy" />
-                    <input type="hidden" name="ViewMode" value="@Model.ViewMode" />
-                    <input type="hidden" name="CategoryFilter" value="@Model.CategoryFilter" />
-                    <input type="hidden" name="PriceRangeFilter" value="@Model.PriceRangeFilter" />
-                    <input type="hidden" name="SizeFilter" value="@Model.SizeFilter" />
-                    <input type="hidden" name="RatingFilter" value="@Model.RatingFilter" />
-                    <input type="hidden" name="IsFilterOpen" value="@Model.IsFilterOpen.ToString().ToLower()" />
-                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
-                    <input type="hidden" name="CurrentPage" id="paginationPageInput" value="@Model.CurrentPage" />
-
-                    <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage - 1))"
-                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled="@(Model.CurrentPage <= 1)">
-                        Previous
-                    </button>
-
-                    @for (int i = 1; i <= Model.TotalPages; i++)
-                    {
-                        <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@i)"
-                                class="px-4 py-2 rounded-lg @(i == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
-                            @i
-                        </button>
                     }
+                </div>
 
-                    <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage + 1))"
-                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled="@(Model.CurrentPage >= Model.TotalPages)">
-                        Next
-                    </button>
-                </form>
-            </div>
-        }
-        else
-        {
-            <div class="text-center py-12">
-                <i data-lucide="search-x" class="mx-auto h-12 w-12 text-gray-400"></i>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No products found</h3>
-                <p class="mt-1 text-sm text-gray-500">No products were found matching your criteria.</p>
-            </div>
-        }
+                <div class="mt-8 flex justify-center items-center gap-4" id="paginationContainer">
+                    <form method="get" id="paginationForm" class="flex items-center gap-2">
+                        <input type="hidden" name="SearchQuery" value="@Model.SearchQuery" />
+                        <input type="hidden" name="SortBy" value="@Model.SortBy" />
+                        <input type="hidden" name="ViewMode" value="@Model.ViewMode" />
+                        <input type="hidden" name="CategoryFilter" value="@Model.CategoryFilter" />
+                        <input type="hidden" name="PriceRangeFilter" value="@Model.PriceRangeFilter" />
+                        <input type="hidden" name="SizeFilter" value="@Model.SizeFilter" />
+                        <input type="hidden" name="RatingFilter" value="@Model.RatingFilter" />
+                        <input type="hidden" name="GenderFilter" value="@Model.GenderFilter" />
+                        <input type="hidden" name="ProductTypeFilter" value="@Model.ProductTypeFilter" />
+                        <input type="hidden" name="IsFilterOpen" value="@Model.IsFilterOpen.ToString().ToLower()" />
+                        <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                        <input type="hidden" name="CurrentPage" id="paginationPageInput" value="@Model.CurrentPage" />
+
+                        <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage - 1))"
+                                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled="@(Model.CurrentPage <= 1)">
+                            Previous
+                        </button>
+
+                        @{
+                            var paginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                        }
+                        @foreach (var item in paginationItems)
+                        {
+                            if (item.ToString() == "...")
+                            {
+                                <span class="px-4 py-2 text-gray-500">...</span>
+                            }
+                            else
+                            {
+                                var pageNum = (int)item;
+                                <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@pageNum)"
+                                        class="px-4 py-2 rounded-lg @(pageNum == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
+                                    @pageNum
+                                </button>
+                            }
+                        }
+
+                        <button type="submit" onclick="ShareItFE.Pages.Products.ProductsModel.setPage(@(Model.CurrentPage + 1))"
+                                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled="@(Model.CurrentPage >= Model.TotalPages)">
+                            Next
+                        </button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-12" id="noProductsMessage">
+                    <i data-lucide="search-x" class="mx-auto h-12 w-12 text-gray-400"></i>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No products found</h3>
+                    <p class="mt-1 text-sm text-gray-500">No products were found matching your criteria.</p>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -251,9 +319,14 @@
         }
         @if (TempData["ErrorMessage"] != null)
         {
+            var errorMsg = TempData["ErrorMessage"]?.ToString() ?? "";
+            // Don't show cart-related errors from other pages
+            if (!errorMsg.Contains("cart", StringComparison.OrdinalIgnoreCase))
+            {
             <text>
-                    alert('@TempData["ErrorMessage"]');
+                    alert('@Html.Raw(errorMsg.Replace("'", "\\'"))');
             </text>
+            }
         }
 
                 // Kiểm tra trạng thái yêu thích từ model khi load trang
@@ -273,16 +346,289 @@
                         });
 
         document.querySelectorAll('.favorite-form').forEach(form => {
-            form.addEventListener('submit', (e) => {
+            form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const productId = form.querySelector('input[name="productId"]').value;
-                console.log('Submitting form for productId:', productId);
-                if (productId) {
-                    form.submit();
-                } else {
+                const button = form.querySelector('.favorite-btn');
+                const icon = form.querySelector('.favorite-icon');
+                
+                if (!productId) {
                     console.error('productId is invalid or missing:', productId);
+                    return;
+                }
+
+                // Disable button during request
+                button.disabled = true;
+                
+                try {
+                    const formData = new FormData(form);
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                    
+                    const response = await fetch('/products?handler=AddFavorite', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'RequestVerificationToken': token
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        // Toggle heart icon immediately
+                        const isCurrentlyFavorite = icon.classList.contains('text-red-500');
+                        
+                        if (isCurrentlyFavorite) {
+                            // Remove from favorites
+                            icon.classList.remove('text-red-500', 'fill-red-500');
+                            icon.classList.add('text-gray-600', 'hover:text-red-500');
+                            // Show subtle notification
+                            showNotification('Removed from favorites', 'success');
+                        } else {
+                            // Add to favorites
+                            icon.classList.remove('text-gray-600', 'hover:text-red-500');
+                            icon.classList.add('text-red-500', 'fill-red-500');
+                            // Show subtle notification
+                            showNotification('Added to favorites', 'success');
+                        }
+                    } else if (response.status === 401) {
+                        // User not authenticated
+                        showNotification('Please login to add products to your favorites', 'error');
+                    } else {
+                        console.error('Failed to update favorite status');
+                        showNotification('Failed to update favorite', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error updating favorite:', error);
+                    showNotification('Network error occurred', 'error');
+                } finally {
+                    // Re-enable button
+                    button.disabled = false;
                 }
             });
+        });
+
+        // Notification function
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // AJAX filter and pagination functionality
+        let isLoading = false;
+
+         async function loadProducts() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            showLoadingState();
+            
+            try {
+                const form = document.getElementById('filterForm');
+                const formData = new FormData(form);
+                const searchParams = new URLSearchParams();
+                
+                // Add all form data to search params
+                for (let [key, value] of formData.entries()) {
+                    if (value) {
+                        searchParams.append(key, value);
+                    }
+                }
+                
+                // Debug: Log current filters
+                const genderFilter = formData.get('GenderFilter');
+                const productTypeFilter = formData.get('ProductTypeFilter');
+                if (genderFilter || productTypeFilter) {
+                    console.log('Active filters:', {
+                        gender: genderFilter,
+                        productType: productTypeFilter,
+                        allParams: Object.fromEntries(searchParams.entries())
+                    });
+                }
+                
+                const response = await fetch(`/products?${searchParams.toString()}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Update entire product container (handles both products and no-products cases)
+                    const newProductContainer = doc.querySelector('#productContainer');
+                    const currentProductContainer = document.querySelector('#productContainer');
+                    
+                    if (newProductContainer && currentProductContainer) {
+                        currentProductContainer.innerHTML = newProductContainer.innerHTML;
+                        
+                        // Re-attach favorite event listeners if products exist
+                        const hasProducts = currentProductContainer.querySelector('#productList');
+                        const hasNoProductsMessage = currentProductContainer.querySelector('#noProductsMessage');
+                        
+                        if (hasProducts) {
+                            console.log('✅ Products found - attaching event listeners');
+                            attachFavoriteListeners();
+                        } else if (hasNoProductsMessage) {
+                            console.log('ℹ️ No products found - showing empty state message');
+                        }
+                        
+                        // Re-attach pagination listeners if pagination exists
+                        const hasPagination = currentProductContainer.querySelector('#paginationContainer');
+                        if (hasPagination) {
+                            attachPaginationListeners();
+                        }
+                    } else {
+                        console.warn('Product container not found in response');
+                        showNotification('Failed to update product display', 'error');
+                    }
+                    
+                    // Update product count
+                    const newCountText = doc.querySelector('.mb-6 p');
+                    const currentCountText = document.querySelector('.mb-6 p');
+                    if (newCountText && currentCountText) {
+                        currentCountText.textContent = newCountText.textContent;
+                    }
+                    
+                    // Re-initialize icons for both product icons and no-products icon
+                    lucide.createIcons();
+                    
+                    // Update browser URL without reload
+                    const newUrl = `/products?${searchParams.toString()}`;
+                    history.pushState(null, '', newUrl);
+                    
+                } else {
+                    showNotification('Failed to load products', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                showNotification('Network error occurred', 'error');
+            } finally {
+                isLoading = false;
+                hideLoadingState();
+            }
+        }
+
+        function showLoadingState() {
+            const productContainer = document.querySelector('#productContainer');
+            if (productContainer) {
+                productContainer.style.opacity = '0.5';
+                productContainer.style.pointerEvents = 'none';
+            }
+        }
+
+        function hideLoadingState() {
+            const productContainer = document.querySelector('#productContainer');
+            if (productContainer) {
+                productContainer.style.opacity = '1';
+                productContainer.style.pointerEvents = 'auto';
+            }
+        }
+
+        function attachFavoriteListeners() {
+            document.querySelectorAll('.favorite-form').forEach(form => {
+                // Remove existing listeners first
+                const newForm = form.cloneNode(true);
+                form.parentNode.replaceChild(newForm, form);
+                
+                newForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const productId = newForm.querySelector('input[name="productId"]').value;
+                    const button = newForm.querySelector('.favorite-btn');
+                    const icon = newForm.querySelector('.favorite-icon');
+                    
+                    if (!productId) return;
+
+                    button.disabled = true;
+                    
+                    try {
+                        const formData = new FormData(newForm);
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                        
+                        const response = await fetch('/products?handler=AddFavorite', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'RequestVerificationToken': token
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const isCurrentlyFavorite = icon.classList.contains('text-red-500');
+                            
+                            if (isCurrentlyFavorite) {
+                                icon.classList.remove('text-red-500', 'fill-red-500');
+                                icon.classList.add('text-gray-600', 'hover:text-red-500');
+                                showNotification('Removed from favorites', 'success');
+                            } else {
+                                icon.classList.remove('text-gray-600', 'hover:text-red-500');
+                                icon.classList.add('text-red-500', 'fill-red-500');
+                                showNotification('Added to favorites', 'success');
+                            }
+                        } else if (response.status === 401) {
+                            // User not authenticated
+                            showNotification('Please login to add products to your favorites', 'error');
+                        } else {
+                            showNotification('Failed to update favorite', 'error');
+                        }
+                    } catch (error) {
+                        showNotification('Network error occurred', 'error');
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+            });
+        }
+
+        function attachPaginationListeners() {
+            document.querySelectorAll('[onclick*="setPage"]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const match = button.getAttribute('onclick').match(/setPage\((\d+)\)/);
+                    if (match) {
+                        const page = match[1];
+                        document.getElementById('currentPageInput').value = page;
+                        loadProducts();
+                    }
+                });
+            });
+        }
+
+         // Setup filter event listeners
+        document.querySelectorAll('.filter-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                console.log(`Filter changed: ${e.target.name} = ${e.target.value}`);
+                document.getElementById('currentPageInput').value = '1'; // Reset to first page
+                loadProducts();
+            });
+        });
+
+        document.getElementById('sortBySelect').addEventListener('change', () => {
+            document.getElementById('currentPageInput').value = '1';
+            loadProducts();
+        });
+
+        // Search with debounce
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                document.getElementById('currentPageInput').value = '1';
+                loadProducts();
+            }, 500); // 500ms debounce
         });
 
         const filterBtn = document.getElementById('filterBtn');
@@ -294,7 +640,22 @@
                 const currentState = isFilterOpenInput.value === 'true';
                 const newState = !currentState;
                 isFilterOpenInput.value = newState.toString();
-                form.submit();
+                
+                // Toggle filter panel visibility immediately
+                const filterPanel = document.getElementById('filterPanel');
+                if (filterPanel) {
+                    if (newState) {
+                        filterPanel.classList.remove('hidden');
+                    } else {
+                        filterPanel.classList.add('hidden');
+                    }
+                }
+                
+                // Update URL to maintain state
+                const searchParams = new URLSearchParams(window.location.search);
+                searchParams.set('IsFilterOpen', newState.toString());
+                const newUrl = `/products?${searchParams.toString()}`;
+                history.pushState(null, '', newUrl);
             });
         }
 
@@ -306,7 +667,11 @@
             gridViewBtn.addEventListener('click', () => {
                 if (viewModeInput.value !== 'grid') {
                     viewModeInput.value = 'grid';
-                    form.submit();
+                    loadProducts();
+                    
+                    // Update button styles immediately
+                    gridViewBtn.className = 'p-1 rounded-md bg-purple-600 text-white';
+                    listViewBtn.className = 'p-1 rounded-md text-gray-500 hover:bg-gray-100';
                 }
             });
         }
@@ -315,18 +680,246 @@
             listViewBtn.addEventListener('click', () => {
                 if (viewModeInput.value !== 'list') {
                     viewModeInput.value = 'list';
-                    form.submit();
+                    loadProducts();
+                    
+                    // Update button styles immediately
+                    listViewBtn.className = 'p-1 rounded-md bg-purple-600 text-white';
+                    gridViewBtn.className = 'p-1 rounded-md text-gray-500 hover:bg-gray-100';
                 }
             });
         }
+
+        // Initialize pagination listeners on page load
+        attachPaginationListeners();
+
+        // Test function to verify OData filtering with database values
+        window.testODataFilters = async function() {
+            console.log('🧪 === Testing OData Gender & ProductType Filters ===');
+            
+            try {
+                // Test 1: Get all products to see available data
+                console.log('📊 Step 1: Fetching all available products...');
+                const allUrl = `odata/products?$count=true&$top=10&$select=Name,Gender,RentalStatus,PurchaseStatus,Category`;
+                console.log('OData URL:', allUrl);
+                
+                const allResponse = await fetch(allUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (allResponse.ok) {
+                    const data = await allResponse.json();
+                    console.log('✅ All products sample:', {
+                        count: data['@@odata.count'] || 'unknown',
+                        products: data.value?.slice(0, 5) || []
+                    });
+                    
+                    // Get unique values for debugging
+                    if (data.value) {
+                        const genders = [...new Set(data.value.map(p => p.Gender))];
+                        const rentalStatuses = [...new Set(data.value.map(p => p.RentalStatus))];
+                        const purchaseStatuses = [...new Set(data.value.map(p => p.PurchaseStatus))];
+                        
+                        console.log('📈 Available values:', {
+                            genders,
+                            rentalStatuses,
+                            purchaseStatuses
+                        });
+                    }
+                } else {
+                    console.error('❌ Failed to fetch all products:', allResponse.status);
+                }
+                
+                // Test 2: Gender Filter
+                console.log('\n🚹 Step 2: Testing Gender filter...');
+                const genderTests = ['Male', 'Female', 'Unisex'];
+                
+                for (const gender of genderTests) {
+                    const genderUrl = `odata/products?$count=true&$filter=Gender eq '${gender}'&$top=5&$select=Name,Gender`;
+                    console.log(`Testing Gender=${gender}:`, genderUrl);
+                    
+                    const genderResponse = await fetch(genderUrl, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    
+                    if (genderResponse.ok) {
+                        const genderData = await genderResponse.json();
+                        console.log(`✅ Gender ${gender}:`, {
+                            count: genderData['@@odata.count'],
+                            samples: genderData.value?.map(p => ({ name: p.Name, gender: p.Gender }))
+                        });
+                    } else {
+                        console.error(`❌ Gender ${gender} failed:`, genderResponse.status, await genderResponse.text());
+                    }
+                }
+                
+                // Test 3: ProductType (RentalStatus) Filter  
+                console.log('\n🏠 Step 3: Testing ProductType=Rental filter...');
+                const rentalUrl = `odata/products?$count=true&$filter=RentalStatus eq 'Available'&$top=5&$select=Name,RentalStatus,PurchaseStatus`;
+                console.log('Rental URL:', rentalUrl);
+                
+                const rentalResponse = await fetch(rentalUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (rentalResponse.ok) {
+                    const rentalData = await rentalResponse.json();
+                    console.log('✅ Rental products:', {
+                        count: rentalData['@@odata.count'],
+                        samples: rentalData.value?.map(p => ({ 
+                            name: p.Name, 
+                            rental: p.RentalStatus,
+                            purchase: p.PurchaseStatus 
+                        }))
+                    });
+                } else {
+                    console.error('❌ Rental filter failed:', rentalResponse.status, await rentalResponse.text());
+                }
+                
+                // Test 4: ProductType (PurchaseStatus) Filter
+                console.log('\n💰 Step 4: Testing ProductType=Purchase filter...');
+                const purchaseUrl = `odata/products?$count=true&$filter=PurchaseStatus eq 'Available'&$top=5&$select=Name,RentalStatus,PurchaseStatus`;
+                console.log('Purchase URL:', purchaseUrl);
+                
+                const purchaseResponse = await fetch(purchaseUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (purchaseResponse.ok) {
+                    const purchaseData = await purchaseResponse.json();
+                    console.log('✅ Purchase products:', {
+                        count: purchaseData['@@odata.count'],
+                        samples: purchaseData.value?.map(p => ({ 
+                            name: p.Name, 
+                            rental: p.RentalStatus,
+                            purchase: p.PurchaseStatus 
+                        }))
+                    });
+                } else {
+                    console.error('❌ Purchase filter failed:', purchaseResponse.status, await purchaseResponse.text());
+                }
+                
+                // Test 5: Combined Filter
+                console.log('\n🔗 Step 5: Testing combined filters...');
+                const combinedUrl = `odata/products?$count=true&$filter=Gender eq 'Male' and RentalStatus eq 'Available'&$top=3&$select=Name,Gender,RentalStatus`;
+                console.log('Combined URL:', combinedUrl);
+                
+                const combinedResponse = await fetch(combinedUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (combinedResponse.ok) {
+                    const combinedData = await combinedResponse.json();
+                    console.log('✅ Combined (Male + Rental):', {
+                        count: combinedData['@@odata.count'],
+                        samples: combinedData.value
+                    });
+                } else {
+                    console.error('❌ Combined filter failed:', combinedResponse.status);
+                }
+                
+                console.log('\n🎉 === OData Filter Test Complete ===');
+                console.log('💡 To run this test again, call: testODataFilters()');
+                
+            } catch (error) {
+                console.error('💥 Test failed with error:', error);
+            }
+        };
+
+        // Demo function to show OData filters in action
+        window.demoODataFilters = async function() {
+            console.log('🎬 === OData Filter Demo ===');
+            
+            // Apply Gender filter
+            console.log('Setting Gender filter to "Male"...');
+            document.getElementById('GenderFilter').value = 'Male';
+            document.getElementById('GenderFilter').dispatchEvent(new Event('change'));
+            
+            // Wait a bit then apply ProductType filter  
+            setTimeout(() => {
+                console.log('Setting ProductType filter to "Rental"...');
+                document.getElementById('ProductTypeFilter').value = 'Rental';
+                document.getElementById('ProductTypeFilter').dispatchEvent(new Event('change'));
+            }, 2000);
+            
+            // Show current filter after changes
+            setTimeout(() => {
+                testCurrentFilters();
+            }, 4000);
+        };
+        
+        // Auto-run console message when page loads
+        console.log('🔧 Filter & Debug Tools Available:');
+        console.log('📝 testODataFilters() - Test all OData endpoints');
+        console.log('🔍 testCurrentFilters() - Show current filter parameters');  
+        console.log('🎬 demoODataFilters() - Demo filter functionality');
+        console.log('🧪 testEmptyResults() - Test empty results handling');
+        console.log('🔄 resetAllFilters() - Clear all filters');
+
+        // Quick test for current page filtering
+        window.testCurrentFilters = function() {
+            const form = document.getElementById('filterForm');
+            const formData = new FormData(form);
+            const params = Object.fromEntries(formData.entries());
+            
+            console.log('🔍 Current filter parameters:', params);
+            
+            // Translate to OData filters
+            const odataFilters = [];
+            
+            if (params.GenderFilter) {
+                odataFilters.push(`Gender eq '${params.GenderFilter}'`);
+            }
+            
+            if (params.ProductTypeFilter === 'Rental') {
+                odataFilters.push("RentalStatus eq 'Available'");
+            } else if (params.ProductTypeFilter === 'Purchase') {
+                odataFilters.push("PurchaseStatus eq 'Available'");
+            }
+            
+            if (params.CategoryFilter) {
+                odataFilters.push(`Category eq '${params.CategoryFilter}'`);
+            }
+            
+            const odataFilter = odataFilters.length > 0 ? odataFilters.join(' and ') : 'none';
+            console.log('📝 Generated OData filter:', odataFilter);
+            
+            return odataFilter;
+        };
+
+        // Test empty results handling
+        window.testEmptyResults = function() {
+            console.log('🧪 Testing empty results handling...');
+            
+            // Set a filter that should return no results
+            document.getElementById('GenderFilter').value = 'TestValue'; // Invalid gender
+            document.getElementById('GenderFilter').dispatchEvent(new Event('change'));
+            
+            console.log('Applied invalid gender filter to test empty state');
+        };
+        
+        // Reset all filters
+        window.resetAllFilters = function() {
+            console.log('🔄 Resetting all filters...');
+            
+            document.getElementById('GenderFilter').value = '';
+            document.getElementById('ProductTypeFilter').value = '';
+            document.getElementById('CategoryFilter').value = '';
+            document.getElementById('PriceRangeFilter').value = '';
+            document.getElementById('SizeFilter').value = '';
+            document.getElementById('RatingFilter').value = '';
+            document.getElementById('searchInput').value = '';
+            
+            // Trigger change event to reload
+            document.getElementById('GenderFilter').dispatchEvent(new Event('change'));
+        };
 
         window.ShareItFE = window.ShareItFE || {};
         window.ShareItFE.Pages = window.ShareItFE.Pages || {};
         window.ShareItFE.Pages.Products = window.ShareItFE.Pages.Products || {};
         window.ShareItFE.Pages.Products.ProductsModel = {
             setPage: function (page) {
-                document.getElementById('paginationPageInput').value = page;
-                document.getElementById('paginationForm').submit();
+                document.getElementById('currentPageInput').value = page;
+                loadProducts();
             }
         };
     </script>

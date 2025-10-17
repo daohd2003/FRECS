@@ -12,7 +12,7 @@ namespace ShareItAPI.Controllers
 {
     [Route("api/cart")]
     [ApiController]
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
@@ -93,7 +93,11 @@ namespace ShareItAPI.Controllers
             {
                 return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
             }
-            catch (ArgumentException ex) // Catch specific exceptions for better error messages
+            catch (ArgumentException ex) // Catch validation errors (e.g., product not found, not available)
+            {
+                return BadRequest(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (InvalidOperationException ex) // Catch quantity validation errors
             {
                 return BadRequest(new ApiResponse<object>(ex.Message, null));
             }
@@ -217,7 +221,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("count")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetCartCount()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -234,6 +238,56 @@ namespace ShareItAPI.Controllers
             };
 
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Clear cart and add items from an order (for rent again functionality)
+        /// </summary>
+        [HttpPost("rent-again/{orderId}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
+        public async Task<IActionResult> RentAgainToCart(Guid orderId)
+        {
+            try
+            {
+                var customerId = GetCustomerId();
+                var (success, addedCount, issuesCount) = await _cartService.AddOrderItemsToCartAsync(customerId, orderId);
+
+                if (!success)
+                {
+                    return BadRequest(new ApiResponse<object>("Failed to add order items to cart.", null));
+                }
+
+                string message;
+                if (issuesCount > 0)
+                {
+                    message = $"{addedCount} item(s) added to cart. However, some items were skipped or have reduced quantity due to limited stock. Please review your cart before checkout.";
+                }
+                else
+                {
+                    message = $"All {addedCount} item(s) successfully added to cart. You can now update rental dates and proceed to checkout.";
+                }
+
+                return Ok(new ApiResponse<object>(message, new { addedCount, issuesCount }));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>("Unable to add items to cart. Please try again later or contact support.", null));
+            }
         }
     }
 }

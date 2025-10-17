@@ -1,4 +1,11 @@
 ﻿@inject IConfiguration Configuration
+@inject IWebHostEnvironment Environment
+@using System.Security.Claims
+
+@{
+    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    var isLoggedIn = User.Identity?.IsAuthenticated ?? false;
+}
 
 <div id="chatToggleBtn" class="chat-toggle-btn">
     <img src="~/images/chatbot-icon.png" alt="Open Chatbot" />
@@ -10,37 +17,94 @@
             <img src="~/images/chatbot-icon.png" alt="Meta AI Icon" class="meta-ai-icon" /> AI Assistant
         </div>
         <div class="header-right">
+            <span id="clearChatBtn" class="clear-btn" style="cursor: pointer" title="Clear chat history">🗑️</span>
             <span id="collapseChatBtn" class="collapse-btn">-</span>
         </div>
     </div>
     <div class="chat-body" id="chatBody"></div>
 
+    <div class="quick-suggestions" id="quickSuggestions">
+        <div class="suggestions-header">
+            <div class="suggestions-label">Quick suggestions:</div>
+            <button type="button" class="toggle-suggestions-btn" id="toggleSuggestionsBtn" title="Toggle suggestions">
+                <span class="toggle-icon">▼</span>
+            </button>
+        </div>
+        <div class="suggestions-container" id="suggestionsContainer"></div>
+    </div>
+
     <form id="chatForm" class="chat-input-form">
-        <input type="text" id="chatInput" class="chat-input" placeholder="Enter your question..." autocomplete="off" />
+        <input type="text" id="chatInput" class="chat-input" placeholder="Ask me about clothing..." autocomplete="off" />
         <button type="submit" class="chat-send-btn">Send</button>
     </form>
 </div>
 
     <script>
-        const API_BASE_URL = '@Configuration["ApiSettings:BaseUrl"]';
-        const CHAT_STORAGE_KEY = 'shareit_chat_history_v1';
+        const API_BASE_URL = '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")';
+        const CHAT_STORAGE_KEY = 'frecs_chat_history_v1';
+        const CURRENT_USER_ID = '@currentUserId';
+        const IS_LOGGED_IN = @(isLoggedIn.ToString().ToLower());
 
         document.addEventListener('DOMContentLoaded', () => {
             const chatToggleBtn = document.getElementById('chatToggleBtn');
             const chatbotWidget = document.getElementById('chatbotWidget');
             const collapseChatBtn = document.getElementById('collapseChatBtn');
+            const clearChatBtn = document.getElementById('clearChatBtn');
             const chatForm = document.getElementById('chatForm');
             const chatInput = document.getElementById('chatInput');
             const chatBody = document.getElementById('chatBody');
+            const quickSuggestions = document.getElementById('quickSuggestions');
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            const toggleSuggestionsBtn = document.getElementById('toggleSuggestionsBtn');
+            const toggleIcon = toggleSuggestionsBtn.querySelector('.toggle-icon');
+
+            // Quick suggestion templates
+            const suggestionSets = {
+                initial: IS_LOGGED_IN ? [
+                    "What would you recommend for me?",
+                    "Show me similar items to my previous rentals",
+                    "What's new in my favorite categories?",
+                    "Show me items in my usual size"
+                ] : [
+                    "Show me formal wear",
+                    "What casual outfits do you have?",
+                    "I need black clothing",
+                    "Show me shirts available"
+                ],
+                followUp: [
+                    "Show more options",
+                    "What sizes are available?",
+                    "Do you have this in other colors?",
+                    "What's the price range?"
+                ]
+            };
 
             function saveHistory(history) {
-                try { sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history)); } catch {}
+                try { 
+                    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history));
+                    // Set timestamp for last activity
+                    localStorage.setItem(CHAT_STORAGE_KEY + '_timestamp', Date.now().toString());
+                } catch {}
             }
 
             function loadHistory() {
                 try {
-                    const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
-                    return raw ? JSON.parse(raw) : [];
+                    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+                    if (!raw) return [];
+                    
+                    // Check if history is older than 24 hours (optional - auto cleanup)
+                    const timestamp = localStorage.getItem(CHAT_STORAGE_KEY + '_timestamp');
+                    if (timestamp) {
+                        const hoursSinceLastActivity = (Date.now() - parseInt(timestamp)) / (1000 * 60 * 60);
+                        if (hoursSinceLastActivity > 24) {
+                            // Clear old history
+                            localStorage.removeItem(CHAT_STORAGE_KEY);
+                            localStorage.removeItem(CHAT_STORAGE_KEY + '_timestamp');
+                            return [];
+                        }
+                    }
+                    
+                    return JSON.parse(raw);
                 } catch { return []; }
             }
 
@@ -68,17 +132,69 @@
             chatbotWidget.classList.add('hidden');
             chatToggleBtn.style.display = 'flex';
 
+            function renderSuggestions(suggestions) {
+                suggestionsContainer.innerHTML = '';
+                suggestions.forEach(suggestion => {
+                    const btn = document.createElement('button');
+                    btn.className = 'suggestion-btn';
+                    btn.textContent = suggestion;
+                    btn.type = 'button';
+                    btn.addEventListener('click', () => {
+                        chatInput.value = suggestion;
+                        chatForm.dispatchEvent(new Event('submit'));
+                    });
+                    suggestionsContainer.appendChild(btn);
+                });
+            }
+
+            function updateSuggestions(history) {
+                // Show initial suggestions if chat is empty or just greeting
+                if (history.length <= 1) {
+                    renderSuggestions(suggestionSets.initial);
+                    quickSuggestions.style.display = 'block';
+                } else {
+                    // Hide suggestions after user starts chatting
+                    quickSuggestions.style.display = 'none';
+                }
+            }
+
+            function toggleSuggestionsCollapse() {
+                const isCollapsed = suggestionsContainer.classList.toggle('collapsed');
+                toggleIcon.textContent = isCollapsed ? '▶' : '▼';
+                toggleSuggestionsBtn.title = isCollapsed ? 'Show suggestions' : 'Hide suggestions';
+            }
+
+            function getGreetingMessage() {
+                return IS_LOGGED_IN 
+                    ? 'Hello! Welcome back to FRECS! I can help you find new items or recommend products based on your previous rentals. How can I assist you today?'
+                    : 'Hello! I am your FRECS assistant. How can I help you find the perfect outfit today?';
+            }
+
+            function clearChatHistory() {
+                if (confirm('Are you sure you want to clear the chat history?')) {
+                    localStorage.removeItem(CHAT_STORAGE_KEY);
+                    localStorage.removeItem(CHAT_STORAGE_KEY + '_timestamp');
+                    history = [{ role: 'bot', content: getGreetingMessage() }];
+                    saveHistory(history);
+                    renderHistory(history);
+                    updateSuggestions(history);
+                }
+            }
+
             // Wire events
             chatToggleBtn.addEventListener('click', toggleChatbot);
             collapseChatBtn.addEventListener('click', toggleChatbot);
+            clearChatBtn.addEventListener('click', clearChatHistory);
+            toggleSuggestionsBtn.addEventListener('click', toggleSuggestionsCollapse);
 
             // Initialize history and greeting
             let history = loadHistory();
             if (history.length === 0) {
-                history.push({ role: 'bot', content: 'Hello! How can I help you with ShareIT today?' });
+                history.push({ role: 'bot', content: getGreetingMessage() });
                 saveHistory(history);
             }
             renderHistory(history);
+            updateSuggestions(history);
 
             chatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -89,15 +205,22 @@
                 history.push({ role: 'user', content: question });
                 saveHistory(history);
                 renderHistory(history);
+                updateSuggestions(history);
 
                 chatInput.value = '';
 
                 try {
-                    const res = await fetch(`${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`);
+                    // Build URL with userId if logged in
+                    let apiUrl = `${API_BASE_URL}/AiSearch/ask?question=${encodeURIComponent(question)}`;
+                    if (IS_LOGGED_IN && CURRENT_USER_ID) {
+                        apiUrl += `&userId=${CURRENT_USER_ID}`;
+                    }
+
+                    const res = await fetch(apiUrl);
                     if (!res.ok) throw new Error(`Error ${res.status}`);
 
                     const data = await res.json();
-                    const answer = data.answer || "Sorry, I don't have a suitable answer.";
+                    const answer = data.answer || "Sorry, I couldn't find a suitable answer. Please try rephrasing your question.";
                     const answerHtml = answer
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
@@ -107,7 +230,7 @@
                     saveHistory(history);
                     renderHistory(history);
                 } catch (err) {
-                    const errorMsg = `Error calling API: ${err.message}`;
+                    const errorMsg = `Sorry, I encountered an error while processing your request. Please try again later.`;
                     history.push({ role: 'bot', content: errorMsg });
                     saveHistory(history);
                     renderHistory(history);

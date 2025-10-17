@@ -31,12 +31,21 @@ namespace ShareItAPI.Controllers
         {
             try
             {
-                var tokenResponse = await _jwtService.Authenticate(request.Email, request.Password);
+                var tokenResponse = await _jwtService.Authenticate(request.Email, request.Password, request.RememberMe);
                 return Ok(new ApiResponse<TokenResponseDto>("Login successful", tokenResponse));
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
+                // Check if it's a blocked account message
+                if (ex.Message.Contains("blocked"))
+                {
+                    return Unauthorized(new ApiResponse<string>(ex.Message, null));
+                }
                 return Unauthorized(new ApiResponse<string>("Invalid email or password", null));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Email not verified"))
+            {
+                return BadRequest(new ApiResponse<string>("Login failed. Please verify your email to continue.", null));
             }
         }
 
@@ -57,12 +66,19 @@ namespace ShareItAPI.Controllers
                     return BadRequest(new ApiResponse<string>("Could not create or fetch user from Facebook payload", null));
                 }
 
+                // Check if user is blocked
+                if (user.IsActive == false)
+                {
+                    return Unauthorized(new ApiResponse<string>("Your account has been blocked. Please contact support.", null));
+                }
+
                 var tokens = _jwtService.GenerateToken(user);
                 var refreshTokens = _jwtService.GenerateRefreshToken();
                 var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
 
                 user.RefreshTokenExpiryTime = expiryTime;
                 user.RefreshToken = refreshTokens;
+                user.LastLogin = DateTime.UtcNow;
                 await _userService.UpdateAsync(user);
 
                 var response = new TokenResponseDto
@@ -99,12 +115,19 @@ namespace ShareItAPI.Controllers
                     return BadRequest(new ApiResponse<string>("Email is already registered using traditional login", null));
                 }
 
+                // Check if user is blocked
+                if (user.IsActive == false)
+                {
+                    return Unauthorized(new ApiResponse<string>("Your account has been blocked. Please contact support.", null));
+                }
+
                 var tokens = _jwtService.GenerateToken(user);
                 var refreshTokens = _jwtService.GenerateRefreshToken();
                 var expiryTime = _jwtService.GetRefreshTokenExpiryTime();
 
                 user.RefreshTokenExpiryTime = expiryTime;
                 user.RefreshToken = refreshTokens;
+                user.LastLogin = DateTime.UtcNow;
 
                 await _userService.UpdateAsync(user);
 
@@ -160,11 +183,18 @@ namespace ShareItAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var tokenResponse = await _jwtService.RegisterAsync(request);
-            if (tokenResponse == null)
-                return BadRequest(new ApiResponse<string>("Email is already registered", null));
+            try
+            {
+                var tokenResponse = await _jwtService.RegisterAsync(request);
+                if (tokenResponse == null)
+                    return BadRequest(new ApiResponse<string>("Email is already registered", null));
 
-            return Ok(new ApiResponse<TokenResponseDto>("Registration successful! Please check your email to verify your account.", tokenResponse));
+                return Ok(new ApiResponse<TokenResponseDto>("Registration successful! Please check your email to verify your account.", tokenResponse));
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already registered but not verified"))
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
         }
 
         [HttpPost("change-password")]
@@ -240,7 +270,7 @@ namespace ShareItAPI.Controllers
         [HttpGet("verify-email")]
         // This endpoint is triggered by clicking the verification link sent to the user's email.
         // It verifies the email directly via query string parameters (email & token).
-        // This is useful when you don't have a frontend app to handle the confirmation.
+        // After successful verification, it automatically logs in the user by returning JWT tokens.
         public async Task<IActionResult> VerifyEmail([FromQuery] string email, [FromQuery] string token)
         {
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
@@ -260,7 +290,32 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new ApiResponse<string>("Invalid or expired verification token", null));
             }
 
-            return Ok(new ApiResponse<string>("Email verified successfully", null));
+            // Refresh user object from database to get updated EmailConfirmed status
+            user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound(new ApiResponse<string>("User not found after email verification", null));
+            }
+
+            // After successful email verification, automatically generate tokens for login
+            var accessToken = _jwtService.GenerateToken(user);
+            var refreshToken = _jwtService.GenerateRefreshToken();
+            var refreshTokenExpiry = _jwtService.GetRefreshTokenExpiryTime();
+
+            // Update user with new refresh token
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = refreshTokenExpiry;
+            await _userService.UpdateAsync(user);
+
+            var tokenResponse = new TokenResponseDto
+            {
+                Token = accessToken,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = refreshTokenExpiry,
+                Role = user.Role.ToString()
+            };
+
+            return Ok(new ApiResponse<TokenResponseDto>("Email verified successfully. You are now logged in.", tokenResponse));
         }
     }
 }

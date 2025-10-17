@@ -1,0 +1,472 @@
+@page "/provider/products"
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model ShareItFE.Pages.Provider.ProductsModel
+@{
+    ViewData["Title"] = "My Products";
+}
+
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<div class="min-h-screen bg-gray-50">
+    @Html.AntiForgeryToken()
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">My Products</h1>
+                    <p class="text-gray-600 mt-1">Manage your products listings and track performance</p>
+                </div>
+                <a href="/provider/postitem" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
+                    Add New Item
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="package" class="h-6 w-6 text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Items</p>
+                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.TotalItems</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="check-circle" class="h-6 w-6 text-green-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Active Items</p>
+                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.ActiveItems</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="refresh-cw" class="h-6 w-6 text-cyan-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Rentals</p>
+                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.TotalBookings</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="shopping-bag" class="h-6 w-6 text-emerald-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Sales</p>
+                        <p class="text-2xl font-bold text-gray-900">@Model.Stats.TotalSales</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+            <form method="get" class="space-y-4">
+                <input type="hidden" name="CurrentPage" value="1" />
+                <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                
+                <div class="flex flex-col md:flex-row gap-4">
+                    <!-- Search -->
+                    <div class="flex-1">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                            </div>
+                            <input type="text" name="SearchQuery" value="@Model.SearchQuery" placeholder="Search products..."
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                        </div>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="w-full md:w-48">
+                        <select name="StatusFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            @foreach (var option in Model.StatusOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.StatusFilter == option.Value)">@option.Text</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="w-full md:w-48">
+                        <select name="CategoryFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            @foreach (var option in Model.CategoryOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.CategoryFilter == option.Value)">@option.Text</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Type Filter (Rental/Purchase) -->
+                    <div class="w-full md:w-48">
+                        <select name="TypeFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                            @foreach (var option in Model.TypeOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.TypeFilter == option.Value)">@option.Text</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Search Button -->
+                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        Search
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Products Table -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            @if (Model.Products != null && Model.Products.Any())
+            {
+                <div class="overflow-hidden">
+                    <table class="w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">Product</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Category & Price</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Type & Status</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Inventory</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Performance</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var product in Model.Products)
+                            {
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-4">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-12 w-12">
+                                                <img class="h-12 w-12 rounded-lg object-cover" src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/48x48.png?text=No+Image")" alt="@product.Name">
+                                            </div>
+                                            <div class="ml-4 min-w-0 flex-1">
+                                                <div class="text-sm font-medium text-gray-900 truncate">@product.Name</div>
+                                                <div class="text-sm text-gray-500">Size: @(product.Size ?? "N/A") • @product.Gender</div>
+                                                <div class="text-sm text-gray-500">Color: @(product.Color ?? "N/A")</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <div class="text-sm text-gray-900">@product.Category</div>
+                                        @if (product.RentalStatus == "Available" && product.PricePerDay > 0)
+                                        {
+                                            <div class="text-sm font-semibold text-purple-600">₫@product.PricePerDay.ToString("N0")/day</div>
+                                        }
+                                        @if (product.PurchaseStatus == "Available" && product.PurchasePrice > 0)
+                                        {
+                                            <div class="text-xs text-green-600">₫@product.PurchasePrice.ToString("N0") sale</div>
+                                        }
+                                        @if (product.RentalStatus != "Available" && product.PurchaseStatus != "Available")
+                                        {
+                                            <div class="text-sm text-gray-500">Not for rent/sale</div>
+                                        }
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <div class="space-y-1">
+                                        @if (product.RentalStatus == "Available")
+                                        {
+                                                <div class="flex items-center text-blue-600">
+                                                    <i data-lucide="clock" class="h-3 w-3 mr-1"></i>
+                                                    <span>Rental</span>
+                                                </div>
+                                            }
+                                            @if (product.PurchaseStatus == "Available")
+                                            {
+                                                <div class="flex items-center text-green-600">
+                                                    <i data-lucide="shopping-cart" class="h-3 w-3 mr-1"></i>
+                                                    <span>Sale</span>
+                                                </div>
+                                            }
+                                            
+                                            <!-- Availability Status -->
+                                            @if (product.AvailabilityStatus == "available")
+                                            {
+                                                <div class="flex items-center text-green-600">
+                                                <i data-lucide="check-circle" class="h-3 w-3 mr-1"></i>
+                                                    <span>Active</span>
+                                                </div>
+                                            }
+                                            else if (product.AvailabilityStatus == "pending")
+                                            {
+                                                <div class="flex items-center text-yellow-600">
+                                                <i data-lucide="clock" class="h-3 w-3 mr-1"></i>
+                                                    <span>Pending</span>
+                                                </div>
+                                            }
+                                            else if (product.AvailabilityStatus == "archived")
+                                            {
+                                                <div class="flex items-center text-orange-600">
+                                                <i data-lucide="archive" class="h-3 w-3 mr-1"></i>
+                                                    <span>Archived</span>
+                                                </div>
+                                            }
+                                            else if (product.AvailabilityStatus == "unavailable")
+                                            {
+                                                <div class="flex items-center text-gray-600">
+                                                <i data-lucide="pause-circle" class="h-3 w-3 mr-1"></i>
+                                                    <span>Inactive</span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="flex items-center text-gray-600">
+                                                <i data-lucide="help-circle" class="h-3 w-3 mr-1"></i>
+                                                    <span>@product.AvailabilityStatus</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 text-sm text-gray-900 min-w-0">
+                                        <div class="space-y-1">
+                                            @if (product.RentalStatus == "Available")
+                                            {
+                                                <div class="flex items-center text-blue-600 whitespace-nowrap">
+                                                    <i data-lucide="clock" class="h-3 w-3 mr-1 flex-shrink-0"></i>
+                                                    <span class="truncate">Rental: @product.RentalQuantity</span>
+                                                </div>
+                                            }
+                                            @if (product.PurchaseStatus == "Available")
+                                            {
+                                                <div class="flex items-center text-green-600 whitespace-nowrap">
+                                                    <i data-lucide="package" class="h-3 w-3 mr-1 flex-shrink-0"></i>
+                                                    <span class="truncate">Sale: @product.PurchaseQuantity</span>
+                                                </div>
+                                            }
+                                            @if (product.RentalStatus != "Available" && product.PurchaseStatus != "Available")
+                                            {
+                                                <div class="text-gray-400">No stock</div>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 text-sm text-gray-900">
+                                        <div class="space-y-1">
+                                            <div class="flex items-center text-blue-600">
+                                                <i data-lucide="eye" class="h-3 w-3 mr-1"></i>
+                                                <span>@product.RentCount rentals</span>
+                                            </div>
+                                            <div class="flex items-center text-green-600">
+                                                <i data-lucide="shopping-bag" class="h-3 w-3 mr-1"></i>
+                                                <span>@product.BuyCount sales</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 text-sm font-medium">
+                                        <div class="flex items-center space-x-2">
+                                            <a href="/products/detail/@product.Id" class="text-blue-600 hover:text-blue-900" title="View">
+                                                <i data-lucide="eye" class="h-4 w-4"></i>
+                                            </a>
+                                            <a href="/provider/postitem?edit=@product.Id" class="text-green-600 hover:text-green-900" title="Edit">
+                                                <i data-lucide="edit" class="h-4 w-4"></i>
+                                            </a>
+                                            @if (product.AvailabilityStatus == "archived")
+                                            {
+                                                <button type="button" onclick="restoreProduct('@product.Id', '@product.Name')" class="text-blue-600 hover:text-blue-900" title="Restore Product">
+                                                    <i data-lucide="rotate-ccw" class="h-4 w-4"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button type="button" onclick="deleteProduct('@product.Id', '@product.Name', @product.RentCount)" class="text-red-600 hover:text-red-900" title="Delete Product">
+                                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Results Info & Pagination -->
+                <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">@((Model.CurrentPage - 1) * Model.PageSize + 1)</span> to <span class="font-medium">@Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalProductsCount)</span> of <span class="font-medium">@Model.TotalProductsCount</span> results
+                        </p>
+                    </div>
+                    
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div>
+                            <form method="get" id="paginationForm" class="flex items-center gap-2">
+                                <input type="hidden" name="SearchQuery" value="@Model.SearchQuery" />
+                                <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                                <input type="hidden" name="CategoryFilter" value="@Model.CategoryFilter" />
+                                <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                <input type="hidden" name="CurrentPage" id="paginationPageInput" value="@Model.CurrentPage" />
+
+                                <button type="submit" onclick="setPage(@(Model.CurrentPage - 1))"
+                                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled="@(Model.CurrentPage <= 1)">
+                                    Previous
+                                </button>
+
+                                @{
+                                    var providerPaginationItems = ShareItFE.Utilities.PaginationHelper.GetPaginationItems(Model.CurrentPage, Model.TotalPages);
+                                }
+                                @foreach (var item in providerPaginationItems)
+                                {
+                                    if (item.ToString() == "...")
+                                    {
+                                        <span class="px-4 py-2 text-gray-500">...</span>
+                                    }
+                                    else
+                                    {
+                                        var pageNum = (int)item;
+                                        <button type="submit" onclick="setPage(@pageNum)"
+                                                class="px-4 py-2 rounded-lg @(pageNum == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
+                                            @pageNum
+                                        </button>
+                                    }
+                                }
+
+                                <button type="submit" onclick="setPage(@(Model.CurrentPage + 1))"
+                                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled="@(Model.CurrentPage >= Model.TotalPages)">
+                                    Next
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-12">
+                    <i data-lucide="package-x" class="mx-auto h-12 w-12 text-gray-400"></i>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No products found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Get started by listing your first item.</p>
+                    <div class="mt-6">
+                        <a href="/provider/postitem" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            <i data-lucide="plus" class="h-5 w-5 mr-2"></i>
+                            Add New Item
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        lucide.createIcons();
+
+        // Auto-submit form on filter change
+        document.querySelectorAll('select[name="StatusFilter"], select[name="CategoryFilter"], select[name="TypeFilter"]').forEach(select => {
+            select.addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+
+        // Restore product function
+        function restoreProduct(productId, productName) {
+            if (confirm(`Are you sure you want to restore "${productName}" to active status?`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/provider/products?handler=RestoreProduct';
+                
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token;
+                
+                const productIdInput = document.createElement('input');
+                productIdInput.type = 'hidden';
+                productIdInput.name = 'productId';
+                productIdInput.value = productId;
+                
+                form.appendChild(tokenInput);
+                form.appendChild(productIdInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Delete product function with smart logic
+        function deleteProduct(productId, productName, rentCount) {
+            let message = `Are you sure you want to delete "${productName}"?`;
+            let warningMessage = '';
+            
+            if (rentCount > 0) {
+                warningMessage = `\n\nNote: This product has been rented ${rentCount} time(s). It will be archived instead of permanently deleted to preserve order history.`;
+            } else {
+                warningMessage = `\n\nThis product has never been rented and will be permanently deleted.`;
+            }
+            
+            if (confirm(message + warningMessage)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/provider/products?handler=DeleteProduct';
+                
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token;
+                
+                const productIdInput = document.createElement('input');
+                productIdInput.type = 'hidden';
+                productIdInput.name = 'productId';
+                productIdInput.value = productId;
+                
+                form.appendChild(tokenInput);
+                form.appendChild(productIdInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Success/Error messages - only show if not from PostItem page
+        @if (TempData["SuccessMessage"] != null && !TempData["SuccessMessage"].ToString().Contains("for editing"))
+        {
+            <text>
+                // Show success toast or alert
+                alert('@TempData["SuccessMessage"]');
+            </text>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <text>
+                // Show error toast or alert
+                alert('@TempData["ErrorMessage"]');
+            </text>
+        }
+
+        // Pagination function
+        function setPage(page) {
+            document.getElementById('paginationPageInput').value = page;
+            document.getElementById('paginationForm').submit();
+        }
+    </script>
+}

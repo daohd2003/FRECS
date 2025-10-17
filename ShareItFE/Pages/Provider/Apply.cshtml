@@ -1,11 +1,11 @@
 @page
 @model ShareItFE.Pages.Provider.ApplyModel
 @{
-    ViewData["Title"] = "Become a Provider";
+    ViewData["Title"] = "Become a provider";
 }
 
 <section class="container py-5">
-    <h1 class="mb-4">Become a Provider</h1>
+    <h1 class="mb-4">Become a provider</h1>
 
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
@@ -22,37 +22,43 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: #ffc107;
-            color: #212529;
+            background: #64b5f6;
+            color: #ffffff;
             text-align: center;
             line-height: 18px;
-            font-weight: 700;
+            font-weight: 500;
             font-size: 12px;
             cursor: help;
             margin-left: 6px;
+            transition: all 0.2s ease;
         }
+
+            .help-icon:hover {
+                background: #42a5f5;
+                transform: scale(1.1);
+            }
     </style>
 
     <form method="post" class="card p-4">
         <div class="mb-3">
             <label asp-for="Input.BusinessName" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Store/brand name visible to customers. e.g., 'Chic Dress Rental'.">!</span>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Store/brand name visible to customers. e.g., 'Chic Dress Rental'.">?</span>
             <input asp-for="Input.BusinessName" class="form-control" placeholder="e.g., Chic Dress Rental" />
             <span asp-validation-for="Input.BusinessName" class="text-danger"></span>
         </div>
         <div class="mb-3">
             <label asp-for="Input.TaxId" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (or personal ID) for payouts/reconciliation. Optional.">!</span>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (or personal ID) for payouts/reconciliation. Optional.">?</span>
             <input asp-for="Input.TaxId" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" />
         </div>
         <div class="mb-3">
             <label asp-for="Input.ContactPhone" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Contact phone number for orders/support. Use an active mobile number.">!</span>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Contact phone number for orders/support. Use an active mobile number.">?</span>
             <input asp-for="Input.ContactPhone" class="form-control" placeholder="e.g., +84 901 234 567" />
         </div>
         <div class="mb-3">
             <label asp-for="Input.Notes" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Short description about your store, style, or special requirements (max 500 characters).">!</span>
+            <span class="help-icon" data-bs-toggle="tooltip" title="Short description about your store, style, or special requirements (max 500 characters).">?</span>
             <textarea asp-for="Input.Notes" class="form-control" rows="3" placeholder="e.g., Specialize in evening gowns sizes S–L; rush delivery available"></textarea>
         </div>
         <button type="submit" class="btn btn-primary">Submit Application</button>

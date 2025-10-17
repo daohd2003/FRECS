@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.ProductDto;
+﻿using BusinessObject.DTOs.FavoriteDtos;
+using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Models;
 using Repositories.FavoriteRepositories;
 using System;
@@ -21,6 +22,11 @@ namespace Services.FavoriteServices
         public async Task<List<Favorite>> GetFavoritesByUserIdAsync(Guid userId)
         {
             return await _favoriteRepository.GetFavoritesByUserIdAsync(userId);
+        }
+
+        public async Task<List<FavoriteWithProductDto>> GetFavoritesWithProductDetailsAsync(Guid userId)
+        {
+            return await _favoriteRepository.GetFavoritesWithProductDetailsAsync(userId);
         }
 
         public async Task<bool> IsFavoriteAsync(Guid userId, Guid productId)

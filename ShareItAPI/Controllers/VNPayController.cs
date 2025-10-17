@@ -14,6 +14,7 @@ using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.Transactions;
 using System.Security.Claims;
+using ShareItAPI.Extensions;
 
 namespace ShareItAPI.Controllers
 {
@@ -23,17 +24,24 @@ namespace ShareItAPI.Controllers
     {
         private readonly IVnpay _vnpay;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly ILogger<VNPayController> _logger;
         private readonly IOrderService _orderService;
         private readonly ITransactionService _transactionService;
         private readonly ShareItDbContext _context;
 
-        public VNPayController(IVnpay vnpay, IConfiguration configuration, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService, ShareItDbContext context)
+        public VNPayController(IVnpay vnpay, IConfiguration configuration, IWebHostEnvironment environment, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService, ShareItDbContext context)
         {
             _vnpay = vnpay;
             _configuration = configuration;
+            _environment = environment;
 
-            _vnpay.Initialize(_configuration["Vnpay:TmnCode"], _configuration["Vnpay:HashSecret"], _configuration["Vnpay:BaseUrl"], _configuration["Vnpay:CallbackUrl"]);
+            _vnpay.Initialize(
+                _configuration["Vnpay:TmnCode"], 
+                _configuration["Vnpay:HashSecret"], 
+                _configuration["Vnpay:BaseUrl"], 
+                _configuration.GetVnpayCallbackUrl(_environment)
+            );
             _logger = logger;
             _transactionService = transactionService;
             _orderService = orderService;
@@ -44,7 +52,7 @@ namespace ShareItAPI.Controllers
         /// Create payment URL
         /// </summary>
         [HttpPost("CreatePaymentUrl")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<ActionResult<ApiResponse<string>>> CreatePaymentUrl([FromBody] CreatePaymentRequestDto requestDto)
         {
             if (requestDto.OrderIds == null || !requestDto.OrderIds.Any())
@@ -178,13 +186,42 @@ namespace ShareItAPI.Controllers
                             // Cập nhật transaction tổng
                             transaction.Status = BusinessObject.Enums.TransactionStatus.completed;
 
-                            // Cập nhật tất cả các order con
-                            foreach (var order in transaction.Orders)
-                            {
-                                await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
-
-                                await _orderService.ClearCartItemsForOrderAsync(order);
-                            }
+                                // Cập nhật tất cả các order con
+                                foreach (var order in transaction.Orders)
+                                {
+                                    await _orderService.ChangeOrderStatus(order.Id, OrderStatus.approved);
+                                    await _orderService.ClearCartItemsForOrderAsync(order);
+                                    
+                                    // Record discount code usage if order has discount code
+                                    if (order.DiscountCodeId.HasValue)
+                                    {
+                                        try
+                                        {
+                                            var usedDiscountCode = new UsedDiscountCode
+                                            {
+                                                Id = Guid.NewGuid(),
+                                                UserId = order.CustomerId,
+                                                DiscountCodeId = order.DiscountCodeId.Value,
+                                                OrderId = order.Id,
+                                                UsedAt = DateTime.UtcNow
+                                            };
+                                            await _context.UsedDiscountCodes.AddAsync(usedDiscountCode);
+                                            
+                                            // Increment the used count for the discount code
+                                            var discountCode = await _context.DiscountCodes.FindAsync(order.DiscountCodeId.Value);
+                                            if (discountCode != null)
+                                            {
+                                                discountCode.UsedCount++;
+                                                _context.DiscountCodes.Update(discountCode);
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogError(ex, "Failed to record discount code usage for Order {OrderId}", order.Id);
+                                            // Don't fail the whole transaction if discount recording fails
+                                        }
+                                    }
+                                }
                         }
                         else
                         {
@@ -226,10 +263,10 @@ namespace ShareItAPI.Controllers
             _logger.LogInformation("Callback endpoint was called at {Time}", DateTime.Now);
 
             // Lấy URL frontend từ cấu hình
-            var frontendBaseUrl = _configuration["Frontend:BaseUrl"];
+            var frontendBaseUrl = _configuration.GetFrontendBaseUrl(_environment);
             if (string.IsNullOrEmpty(frontendBaseUrl))
             {
-                _logger.LogError("Frontend:BaseUrl is not configured.");
+                _logger.LogError("FrontendSettings:{Environment}:BaseUrl is not configured.", _environment.EnvironmentName);
                 return BadRequest(new { RspCode = "99", Message = "Frontend base URL not configured." });
             }
 

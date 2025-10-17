@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.CartRepositories;
 using Repositories.ProductRepositories;
 using Repositories.UserRepositories;
+using Repositories.OrderRepositories;
 
 using System;
 using System.Collections.Generic;
@@ -19,12 +21,14 @@ namespace Services.CartServices
         private readonly ICartRepository _cartRepository;
         private readonly IProductRepository _productRepository; // Assume you have a ProductRepository
         private readonly IUserRepository _userRepository; // Assume you have a UserRepository
+        private readonly IOrderRepository _orderRepository;
         private readonly IMapper _mapper;
-        public CartService(ICartRepository cartRepository, IProductRepository productRepository, IUserRepository userRepository, IMapper mapper)
+        public CartService(ICartRepository cartRepository, IProductRepository productRepository, IUserRepository userRepository, IOrderRepository orderRepository, IMapper mapper)
         {
             _cartRepository = cartRepository;
             _productRepository = productRepository;
             _userRepository = userRepository;
+            _orderRepository = orderRepository;
             _mapper = mapper;
         }
 
@@ -38,15 +42,14 @@ namespace Services.CartServices
 
             var cartDto = _mapper.Map<CartDto>(cart);
 
-            // Get cart items with discounted prices
+            // Get cart items with correct pricing based on transaction type
             var cartItemDtos = new List<CartItemDto>();
             foreach (var cartItem in cart.Items)
             {
                 var cartItemDto = _mapper.Map<CartItemDto>(cartItem);
                 
-                // Use original price
-                cartItemDto.PricePerUnit = cartItem.Product.PricePerDay;
-                cartItemDto.TotalItemPrice = cartItem.Product.PricePerDay * cartItem.Quantity * cartItem.RentalDays;
+                // Set price and total based on transaction type - AutoMapper will handle this now
+                // but we'll keep this for any additional processing if needed
                 
                 cartItemDtos.Add(cartItemDto);
             }
@@ -55,6 +58,11 @@ namespace Services.CartServices
 
             // Sửa từ GrandTotal thành TotalAmount
             cartDto.TotalAmount = cartDto.Items.Sum(item => item.TotalItemPrice);
+            
+            // Calculate total deposit amount for all rental items
+            cartDto.TotalDepositAmount = cartDto.Items
+                .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                .Sum(item => item.TotalDepositAmount);
 
             return cartDto;
         }
@@ -67,47 +75,126 @@ namespace Services.CartServices
                 throw new ArgumentException("Product not found.");
             }
 
+            // Validate that user cannot add their own product to cart
+            if (product.ProviderId == customerId)
+            {
+                throw new ArgumentException("You cannot add your own product to cart.");
+            }
+
+            // Validate transaction type availability
+            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+            {
+                if (product.PurchaseStatus != BusinessObject.Enums.PurchaseStatus.Available || 
+                    product.PurchaseQuantity <= 0)
+                {
+                    throw new ArgumentException("Product is not available for purchase.");
+                }
+            }
+            else // Rental
+            {
+                if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
+                    product.RentalQuantity <= 0)
+                {
+                    throw new ArgumentException("Product is not available for rental.");
+                }
+            }
+
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
-                cart = new Cart { CustomerId = customerId, CreatedAt = DateTime.UtcNow };
+                cart = new Cart { CustomerId = customerId, CreatedAt = DateTimeHelper.GetVietnamTime() };
                 await _cartRepository.CreateCartAsync(cart);
             }
 
-            // Defaults if not provided from Product Detail page
-            int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
-                ? cartAddRequestDto.RentalDays.Value
-                : 1;
-            DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
-            if (startDate < DateTime.UtcNow.Date)
+            // Handle rental-specific logic
+            if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.rental)
             {
-                startDate = DateTime.UtcNow.Date.AddDays(1);
+                // Defaults if not provided from Product Detail page
+                int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
+                    ? cartAddRequestDto.RentalDays.Value
+                    : 1;
+                DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
+                if (startDate < DateTime.UtcNow.Date)
+                {
+                    startDate = DateTime.UtcNow.Date.AddDays(1);
+                }
+
+                // Find existing rental item with same ProductId, Size, StartDate, RentalDays
+                var existingCartItem = cart.Items.FirstOrDefault(ci =>
+                    ci.ProductId == cartAddRequestDto.ProductId &&
+                    ci.TransactionType == BusinessObject.Enums.TransactionType.rental &&
+                    ci.StartDate.HasValue && ci.StartDate.Value.Date == startDate && 
+                    ci.RentalDays == rentalDays);
+
+                if (existingCartItem != null)
+                {
+                    // Validate stock before adding to existing quantity
+                    int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
+                    if (product.RentalQuantity > 0 && newTotalQuantity > product.RentalQuantity)
+                    {
+                        throw new InvalidOperationException($"Cannot add more items. Only {product.RentalQuantity} units available for rental, but you're trying to add {newTotalQuantity} units in total.");
+                    }
+                    
+                    existingCartItem.Quantity += cartAddRequestDto.Quantity;
+                    existingCartItem.EndDate = existingCartItem.StartDate.Value.AddDays(existingCartItem.RentalDays.Value);
+                    await _cartRepository.UpdateCartItemAsync(existingCartItem);
+                }
+                else
+                {
+                    // Validate stock for new cart item
+                    if (product.RentalQuantity > 0 && cartAddRequestDto.Quantity > product.RentalQuantity)
+                    {
+                        throw new InvalidOperationException($"Cannot add to cart. Only {product.RentalQuantity} units available for rental, but you're trying to add {cartAddRequestDto.Quantity} units.");
+                    }
+                    
+                    var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
+                    newCartItem.CartId = cart.Id;
+                    newCartItem.Id = Guid.NewGuid();
+                    // Apply rental defaults
+                    newCartItem.StartDate = startDate;
+                    newCartItem.RentalDays = rentalDays;
+                    newCartItem.EndDate = newCartItem.StartDate.Value.AddDays(newCartItem.RentalDays.Value);
+
+                    await _cartRepository.AddCartItemAsync(newCartItem);
+                }
             }
-
-            // Lấy CartItem hiện có (nếu có cùng ProductId, StartDate, RentalDays)
-            var existingCartItem = cart.Items.FirstOrDefault(ci =>
-                ci.ProductId == cartAddRequestDto.ProductId &&
-                ci.StartDate.Date == startDate && // So sánh ngày
-                ci.RentalDays == rentalDays);// So sánh số ngày thuê)
-
-            if (existingCartItem != null)
+            else // Purchase
             {
-                existingCartItem.Quantity += cartAddRequestDto.Quantity; // Cộng thêm số lượng
-                existingCartItem.EndDate = existingCartItem.StartDate.AddDays(existingCartItem.RentalDays); // Cập nhật lại EndDate
-                await _cartRepository.UpdateCartItemAsync(existingCartItem);
-            }
-            else
-            {
-                var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto); // Ánh xạ từ DTO
-                newCartItem.CartId = cart.Id;
-                newCartItem.Id = Guid.NewGuid(); // Gán Id mới
-                // Apply defaults
-                newCartItem.StartDate = startDate;
-                newCartItem.RentalDays = rentalDays;
-                newCartItem.EndDate = newCartItem.StartDate.AddDays(newCartItem.RentalDays);
+                // Find existing purchase item with same ProductId and Size
+                var existingCartItem = cart.Items.FirstOrDefault(ci =>
+                    ci.ProductId == cartAddRequestDto.ProductId &&
+                    ci.TransactionType == BusinessObject.Enums.TransactionType.purchase);
 
-                // EndDate đã được tính toán trong Mapper Profile khi map từ CartAddRequestDto
-                await _cartRepository.AddCartItemAsync(newCartItem);
+                if (existingCartItem != null)
+                {
+                    // Validate stock before adding to existing quantity
+                    int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
+                    if (product.PurchaseQuantity > 0 && newTotalQuantity > product.PurchaseQuantity)
+                    {
+                        throw new InvalidOperationException($"Cannot add more items. Only {product.PurchaseQuantity} units available for purchase, but you're trying to add {newTotalQuantity} units in total.");
+                    }
+                    
+                    existingCartItem.Quantity += cartAddRequestDto.Quantity;
+                    await _cartRepository.UpdateCartItemAsync(existingCartItem);
+                }
+                else
+                {
+                    // Validate stock for new cart item
+                    if (product.PurchaseQuantity > 0 && cartAddRequestDto.Quantity > product.PurchaseQuantity)
+                    {
+                        throw new InvalidOperationException($"Cannot add to cart. Only {product.PurchaseQuantity} units available for purchase, but you're trying to add {cartAddRequestDto.Quantity} units.");
+                    }
+                    
+                    var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
+                    newCartItem.CartId = cart.Id;
+                    newCartItem.Id = Guid.NewGuid();
+                    // For purchase: no rental dates needed
+                    newCartItem.StartDate = null;
+                    newCartItem.RentalDays = null;
+                    newCartItem.EndDate = null;
+
+                    await _cartRepository.AddCartItemAsync(newCartItem);
+                }
             }
 
             return true;
@@ -125,6 +212,21 @@ namespace Services.CartServices
                 }
                 if (updateDto.Quantity.Value >= 1)
                 {
+                    // Validate stock quantity before updating
+                    var product = await _productRepository.GetByIdAsync(targetItem.ProductId);
+                    if (product != null)
+                    {
+                        int availableStock = targetItem.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                            ? product.PurchaseQuantity
+                            : product.RentalQuantity;
+                            
+                        // Only validate if there's actual stock data (> 0)
+                        if (availableStock > 0 && updateDto.Quantity.Value > availableStock)
+                        {
+                            throw new InvalidOperationException($"Quantity exceeds available stock. Only {availableStock} units available.");
+                        }
+                    }
+                    
                     targetItem.Quantity = updateDto.Quantity.Value;
                     await _cartRepository.UpdateCartItemAsync(targetItem);
                     return true;
@@ -155,7 +257,9 @@ namespace Services.CartServices
                         throw new ArgumentException("Start Date cannot be in the past.");
                     }
                     item.StartDate = newStart;
-                    item.EndDate = item.StartDate.AddDays(item.RentalDays);
+                    item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
+                        ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
+                        : null;
                 }
 
                 if (updateDto.RentalDays.HasValue)
@@ -165,7 +269,9 @@ namespace Services.CartServices
                         throw new ArgumentException("Rental Days must be at least 1.");
                     }
                     item.RentalDays = updateDto.RentalDays.Value;
-                    item.EndDate = item.StartDate.AddDays(item.RentalDays);
+                    item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
+                        ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
+                        : null;
                 }
 
                 await _cartRepository.UpdateCartItemAsync(item);
@@ -193,6 +299,122 @@ namespace Services.CartServices
             // Trả về tổng số lượng sản phẩm trong giỏ hàng (sum of Quantity), không phải số dòng
             return cart?.Items?.Sum(ci => ci.Quantity) ?? 0;
             // Nếu bạn muốn số dòng (số loại sản phẩm khác nhau): return cart?.Items?.Count ?? 0;
+        }
+
+        public async Task<bool> ClearCartAsync(Guid customerId)
+        {
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null)
+            {
+                return true; // Cart already empty
+            }
+
+            var cartItems = await _cartRepository.GetCartItemsForCustomerQuery(customerId).ToListAsync();
+            foreach (var item in cartItems)
+            {
+                await _cartRepository.DeleteCartItemAsync(item);
+            }
+
+            return true;
+        }
+
+        public async Task<(bool success, int addedCount, int issuesCount)> AddOrderItemsToCartAsync(Guid customerId, Guid orderId)
+        {
+            // Get order with items
+            var order = await _orderRepository.GetOrderWithItemsAsync(orderId);
+            if (order == null)
+            {
+                throw new ArgumentException("Order not found.");
+            }
+
+            if (order.CustomerId != customerId)
+            {
+                throw new UnauthorizedAccessException("You are not authorized to access this order.");
+            }
+
+            // Clear current cart
+            await ClearCartAsync(customerId);
+
+            // Get or create cart for customer
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null)
+            {
+                cart = new Cart
+                {
+                    Id = Guid.NewGuid(),
+                    CustomerId = customerId,
+                    CreatedAt = DateTimeHelper.GetVietnamTime()
+                };
+                await _cartRepository.CreateCartAsync(cart);
+            }
+
+            // Track items that were added or skipped
+            int addedCount = 0;
+            int skippedCount = 0;
+            int adjustedCount = 0; // Track items with adjusted quantity
+
+            // Add each order item to cart
+            foreach (var orderItem in order.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(orderItem.ProductId);
+                if (product == null)
+                {
+                    skippedCount++;
+                    continue; // Skip if product not found
+                }
+
+                // Check if product is still available
+                if (product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available)
+                {
+                    skippedCount++;
+                    continue; // Skip unavailable products
+                }
+
+                // Check quantity based on transaction type
+                int availableQuantity = orderItem.TransactionType == BusinessObject.Enums.TransactionType.rental
+                    ? product.RentalQuantity
+                    : product.PurchaseQuantity;
+
+                if (availableQuantity <= 0)
+                {
+                    skippedCount++;
+                    continue; // Skip if no quantity available
+                }
+
+                // Adjust quantity if requested quantity exceeds available quantity
+                int quantityToAdd = Math.Min(orderItem.Quantity, availableQuantity);
+                
+                // Track if quantity was adjusted
+                if (quantityToAdd < orderItem.Quantity)
+                {
+                    adjustedCount++;
+                }
+
+                var cartItem = new CartItem
+                {
+                    Id = Guid.NewGuid(),
+                    CartId = cart.Id,
+                    ProductId = orderItem.ProductId,
+                    Quantity = quantityToAdd,
+                    TransactionType = orderItem.TransactionType,
+                    RentalDays = orderItem.RentalDays,
+                    StartDate = null, // User will set this later
+                    EndDate = null
+                };
+
+                await _cartRepository.AddCartItemAsync(cartItem);
+                addedCount++;
+            }
+
+            // If no items were added, throw exception
+            if (addedCount == 0)
+            {
+                throw new InvalidOperationException("No items could be added to cart. All products are either unavailable or out of stock.");
+            }
+
+            // Count skippedCount and adjustedCount together for warning message
+            int totalIssues = skippedCount + adjustedCount;
+            return (true, addedCount, totalIssues);
         }
     }
 }

@@ -22,5 +22,10 @@ namespace BusinessObject.DTOs.OrdersDto
         public bool UseSameProfile { get; set; } = true;
 
         public bool HasAgreedToPolicies { get; set; } = false;
+
+        /// <summary>
+        /// Optional discount code ID to apply to the order
+        /// </summary>
+        public Guid? DiscountCodeId { get; set; }
     }
 }

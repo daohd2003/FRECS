@@ -105,7 +105,7 @@ namespace DataAccess.Migrations
                     b.Property<Guid>("CartId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("EndDate")
+                    b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid>("ProductId")
@@ -114,11 +114,15 @@ namespace DataAccess.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
-                    b.Property<int>("RentalDays")
+                    b.Property<int?>("RentalDays")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("StartDate")
+                    b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -139,9 +143,12 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -188,6 +195,55 @@ namespace DataAccess.Migrations
                     b.HasIndex("User2Id");
 
                     b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.DiscountCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DiscountType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpirationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UsageType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Value")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("DiscountCodes");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
@@ -393,6 +449,12 @@ namespace DataAccess.Migrations
                     b.Property<string>("DeliveryAddress")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<Guid?>("DiscountCodeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("HasAgreedToPolicies")
                         .HasColumnType("bit");
 
@@ -409,7 +471,13 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("TotalDeposit")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -418,6 +486,8 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("DiscountCodeId");
 
                     b.HasIndex("ProviderId");
 
@@ -433,6 +503,9 @@ namespace DataAccess.Migrations
                     b.Property<decimal>("DailyRate")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<decimal>("DepositPerUnit")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uniqueidentifier");
 
@@ -442,8 +515,12 @@ namespace DataAccess.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
-                    b.Property<int>("RentalDays")
+                    b.Property<int?>("RentalDays")
                         .HasColumnType("int");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -462,7 +539,7 @@ namespace DataAccess.Migrations
 
                     b.Property<string>("AvailabilityStatus")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<decimal>("AverageRating")
                         .HasColumnType("decimal(2,1)");
@@ -485,6 +562,9 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Gender")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsPromoted")
                         .HasColumnType("bit");
 
@@ -505,11 +585,23 @@ namespace DataAccess.Migrations
                     b.Property<int>("PurchaseQuantity")
                         .HasColumnType("int");
 
+                    b.Property<int>("PurchaseStatus")
+                        .HasColumnType("int");
+
                     b.Property<int>("RatingCount")
                         .HasColumnType("int");
 
                     b.Property<int>("RentCount")
                         .HasColumnType("int");
+
+                    b.Property<int>("RentalQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RentalStatus")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SecurityDeposit")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("Size")
                         .IsRequired()
@@ -521,9 +613,19 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AvailabilityStatus");
+
+                    b.HasIndex("AverageRating");
+
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PricePerDay");
+
                     b.HasIndex("ProviderId");
+
+                    b.HasIndex("RentCount");
 
                     b.ToTable("Products");
                 });
@@ -638,6 +740,89 @@ namespace DataAccess.Migrations
                     b.ToTable("ProviderApplications");
                 });
 
+            modelBuilder.Entity("BusinessObject.Models.RentalViolation", b =>
+                {
+                    b.Property<Guid>("ViolationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CustomerNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("CustomerResponseAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("DamagePercentage")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("OrderItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("PenaltyAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("PenaltyPercentage")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ViolationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ViolationId");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.ToTable("RentalViolations");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.RentalViolationImage", b =>
+                {
+                    b.Property<Guid>("ImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FileType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ViolationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ImageId");
+
+                    b.HasIndex("ViolationId");
+
+                    b.ToTable("RentalViolationImages");
+                });
+
             modelBuilder.Entity("BusinessObject.Models.Report", b =>
                 {
                     b.Property<Guid>("Id")
@@ -714,6 +899,35 @@ namespace DataAccess.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Transactions");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.UsedDiscountCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DiscountCodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DiscountCodeId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UsedDiscountCodes");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.User", b =>
@@ -972,6 +1186,10 @@ namespace DataAccess.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("BusinessObject.Models.DiscountCode", "DiscountCode")
+                        .WithMany()
+                        .HasForeignKey("DiscountCodeId");
+
                     b.HasOne("BusinessObject.Models.User", "Provider")
                         .WithMany("OrdersAsProvider")
                         .HasForeignKey("ProviderId")
@@ -979,6 +1197,8 @@ namespace DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
+
+                    b.Navigation("DiscountCode");
 
                     b.Navigation("Provider");
                 });
@@ -1061,6 +1281,28 @@ namespace DataAccess.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("BusinessObject.Models.RentalViolation", b =>
+                {
+                    b.HasOne("BusinessObject.Models.OrderItem", "OrderItem")
+                        .WithMany()
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrderItem");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.RentalViolationImage", b =>
+                {
+                    b.HasOne("BusinessObject.Models.RentalViolation", "Violation")
+                        .WithMany("Images")
+                        .HasForeignKey("ViolationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Violation");
+                });
+
             modelBuilder.Entity("BusinessObject.Models.Report", b =>
                 {
                     b.HasOne("BusinessObject.Models.User", "AssignedAdmin")
@@ -1083,6 +1325,33 @@ namespace DataAccess.Migrations
                     b.Navigation("Reportee");
 
                     b.Navigation("Reporter");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.UsedDiscountCode", b =>
+                {
+                    b.HasOne("BusinessObject.Models.DiscountCode", "DiscountCode")
+                        .WithMany("UsedDiscountCodes")
+                        .HasForeignKey("DiscountCodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObject.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObject.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DiscountCode");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("OrderTransaction", b =>
@@ -1115,6 +1384,11 @@ namespace DataAccess.Migrations
                     b.Navigation("Messages");
                 });
 
+            modelBuilder.Entity("BusinessObject.Models.DiscountCode", b =>
+                {
+                    b.Navigation("UsedDiscountCodes");
+                });
+
             modelBuilder.Entity("BusinessObject.Models.Order", b =>
                 {
                     b.Navigation("Items");
@@ -1126,6 +1400,11 @@ namespace DataAccess.Migrations
 
                     b.Navigation("Feedbacks");
 
+                    b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.RentalViolation", b =>
+                {
                     b.Navigation("Images");
                 });
 

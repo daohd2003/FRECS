@@ -5,6 +5,7 @@ using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.NotificationRepositories;
 using Repositories.RepositoryBase;
+using BusinessObject.Utilities;
 
 namespace Services.NotificationServices
 {
@@ -55,7 +56,7 @@ namespace Services.NotificationServices
             return notificationResponses;
         }
 
-        public async Task SendNotification(Guid userId, string message, NotificationType type)
+        public async Task SendNotification(Guid userId, string message, NotificationType type, Guid? orderId = null)
         {
             var notification = new Notification
             {
@@ -63,7 +64,8 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow
+                OrderId = orderId,
+                CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _notificationRepository.AddAsync(notification);
@@ -176,7 +178,7 @@ namespace Services.NotificationServices
                 Message = message,
                 Type = type,
                 IsRead = false,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 OrderId = orderId
             };
 
@@ -191,7 +193,7 @@ namespace Services.NotificationServices
             {
                 OrderId = orderId,
                 Message = message,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 UserId = userId
             });
         }
@@ -204,7 +206,7 @@ namespace Services.NotificationServices
             {
                 OrderId = orderId,
                 Message = message,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 UserId = userId
             });
         }

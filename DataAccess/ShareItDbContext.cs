@@ -32,6 +32,12 @@ namespace DataAccess
         public DbSet<Category> Categories { get; set; }
 
         public DbSet<ProviderApplication> ProviderApplications { get; set; }
+        public DbSet<DiscountCode> DiscountCodes { get; set; }
+        public DbSet<UsedDiscountCode> UsedDiscountCodes { get; set; }
+
+        // Rental Violation tables
+        public DbSet<RentalViolation> RentalViolations { get; set; }
+        public DbSet<RentalViolationImage> RentalViolationImages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,6 +69,16 @@ namespace DataAccess
 
             modelBuilder.Entity<Order>()
                 .Property(t => t.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<OrderItem>()
+                .Property(oi => oi.TransactionType)
+                .HasConversion<string>();
+                
+            modelBuilder.Entity<Order>();
+
+            modelBuilder.Entity<CartItem>()
+                .Property(ci => ci.TransactionType)
                 .HasConversion<string>();
 
             modelBuilder.Entity<Message>()
@@ -182,6 +198,22 @@ namespace DataAccess
             modelBuilder.Entity<Product>()
                 .Property(p => p.RatingCount);
 
+            // Add indexes for frequently queried columns (OData filtering/sorting)
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.AvailabilityStatus);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.PricePerDay);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.AverageRating);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.RentCount);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.CreatedAt);
+
             modelBuilder.Entity<ProductImage>()
                 .HasOne(pi => pi.Product)
                 .WithMany(p => p.Images)
@@ -293,6 +325,72 @@ namespace DataAccess
                 .WithMany()
                 .HasForeignKey(p => p.ReviewedByAdminId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // DiscountCode configuration
+            modelBuilder.Entity<DiscountCode>()
+                .HasIndex(dc => dc.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.Value)
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.DiscountType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<DiscountCode>()
+                .Property(dc => dc.UsageType)
+                .HasConversion<string>();
+
+            // UsedDiscountCode configuration
+            modelBuilder.Entity<UsedDiscountCode>()
+                .HasOne(udc => udc.User)
+                .WithMany()
+                .HasForeignKey(udc => udc.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UsedDiscountCode>()
+                .HasOne(udc => udc.DiscountCode)
+                .WithMany(dc => dc.UsedDiscountCodes)
+                .HasForeignKey(udc => udc.DiscountCodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UsedDiscountCode>()
+                .HasOne(udc => udc.Order)
+                .WithMany()
+                .HasForeignKey(udc => udc.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // RentalViolation configuration - Convert enums to strings
+            modelBuilder.Entity<RentalViolation>()
+                .Property(rv => rv.ViolationType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<RentalViolation>()
+                .Property(rv => rv.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<RentalViolationImage>()
+                .Property(rvi => rvi.UploadedBy)
+                .HasConversion<string>();
+
+            // RentalViolation relationships
+            modelBuilder.Entity<RentalViolation>()
+                .HasOne(rv => rv.OrderItem)
+                .WithMany()
+                .HasForeignKey(rv => rv.OrderItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RentalViolationImage>()
+                .HasOne(rvi => rvi.Violation)
+                .WithMany(rv => rv.Images)
+                .HasForeignKey(rvi => rvi.ViolationId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }

@@ -11,6 +11,8 @@ namespace ShareItFE
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.WebHost.UseUrls($"http://*:80");  
+            
             builder.Services.AddHttpClient();
 
             // Add configuration for API Base URL
@@ -18,7 +20,9 @@ namespace ShareItFE
 
             builder.Services.AddHttpClient("BackendApi", client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7256/");
+                var environment = builder.Environment.EnvironmentName;
+                var apiBaseUrl = builder.Configuration[$"ApiSettings:{environment}:BaseUrl"] ?? "https://localhost:7256/api";
+                client.BaseAddress = new Uri(apiBaseUrl);
             });
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -50,6 +54,15 @@ namespace ShareItFE
 
             builder.Services.AddScoped<ShareItFE.Common.Utilities.AuthenticatedHttpClientHelper>();
 
+            // Add session support
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(30); // Session timeout
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
+
             // Add services to the container.
             builder.Services.AddRazorPages();
 
@@ -67,6 +80,8 @@ namespace ShareItFE
             app.UseStaticFiles();
 
             app.UseRouting();
+
+            app.UseSession(); // Enable session middleware
 
             app.UseAuthentication();
             app.UseAuthorization();

@@ -6,6 +6,7 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/cart.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/discount-code-modal.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="~/css/checkout-modal.css" asp-append-version="true" />
 }
@@ -21,23 +22,19 @@
                 </svg>
             </button>
 
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">Scan QR code to pay</h2>
-            <div class="marquee-container mb-6">
+            <h2 class="modal-title text-2xl font-bold text-gray-900 mb-2">Scan QR code to pay</h2>
+            <div class="marquee-container mb-4">
                 <div class="marquee-content">
                     SEPay only supports payments via: Vietcombank, VPBank, VIB, VietinBank, MBBank, ACB, Sacombank, TPBank, Eximbank, HDBank, BIDV, Techcombank, MSB, Shinhan Bank, Agribank, Public Bank (PublicBank Vietnam) and other banks such as OCB, KienlongBank, ABBANK, LPBank, Bac A Bank, SeaBank, SHB, NCB, Woori Bank, VietABank, Vietbank, Nam A Bank, PGBank
                 </div>
             </div>
 
-            <div class="p-2 border border-gray-200 rounded-lg inline-block mb-4">
-                <img src="@Model.QrCodeUrl" alt="Payment QR code" class="mx-auto w-32 h-64" />
+            <div class="qr-code-container p-2 border border-gray-200 rounded-lg inline-block mb-4">
+                <img src="@Model.QrCodeUrl" alt="Payment QR code" class="qr-code-image mx-auto" />
             </div>
 
-            <p class="text-xl font-bold">Total amount: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
+            <p class="modal-amount text-xl font-bold">Total amount: <span class="text-purple-600">@Model.Total.ToString("N0") VND</span></p>
             <p class="text-sm text-gray-500 mt-4 max-w-sm mx-auto">After successful payment, the order status will be updated. You don't need to perform any additional actions.</p>
-
-            <a href="/OrderHistory" class="mt-6 inline-block w-full bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                Check order history
-            </a>
         </div>
     </div>
 }
@@ -142,14 +139,6 @@
                         </div>
                     </div>
 
-                    <div class="mb-6">
-                        <input type="checkbox" id="hasAgreedToPolicies" name="Input.HasAgreedToPolicies" value="true"
-                               class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                        <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
-                            I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
-                        </label>
-                        <span asp-validation-for="Input.HasAgreedToPolicies" class="text-danger text-sm mt-1 block"></span>
-                    </div>
 
                     <button type="submit"
                             id="checkoutButton"
@@ -170,38 +159,106 @@
                         {
                             @foreach (var item in Model.Cart.Items)
                             {
-                                <div class="space-y-2">
-                                    <!-- Large product image -->
-                                    <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
-                                         alt="@item.ProductName"
-                                         class="w-full h-auto rounded-lg object-cover" />
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-start space-x-3">
+                                        <!-- Small product image on left -->
+                                        <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")"
+                                             alt="@item.ProductName"
+                                             class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                             style="width: 40%; margin-top: 10px;" />
 
-                                    <!-- Product information -->
-                                    <div class="text-sm text-gray-800 leading-5">
-                                        <p class="font-semibold">@item.ProductName</p>
-                                        <p>Size: <span class="font-medium">@item.ProductSize</span></p>
-                                        <p>@item.RentalDays days</p>
-                                        <p class="text-purple-600 font-bold text-base mt-1">@((item.PricePerUnit * item.RentalDays * item.Quantity).ToString("N0")) VND</p>
+                                        <!-- Product information on right -->
+                                        <div class="flex-1 text-sm text-gray-800" style="margin-left: 10px; margin-top: 10px;">
+                                            <p class="font-semibold mb-1">@item.ProductName</p>
+                                            <p class="mb-1">Size: <span class="font-medium">@item.ProductSize</span></p>
+                                            <p class="mb-1">Quantity: <span class="font-medium">@item.Quantity</span></p>
+
+                                            @* Show transaction type *@
+                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                            {
+                                                <span class="mb-2">Type: Purchase</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="mb-2">Type: Rental</span>
+                                            }
+
+                                            @* Only show rental period for rental items *@
+                                            @if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                                            {
+                                                <p class="mb-2">Rental period: @item.RentalDays days</p>
+                                            }
+
+                                            <p class="text-purple-600 font-bold text-base">Amount: @item.TotalItemPrice.ToString("N0") VND</p>
+                                        </div>
                                     </div>
                                 </div>
                             }
                         }
                     </div>
 
+
                     <!-- Price summary -->
-                    <div class="space-y-3 mb-6 border-t pt-4">
-                        <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal</span><span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span></div>
-                        <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping fee</span><span class="font-semibold">@(Model.DeliveryFee == 0 ? "FREE" : Model.DeliveryFee.ToString("N0") + " VND")</span></div>
-                        <div class="border-t pt-3">
-                            <div class="flex justify-between text-lg font-bold"><span>Total</span><span class="text-purple-600">@Model.Total.ToString("N0") VND</span></div>
+                    <div class="space-y-4 mb-6">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Subtotal</span>
+                            <span class="font-semibold">@Model.Subtotal.ToString("N0") VND</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Shipping fee</span>
+                            <span class="font-semibold">@(Model.DeliveryFee == 0 ? "FREE" : Model.DeliveryFee.ToString("N0") + " VND")</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Discount</span>
+                            <span class="font-semibold text-green-600" id="checkout-discount">
+                                @if (Model.DiscountAmount > 0)
+                                {
+                                    <text>-@Model.DiscountAmount.ToString("N0") VND</text>
+                                    @if (Model.SelectedDiscountCode != null)
+                                    {
+                                        <span class="text-xs text-gray-500 ml-2">(@Model.SelectedDiscountCode.Code)</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <text>0 VND</text>
+                                }
+                            </span>
+                        </div>
+
+                        @* Security Deposit for rental items *@
+                        @if (Model.TotalDeposit > 0)
+                        {
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Security Deposit <span class="text-xs text-gray-500">(refundable)</span></span>
+                                <span class="font-semibold text-orange-600">@Model.TotalDeposit.ToString("N0") VND</span>
+                            </div>
+                        }
+
+                        <div class="border-t pt-4">
+                            <div class="flex justify-between text-lg font-bold">
+                                <span>Total <span class="text-sm font-normal text-gray-500">(incl. deposit)</span></span>
+                                <span class="text-purple-600" id="checkout-total">@Model.Total.ToString("N0") VND</span>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Commitments -->
                     <div class="space-y-3 text-sm text-gray-600">
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>SSL encrypted payment</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>Money back guarantee</span></div>
-                        <div class="flex items-center space-x-2"><i class="bi bi-check-circle-fill text-green-500"></i><span>24/7 customer support</span></div>
+                        <div class="flex items-center space-x-3">
+                            <i class="bi bi-shield-check text-green-500 text-sm"></i>
+                            <span> Secure payment (SSL protected)</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="bi bi-arrow-clockwise text-blue-500 text-sm"></i>
+                            <span> Money back guarantee</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="bi bi-headset text-purple-500 text-sm"></i>
+                            <span> Support service 24/7</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -306,28 +363,6 @@
                 }
             }
 
-            // --- 4. Logic cho Checkbox "Đồng ý chính sách" và nút Thanh toán ---
-            const hasAgreedCheckbox = document.getElementById('hasAgreedToPolicies');
-            const checkoutButton = document.getElementById('checkoutButton');
-
-            // Hàm này sẽ cập nhật trạng thái của nút thanh toán
-            function updateCheckoutButtonState() {
-                if (hasAgreedCheckbox.checked) {
-                    checkoutButton.disabled = false;
-                    checkoutButton.classList.remove('bg-purple-400', 'cursor-not-allowed');
-                    checkoutButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
-                } else {
-                    checkoutButton.disabled = true;
-                    checkoutButton.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-                    checkoutButton.classList.add('bg-purple-400', 'cursor-not-allowed');
-                }
-            }
-
-            if (hasAgreedCheckbox && checkoutButton) {
-                hasAgreedCheckbox.addEventListener('change', updateCheckoutButtonState);
-                // Khởi tạo trạng thái ban đầu của nút khi trang tải
-                updateCheckoutButtonState();
-            }
         });
     </script>
 }

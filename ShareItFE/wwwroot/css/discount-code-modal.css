@@ -1,0 +1,108 @@
+/* ===== Discount Code Modal Styles ===== */
+
+/* Modal Overlay */
+#discountCodeModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#discountCodeModal.hidden {
+    display: none;
+}
+
+/* Modal Container */
+#discountCodeModal > div {
+    position: relative;
+    z-index: 10000;
+    max-width: 900px;
+    width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modal Content Area - Enable Scroll */
+#discountCodeModal #discountCodesList {
+    overflow-y: auto;
+    max-height: calc(85vh - 180px); /* Subtract header and padding */
+}
+
+/* Custom Scrollbar */
+#discountCodeModal #discountCodesList::-webkit-scrollbar {
+    width: 8px;
+}
+
+#discountCodeModal #discountCodesList::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#discountCodeModal #discountCodesList::-webkit-scrollbar-thumb {
+    background: #9333ea;
+    border-radius: 4px;
+}
+
+#discountCodeModal #discountCodesList::-webkit-scrollbar-thumb:hover {
+    background: #7e22ce;
+}
+
+/* Discount Code Card */
+.discount-code-card {
+    transition: all 0.2s ease;
+}
+
+.discount-code-card:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.discount-code-card.disabled {
+    cursor: not-allowed;
+}
+
+/* Selected Discount Display */
+#selectedDiscountDisplay {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Animation */
+#discountCodeModal:not(.hidden) {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    #discountCodeModal .max-w-2xl {
+        max-width: 95vw;
+        margin: 0 auto;
+    }
+}
+

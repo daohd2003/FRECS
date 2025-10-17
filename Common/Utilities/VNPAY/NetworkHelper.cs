@@ -17,14 +17,49 @@ namespace Common.Utilities.VNPAY
 
             if (remoteIpAddress != null)
             {
-                var ipv4Address = Dns.GetHostEntry(remoteIpAddress).AddressList.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork);
+                // Check for forwarded headers first (in case behind proxy/load balancer)
+                var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(forwardedFor))
+                {
+                    var firstIP = forwardedFor.Split(',')[0].Trim();
+                    if (System.Net.IPAddress.TryParse(firstIP, out var parsedIP))
+                    {
+                        return parsedIP.ToString();
+                    }
+                }
 
-                return remoteIpAddress.AddressFamily == AddressFamily.InterNetworkV6 && ipv4Address != null
-                    ? ipv4Address.ToString()
-                    : remoteIpAddress.ToString();
+                var realIP = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(realIP))
+                {
+                    if (System.Net.IPAddress.TryParse(realIP, out var parsedRealIP))
+                    {
+                        return parsedRealIP.ToString();
+                    }
+                }
+
+                // For IPv6 localhost, return IPv4 localhost
+                if (remoteIpAddress.ToString() == "::1")
+                {
+                    return "127.0.0.1";
+                }
+
+                // If IPv6, try to map to IPv4 if possible, otherwise return as string
+                if (remoteIpAddress.AddressFamily == AddressFamily.InterNetworkV6)
+                {
+                    if (remoteIpAddress.IsIPv4MappedToIPv6)
+                    {
+                        return remoteIpAddress.MapToIPv4().ToString();
+                    }
+                    // For other IPv6 addresses, return as string without DNS lookup
+                    return remoteIpAddress.ToString();
+                }
+
+                // For IPv4, return directly without DNS lookup
+                return remoteIpAddress.ToString();
             }
 
-            throw new InvalidOperationException("Không tìm thấy địa chỉ IP");
+            // Fallback IP for localhost/development
+            return "127.0.0.1";
         }
     }
 }

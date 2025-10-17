@@ -1,8 +1,10 @@
 using BusinessObject.DTOs.ProviderApplications;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.ProviderApplicationRepositories;
 using Repositories.UserRepositories;
+using Services.EmailServices;
 
 namespace Services.ProviderApplicationServices
 {
@@ -10,11 +12,16 @@ namespace Services.ProviderApplicationServices
     {
         private readonly IProviderApplicationRepository _applicationRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IEmailService _emailService;
 
-        public ProviderApplicationService(IProviderApplicationRepository applicationRepository, IUserRepository userRepository)
+        public ProviderApplicationService(
+            IProviderApplicationRepository applicationRepository, 
+            IUserRepository userRepository,
+            IEmailService emailService)
         {
             _applicationRepository = applicationRepository;
             _userRepository = userRepository;
+            _emailService = emailService;
         }
 
         public async Task<ProviderApplication> ApplyAsync(Guid userId, ProviderApplicationCreateDto dto)
@@ -41,7 +48,7 @@ namespace Services.ProviderApplicationServices
                 ContactPhone = dto.ContactPhone,
                 Notes = dto.Notes,
                 Status = ProviderApplicationStatus.pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _applicationRepository.AddAsync(app);
@@ -85,6 +92,91 @@ namespace Services.ProviderApplicationServices
         public Task<IEnumerable<ProviderApplication>> GetByStatusAsync(ProviderApplicationStatus status)
         {
             return _applicationRepository.GetByStatusAsync(status);
+        }
+
+        public async Task<IEnumerable<ProviderApplication>> GetAllApplicationsAsync(ProviderApplicationStatus? status)
+        {
+            if (status.HasValue)
+            {
+                return await _applicationRepository.GetByStatusAsync(status.Value);
+            }
+            return await _applicationRepository.GetAllWithUserDetailsAsync();
+        }
+
+        public async Task<bool> ApproveAsync(Guid staffId, Guid applicationId)
+        {
+            var app = await _applicationRepository.GetByIdAsync(applicationId);
+            if (app == null || app.Status != ProviderApplicationStatus.pending)
+            {
+                return false;
+            }
+
+            // Update application status
+            app.Status = ProviderApplicationStatus.approved;
+            app.ReviewedAt = DateTimeHelper.GetVietnamTime();
+            app.ReviewedByAdminId = staffId;
+            app.ReviewComment = "Application approved";
+
+            var updated = await _applicationRepository.UpdateAsync(app);
+            if (!updated) return false;
+
+            // Update user role to provider
+            var user = await _userRepository.GetByIdAsync(app.UserId);
+            if (user == null) return false;
+            
+            user.Role = UserRole.provider;
+            await _userRepository.UpdateAsync(user);
+
+            // Send approval email
+            try
+            {
+                await _emailService.SendProviderApplicationApprovedEmailAsync(user.Email, app.BusinessName);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the operation
+                Console.WriteLine($"Failed to send approval email: {ex.Message}");
+            }
+
+            return true;
+        }
+
+        public async Task<bool> RejectAsync(Guid staffId, Guid applicationId, string rejectionReason)
+        {
+            var app = await _applicationRepository.GetByIdAsync(applicationId);
+            if (app == null || app.Status != ProviderApplicationStatus.pending)
+            {
+                return false;
+            }
+
+            // Update application status
+            app.Status = ProviderApplicationStatus.rejected;
+            app.ReviewedAt = DateTimeHelper.GetVietnamTime();
+            app.ReviewedByAdminId = staffId;
+            app.ReviewComment = rejectionReason;
+
+            var updated = await _applicationRepository.UpdateAsync(app);
+            if (!updated) return false;
+
+            // Get user for email
+            var user = await _userRepository.GetByIdAsync(app.UserId);
+            if (user == null) return false;
+
+            // Send rejection email
+            try
+            {
+                await _emailService.SendProviderApplicationRejectedEmailAsync(
+                    user.Email, 
+                    app.BusinessName, 
+                    rejectionReason);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the operation
+                Console.WriteLine($"Failed to send rejection email: {ex.Message}");
+            }
+
+            return true;
         }
     }
 }

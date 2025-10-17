@@ -6,23 +6,26 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration; // Đảm bảo có
 using System.Net.Http; // Đảm bảo có
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Middlewares
 {
-    public class RefreshTokenMiddleware
+        public class RefreshTokenMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<RefreshTokenMiddleware> _logger;
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IWebHostEnvironment _environment;
 
         public RefreshTokenMiddleware(RequestDelegate next, ILogger<RefreshTokenMiddleware> logger,
-                                      IConfiguration configuration, IHttpClientFactory httpClientFactory)
+            IConfiguration configuration, IHttpClientFactory httpClientFactory, IWebHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _environment = environment;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -53,7 +56,7 @@ namespace ShareItFE.Middlewares
             {
                 _logger.LogInformation("AccessToken is missing from cookies, but RefreshToken is present. Attempting to refresh token.");
 
-                var apiBaseUrl = _configuration["ApiSettings:BaseUrl"];
+                var apiBaseUrl = _configuration.GetApiBaseUrl(_environment);
 
                 try
                 {

@@ -12,5 +12,10 @@ namespace BusinessObject.DTOs.CartDto
         public Guid CustomerId { get; set; }
         public List<CartItemDto> Items { get; set; } = new List<CartItemDto>();
         public decimal TotalAmount { get; set; }
+        
+        /// <summary>
+        /// Total deposit amount for all rental items in cart
+        /// </summary>
+        public decimal TotalDepositAmount { get; set; } = 0m;
     }
 }

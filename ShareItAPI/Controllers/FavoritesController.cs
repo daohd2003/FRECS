@@ -1,6 +1,7 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.FavoriteServices;
@@ -22,10 +23,18 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("{userId}")]
-        public async Task<IActionResult> GetFavorites(Guid userId)
+        public async Task<IActionResult> GetFavorites(Guid userId, [FromQuery] bool includeDetails = false)
         {
-            var favorites = await _favoriteService.GetFavoritesByUserIdAsync(userId);
-            return Ok(new ApiResponse<List<Favorite>>("Get favorites list successfully", favorites));
+            if (includeDetails)
+            {
+                var favoritesWithDetails = await _favoriteService.GetFavoritesWithProductDetailsAsync(userId);
+                return Ok(new ApiResponse<object>("Get favorites list successfully", favoritesWithDetails));
+            }
+            else
+            {
+                var favorites = await _favoriteService.GetFavoritesByUserIdAsync(userId);
+                return Ok(new ApiResponse<object>("Get favorites list successfully", favorites));
+            }
         }
 
         [HttpGet("check")]
@@ -47,7 +56,8 @@ namespace ShareItAPI.Controllers
             var favorite = new Favorite
             {
                 UserId = dto.UserId,
-                ProductId = dto.ProductId
+                ProductId = dto.ProductId,
+                CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _favoriteService.AddFavoriteAsync(favorite);

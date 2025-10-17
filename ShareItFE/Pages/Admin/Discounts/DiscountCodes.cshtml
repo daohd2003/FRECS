@@ -1,0 +1,223 @@
+﻿@page
+@model ShareItFE.Pages.Admin.Discounts.DiscountCodesModel
+@{
+    ViewData["Title"] = "Discount Code Management";
+    Layout = "~/Pages/Shared/_AdminLayout.cshtml";
+}
+
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- CSRF Token -->
+<form method="post">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8 flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Discount Code Management</h1>
+                <p class="text-lg md:text-xl text-gray-600">Create and manage promotional discount codes for users</p>
+            </div>
+            <button id="create-discount-btn" class="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm">
+                <i data-lucide="plus" class="h-5 w-5"></i>
+                <span>Create New</span>
+            </button>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div class="bg-white p-6 rounded-lg shadow-sm mb-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="relative w-full md:flex-grow">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
+                    </div>
+                    <input type="text" id="search-code" placeholder="Search discount codes..." 
+                           class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" />
+                    <button id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center hidden">
+                        <i data-lucide="x" class="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-pointer"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
+                    <button type="button" id="filterBtn" class="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors w-full justify-center sm:w-auto">
+                        <i data-lucide="sliders-horizontal" class="h-5 w-5"></i>
+                        <span>Filters</span>
+                    </button>
+
+                    <button id="reset-filters" class="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i data-lucide="rotate-ccw" class="h-5 w-5"></i>
+                        <span class="hidden sm:inline">Reset</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div id="filterPanel" class="hidden pt-6 border-t border-gray-200 mt-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <div>
+                        <label for="filter-type" class="block text-sm font-medium text-gray-700 mb-1.5">Discount Type</label>
+                        <select id="filter-type" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            <option value="">All Types</option>
+                            <option value="Percentage">Percentage</option>
+                            <option value="Fixed">Fixed Amount</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-usage-type" class="block text-sm font-medium text-gray-700 mb-1.5">Usage Type</label>
+                        <select id="filter-usage-type" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            <option value="">All Usage Types</option>
+                            <option value="Purchase">Purchase</option>
+                            <option value="Rental">Rental</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-status" class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+                        <select id="filter-status" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                            <option value="">All Status</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Expired">Expired</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-date-from" class="block text-sm font-medium text-gray-700 mb-1.5">Expires From</label>
+                        <input type="date" id="filter-date-from" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" />
+                    </div>
+                    <div>
+                        <label for="filter-date-to" class="block text-sm font-medium text-gray-700 mb-1.5">Expires To</label>
+                        <input type="date" id="filter-date-to" class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Info and Table -->
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                    <p id="results-info" class="text-sm text-gray-600">Loading...</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiration Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="discount-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be loaded via JavaScript -->
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i data-lucide="loader" class="h-8 w-8 text-gray-400 animate-spin mb-2"></i>
+                                    <p class="text-gray-500">Loading discount codes...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-200">
+                <div id="pagination-container" class="pagination-controls">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="discount-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 id="modal-title" class="text-xl font-semibold text-gray-900">Create Discount Code</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                <i data-lucide="x" class="h-6 w-6"></i>
+            </button>
+        </div>
+        <div class="mt-6">
+            <form id="discount-form" class="space-y-4">
+                <div>
+                    <label for="discount-code" class="block text-sm font-medium text-gray-700 mb-1">Discount Code</label>
+                    <input type="text" id="discount-code" placeholder="e.g., SAVE20" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                    <label for="discount-type" class="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
+                    <select id="discount-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="Percentage">Percentage</option>
+                        <option value="Fixed">Fixed Amount</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="discount-value" class="block text-sm font-medium text-gray-700 mb-1">Value</label>
+                    <div class="relative">
+                        <input type="number" id="discount-value" required 
+                               class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                        <span id="value-icon" class="absolute right-3 top-2.5 text-gray-500 font-medium">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="expiration-date" class="block text-sm font-medium text-gray-700 mb-1">Expiration Date</label>
+                    <input type="date" id="expiration-date" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <input type="number" id="quantity" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                </div>
+                <div>
+                    <label for="usage-type" class="block text-sm font-medium text-gray-700 mb-1">Usage Type</label>
+                    <select id="usage-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <option value="Purchase">Purchase</option>
+                        <option value="Rental">Rental</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="status-toggle" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <div class="flex items-center gap-3">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="status-toggle" checked class="sr-only peer" />
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                        <span id="status-label" class="text-sm font-medium text-green-600">Active</span>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" id="save-code-btn" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                        <i data-lucide="save" class="h-4 w-4 inline mr-2"></i>Save Code
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/js/discount-management.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Filter panel toggle
+        $('#filterBtn').click(function() {
+            $('#filterPanel').toggleClass('hidden');
+        });
+    </script>
+}

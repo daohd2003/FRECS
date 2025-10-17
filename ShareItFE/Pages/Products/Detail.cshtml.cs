@@ -14,6 +14,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Products
 {
@@ -23,25 +24,40 @@ namespace ShareItFE.Pages.Products
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
         private readonly AuthenticatedHttpClientHelper _clientHelper;
-        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, AuthenticatedHttpClientHelper clientHelper)
+        public DetailModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IWebHostEnvironment environment, AuthenticatedHttpClientHelper clientHelper)
         {
             _httpClientFactory = httpClientFactory;
             _httpContextAccessor = httpContextAccessor;
-            _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            _jsonOptions = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
             _configuration = configuration;
+            _environment = environment;
             _clientHelper = clientHelper;
         }
 
         public ProductDTO Product { get; set; }
-        public List<FeedbackDto> Feedbacks { get; set; } = new List<FeedbackDto>();
+        public List<FeedbackResponseDto> Feedbacks { get; set; } = new List<FeedbackResponseDto>();
         public bool IsFavorite { get; set; }
         public string? ProviderEmail { get; set; }
+        
+        // Pagination properties for feedbacks
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
+        public int TotalFeedbacks { get; set; } = 0;
+        public int PageSize { get; set; } = 5;
         
 
 
         [BindProperty, Required(ErrorMessage = "Please select a size")]
         public string SelectedSize { get; set; }
+
+        [BindProperty]
+        public BusinessObject.Enums.TransactionType TransactionType { get; set; } = BusinessObject.Enums.TransactionType.rental;
 
         // StartDate and RentalDays moved to Cart; backend will default
         [BindProperty]
@@ -54,6 +70,7 @@ namespace ShareItFE.Pages.Products
         public string ApiBaseUrl { get; private set; }
 
         public bool CanBeFeedbacked { get; private set; }
+        public bool IsOwnProduct { get; private set; } // Check if current user is the provider of this product
         public string SignalRRootUrl { get; private set; }
         public string? AccessToken { get; private set; }
 
@@ -74,16 +91,20 @@ namespace ShareItFE.Pages.Products
             Guid orderItemId;
             AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
 
+            // Clear any existing TempData to prevent confusion
+            TempData.Remove("ErrorMessage");
+            TempData.Remove("SuccessMessage");
+
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
-                ErrorMessage = "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.";
-                await LoadInitialData(id);
+                ErrorMessage = "Please log in to submit feedback.";
+                await LoadInitialData(id, 1);
                 return Page();
             }
 
 
             var client = await _clientHelper.GetAuthenticatedClientAsync();
-            var requestURI = $"https://localhost:7256/api/orders/order-item/{id}";
+            var requestURI = $"{_configuration.GetApiBaseUrl(_environment)}/orders/order-item/{id}";
             var orderItemresponse = await client.GetAsync(requestURI);
 
             var options = new JsonSerializerOptions
@@ -129,15 +150,15 @@ namespace ShareItFE.Pages.Products
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
 
                 // Assuming your API endpoint for submitting feedback is "/api/feedback"
-                var apiUrl = $"https://localhost:7256/api/feedbacks"; // Make sure _apiBaseUrl is configured
+                var apiUrl = $"{_configuration.GetApiBaseUrl(_environment)}/feedbacks";
 
                 var response = await httpClient.PostAsJsonAsync(apiUrl, FeedbackInput);
 
                 if (response.IsSuccessStatusCode)
                 {
                     // API returned 201 Created (or 200 OK)
-                    TempData["SuccessMessage"] = "Phản hồi của bạn đã được gửi thành công!";
-                    SuccessMessage = "Phản hồi của bạn đã được gửi thành công!";
+                    TempData["SuccessMessage"] = "Your feedback has been submitted successfully!";
+                    SuccessMessage = "Your feedback has been submitted successfully!";
                     // Optional: You might want to reload product details to show the new feedback immediately
                     // await LoadInitialData(id);
                 }
@@ -145,7 +166,7 @@ namespace ShareItFE.Pages.Products
                 {
                     // API returned an error status code
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    TempData["ErrorMessage"] = $"Lỗi khi gửi phản hồi: {response.StatusCode} - {errorContent}";
+                    TempData["ErrorMessage"] = $"Error sending feedback: {response.StatusCode} - {errorContent}";
                     // Log the detailed errorContent for debugging
                     Console.WriteLine($"Feedback API Error: {response.StatusCode} - {errorContent}");
                     // Reload page data to maintain state if an error occurs
@@ -155,14 +176,14 @@ namespace ShareItFE.Pages.Products
             catch (HttpRequestException ex)
             {
                 // Handle network errors or API not reachable
-                TempData["ErrorMessage"] = $"Không thể kết nối đến dịch vụ: {ex.Message}";
+                TempData["ErrorMessage"] = $"Unable to connect to service: {ex.Message}";
                 Console.WriteLine($"HttpRequestException: {ex.Message}");
                 // await LoadInitialData(id);
             }
             catch (Exception ex)
             {
                 // Handle other unexpected errors
-                TempData["ErrorMessage"] = $"Đã xảy ra lỗi không mong muốn: {ex.Message}";
+                TempData["ErrorMessage"] = $"An unexpected error occurred: {ex.Message}";
                 Console.WriteLine($"General Exception: {ex.Message}");
                 // await LoadInitialData(id);
             }
@@ -179,25 +200,47 @@ namespace ShareItFE.Pages.Products
 
 
 
-        public async Task<IActionResult> OnGetAsync(Guid id)
+        public async Task<IActionResult> OnGetAsync(Guid id, [FromQuery] int page = 1)
         {
-            // No-op: StartDate/RentalDays handled later in Cart
+            // Read TempData messages if any (from redirects)
+            if (TempData["SuccessMessage"] is string successMsg)
+                SuccessMessage = successMsg;
+            if (TempData["ErrorMessage"] is string errorMsg)
+                ErrorMessage = errorMsg;
 
-            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
-            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
-
-            if (id == Guid.Empty) return BadRequest("Invalid product ID.");
-
-            var client = _httpClientFactory.CreateClient("BackendApi");
-            AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
-            var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
-            if (!string.IsNullOrEmpty(authToken))
+            // Debug: Print all query parameters
+            var queryParams = Request.Query.ToList();
+            Console.WriteLine($"All Query Parameters: {string.Join(", ", queryParams.Select(q => $"{q.Key}={q.Value}"))}");
+            
+            // Fallback: Get page from Request.Query if [FromQuery] doesn't work
+            if (page == 1 && Request.Query.ContainsKey("page"))
             {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+                if (int.TryParse(Request.Query["page"], out int queryPage))
+                {
+                    page = queryPage;
+                    Console.WriteLine($"Found page in query string: {page}");
+                }
             }
-
+            
+            CurrentPage = page > 0 ? page : 1;
+            Console.WriteLine($"OnGetAsync Start - ProductId: {id}, RequestedPage: {page}, CurrentPage: {CurrentPage}");
             try
             {
+                // No-op: StartDate/RentalDays handled later in Cart
+
+                ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+                SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
+
+                if (id == Guid.Empty) return BadRequest("Invalid product ID.");
+
+                var client = _httpClientFactory.CreateClient("BackendApi");
+                AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
+                var authToken = _httpContextAccessor.HttpContext.Request.Cookies["AccessToken"];
+                if (!string.IsNullOrEmpty(authToken))
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+                }
+
                 // Fetch product details
                 var productRequestUri = $"api/products/{id}";
                 var productResponse = await client.GetAsync(productRequestUri);
@@ -212,6 +255,9 @@ namespace ShareItFE.Pages.Products
                             .ToList();
                     }
                     if (Product == null) return NotFound();
+                    
+                    // Set default transaction type based on product availability
+                    SetDefaultTransactionType();
                     
                     // Fetch provider email via profile endpoint
                     try
@@ -242,14 +288,42 @@ namespace ShareItFE.Pages.Products
                     return NotFound();
                 }
 
-                // Fetch feedbacks
-                var feedbacksRequestUri = $"api/feedbacks/0/{id}";
+                // Fetch feedbacks with pagination using correct endpoint
+                var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
                 {
-                    var apiResponse = await feedbacksResponse.Content.ReadFromJsonAsync<ApiResponse<List<FeedbackDto>>>(_jsonOptions);
-                    Feedbacks = apiResponse?.Data ?? new List<FeedbackDto>();
+                    try
+                    {
+                        var responseContent = await feedbacksResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"Feedback API Response: {responseContent}"); // Debug log
+                        
+                        var apiResponse = JsonSerializer.Deserialize<ApiResponse<PaginatedResponse<FeedbackResponseDto>>>(responseContent, _jsonOptions);
+                        var paginatedData = apiResponse?.Data;
+                        
+                        if (paginatedData != null)
+                        {
+                            Feedbacks = paginatedData.Items ?? new List<FeedbackResponseDto>();
+                            TotalFeedbacks = paginatedData.TotalItems;
+                            TotalPages = paginatedData.TotalPages;
+                            // Don't override CurrentPage - keep the value from query parameter
+                            Console.WriteLine($"API returned page: {paginatedData.Page}, keeping CurrentPage: {CurrentPage}");
+                        }
+                        else
+                        {
+                            Feedbacks = new List<FeedbackResponseDto>();
+                            TotalFeedbacks = 0;
+                            TotalPages = 1;
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Console.WriteLine($"JSON Error parsing feedbacks: {jsonEx.Message}");
+                        Feedbacks = new List<FeedbackResponseDto>();
+                        TotalFeedbacks = 0;
+                        TotalPages = 1;
+                    }
 
                     foreach (var feedback in Feedbacks)
                     {
@@ -272,12 +346,23 @@ namespace ShareItFE.Pages.Products
                     Console.WriteLine($"Could not fetch feedbacks. Status: {feedbacksResponse.StatusCode}");
                 }
 
-                // Check favorite status
+                // Check favorite status and if user owns this product
                 if (User.Identity.IsAuthenticated)
                 {
                     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(userId))
+                    if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                     {
+                        // Check if current user is the provider of this product
+                        if (Product != null && Product.ProviderId == userGuid)
+                        {
+                            IsOwnProduct = true;
+                            Console.WriteLine($"[OnGetAsync] IsOwnProduct set to TRUE - UserId: {userGuid}, ProviderId: {Product.ProviderId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[OnGetAsync] IsOwnProduct is FALSE - UserId: {userGuid}, ProviderId: {Product?.ProviderId}");
+                        }
+
                         var favoriteUri = $"api/favorites/{userId}";
                         var favoriteResponse = await client.GetAsync(favoriteUri);
                         if (favoriteResponse.IsSuccessStatusCode)
@@ -294,10 +379,26 @@ namespace ShareItFE.Pages.Products
                 // check whether a user can feedback
                 CanBeFeedbacked = await CanFeedback(id);
             }
+            catch (HttpRequestException httpEx)
+            {
+                Console.WriteLine($"HTTP Error in OnGetAsync: {httpEx.Message}");
+                return NotFound("Product not found or service unavailable.");
+            }
+            catch (TaskCanceledException tcEx)
+            {
+                Console.WriteLine($"Timeout Error in OnGetAsync: {tcEx.Message}");
+                return StatusCode(504, "Request timeout. Please try again.");
+            }
+            catch (JsonException jsonEx)
+            {
+                Console.WriteLine($"JSON Parsing Error in OnGetAsync: {jsonEx.Message}");
+                return StatusCode(500, "Error processing product data.");
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"An exception occurred: {ex.Message}");
-                return StatusCode(500, "An internal error occurred.");
+                Console.WriteLine($"Unexpected Error in OnGetAsync: {ex}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return StatusCode(500, "An unexpected error occurred. Please try again later.");
             }
 
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -305,6 +406,8 @@ namespace ShareItFE.Pages.Products
             {
                 CurrentUserId = Guid.Parse(userIdString);
             }
+            
+            Console.WriteLine($"OnGetAsync Complete - ProductId: {id}, PageParam: {page}, CurrentPage: {CurrentPage}, TotalFeedbacks: {TotalFeedbacks}, TotalPages: {TotalPages}");
             return Page();
         }
 
@@ -312,30 +415,60 @@ namespace ShareItFE.Pages.Products
         {
             AccessToken = _httpContextAccessor.HttpContext?.Request.Cookies["AccessToken"];
 
+            // Clear any existing TempData error messages to prevent them from appearing elsewhere
+            TempData.Remove("ErrorMessage");
+            TempData.Remove("SuccessMessage");
+
             // 1. Kiểm tra xác thực người dùng
             if (!User.Identity.IsAuthenticated || string.IsNullOrEmpty(AccessToken))
             {
-                ErrorMessage = "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.";
-                await LoadInitialData(id); // Tải lại dữ liệu để giữ trạng thái trang
+                ErrorMessage = "Please log in to add products to your cart.";
+                await LoadInitialData(id, 1); // Tải lại dữ liệu để giữ trạng thái trang
                 return Page();
             }
 
-            // 2. Kiểm tra ModelState.IsValid (Validation từ thuộc tính)
+            // 2. Load Product data first to validate
+            await LoadInitialData(id, CurrentPage);
+            if (Product == null)
+            {
+                ErrorMessage = "Product not found.";
+                return Page();
+            }
+
+            // 3. Kiểm tra ModelState.IsValid (Validation từ thuộc tính)
             // Only size required at product detail level
             ModelState.Remove(nameof(StartDate));
             ModelState.Remove(nameof(RentalDays));
             if (!ModelState.IsValid)
             {
                 ErrorMessage = "Please select a size.";
-                await LoadInitialData(id);
                 return Page();
             }
 
-            // 3. Chuẩn bị dữ liệu và gọi API
+            // 4. Validate transaction type selection based on product availability
+            if (TransactionType == BusinessObject.Enums.TransactionType.purchase)
+            {
+                if (Product.PurchaseStatus != "Available" || Product.PurchasePrice <= 0)
+                {
+                    ErrorMessage = "This product is not available for purchase.";
+                    return Page();
+                }
+            }
+            else // Rental
+            {
+                if (Product.RentalStatus != "Available" || Product.PricePerDay <= 0)
+                {
+                    ErrorMessage = "This product is not available for rental.";
+                    return Page();
+                }
+            }
+
+            // 5. Chuẩn bị dữ liệu và gọi API
             var cartAddRequestDto = new CartAddRequestDto
             {
                 ProductId = id,
                 Size = SelectedSize,
+                TransactionType = TransactionType, // Set transaction type from user selection
                 RentalDays = RentalDays,
                 StartDate = StartDate,
                 Quantity = 1 // Mặc định số lượng là 1 từ trang chi tiết
@@ -350,22 +483,35 @@ namespace ShareItFE.Pages.Products
 
                 if (response.IsSuccessStatusCode)
                 {
-                    SuccessMessage = "Sản phẩm đã được thêm vào giỏ hàng!";
+                    TempData["SuccessMessage"] = "Product added to cart successfully!";
                     return RedirectToPage("/CartPage/Cart");
                 }
                 else
                 {
                     // Đọc lỗi từ API để hiển thị thông báo chính xác hơn
                     var errorContent = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
-                    ErrorMessage = errorContent?.Message ?? "Không thể thêm vào giỏ hàng. Vui lòng thử lại.";
-                    await LoadInitialData(id);
-                    return Page();
+                    var errorMessage = errorContent?.Message ?? "Cannot add to cart. Please try again.";
+                    
+                    // If error is related to quantity/stock, redirect to cart page to show the error
+                    // Otherwise, stay on product detail page
+                    if (errorMessage.Contains("available") || errorMessage.Contains("stock") || errorMessage.Contains("units"))
+                    {
+                        TempData["ErrorMessage"] = errorMessage;
+                        return RedirectToPage("/CartPage/Cart");
+                    }
+                    else
+                    {
+                        ErrorMessage = errorMessage;
+                        await LoadInitialData(id, 1);
+                        return Page();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Đã có lỗi xảy ra: {ex.Message}";
-                await LoadInitialData(id);
+                // Use the exception message directly without adding prefix
+                ErrorMessage = ex.Message;
+                await LoadInitialData(id, 1);
                 return Page();
             }
         }
@@ -444,10 +590,13 @@ namespace ShareItFE.Pages.Products
                 return RedirectToPage(new { id = productId });
             }
         }
-        private async Task LoadInitialData(Guid id)
+        private async Task LoadInitialData(Guid id, int page = 1)
         {
-            ApiBaseUrl = _configuration["ApiSettings:BaseUrl"];
-            SignalRRootUrl = _configuration["ApiSettings:RootUrl"];
+            CurrentPage = page > 0 ? page : 1;
+            Console.WriteLine($"LoadInitialData - ProductId: {id}, Page: {page}, CurrentPage: {CurrentPage}");
+            
+            ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+            SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
 
             if (id == Guid.Empty) return; // Không cần xử lý BadRequest ở đây, nó đã được xử lý ở OnGetAsync
 
@@ -508,14 +657,42 @@ namespace ShareItFE.Pages.Products
                     Product = new ProductDTO(); // Khởi tạo Product rỗng để tránh null
                 }
 
-                // Fetch feedbacks
-                var feedbacksRequestUri = $"api/feedbacks/0/{id}";
+                // Fetch feedbacks with pagination using correct endpoint
+                var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
                 {
-                    var apiResponse = await feedbacksResponse.Content.ReadFromJsonAsync<ApiResponse<List<FeedbackDto>>>(_jsonOptions);
-                    Feedbacks = apiResponse?.Data ?? new List<FeedbackDto>();
+                    try
+                    {
+                        var responseContent = await feedbacksResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"LoadInitialData - Feedback API Response: {responseContent}"); // Debug log
+                        
+                        var apiResponse = JsonSerializer.Deserialize<ApiResponse<PaginatedResponse<FeedbackResponseDto>>>(responseContent, _jsonOptions);
+                        var paginatedData = apiResponse?.Data;
+                        
+                        if (paginatedData != null)
+                        {
+                            Feedbacks = paginatedData.Items ?? new List<FeedbackResponseDto>();
+                            TotalFeedbacks = paginatedData.TotalItems;
+                            TotalPages = paginatedData.TotalPages;
+                            // Don't override CurrentPage - keep the value from query parameter
+                            Console.WriteLine($"API returned page: {paginatedData.Page}, keeping CurrentPage: {CurrentPage}");
+                        }
+                        else
+                        {
+                            Feedbacks = new List<FeedbackResponseDto>();
+                            TotalFeedbacks = 0;
+                            TotalPages = 1;
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Console.WriteLine($"LoadInitialData - JSON Error parsing feedbacks: {jsonEx.Message}");
+                        Feedbacks = new List<FeedbackResponseDto>();
+                        TotalFeedbacks = 0;
+                        TotalPages = 1;
+                    }
 
                     foreach (var feedback in Feedbacks)
                     {
@@ -538,12 +715,23 @@ namespace ShareItFE.Pages.Products
                     Console.WriteLine($"Could not fetch feedbacks. Status: {feedbacksResponse.StatusCode}");
                 }
 
-                // Check favorite status
+                // Check favorite status and if user owns this product
                 if (User.Identity.IsAuthenticated)
                 {
                     var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    if (!string.IsNullOrEmpty(userId))
+                    if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
                     {
+                        // Check if current user is the provider of this product
+                        if (Product != null && Product.ProviderId == userGuid)
+                        {
+                            IsOwnProduct = true;
+                            Console.WriteLine($"IsOwnProduct set to TRUE - UserId: {userGuid}, ProviderId: {Product.ProviderId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"IsOwnProduct is FALSE - UserId: {userGuid}, ProviderId: {Product?.ProviderId}");
+                        }
+
                         var favoriteUri = $"api/favorites/{userId}";
                         var favoriteResponse = await client.GetAsync(favoriteUri);
                         if (favoriteResponse.IsSuccessStatusCode)
@@ -561,7 +749,7 @@ namespace ShareItFE.Pages.Products
             {
                 Console.WriteLine($"An exception occurred in LoadInitialData: {ex.Message}");
                 // Không return StatusCode ở đây, chỉ set ErrorMessage để hiển thị trên trang
-                ErrorMessage = "Đã có lỗi xảy ra khi tải dữ liệu sản phẩm.";
+                ErrorMessage = "An error occurred while loading product data.";
             }
 
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -581,7 +769,8 @@ namespace ShareItFE.Pages.Products
 
 
             var client = await _clientHelper.GetAuthenticatedClientAsync();
-            var requestURI = $"https://localhost:7256/api/orders/order-item/{id}";
+            var apiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+            var requestURI = $"{apiBaseUrl}/orders/order-item/{id}";
             var orderItemresponse = await client.GetAsync(requestURI);
 
             var options = new JsonSerializerOptions
@@ -618,6 +807,34 @@ namespace ShareItFE.Pages.Products
             }
         }
 
+        /// <summary>
+        /// Sets the default transaction type based on product availability
+        /// </summary>
+        private void SetDefaultTransactionType()
+        {
+            if (Product == null) return;
+
+            bool canRent = Product.RentalStatus == "Available" && Product.PricePerDay > 0;
+            bool canPurchase = Product.PurchaseStatus == "Available" && Product.PurchasePrice > 0;
+
+            // Set default based on availability
+            if (canRent && !canPurchase)
+            {
+                // Only rental available
+                TransactionType = BusinessObject.Enums.TransactionType.rental;
+            }
+            else if (!canRent && canPurchase)
+            {
+                // Only purchase available
+                TransactionType = BusinessObject.Enums.TransactionType.purchase;
+            }
+            else if (canRent && canPurchase)
+            {
+                // Both available, default to rental
+                TransactionType = BusinessObject.Enums.TransactionType.rental;
+            }
+            // If neither is available, keep the default (Rental) - the form will be disabled anyway
+        }
 
     }
 }

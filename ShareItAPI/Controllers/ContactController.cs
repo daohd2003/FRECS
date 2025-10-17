@@ -52,7 +52,7 @@ namespace ShareItAPI.Controllers
             // Nếu không có lỗi validation, tiếp tục gửi email như bình thường
             try
             {
-                var adminEmail = "support@rentchic.com";
+                var adminEmail = "support@frecs.com";
                 var subject = $"New Contact Form Submission: {request.Subject}";
                 var body = $@"
                     <h3>You have a new contact message:</h3>

@@ -133,6 +133,63 @@ namespace Services.CloudServices
             };
         }
 
+        // --- CATEGORY UPLOAD - Dedicated method for Category images ---
+        public async Task<BusinessObject.DTOs.ProductDto.ImageUploadResult> UploadCategoryImageAsync(IFormFile file, Guid userId)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("No file selected for category.");
+
+            // Validate file type - only images allowed
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var extension = Path.GetExtension(file.FileName)?.ToLower() ?? "";
+            if (!allowedExtensions.Contains(extension))
+            {
+                throw new ArgumentException($"Invalid file type. Allowed: JPG, JPEG, PNG, GIF, WEBP. Got: {extension}");
+            }
+
+            // Validate file size (max 5MB for categories)
+            const long maxFileSize = 5 * 1024 * 1024; // 5MB
+            if (file.Length > maxFileSize)
+            {
+                throw new ArgumentException($"File size exceeds 5MB limit. Size: {file.Length / 1024 / 1024}MB");
+            }
+
+            // Generate unique public ID for category image
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var randomPart = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
+            var publicId = $"category_{userId}_{timestamp}_{randomPart}";
+
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream()),
+                PublicId = publicId,
+                Folder = $"ShareIt/categories/{userId}",  // Dedicated folder for categories
+                Overwrite = false,
+                Transformation = new Transformation()
+                    .Width(1200)          // Max width
+                    .Height(800)          // Max height
+                    .Crop("limit")        // Maintain aspect ratio, only resize if larger
+                    .Quality("auto:good") // Auto quality optimization
+                    .FetchFormat("auto")  // Auto format selection (WebP if supported)
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            
+            if (uploadResult.Error != null)
+            {
+                _logger.LogError($"Category image upload failed for user {userId}: {uploadResult.Error.Message}");
+                throw new Exception($"Upload failed: {uploadResult.Error.Message}");
+            }
+
+            _logger.LogInformation($"Category image uploaded successfully. User: {userId}, PublicId: {uploadResult.PublicId}, URL: {uploadResult.SecureUrl}");
+
+            return new BusinessObject.DTOs.ProductDto.ImageUploadResult
+            {
+                ImageUrl = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId
+            };
+        }
+
         // --- PHƯƠNG THỨC UPLOAD NHIỀU ẢNH ---
         public async Task<List<BusinessObject.DTOs.ProductDto.ImageUploadResult>> UploadMultipleImagesAsync(IFormFileCollection files, Guid userId, string projectName, string folderType)
         {
@@ -246,6 +303,80 @@ namespace Services.CloudServices
                     MimeType = file.ContentType,
                     FileName = file.FileName,
                     FileSize = file.Length
+                };
+            }
+        }
+
+        public async Task<BusinessObject.DTOs.ProductDto.ImageUploadResult> UploadMediaFileAsync(IFormFile file, Guid userId, string projectName, string folderType)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("No file selected.");
+
+            var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+            var isImage = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp" }.Contains(extension);
+            var isVideo = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" }.Contains(extension);
+
+            if (!isImage && !isVideo)
+            {
+                throw new ArgumentException($"Unsupported file type: {extension}. Only images and videos are allowed.");
+            }
+
+            // Validate file size (10MB for images, 100MB for videos)
+            var maxSize = isImage ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
+            if (file.Length > maxSize)
+            {
+                var maxSizeMB = isImage ? 10 : 100;
+                throw new ArgumentException($"File size exceeds {maxSizeMB}MB limit. File size: {file.Length / 1024 / 1024}MB");
+            }
+
+            var publicId = $"{folderType}_{userId}_{Path.GetRandomFileName()}";
+            var folder = $"{projectName}/{folderType}/{userId}";
+
+            if (isImage)
+            {
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream()),
+                    PublicId = publicId,
+                    Folder = folder,
+                    Overwrite = false,
+                    Transformation = new Transformation().Quality("auto").FetchFormat("auto")
+                };
+
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                if (uploadResult.Error != null)
+                {
+                    _logger.LogError($"Cloudinary image upload failed: {uploadResult.Error.Message}");
+                    throw new Exception($"Upload failed: {uploadResult.Error.Message}");
+                }
+
+                return new BusinessObject.DTOs.ProductDto.ImageUploadResult
+                {
+                    ImageUrl = uploadResult.SecureUrl.ToString(),
+                    PublicId = uploadResult.PublicId
+                };
+            }
+            else // isVideo
+            {
+                var uploadParams = new VideoUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream()),
+                    PublicId = publicId,
+                    Folder = folder,
+                    Overwrite = false
+                };
+
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                if (uploadResult.Error != null)
+                {
+                    _logger.LogError($"Cloudinary video upload failed: {uploadResult.Error.Message}");
+                    throw new Exception($"Upload failed: {uploadResult.Error.Message}");
+                }
+
+                return new BusinessObject.DTOs.ProductDto.ImageUploadResult
+                {
+                    ImageUrl = uploadResult.SecureUrl.ToString(),
+                    PublicId = uploadResult.PublicId
                 };
             }
         }

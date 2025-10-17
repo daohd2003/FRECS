@@ -49,5 +49,25 @@ namespace BusinessObject.Models
         public string? DeliveryAddress { get; set; }
 
         public bool HasAgreedToPolicies { get; set; } = false;
+
+        /// Tổng tiền cọc của đơn hàng
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal TotalDeposit { get; set; } = 0m;
+        /// Subtotal không bao gồm deposit (chỉ tiền thuê)
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal Subtotal { get; set; } = 0m;
+
+        /// <summary>
+        /// Discount code applied to this order (nullable)
+        /// </summary>
+        public Guid? DiscountCodeId { get; set; }
+        [ForeignKey(nameof(DiscountCodeId))]
+        public DiscountCode? DiscountCode { get; set; }
+
+        /// <summary>
+        /// Discount amount applied to this order
+        /// </summary>
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DiscountAmount { get; set; } = 0m;
     }
 }

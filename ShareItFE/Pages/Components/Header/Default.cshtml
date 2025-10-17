@@ -9,16 +9,9 @@
                 <path d="M12,2a4,4,0,0,0-4,4v2.4a4,4,0,0,0,8,0V6A4,4,0,0,0,12,2Z" />
                 <line x1="10" x2="14" y1="12" y2="12" />
             </svg>
-            <span class="brand-name">RentChic</span>
+            <span class="brand-name">FRECS</span>
         </a>
 
-        <div class="search-container">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" placeholder="Search for dresses, suits, accessories..." class="search-input" />
-        </div>
 
         <nav class="main-nav">
             <a asp-page="/Products/Products">Browse</a>
@@ -28,9 +21,9 @@
             }
             @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
             {
-                <a asp-page="/Provider/Apply">Become a Provider</a>
+                <a asp-page="/Provider/Apply">Become a provider</a>
             }
-            <a href="/Index#how-it-works">How it Works</a>
+            <a href="/#luxury-fashion">How it works</a>
             @if (Model.IsUserLoggedIn && (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase)))
             {
                 <a asp-page="/Contact">Contact</a>
@@ -40,7 +33,7 @@
         <div class="header-actions">
             @if (Model.IsUserLoggedIn)
             {
-                @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase))
+                @if (string.Equals(Model.UserRole, "customer", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                 {
                     <a asp-page="/CartPage/Cart" class="cart-link" style="position: relative; display: flex; align-items: center;">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -85,7 +78,7 @@
                                         <a href="/Order/Details/@notification.OrderId" class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
-                                                <span class="notification-time">@notification.CreatedAt.ToString("g")</span>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                             </div>
                                             @if (!notification.IsRead)
                                             {
@@ -98,7 +91,7 @@
                                         <div class="notification-item @(notification.IsRead ? "" : "unread")" data-id="@notification.Id">
                                             <div class="notification-content">
                                                 <p class="notification-message">@notification.Message</p>
-                                                <span class="notification-time">@notification.CreatedAt.ToString("g")</span>
+                                                <span class="notification-time">@notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                             </div>
                                             @if (!notification.IsRead)
                                             {
@@ -158,7 +151,11 @@
                         {
                             <a asp-page="/Provider/Products">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                <span>My Listings</span>
+                                <span>My Products</span>
+                            </a>
+                            <a asp-page="/Provider/OrderManagement">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><path d="m9 12 2 2 4-4"></path></svg>
+                                <span>Order Management</span>
                             </a>
                             <a asp-page="/Provider/PostItem">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -171,11 +168,16 @@
                         }
 
                         @* === THAY ĐỔI NẰM Ở ĐÂY === *@
-                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase))
+                        @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.UserRole, "staff", StringComparison.OrdinalIgnoreCase))
                         {
                             <a asp-page="/Admin/UserManagement">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                                 <span>User Management</span>
+                            </a>
+
+                            <a asp-page="/Staff/ProviderApplicationManagement">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span>Provider Applications</span>
                             </a>
 
                             @* **ĐÃ THÊM LINK MỚI VÀO ĐÂY** *@
@@ -191,9 +193,9 @@
 
                         @if (string.Equals(Model.UserRole, "admin", StringComparison.OrdinalIgnoreCase))
                         {
-                            <a asp-page="/Admin/Users">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.14,12.94a2,2,0,0,1,0,2.12l-1.1,1.1a2,2,0,0,1-2.83,0L12,12.83l-3.21,3.21a2,2,0,0,1-2.83,0l-1.1-1.1a2,2,0,0,1,0-2.12L8.17,12,4.86,8.79a2,2,0,0,1,0-2.12l1.1-1.1a2,2,0,0,1,2.83,0L12,8.83l3.21-3.21a2,2,0,0,1,2.83,0l1.1,1.1a2,2,0,0,1,0,2.12L15.83,12Z"></path></svg>
-                                <span>Admin Panel</span>
+                            <a asp-page="/Admin/Index">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                <span>Admin Dashboard</span>
                             </a>
                         }
 
@@ -205,6 +207,14 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
                                 </svg>
                                 <span>Product Verification</span>
+                            </a>
+                        }
+
+                        @if (string.Equals(Model.UserRole, "staff", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Staff/CategoryManagement">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.14,12.94a2,2,0,0,1,0,2.12l-1.1,1.1a2,2,0,0,1-2.83,0L12,12.83l-3.21,3.21a2,2,0,0,1-2.83,0l-1.1-1.1a2,2,0,0,1,0-2.12L8.17,12,4.86,8.79a2,2,0,0,1,0-2.12l1.1-1.1a2,2,0,0,1,2.83,0L12,8.83l3.21-3.21a2,2,0,0,1,2.83,0l1.1,1.1a2,2,0,0,1,0,2.12L15.83,12Z"></path></svg>
+                                <span>Category Management</span>
                             </a>
                         }
 
@@ -233,13 +243,6 @@
 
     <div id="mobileMenu" class="mobile-menu">
         <div style="padding: 0 1rem;">
-            <div style="position: relative; margin-bottom: 1rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" placeholder="Search..." class="search-input" />
-            </div>
             <nav>
                 <a asp-page="/Products">Browse</a>
                 @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
@@ -250,7 +253,7 @@
                 {
                     <a asp-page="/Provider/Apply">Become a Provider</a>
                 }
-                <a href="/Index#how-it-works">How it Works</a>
+                <a href="/#luxury-fashion">How it Works</a>
                 <a asp-page="/Contact">Contact</a>
             </nav>
         </div>

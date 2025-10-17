@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Dynamic;
-using System.Text.Json.Nodes;
+using BusinessObject.DTOs.ProductDto;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages
 {
@@ -16,8 +17,17 @@ namespace ShareItFE.Pages
             _httpClientFactory = httpClientFactory;
         }
 
-        // Thay đổi List<ProductDto> thành List<dynamic>
-        public List<dynamic> TopRentals { get; set; } = new List<dynamic>();
+        public class ODataApiResponse
+        {
+            [JsonPropertyName("@odata.count")]
+            public int Count { get; set; }
+
+            [JsonPropertyName("value")]
+            public List<ProductDTO> Value { get; set; }
+        }
+
+        // Changed back to List<ProductDTO> for proper method support
+        public List<ProductDTO> TopRentals { get; set; } = new List<ProductDTO>();
 
         public async Task OnGetAsync()
         {
@@ -27,8 +37,7 @@ namespace ShareItFE.Pages
             var topTierUrl = "odata/products" +
                              "?$filter=IsPromoted eq true and AverageRating gt 4.0" +
                              "&$orderby=RentCount desc" +
-                             "&$expand=Images($filter=IsPrimary eq true)" +
-                             "&$select=Id,Name,PricePerDay,AverageRating,RentCount,Images";
+                             "&$expand=Images($filter=IsPrimary eq true)";
 
             await FetchAndProcessProducts(client, topTierUrl);
 
@@ -41,8 +50,7 @@ namespace ShareItFE.Pages
                                      "?$filter=not (IsPromoted eq true and AverageRating gt 4.0)" +
                                      "&$orderby=RentCount desc" +
                                      $"&$top={needed}" +
-                                     "&$expand=Images($filter=IsPrimary eq true)" +
-                                     "&$select=Id,Name,PricePerDay,AverageRating,RentCount,Images";
+                                     "&$expand=Images($filter=IsPrimary eq true)";
 
                 await FetchAndProcessProducts(client, regularTierUrl);
             }
@@ -56,35 +64,27 @@ namespace ShareItFE.Pages
                 var response = await client.GetAsync(url);
                 if (response.IsSuccessStatusCode)
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-
-                    // Phân tích JSON mà không cần DTO
-                    var odataNode = JsonNode.Parse(content);
-
-                    // OData trả về một mảng trong thuộc tính "value"
-                    var productNodes = odataNode?["value"]?.AsArray();
-
-                    if (productNodes != null)
+                    var jsonOptions = new JsonSerializerOptions
                     {
-                        foreach (var productNode in productNodes)
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new JsonStringEnumConverter() }
+                    };
+
+                    var odataResponse = await response.Content.ReadFromJsonAsync<ODataApiResponse>(jsonOptions);
+                    
+                    if (odataResponse?.Value != null)
+                    {
+                        foreach (var product in odataResponse.Value)
                         {
-                            if (productNode == null) continue;
-
-                            // Tạo một đối tượng dynamic để chứa dữ liệu
-                            dynamic rental = new ExpandoObject();
-                            rental.Name = productNode["Name"]?.GetValue<string>();
-                            rental.PricePerDay = productNode["PricePerDay"]?.GetValue<decimal>();
-                            rental.AverageRating = productNode["AverageRating"]?.GetValue<decimal>();
-                            rental.RentCount = productNode["RentCount"]?.GetValue<int>();
-                            rental.Id = productNode["Id"]?.GetValue<Guid>() ?? Guid.Empty;
-
-                            // Lấy ảnh chính từ mảng Images lồng nhau
-                            rental.Image = productNode["Images"]?
-                                           .AsArray()?
-                                           .FirstOrDefault()?["ImageUrl"]?
-                                           .GetValue<string>() ?? "default-image-url.jpg";
-
-                            TopRentals.Add(rental);
+                            // Ensure primary image is available for display
+                            if (product.Images != null && product.Images.Any())
+                            {
+                                product.Images = product.Images
+                                    .OrderByDescending(i => i.IsPrimary)
+                                    .ToList();
+                            }
+                            
+                            TopRentals.Add(product);
                         }
                     }
                 }

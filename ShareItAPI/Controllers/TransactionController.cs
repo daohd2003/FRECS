@@ -20,7 +20,7 @@ namespace ShareItAPI.Controllers
 {
     [Route("api/transactions")]
     [ApiController]
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionService _transactionService;

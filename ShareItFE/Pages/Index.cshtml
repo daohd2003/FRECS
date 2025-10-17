@@ -1,7 +1,7 @@
 ﻿@page
 @model ShareItFE.Pages.IndexModel   
 @{
-    ViewData["Title"] = "ShareIT - Luxury Fashion Rentals | Designer Dresses & Suits";
+    ViewData["Title"] = "FRECS - Luxury Fashion Rentals & Sales | Designer Dresses & Suits";
 
     // Define data directly in the Razor Page
     var testimonials = new List<dynamic>
@@ -40,7 +40,7 @@
 {
         new { Title = "Save Money", Description = "Wear designer outfits at a fraction of the retail price. Perfect for special occasions without the commitment." },
         new { Title = "Premium Quality", Description = "All items are professionally cleaned and maintained. We guarantee the highest quality standards for every rental." },
-        new { Title = "Always on Trend", Description = "Access the latest fashion trends without cluttering your closet. Stay stylish with our constantly updated collection." }
+        new { Title = "Convenience", Description = "Browse and book your favorite designer looks online, with easy delivery and hassle-free returns." }
     };
 
     var howItWorksSteps = new List<dynamic>
@@ -62,14 +62,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    <meta name="description" content="Rent premium designer outfits for weddings, proms, galas and special events. Luxury fashion at affordable prices with free delivery and returns." />
+    <meta name="description" content="Rent or buy premium designer outfits for weddings, proms, galas and special events. Luxury fashion at affordable prices with free delivery and returns." />
 
     <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
 
 </head>
 <body>
     <div class="page-wrapper">
-        <section class="hero-section">
+        <section id="luxury-fashion" class="hero-section">
             <div class="hero-content-grid">
                 <div class="hero-text-group">
                     <div class="hero-headline-group">
@@ -78,13 +78,13 @@
                             <span class="hero-headline-accent">For Every Occasion</span>
                         </h1>
                         <p class="hero-description">
-                            Rent designer outfits for weddings, proms, galas, and special events.
-                            Look stunning without the commitment or the price tag.
+                            Rent or buy designer outfits for weddings, proms, galas, and special events.
+                            Make every event a runway moment.
                         </p>
                     </div>
                     <div class="hero-buttons">
-                        <button class="btn-primary-hero">Browse Collection</button>
-                        <button class="btn-secondary-hero">Learn More</button>
+                        <a href="/products" class="btn-primary-hero">Browse Collection</a>
+                        <a href="#how-it-works" class="btn-secondary-hero">Learn More</a>
                     </div>
                     <div class="hero-features">
                         <div class="feature-item">
@@ -105,10 +105,10 @@
                     <img src="https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop"
                          alt="Featured dress"
                          class="hero-image" />
-                    <div class="hero-image-details">
+                    @* <div class="hero-image-details">
                         <h3 class="hero-image-title">Designer Evening Gown</h3>
                         <p class="hero-image-price">From $95/day</p>
-                    </div>
+                    </div> *@
                 </div>
             </div>
         </section>
@@ -123,7 +123,7 @@
                     @foreach (var category in categories)
                     {
                         <div class="category-item">
-                            <div class="category-card">
+                            <a href="/products?Category=@category.Name" class="category-card" style="text-decoration: none; color: inherit; display: block;">
                                 <img src="@category.Image"
                                      alt="@category.Name"
                                      class="category-image" />
@@ -132,7 +132,7 @@
                                     <h3 class="category-title">@category.Name</h3>
                                     <p class="category-count">@category.Count items</p>
                                 </div>
-                            </div>
+                            </a>
                         </div>
                     }
                 </div>
@@ -142,7 +142,7 @@
         <section class="section-padding">
             <div class="max-width-container">
                 <div class="section-header">
-                    <h2 class="section-title">Most Popular Rentals</h2>
+                    <h2 class="section-title">Most Popular Items</h2>
                     <p class="section-subtitle">See what everyone's raving about</p>
                 </div>
                 <div class="rental-grid">
@@ -150,21 +150,27 @@
                     {
                         <div class="rental-item-card">
                             <a href="/products/detail/@item.Id" class="rental-image-wrapper">
-                                <img src="@item.Image" alt="@item.Name" class="rental-image" />
+                                <img src="@item.PrimaryImagesUrl" alt="@item.Name" class="rental-image" />
                             </a>
                             <div class="rental-details">
                                 <h3 class="rental-name">@item.Name</h3>
                                 <div class="rental-price-rating">
-                                    <span class="rental-price">@item.PricePerDay/day</span>
+                                    <span class="rental-price">@item.GetPrimaryPriceDisplay()</span>
                                     <div class="rental-rating">
-                                        @for (int i = 0; i < Math.Floor((double)item.AverageRating); i++)
-                                        {
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="star-icon" ...></svg>
-                                        }
-                                        <span class="rating-text">@item.AverageRating</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="star-icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                        </svg>
+                                        <span class="rating-text">@item.AverageRating.ToString("F1")</span>
                                     </div>
                                 </div>
-                                <p class="rented-times">Rented @item.RentCount times</p>
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="capitalize text-gray-500">@item.Category</span>
+                                    @if(!string.IsNullOrEmpty(item.GetDepositDisplay()))
+                                    {
+                                        <span class="text-gray-600 font-semibold">@item.GetDepositDisplay()</span>
+                                    }
+                                </div>
+                                <p class="rented-times">@item.GetStatsDisplay()</p>
                             </div>
                         </div>
                     }
@@ -175,7 +181,7 @@
         <section class="why-rent-section">
             <div class="max-width-container">
                 <div class="section-header">
-                    <h2 class="section-title">Why Choose Rental?</h2>
+                    <h2 class="section-title">Why Choose FRECS?</h2>
                     <p class="section-subtitle">Smart fashion for the modern lifestyle</p>
                 </div>
                 <div class="why-rent-grid">
@@ -191,9 +197,9 @@
                                 {
                                     <svg xmlns="http://www.w3.org/2000/svg" class="benefit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                                 }
-                                else if (benefit.Title == "Always on Trend")
+                                else if (benefit.Title == "Convenience")
                                 {
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="benefit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="benefit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                                 }
                             </div>
                             <h3 class="benefit-title">@benefit.Title</h3>
@@ -204,7 +210,7 @@
             </div>
         </section>
 
-        <section class="how-it-works-section">
+        <section id="how-it-works" class="how-it-works-section">
             <div class="max-width-container">
                 <div class="section-header">
                     <h2 class="section-title">How It Works</h2>
@@ -232,7 +238,16 @@
                                     }
                                 </div>
                                 <div class="step-number">@step.Step</div>
-                                <h3 class="step-title">@step.Title</h3>
+                                @if (step.Title == "Choose Your Style")
+                                {
+                                    <h3 class="step-title">
+                                        <a href="/products" style="color: inherit; text-decoration: none;">@step.Title</a>
+                                    </h3>
+                                }
+                                else
+                                {
+                                    <h3 class="step-title">@step.Title</h3>
+                                }
                                 <p class="step-description">@step.Description</p>
                             </div>
                             @if (i < howItWorksSteps.Count - 1)
@@ -267,8 +282,8 @@
         <section class="offer-banner">
             <div class="max-width-container">
                 <h2 class="offer-title">Limited Time Offer!</h2>
-                <p class="offer-subtitle">Rent 2 Outfits, Get 1 FREE</p>
-                <p class="offer-description">Perfect for multi-day events or trying different looks. Valid until end of month.</p>
+                <p class="offer-subtitle">Special Offers on Rentals & Sales</p>
+                <p class="offer-description">Enjoy exclusive discounts on rentals and permanent purchases. Perfect for any occasion.</p>
                 <a href="/products" class="offer-button">Claim Offer Now</a>
             </div>
         </section>
@@ -386,6 +401,29 @@
 
             // Initial render
             renderTestimonial();
+
+            // Handle smooth scrolling for anchor links
+            function handleSmoothScroll() {
+                // Check if URL has hash
+                if (window.location.hash) {
+                    const targetId = window.location.hash.substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        setTimeout(() => {
+                            targetElement.scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'start' 
+                            });
+                        }, 100);
+                    }
+                }
+            }
+
+            // Handle initial page load with hash
+            handleSmoothScroll();
+
+            // Handle hash changes (when clicking anchor links)
+            window.addEventListener('hashchange', handleSmoothScroll);
         });
         </script>
 

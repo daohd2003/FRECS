@@ -49,6 +49,8 @@ namespace BusinessObject.Models
 
         public int PurchaseQuantity { get; set; } = 0;
 
+        public int RentalQuantity { get; set; } = 0;
+
         [Required]
         public AvailabilityStatus AvailabilityStatus { get; set; }
 
@@ -60,6 +62,15 @@ namespace BusinessObject.Models
         public int RentCount { get; set; } = 0;
 
         public int BuyCount { get; set; } = 0;
+
+        [Required]
+        public RentalStatus RentalStatus { get; set; }
+
+        [Required]
+        public PurchaseStatus PurchaseStatus { get; set; }
+
+        [Required]
+        public Gender Gender { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -73,5 +84,8 @@ namespace BusinessObject.Models
 
         public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
         public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal SecurityDeposit { get; set; } = 0m;
     }
 }

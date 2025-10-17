@@ -26,6 +26,7 @@ using Repositories.BankAccountRepositories;
 using Repositories.CartRepositories;
 using Repositories.CategoryRepositories;
 using Repositories.ConversationRepositories;
+using Repositories.DiscountCodeRepositories;
 using Repositories.EmailRepositories;
 using Repositories.FavoriteRepositories;
 using Repositories.FeedbackRepositories;
@@ -36,6 +37,7 @@ using Repositories.ProductRepositories;
 using Repositories.ProfileRepositories;
 using Repositories.ProviderApplicationRepositories;
 using Repositories.ReportRepositories;
+using Repositories.RentalViolationRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
@@ -45,6 +47,7 @@ using Services.CartServices;
 using Services.CloudServices;
 using Services.CategoryServices;
 using Services.ConversationServices;
+using Services.DiscountCodeServices;
 using Services.EmailServices;
 using Services.FavoriteServices;
 using Services.FeedbackServices;
@@ -53,6 +56,7 @@ using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.ProductServices;
 using Services.ProfileServices;
+using Services.RentalViolationServices;
 using Services.ProviderApplicationServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
@@ -75,11 +79,15 @@ namespace ShareItAPI
 
             // Add services to the container.
 
+            // Configure CORS from Frontend BaseUrl based on environment
+            var environment = builder.Environment.EnvironmentName;
+            var frontendBaseUrl = builder.Configuration[$"FrontendSettings:{environment}:BaseUrl"] ?? "https://localhost:7045";
+            
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins("https://localhost:7045")
+                    policy.WithOrigins(frontendBaseUrl)
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
@@ -111,7 +119,8 @@ namespace ShareItAPI
 
             // Add DbContext with SQL Server
             builder.Services.AddDbContext<ShareItDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")),
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+                       .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.MultipleCollectionIncludeWarning)),
                 ServiceLifetime.Scoped);
 
             builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -250,6 +259,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(CategoryProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(RevenueProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(DiscountCodeProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
             builder.Services.AddScoped<IEmailRepository, EmailRepository>();
@@ -307,8 +317,14 @@ namespace ShareItAPI
             // Register Revenue Services
             builder.Services.AddScoped<IRevenueService, RevenueService>();
 
+            // Register DiscountCode services
+            builder.Services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
+            builder.Services.AddScoped<IDiscountCodeService, DiscountCodeService>();
+            builder.Services.AddHostedService<DiscountCodeExpirationService>();
 
-
+            // Register RentalViolation services
+            builder.Services.AddScoped<IRentalViolationRepository, RentalViolationRepository>();
+            builder.Services.AddScoped<IRentalViolationService, RentalViolationService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 
@@ -320,15 +336,13 @@ namespace ShareItAPI
             app.UseMiddleware<TokenValidationMiddleware>();
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            // Enable Swagger in both Development and Production
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
-                    c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
-                });
-            }
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyAPI v1");
+                c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+            });
 
             app.UseHttpsRedirection();
             app.UseRouting();

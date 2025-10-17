@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
@@ -19,12 +20,14 @@ namespace ShareItFE.Pages
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly ILogger<ReportManagementModel> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public ReportManagementModel(AuthenticatedHttpClientHelper clientHelper, ILogger<ReportManagementModel> logger, IConfiguration configuration)
+        public ReportManagementModel(AuthenticatedHttpClientHelper clientHelper, ILogger<ReportManagementModel> logger, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
             _logger = logger;
             _configuration = configuration;
+            _environment = environment;
         }
 
         // Lớp helper để parse phản hồi OData
@@ -72,7 +75,7 @@ namespace ShareItFE.Pages
         public async Task<IActionResult> OnGetAsync()
         {
             AccessToken = HttpContext.Request.Cookies["AccessToken"];
-            ApiRootUrl = _configuration["ApiSettings:RootUrl"];
+            ApiRootUrl = _configuration.GetApiRootUrl(_environment);
             try
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
@@ -161,7 +164,7 @@ namespace ShareItFE.Pages
         public async Task<JsonResult> OnGetReportDetailsAsync(Guid id)
 {
     var client = await _clientHelper.GetAuthenticatedClientAsync();
-    var rootUrl = _configuration["ApiSettings:RootUrl"];
+    var rootUrl = _configuration.GetApiRootUrl(_environment);
 
     var options = new JsonSerializerOptions
     {
@@ -192,7 +195,7 @@ namespace ShareItFE.Pages
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 HttpResponseMessage response;
-                var rootUrl = _configuration["ApiSettings:RootUrl"];
+                var rootUrl = _configuration.GetApiRootUrl(_environment);
 
                 switch (action)
                 {
@@ -250,7 +253,7 @@ namespace ShareItFE.Pages
 
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 HttpResponseMessage response;
-                var rootUrl = _configuration["ApiSettings:RootUrl"];
+                var rootUrl = _configuration.GetApiRootUrl(_environment);
 
                 switch (data.Action.ToLower())
                 {

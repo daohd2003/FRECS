@@ -47,12 +47,12 @@ namespace Services.Authentication
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
 
-        public string GenerateToken(User user)
+        public string GenerateToken(User user, bool rememberMe = false)
         {
             var secretKey = _jwtSettings.SecretKey;
             var issuer = _jwtSettings.Issuer;
             var audience = _jwtSettings.Audience;
-            var expiryMinutes = _jwtSettings.ExpiryMinutes;
+            var expiryMinutes = rememberMe ? _jwtSettings.RememberMeExpiryMinutes : _jwtSettings.ExpiryMinutes;
 
             var claims = new[]
             {
@@ -170,6 +170,13 @@ namespace Services.Authentication
                 return null;
             }
 
+            // Check if user is active/blocked
+            if (user.IsActive == false)
+            {
+                _logger.LogWarning("Refresh token denied for blocked user: {UserId}", userId);
+                return null;
+            }
+
             // Tạo mới token và refresh token
             var newAccessToken = GenerateToken(user);
             var newRefreshToken = GenerateRefreshToken();
@@ -177,6 +184,7 @@ namespace Services.Authentication
 
             user.RefreshToken = newRefreshToken;
             user.RefreshTokenExpiryTime = newExpiry;
+            user.LastLogin = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
 
             // Nếu accessToken cũ còn tồn tại → thêm vào danh sách blacklist
@@ -197,19 +205,26 @@ namespace Services.Authentication
             };
         }
 
-        public async Task<TokenResponseDto> Authenticate(string email, string password)
+        public async Task<TokenResponseDto> Authenticate(string email, string password, bool rememberMe = false)
         {
             var user = await _userRepository.GetUserByEmailAsync(email);
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
-                if (!user.EmailConfirmed) throw new Exception("Email chưa được xác minh");
+                if (!user.EmailConfirmed) throw new InvalidOperationException("Email not verified");
+                
+                // Check if user is active/blocked
+                if (user.IsActive == false)
+                {
+                    throw new UnauthorizedAccessException("Your account has been blocked. Please contact support.");
+                }
 
-                var token = GenerateToken(user);
+                var token = GenerateToken(user, rememberMe);
                 var refreshToken = GenerateRefreshToken();
                 var refreshExpiry = GetRefreshTokenExpiryTime();
 
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = refreshExpiry;
+                user.LastLogin = DateTime.UtcNow;
 
                 await _userRepository.UpdateAsync(user);
 
@@ -247,7 +262,26 @@ namespace Services.Authentication
 
             if (existingUser != null)
             {
-                return null;
+                // Nếu email đã được xác thực, không cho phép đăng ký lại
+                if (existingUser.EmailConfirmed)
+                {
+                    return null;
+                }
+
+                // Nếu email chưa được xác thực và token verification đã hết hạn
+                // hoặc không có token verification, cho phép đăng ký lại
+                if (!existingUser.EmailConfirmed && 
+                    (existingUser.EmailVerificationExpiry == null || 
+                     existingUser.EmailVerificationExpiry < DateTime.UtcNow))
+                {
+                    // Xóa user cũ chưa được verify để tạo mới
+                    await _userRepository.DeleteAsync(existingUser.Id);
+                }
+                else
+                {
+                    // Email chưa verify nhưng token vẫn còn hạn
+                    throw new InvalidOperationException("Email already registered but not verified. Please check your email or wait for the verification link to expire before registering again.");
+                }
             }
 
             var newUser = new User
@@ -309,10 +343,11 @@ namespace Services.Authentication
             user.PasswordResetTokenExpiry = DateTime.UtcNow.AddMinutes(30);
             await _userRepository.UpdateAsync(user);
 
-            var baseUrl = _configuration["Frontend:BaseUrl"];
+            var baseUrl = GetFrontendBaseUrl();
             var resetLink = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
-            await _emailService.SendVerificationEmailAsync(email, resetLink);
+            _logger.LogInformation("Sending password reset to {Email} with link: {ResetLink}", email, resetLink);
+            await _emailService.SendPasswordResetEmailAsync(email, resetLink);
             return true;
         }
 
@@ -340,9 +375,10 @@ namespace Services.Authentication
             user.EmailVerificationExpiry = DateTime.UtcNow.AddHours(1);
             await _userRepository.UpdateAsync(user);
 
-            var baseUrl = _configuration["Frontend:BaseUrl"];
+            var baseUrl = GetFrontendBaseUrl();
             var verifyLink = $"{baseUrl}/verify-email?email={HttpUtility.UrlEncode(user.Email)}&token={HttpUtility.UrlEncode(token)}";
 
+            _logger.LogInformation("Sending email verification to {Email} with link: {VerifyLink}", user.Email, verifyLink);
             await _emailService.SendVerificationEmailAsync(user.Email, verifyLink);
             return true;
         }
@@ -364,6 +400,15 @@ namespace Services.Authentication
         private string GenerateTokenString()
         {
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        }
+
+        private string GetFrontendBaseUrl()
+        {
+            var environment = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "Development";
+            var baseUrl = _configuration[$"FrontendSettings:{environment}:BaseUrl"] ?? "https://localhost:7045";
+            
+            _logger.LogDebug("Environment: {Environment}, Frontend BaseUrl: {BaseUrl}", environment, baseUrl);
+            return baseUrl;
         }
     }
 }

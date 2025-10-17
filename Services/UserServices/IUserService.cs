@@ -12,6 +12,7 @@ namespace Services.UserServices
     public interface IUserService
     {
         Task<IEnumerable<User>> GetAllAsync();
+        Task<IEnumerable<User>> GetAllWithOrdersAsync();
         Task<User?> GetByIdAsync(Guid id);
         Task<User?> GetUserByEmailAsync(string email);
         Task AddAsync(User user);
@@ -20,5 +21,8 @@ namespace Services.UserServices
         Task<User> GetOrCreateUserAsync(GooglePayload payload);
         Task<User> GetOrCreateUserAsync(FacebookPayload payload);
         Task<IEnumerable<AdminViewModel>> GetAllAdminsAsync();
+        Task<bool> BlockUserAsync(Guid id);
+        Task<bool> UnblockUserAsync(Guid id);
+        Task<IEnumerable<User>> GetCustomersAndProvidersAsync();
     }
 }

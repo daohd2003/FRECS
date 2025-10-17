@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BusinessObject.Enums;
 
 namespace BusinessObject.Models
 {
@@ -31,15 +32,25 @@ namespace BusinessObject.Models
         public int Quantity { get; set; }
 
         /// <summary>
-        /// Số ngày thuê sản phẩm trong đơn hàng
+        /// Loại giao dịch: thuê (Rental) hoặc mua (Purchase)
         /// </summary>
         [Required]
-        public int RentalDays { get; set; }
+        public TransactionType TransactionType { get; set; } = TransactionType.rental;
 
         /// <summary>
-        /// Giá thuê mỗi ngày (lưu lại tại thời điểm đặt để tránh sai lệch nếu giá sản phẩm thay đổi)
+        /// Số ngày thuê sản phẩm trong đơn hàng (chỉ áp dụng cho Rental)
+        /// </summary>
+        public int? RentalDays { get; set; }
+
+        /// <summary>
+        /// Giá mỗi đơn vị (per day cho rental, per item cho purchase)
+        /// Lưu lại tại thời điểm đặt để tránh sai lệch nếu giá sản phẩm thay đổi
         /// </summary>
         [Column(TypeName = "decimal(10,2)")]
         public decimal DailyRate { get; set; }
+
+        // Tiền cọc cho từng item (Lưu Lại tại thời điểm đặt hàng để tránh sai lệch)
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DepositPerUnit { get; set; } = 0m;
     }
 }

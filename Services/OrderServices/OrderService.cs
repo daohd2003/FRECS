@@ -8,10 +8,12 @@ using Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Repositories.CartRepositories;
 using Repositories.EmailRepositories;
+using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Services.NotificationServices;
+using BusinessObject.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Repositories.ProductRepositories;
 using CloudinaryDotNet.Actions;
@@ -34,6 +36,7 @@ namespace Services.OrderServices
         private readonly IUserRepository _userRepository;
         private readonly ShareItDbContext _context;
         private readonly IEmailRepository _emailRepository;
+        private readonly INotificationRepository _notificationRepository;
 
         public OrderService(
             IOrderRepository orderRepo,
@@ -46,7 +49,8 @@ namespace Services.OrderServices
             IUserRepository userRepository,
             ShareItDbContext context,
             IEmailRepository emailRepository,
-            IProductRepository productRepo
+            IProductRepository productRepo,
+            INotificationRepository notificationRepository
             )
         {
             _orderRepo = orderRepo;
@@ -60,6 +64,7 @@ namespace Services.OrderServices
             _context = context;
             _emailRepository = emailRepository;
             _productRepo = productRepo;
+            _notificationRepository = notificationRepository;
 
         }
 
@@ -73,6 +78,29 @@ namespace Services.OrderServices
             {
                 item.Id = Guid.NewGuid();
                 item.OrderId = order.Id;
+            }
+
+            // Calculate and set subtotal if not already set (chỉ giá thuê/mua, không bao gồm cọc)
+            if (order.Subtotal == 0 && order.Items.Any())
+            {
+                order.Subtotal = order.Items.Sum(item => 
+                    item.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                        ? item.DailyRate * item.Quantity
+                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
+            }
+            
+            // Calculate and set total deposit (chỉ tiền cọc)
+            if (order.TotalDeposit == 0 && order.Items.Any())
+            {
+                order.TotalDeposit = order.Items
+                    .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                    .Sum(item => item.DepositPerUnit * item.Quantity);
+            }
+            
+            // Calculate total amount = subtotal + deposit
+            if (order.TotalAmount == 0)
+            {
+                order.TotalAmount = order.Subtotal + order.TotalDeposit;
             }
 
             // Gọi repository để thêm vào DB
@@ -95,7 +123,10 @@ namespace Services.OrderServices
 
             var oldStatus = order.Status;
             order.Status = newStatus;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+            // Update product counts based on status change
+            await UpdateProductCounts(order, oldStatus, newStatus);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(orderId, oldStatus, newStatus);
@@ -115,8 +146,31 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
+            var oldStatus = order.Status;
+
+            // If order was approved (paid), restore stock quantities
+            if (oldStatus == OrderStatus.approved || oldStatus == OrderStatus.in_transit || oldStatus == OrderStatus.in_use)
+            {
+                foreach (var item in order.Items)
+                {
+                    var product = await _productRepository.GetByIdAsync(item.ProductId);
+                    if (product != null)
+                    {
+                        if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                        {
+                            product.PurchaseQuantity += item.Quantity; // Restore quantity
+                        }
+                        else // Rental
+                        {
+                            product.RentalQuantity += item.Quantity; // Restore quantity
+                        }
+                        await _productRepository.UpdateAsync(product);
+                    }
+                }
+            }
+
             order.Status = OrderStatus.cancelled;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
 
             await _notificationService.NotifyOrderCancellation(orderId);
@@ -127,6 +181,45 @@ namespace Services.OrderServices
 
             await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
                 .SendAsync("ReceiveNotification", $"Order #{orderId} has been cancelled by customer");
+        }
+
+        public async Task DeleteOrderAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+
+            // Only allow deleting cancelled orders
+            if (order.Status != OrderStatus.cancelled)
+            {
+                throw new InvalidOperationException("Only cancelled orders can be deleted");
+            }
+
+            // Delete related records in correct order to avoid foreign key constraints
+            
+            // 1. Delete all notifications related to this order
+            await _notificationRepository.DeleteByOrderIdAsync(orderId);
+
+            // 2. Delete all order items related to this order
+            var orderItems = await _context.OrderItems
+                .Where(oi => oi.OrderId == orderId)
+                .ToListAsync();
+            
+            if (orderItems.Any())
+            {
+                _context.OrderItems.RemoveRange(orderItems);
+                await _context.SaveChangesAsync();
+            }
+
+            // 3. Finally delete the order itself
+            // Note: Transactions don't have OrderId FK, they have one-to-many relationship with Orders
+            await _orderRepo.DeleteAsync(orderId);
+
+            // Send notifications to both parties
+            await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
+                .SendAsync("ReceiveNotification", $"Order #{orderId} has been permanently deleted");
+
+            await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
+                .SendAsync("ReceiveNotification", $"Order #{orderId} has been permanently deleted");
         }
 
         public async Task UpdateOrderItemsAsync(Guid orderId, List<Guid> updatedProductIds, int rentalDays)
@@ -213,7 +306,10 @@ namespace Services.OrderServices
             if (order == null) throw new Exception("Order not found");
 
             order.Status = OrderStatus.in_use;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+
+            // Update counts if needed (no action for in_use status)
+            await UpdateProductCounts(order, OrderStatus.in_transit, OrderStatus.in_use);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
@@ -233,20 +329,13 @@ namespace Services.OrderServices
             }
 
             order.Status = OrderStatus.returned;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
-            // Increment rent count for all products in this order
-            foreach (var item in order.Items)
-            {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                if (product != null)
-                {
-
-                }
-            }
+            // Increment rent count for rental products when returned
+            await UpdateProductCounts(order, OrderStatus.in_use, OrderStatus.returned);
+            
 
             await _orderRepo.UpdateAsync(order);
-            await _context.SaveChangesAsync(); // Save product rent count changes
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returned);
 
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as returned");
@@ -256,8 +345,13 @@ namespace Services.OrderServices
         {
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
+            
             order.Status = OrderStatus.approved;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+            
+            // Update buy count for purchase orders when approved
+            await UpdateProductCounts(order, OrderStatus.pending, OrderStatus.approved);
+            
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.pending, OrderStatus.approved);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as approved");
@@ -268,11 +362,45 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
             order.Status = OrderStatus.in_transit;
-            order.DeliveredDate = DateTime.UtcNow;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.DeliveredDate = DateTimeHelper.GetVietnamTime();
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.approved, OrderStatus.in_transit);
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as shipped");
+        }
+
+        public async Task ConfirmDeliveryAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+            
+            // Chỉ cho phép xác nhận khi đơn hàng đang ở trạng thái in_transit
+            if (order.Status != OrderStatus.in_transit)
+                throw new Exception("Order must be in transit status to confirm delivery");
+            
+            order.Status = OrderStatus.in_use;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+            await _orderRepo.UpdateAsync(order);
+            
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_transit, OrderStatus.in_use);
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been confirmed as received and is now in use");
+        }
+
+        public async Task MarkAsReturningAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null) throw new Exception("Order not found");
+            
+            // Chỉ cho phép mark as returning khi đơn hàng đang ở trạng thái in_use
+            if (order.Status != OrderStatus.in_use)
+                throw new Exception("Order must be in use status to mark as returning");
+            
+            order.Status = OrderStatus.returning;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+            await _orderRepo.UpdateAsync(order);
+            
+            await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returning);
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} is being returned by customer");
         }
 
         public async Task CompleteTransactionAsync(Guid orderId)
@@ -280,7 +408,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyTransactionCompleted(orderId, order.CustomerId);
@@ -293,7 +421,7 @@ namespace Services.OrderServices
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyTransactionFailed(orderId, order.CustomerId);
@@ -393,7 +521,8 @@ namespace Services.OrderServices
                             throw new InvalidOperationException($"Provider with ID {providerId} not found.");
                         }
 
-                        decimal totalAmount = 0;
+                        decimal subtotalAmount = 0;
+                        decimal depositAmount = 0;
                         var orderItems = new List<OrderItem>();
 
                         DateTime? minRentalStart = null;
@@ -403,25 +532,124 @@ namespace Services.OrderServices
                         {
                             var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
 
-                            if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available || product.PricePerDay <= 0)
+                            if (product == null || product.AvailabilityStatus != BusinessObject.Enums.AvailabilityStatus.available)
                             {
-                                throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable or has an invalid price.");
+                                throw new InvalidOperationException($"Product '{product?.Name ?? cartItem.ProductId.ToString()}' is unavailable.");
+                            }
+
+                            // Validate availability based on transaction type
+                            if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                            {
+                                // Validate purchase availability
+                                if (product.PurchaseStatus != BusinessObject.Enums.PurchaseStatus.Available || 
+                                    product.PurchasePrice <= 0)
+                                {
+                                    throw new InvalidOperationException($"Product '{product.Name}' is not available for purchase.");
+                                }
+                                
+                                // Validate stock quantity for purchase
+                                if (cartItem.Quantity > product.PurchaseQuantity)
+                                {
+                                    throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.PurchaseQuantity} units available for purchase of '{product.Name}'.");
+                                }
+                            }
+                            else // Rental
+                            {
+                                // Validate rental availability
+                                if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
+                                    product.PricePerDay <= 0)
+                                {
+                                    throw new InvalidOperationException($"Product '{product.Name}' is not available for rental.");
+                                }
+                                
+                                // Validate stock quantity for rental
+                                if (cartItem.Quantity > product.RentalQuantity)
+                                {
+                                    throw new InvalidOperationException($"Quantity exceeds available stock. Only {product.RentalQuantity} units available for rental of '{product.Name}'.");
+                                }
                             }
 
                             var orderItem = new OrderItem
                             {
                                 Id = Guid.NewGuid(),
                                 ProductId = cartItem.ProductId,
+                                TransactionType = cartItem.TransactionType, // Get from cartItem
                                 RentalDays = cartItem.RentalDays,
                                 Quantity = cartItem.Quantity,
-                                DailyRate = product.PricePerDay
+                                // Set price based on transaction type
+                                DailyRate = cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase 
+                                    ? product.PurchasePrice 
+                                    : product.PricePerDay,
+                                // Set deposit per unit for rental items
+                                DepositPerUnit = cartItem.TransactionType == BusinessObject.Enums.TransactionType.rental 
+                                    ? product.SecurityDeposit 
+                                    : 0m
                             };
 
                             orderItems.Add(orderItem);
-                            totalAmount += orderItem.DailyRate * orderItem.RentalDays * orderItem.Quantity;
+                            
+                            // Calculate subtotal (chỉ giá thuê/mua, không bao gồm cọc)
+                            if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                            {
+                                subtotalAmount += orderItem.DailyRate * orderItem.Quantity;
+                            }
+                            else // Rental
+                            {
+                                subtotalAmount += orderItem.DailyRate * (orderItem.RentalDays ?? 1) * orderItem.Quantity;
+                                // Calculate deposit separately
+                                depositAmount += orderItem.DepositPerUnit * orderItem.Quantity;
+                            }
                         }
                         var rentalStart = providerGroup.Min(ci => ci.StartDate);
                         var rentalEnd = providerGroup.Max(ci => ci.EndDate);
+
+                        // Apply discount code if provided
+                        decimal discountAmount = 0;
+                        Guid? discountCodeIdToStore = null;
+                        
+                        if (checkoutRequestDto.DiscountCodeId.HasValue)
+                        {
+                            var discountCode = await _context.DiscountCodes.FindAsync(checkoutRequestDto.DiscountCodeId.Value);
+                            
+                            if (discountCode != null && 
+                                discountCode.Status == BusinessObject.Enums.DiscountStatus.Active &&
+                                discountCode.ExpirationDate > DateTime.UtcNow &&
+                                discountCode.UsedCount < discountCode.Quantity)
+                            {
+                                // Determine applicable subtotal based on discount code UsageType
+                                decimal applicableSubtotal = 0;
+                                
+                                if (discountCode.UsageType == BusinessObject.Enums.DiscountUsageType.Rental)
+                                {
+                                    // Only apply discount to rental items
+                                    applicableSubtotal = orderItems
+                                        .Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                                        .Sum(oi => oi.DailyRate * (oi.RentalDays ?? 0) * oi.Quantity);
+                                }
+                                else if (discountCode.UsageType == BusinessObject.Enums.DiscountUsageType.Purchase)
+                                {
+                                    // Only apply discount to purchase items
+                                    applicableSubtotal = orderItems
+                                        .Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                        .Sum(oi => oi.DailyRate * oi.Quantity);
+                                }
+                                
+                                // Calculate discount amount
+                                if (discountCode.DiscountType == BusinessObject.Enums.DiscountType.Percentage)
+                                {
+                                    discountAmount = Math.Round(applicableSubtotal * (discountCode.Value / 100), 2);
+                                }
+                                else // Fixed amount
+                                {
+                                    discountAmount = discountCode.Value;
+                                }
+                                
+                                // Ensure discount doesn't exceed applicable subtotal
+                                discountAmount = Math.Min(discountAmount, applicableSubtotal);
+                                
+                                discountCodeIdToStore = discountCode.Id;
+                            }
+                        }
 
                         var newOrder = new Order
                         {
@@ -429,11 +657,16 @@ namespace Services.OrderServices
                             CustomerId = customerId,
                             ProviderId = providerId,
                             Status = OrderStatus.pending,
-                            TotalAmount = totalAmount,
+                            Subtotal = subtotalAmount, // Chỉ giá thuê/mua
+                            TotalDeposit = depositAmount, // Chỉ tiền cọc
+                            DiscountCodeId = discountCodeIdToStore,
+                            DiscountAmount = discountAmount,
+                            TotalAmount = subtotalAmount + depositAmount - discountAmount, // Tổng = subtotal + deposit - discount
                             RentalStart = rentalStart,
                             RentalEnd = rentalEnd,
                             Items = orderItems,
                             CustomerFullName = checkoutRequestDto.CustomerFullName,
+                            CreatedAt = DateTimeHelper.GetVietnamTime(),
                             CustomerEmail = checkoutRequestDto.CustomerEmail,
                             CustomerPhoneNumber = checkoutRequestDto.CustomerPhoneNumber,
                             DeliveryAddress = checkoutRequestDto.DeliveryAddress,
@@ -442,6 +675,10 @@ namespace Services.OrderServices
 
                         await _orderRepo.AddAsync(newOrder);
                         createdOrders.Add(newOrder);
+
+                        // NOTE: Do NOT deduct stock quantities here (order is still pending/unpaid)
+                        // Quantity will be deducted when order status changes to 'approved' (payment confirmed)
+                        // This prevents stock from being locked for unpaid/abandoned orders
 
                         //foreach (var cartItem in providerGroup)
                         //{
@@ -484,7 +721,7 @@ namespace Services.OrderServices
 
             // 2. Cập nhật trạng thái và thời gian
             order.Status = OrderStatus.returned_with_issue;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             // 3. Chỉ cập nhật 2 field: Status & UpdatedAt
             await _orderRepo.UpdateOnlyStatusAndTimeAsync(order);
@@ -508,12 +745,12 @@ namespace Services.OrderServices
             {
                 var subject = "Thông báo sản phẩm trả lại bị hư hỏng";
                 var body = $@"
-            <h3>Thông Báo Từ ShareIT Shop</h3>
+            <h3>Thông Báo Từ FRECS Shop</h3>
             <p>Chúng tôi phát hiện đơn hàng mã <strong>{order.Id}</strong> có sản phẩm trả lại bị <strong>hư hỏng</strong>.</p>
             <p>Vui lòng phản hồi trong vòng <strong>3 ngày</strong> để tránh bị phạt.</p>
             <br />
             <p>Bạn có thể phản hồi tại mục <strong>'Reports liên quan đến bạn'</strong> trong hệ thống.</p>
-            <p>Trân trọng,<br/>Đội ngũ hỗ trợ ShareIT</p>";
+            <p>Trân trọng,<br/>Đội ngũ hỗ trợ FRECS</p>";
 
                 await SendDamageReportEmailAsync(customer.Email, subject, body);
             }
@@ -644,37 +881,96 @@ namespace Services.OrderServices
             return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
+        public async Task<OrderDetailsDto> GetOrderDetailsForProviderAsync(Guid orderId)
+        {
+            try
+            {
+                var order = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => o.Id == orderId)
+                    .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                            .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
+                    .Include(o => o.Customer)
+                        .ThenInclude(c => c.Profile)
+                    .Include(o => o.DiscountCode)
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
+                {
+                    return null;
+                }
+
+                var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
+                
+                // Fetch payment info from Transaction for provider
+                var transaction = await _context.Transactions
+                    .AsNoTracking()
+                    .Where(t => t.Orders.Any(o => o.Id == orderId) && t.Status == TransactionStatus.completed)
+                    .OrderByDescending(t => t.TransactionDate)
+                    .FirstOrDefaultAsync();
+                    
+                if (transaction != null)
+                {
+                    orderDetailsDto.PaymentMethod = transaction.PaymentMethod;
+                    orderDetailsDto.PaymentConfirmedDate = transaction.TransactionDate;
+                }
+                
+                return orderDetailsDto;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetOrderDetailsForProviderAsync for orderId {orderId}: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                throw new Exception($"Failed to get order details for provider: {ex.Message}", ex);
+            }
+        }
+
         public async Task<OrderDetailsDto> GetOrderDetailsAsync(Guid orderId)
         {
-            // Reduce tracking and payload size: AsNoTracking + filtered includes
-            var order = await _context.Orders
-                .AsNoTracking()
-                .Where(o => o.Id == orderId)
-                .Include(o => o.Items)
-                    .ThenInclude(oi => oi.Product)
-                        .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
-                .Include(o => o.Customer)
-                    .ThenInclude(c => c.Profile)
-                .FirstOrDefaultAsync();
-
-            if (order == null)
+            try
             {
-                return null;
-            }
+                // Reduce tracking and payload size: AsNoTracking + filtered includes
+                var order = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => o.Id == orderId)
+                    .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                            .ThenInclude(p => p.Images.Where(i => i.IsPrimary))
+                    .Include(o => o.Customer)
+                        .ThenInclude(c => c.Profile)
+                    .Include(o => o.DiscountCode) // Include discount code để map tên
+                    .FirstOrDefaultAsync();
 
-            var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-            // Fetch latest payment method without loading entire transactions collection
-            var latestPaymentMethod = await _context.Transactions
-                .AsNoTracking()
-                .Where(t => t.Orders.Any(o => o.Id == orderId))
-                .OrderByDescending(t => t.TransactionDate)
-                .Select(t => t.PaymentMethod)
-                .FirstOrDefaultAsync();
-            if (!string.IsNullOrEmpty(latestPaymentMethod))
-            {
-                orderDetailsDto.PaymentMethod = latestPaymentMethod;
+                if (order == null)
+                {
+                    return null;
+                }
+
+                var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
+                
+                // Fetch latest payment method without loading entire transactions collection
+                var latestPaymentMethod = await _context.Transactions
+                    .AsNoTracking()
+                    .Where(t => t.Orders.Any(o => o.Id == orderId))
+                    .OrderByDescending(t => t.TransactionDate)
+                    .Select(t => t.PaymentMethod)
+                    .FirstOrDefaultAsync();
+                    
+                if (!string.IsNullOrEmpty(latestPaymentMethod))
+                {
+                    orderDetailsDto.PaymentMethod = latestPaymentMethod;
+                }
+                
+                return orderDetailsDto;
             }
-            return orderDetailsDto;
+            catch (Exception ex)
+            {
+                // Log the error for debugging
+                Console.WriteLine($"Error in GetOrderDetailsAsync for orderId {orderId}: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                throw new Exception($"Failed to get order details: {ex.Message}", ex);
+            }
         }
         public async Task ClearCartItemsForOrderAsync(Order order)
         {
@@ -756,9 +1052,10 @@ namespace Services.OrderServices
                 RentalStart = requestDto.NewRentalStartDate,
                 RentalEnd = requestDto.NewRentalEndDate,
                 TotalAmount = 0,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
             };
 
-            int calculatedRentalDays = (int)(requestDto.NewRentalEndDate - requestDto.NewRentalStartDate).TotalDays + 1;
+            int calculatedRentalDays = Math.Max(1, (int)(requestDto.NewRentalEndDate - requestDto.NewRentalStartDate).TotalDays);
 
             foreach (var originalItem in originalOrder.Items)
             {
@@ -776,6 +1073,9 @@ namespace Services.OrderServices
 
             newOrder.TotalAmount = newOrder.Items.Sum(item =>
                 item.DailyRate * item.Quantity * calculatedRentalDays);
+            
+            // Set subtotal equal to total amount (rental fees only, no additional charges)
+            newOrder.Subtotal = newOrder.TotalAmount;
 
             await _orderRepo.AddAsync(newOrder);
 
@@ -816,14 +1116,116 @@ namespace Services.OrderServices
             order.CustomerPhoneNumber = dto.CustomerPhoneNumber;
             order.DeliveryAddress = dto.DeliveryAddress;
             order.HasAgreedToPolicies = dto.HasAgreedToPolicies;
-            order.UpdatedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             return await _orderRepo.UpdateOrderContactInfoAsync(order);
+        }
+
+        /// <summary>
+        /// Updates subtotal for all orders that have subtotal = 0
+        /// This is a utility method to fix existing orders
+        /// </summary>
+        public async Task UpdateOrderSubtotalsAsync()
+        {
+            var orders = await _context.Orders
+                .Where(o => o.Subtotal == 0)
+                .Include(o => o.Items)
+                .ToListAsync();
+
+            foreach (var order in orders)
+            {
+                if (order.Items.Any())
+                {
+                    order.Subtotal = order.Items.Sum(item => 
+                        item.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                            ? item.DailyRate * item.Quantity
+                            : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
+                    order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                }
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public Task<string> GetOrderItemId(Guid customerId, Guid productId)
         {
             return _orderRepo.GetOrderItemId(customerId, productId);
+        }
+
+        /// <summary>
+        /// Updates product rent count, buy count, and stock quantities based on order status
+        /// - Stock quantities (RentalQuantity/PurchaseQuantity) are deducted when order becomes 'approved' (payment confirmed)
+        /// - Rent count increases whenever order status becomes 'returned' (including returned_with_issue -> returned)
+        /// - Buy count increases only when purchase order first reaches 'approved'
+        /// </summary>
+        /// <param name="order">The order containing items to update counts for</param>
+        /// <param name="oldStatus">The previous order status</param>
+        /// <param name="newStatus">The new order status</param>
+        private async Task UpdateProductCounts(Order order, OrderStatus oldStatus, OrderStatus newStatus)
+        {
+
+            foreach (var item in order.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null) continue;
+
+                bool shouldUpdateRentCount = false;
+                bool shouldUpdateBuyCount = false;
+                bool shouldDeductStock = false;
+
+                // Deduct stock quantity when order is approved (payment confirmed)
+                if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                {
+                    shouldDeductStock = true;
+                }
+
+                // For rental transactions - increment rent count whenever status becomes 'returned'
+                if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                {
+                    if (newStatus == OrderStatus.returned)
+                    {
+                        shouldUpdateRentCount = true;
+                    }
+                }
+                // For purchase transactions - increment buy count only when first time reaching 'approved'
+                else if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                {
+                    if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                    {
+                        shouldUpdateBuyCount = true;
+                    }
+                }
+
+                // Deduct stock quantity when approved
+                if (shouldDeductStock)
+                {
+                    if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                    {
+                        product.PurchaseQuantity -= item.Quantity;
+                        // Prevent negative quantity
+                        if (product.PurchaseQuantity < 0) product.PurchaseQuantity = 0;
+                    }
+                    else // Rental
+                    {
+                        product.RentalQuantity -= item.Quantity;
+                        // Prevent negative quantity
+                        if (product.RentalQuantity < 0) product.RentalQuantity = 0;
+                    }
+                    await _productRepository.UpdateAsync(product);
+                }
+
+                // Update counts if needed
+                if (shouldUpdateRentCount)
+                {
+                    product.RentCount += item.Quantity;
+                    await _productRepository.UpdateAsync(product);
+                }
+                else if (shouldUpdateBuyCount)
+                {
+                    product.BuyCount += item.Quantity;
+                    await _productRepository.UpdateAsync(product);
+                }
+            }
         }
     }
 }

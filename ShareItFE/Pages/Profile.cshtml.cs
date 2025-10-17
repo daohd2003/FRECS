@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.Login;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.ProductDto;
@@ -9,6 +10,7 @@ using ShareItFE.Common.Utilities;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
@@ -16,11 +18,13 @@ namespace ShareItFE.Pages
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public ProfileModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
+        public ProfileModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
             _configuration = configuration;
+            _environment = environment;
         }
 
         public bool IsPostBack { get; set; } = false;
@@ -34,7 +38,7 @@ namespace ShareItFE.Pages
         public int PageSize { get; set; } = 5;
         public int TotalPages => (int)Math.Ceiling((double)(Orders?.Count ?? 0) / PageSize);
 
-        public List<Favorite> Favorites { get; set; } = new();
+        public List<FavoriteWithProductDto> Favorites { get; set; } = new();
         public int FavoritesPageNum { get; set; } = 1;
         public int FavoritesPageSize { get; set; } = 6;
         public int FavoritesTotalPages => (int)Math.Ceiling((double)(Favorites?.Count ?? 0) / FavoritesPageSize);
@@ -48,13 +52,36 @@ namespace ShareItFE.Pages
         [BindProperty]
         public ChangePasswordRequest ChangePassword { get; set; }
 
-        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
+        public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
         public string AccessToken { get; set; }
 
-        public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile")
+        public async Task<IActionResult> OnGetAsync(int pageNum = 1, int favPage = 1, string tab = "profile", string paymentStatus = null, string vnp_TxnRef = null, string vnp_Message = null)
         {
             CurrentPage = pageNum;
             FavoritesPageNum = favPage;
+
+            // Handle VNPay payment status from callback
+            if (!string.IsNullOrEmpty(paymentStatus))
+            {
+                // Clear any existing TempData messages to prevent showing old toast messages
+                TempData.Remove("SuccessMessage");
+                TempData.Remove("ErrorMessage");
+                
+                switch (paymentStatus.ToLower())
+                {
+                    case "success":
+                        SuccessMessage = "Payment completed successfully! Your order has been confirmed.";
+                        break;
+                    case "failed":
+                        ErrorMessage = !string.IsNullOrEmpty(vnp_Message) 
+                            ? $"Payment failed: {vnp_Message}" 
+                            : "Payment failed. Please try again.";
+                        break;
+                    case "error":
+                        ErrorMessage = "An error occurred during payment processing. Please contact support if this persists.";
+                        break;
+                }
+            }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null) return RedirectToPage("/Auth");
@@ -86,7 +113,6 @@ namespace ShareItFE.Pages
             if (ordersResponse.IsSuccessStatusCode)
             {
                 var ordersContent = await ordersResponse.Content.ReadAsStringAsync();
-                Console.WriteLine(ordersContent);
                 var ordersApiResponse = JsonSerializer.Deserialize<ApiResponse<List<OrderListDto>>>(ordersContent, options);
 
                 // Gán dữ liệu hoặc một list DTO rỗng nếu data là null
@@ -94,13 +120,13 @@ namespace ShareItFE.Pages
             }
 
             // --- 3. Lấy Favorites ---
-            // Giả sử API endpoint cho favorites là 'api/favorites/{userId}'
-            var favoritesResponse = await client.GetAsync($"api/favorites/{userId}");
+            // Sử dụng includeDetails=true để lấy thông tin sản phẩm và ảnh (trả về FavoriteWithProductDto)
+            var favoritesResponse = await client.GetAsync($"api/favorites/{userId}?includeDetails=true");
             if (favoritesResponse.IsSuccessStatusCode)
             {
-                var favoritesApiResponse = JsonSerializer.Deserialize<ApiResponse<List<Favorite>>>(
+                var favoritesApiResponse = JsonSerializer.Deserialize<ApiResponse<List<FavoriteWithProductDto>>>(
                     await favoritesResponse.Content.ReadAsStringAsync(), options);
-                Favorites = favoritesApiResponse?.Data ?? new List<Favorite>();
+                Favorites = favoritesApiResponse?.Data ?? new List<FavoriteWithProductDto>();
             }
 
             /*

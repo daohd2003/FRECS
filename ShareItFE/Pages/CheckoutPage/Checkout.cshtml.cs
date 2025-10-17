@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.DTOs.VNPay;
+using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.CheckoutPage
 {
@@ -17,16 +18,18 @@ namespace ShareItFE.Pages.CheckoutPage
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         public string frontendBaseUrl { get; set; }
         public string backendBaseUrl { get; set; }
-        public string ApiBaseUrl => _configuration["ApiSettings:BaseUrl"];
-        public CheckoutModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration)
+        public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
+        public CheckoutModel(AuthenticatedHttpClientHelper clientHelper, IConfiguration configuration, IWebHostEnvironment environment)
         {
             _clientHelper = clientHelper;
             _configuration = configuration;
-            frontendBaseUrl = _configuration["FrontendBaseUrl"] ?? "/";
-            backendBaseUrl = _configuration["BackendBaseUrl"] ?? "https://localhost:7256/";
+            _environment = environment;
+            frontendBaseUrl = _configuration.GetFrontendBaseUrl(_environment);
+            backendBaseUrl = _configuration.GetApiRootUrl(_environment);
         }
 
         [BindProperty]
@@ -35,8 +38,34 @@ namespace ShareItFE.Pages.CheckoutPage
         public CartDto? Cart { get; set; }
         public OrderDetailsDto? SingleOrder { get; set; }
         public decimal Subtotal { get; set; }
+        
+        /// <summary>
+        /// Subtotal for rental items only
+        /// </summary>
+        public decimal RentalSubtotal { get; set; }
+        
+        /// <summary>
+        /// Subtotal for purchase items only
+        /// </summary>
+        public decimal PurchaseSubtotal { get; set; }
+        
         public decimal DeliveryFee { get; set; }
         public decimal Total { get; set; }
+        
+        /// <summary>
+        /// Total deposit amount for rental items
+        /// </summary>
+        public decimal TotalDeposit { get; set; }
+
+        /// <summary>
+        /// Discount amount calculated from session discount code
+        /// </summary>
+        public decimal DiscountAmount { get; set; }
+
+        /// <summary>
+        /// Selected discount code from session
+        /// </summary>
+        public DiscountCodeSessionInfo? SelectedDiscountCode { get; set; }
 
         [TempData]
         public string SuccessMessage { get; set; }
@@ -78,7 +107,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 {
                     // Call the API to get details of the specific order
                     // Ensure your API endpoint for OrderDetailsDto is correct, e.g., api/orders/{id}/details
-                    var orderResponse = await client.GetAsync($"{backendBaseUrl}api/orders/{OrderId.Value}/details");
+                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{OrderId.Value}/details");
 
                     if (orderResponse.IsSuccessStatusCode)
                     {
@@ -100,9 +129,10 @@ namespace ShareItFE.Pages.CheckoutPage
                             return RedirectToPage("/Profile", new { tab = "orders" });
                         }
 
-                        // Populate totals from the single order
-                        Subtotal = SingleOrder.Items.Sum(item => item.PricePerDay * item.Quantity * item.RentalDays);
-                        Total = Subtotal;
+                        // Get totals from the single order (đã được tính đúng trong database)
+                        Subtotal = SingleOrder.Subtotal; // Chỉ giá thuê/mua
+                        TotalDeposit = SingleOrder.TotalDepositAmount; // Chỉ tiền cọc
+                        Total = SingleOrder.TotalAmount; // Tổng = subtotal + deposit
                         Input.UseSameProfile = true;
                         Cart = null;
 
@@ -130,11 +160,27 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
                         else
                         {
-                            Subtotal = Cart.Items.Sum(item => item.PricePerUnit * item.RentalDays * item.Quantity);
+                            Subtotal = Cart.Items.Sum(item => item.TotalItemPrice);
+                            
+                            // Calculate separate subtotals for rental and purchase items
+                            RentalSubtotal = Cart.Items
+                                .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                                .Sum(item => item.TotalItemPrice);
+                            
+                            PurchaseSubtotal = Cart.Items
+                                .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                                .Sum(item => item.TotalItemPrice);
+                            
+                            // Calculate total deposit for rental items from cart
+                            TotalDeposit = Cart.TotalDepositAmount;
+                            
+                            // Load discount code from session and calculate discount
+                            LoadDiscountFromSession();
+                            
                             // Giả định logic tính phí giao hàng và thuế
                             //DeliveryFee = Subtotal > 100000 ? 0 : 15000;
-                            //Total = Subtotal + DeliveryFee ;
-                            Total = Subtotal;
+                            //Total = Subtotal + DeliveryFee + TotalDeposit;
+                            Total = Subtotal + TotalDeposit - DiscountAmount;
                         }
                     }
                     else
@@ -197,10 +243,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!Request.Form.ContainsKey("Input.HasAgreedToPolicies"))
-            {
-                Input.HasAgreedToPolicies = false;
-            }
+            // Policy agreement is handled on Cart page - preserve the value from form submission
 
             if (!ModelState.IsValid)
             {
@@ -212,7 +255,6 @@ namespace ShareItFE.Pages.CheckoutPage
                 Input.Address = currentInputState.Address;
                 Input.PaymentMethod = currentInputState.PaymentMethod;
                 Input.UseSameProfile = currentInputState.UseSameProfile;
-                Input.HasAgreedToPolicies = currentInputState.HasAgreedToPolicies;
                 return Page();
             }
 
@@ -228,7 +270,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 // Reload profile info if "UseSameProfile" is checked
                 if (Input.UseSameProfile)
                 {
-                    var profileResponse = await client.GetAsync($"{backendBaseUrl}api/profile/my-profile-for-checkout");
+                    var profileResponse = await client.GetAsync($"{backendBaseUrl}/api/profile/my-profile-for-checkout");
                     if (profileResponse.IsSuccessStatusCode)
                     {
                         var profileApiResponse = JsonSerializer.Deserialize<ApiResponse<ProfileDetailDto>>(
@@ -256,7 +298,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                     // Fetch the single order details again to get the accurate TotalAmount for payment
                     // (This ensures we have the latest total and status from the API)
-                    var orderResponse = await client.GetAsync($"{backendBaseUrl}api/orders/{OrderId.Value}/details");
+                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{OrderId.Value}/details");
                     if (orderResponse.IsSuccessStatusCode)
                     {
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<OrderDetailsDto>>(
@@ -277,10 +319,10 @@ namespace ShareItFE.Pages.CheckoutPage
                             CustomerEmail = Input.Email ?? "",
                             CustomerPhoneNumber = Input.PhoneNumber ?? "",
                             DeliveryAddress = Input.Address ?? "",
-                            HasAgreedToPolicies = Input.HasAgreedToPolicies
+                            HasAgreedToPolicies = true
                         };
 
-                        var updateInfoResponse = await client.PutAsJsonAsync($"{backendBaseUrl}api/orders/update-contact-info", updateContactInfoRequest);
+                        var updateInfoResponse = await client.PutAsJsonAsync($"{backendBaseUrl}/api/orders/update-contact-info", updateContactInfoRequest);
 
                         if (!updateInfoResponse.IsSuccessStatusCode)
                         {
@@ -301,6 +343,9 @@ namespace ShareItFE.Pages.CheckoutPage
                 }
                 else // Case 2: Processing a normal cart checkout
                 {
+                    // Load discount from session before creating checkout request
+                    LoadDiscountFromSession();
+                    
                     // This section will create orders from the cart.
                     // This is where the call to api/cart/checkout is necessary.
                     var checkoutRequest = new CheckoutRequestDto
@@ -310,10 +355,13 @@ namespace ShareItFE.Pages.CheckoutPage
                         CustomerEmail = Input.Email,
                         CustomerPhoneNumber = Input.PhoneNumber,
                         DeliveryAddress = Input.Address,
-                        HasAgreedToPolicies = Input.HasAgreedToPolicies
+                        HasAgreedToPolicies = true,
+                        DiscountCodeId = SelectedDiscountCode != null && Guid.TryParse(SelectedDiscountCode.Id, out var discountId) 
+                            ? discountId 
+                            : null
                     };
 
-                    var cartCheckoutResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/cart/checkout", checkoutRequest);
+                    var cartCheckoutResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/cart/checkout", checkoutRequest);
 
                     if (!cartCheckoutResponse.IsSuccessStatusCode)
                     {
@@ -359,7 +407,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         Note = $"Payment for orders: {string.Join(", ", orderIdsToProcess.Select(id => id.ToString().Substring(0, 8)))}"
                     };
 
-                    var vnpayResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/payment/Vnpay/CreatePaymentUrl", vnpayRequest);
+                    var vnpayResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/payment/Vnpay/CreatePaymentUrl", vnpayRequest);
 
                     if (vnpayResponse.IsSuccessStatusCode)
                     {
@@ -387,7 +435,7 @@ namespace ShareItFE.Pages.CheckoutPage
                 {
                     var createTransactionRequest = new CreateTransactionRequest { OrderIds = orderIdsToProcess };
 
-                    var qrResponse = await client.PostAsJsonAsync($"{backendBaseUrl}api/transactions/create", createTransactionRequest);
+                    var qrResponse = await client.PostAsJsonAsync($"{backendBaseUrl}/api/transactions/create", createTransactionRequest);
 
                     if (qrResponse.IsSuccessStatusCode)
                     {
@@ -434,6 +482,57 @@ namespace ShareItFE.Pages.CheckoutPage
             await OnGetAsync();
             return Page();
         }
+
+        /// <summary>
+        /// Load discount code from session and calculate discount amount
+        /// </summary>
+        private void LoadDiscountFromSession()
+        {
+            try
+            {
+                var discountJson = HttpContext.Session.GetString("SelectedDiscountCode");
+                
+                if (!string.IsNullOrEmpty(discountJson))
+                {
+                    var discount = JsonSerializer.Deserialize<DiscountCodeSessionInfo>(discountJson);
+                    
+                    if (discount != null)
+                    {
+                        SelectedDiscountCode = discount;
+                        
+                        // Determine which subtotal to apply discount to based on UsageType
+                        decimal applicableSubtotal = 0;
+                        
+                        if (discount.UsageType == "Rental")
+                        {
+                            applicableSubtotal = RentalSubtotal;
+                        }
+                        else if (discount.UsageType == "Purchase")
+                        {
+                            applicableSubtotal = PurchaseSubtotal;
+                        }
+                        
+                        // Calculate discount amount
+                        if (discount.DiscountType == "Percentage")
+                        {
+                            DiscountAmount = Math.Round(applicableSubtotal * (discount.Value / 100));
+                        }
+                        else // Fixed amount
+                        {
+                            DiscountAmount = discount.Value;
+                        }
+                        
+                        // Ensure discount doesn't exceed applicable subtotal
+                        DiscountAmount = Math.Min(DiscountAmount, applicableSubtotal);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                DiscountAmount = 0;
+                SelectedDiscountCode = null;
+            }
+        }
     }
 
     public class CheckoutInputModel
@@ -447,5 +546,17 @@ namespace ShareItFE.Pages.CheckoutPage
         public bool HasAgreedToPolicies { get; set; } = false;
 
         public string PaymentMethod { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for storing discount code info from session
+    /// </summary>
+    public class DiscountCodeSessionInfo
+    {
+        public string Id { get; set; }
+        public string Code { get; set; }
+        public string DiscountType { get; set; }
+        public decimal Value { get; set; }
+        public string UsageType { get; set; }
     }
 }

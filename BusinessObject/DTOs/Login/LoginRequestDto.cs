@@ -14,8 +14,13 @@ namespace BusinessObject.DTOs.Login
         [MaxLength(128)]
         public string Email { get; set; } = String.Empty;
 
-        [MinLength(6)]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [Uppercase]
+        [Lowercase]
+        [Numeric]
         [SpecialCharacter]
         public string Password { get; set; } = String.Empty;
+
+        public bool RememberMe { get; set; } = false;
     }
 }

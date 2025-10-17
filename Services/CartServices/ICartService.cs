@@ -14,5 +14,7 @@ namespace Services.CartServices
         Task<bool> UpdateCartItemAsync(Guid customerId, Guid cartItemId, CartUpdateRequestDto updateDto);
         Task<bool> RemoveCartItemAsync(Guid customerId, Guid cartItemId);
         Task<int> GetCartItemCountAsync(Guid customerId);
+        Task<bool> ClearCartAsync(Guid customerId);
+        Task<(bool success, int addedCount, int issuesCount)> AddOrderItemsToCartAsync(Guid customerId, Guid orderId);
     }
 }

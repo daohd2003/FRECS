@@ -11,12 +11,18 @@ namespace BusinessObject.DTOs.Login
     public class ChangePasswordRequest
     {
         [Required(ErrorMessage = "Current password is required.")]
-        [MinLength(6)]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [Uppercase]
+        [Lowercase]
+        [Numeric]
         [SpecialCharacter]
         public string CurrentPassword { get; set; }
 
         [Required(ErrorMessage = "New password is required.")]
-        [MinLength(6)]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [Uppercase]
+        [Lowercase]
+        [Numeric]
         [SpecialCharacter]
         public string NewPassword { get; set; }
 
