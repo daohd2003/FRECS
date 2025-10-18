@@ -329,33 +329,19 @@ namespace ShareItFE.Pages.Provider
 
                 if (response.IsSuccessStatusCode)
                 {
-                    // Parse response để lấy action type
+                    // Parse response để lấy message từ API
                     var responseContent = await response.Content.ReadAsStringAsync();
                     
                     try
                     {
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<string>>(responseContent);
-                        var action = apiResponse?.Data ?? "Deleted";
                         
-                        switch (action)
-                        {
-                            case "Archived":
-                                TempData["SuccessMessage"] = "Product has been archived due to existing rental history.";
-                                break;
-                            case "Soft Deleted":
-                                TempData["SuccessMessage"] = "Product has been deleted but kept for history.";
-                                break;
-                            case "Permanently Deleted":
-                                TempData["SuccessMessage"] = "Product has been permanently removed.";
-                                break;
-                            default:
-                                TempData["SuccessMessage"] = "Product deleted successfully.";
-                                break;
-                        }
+                        // Hiển thị message từ API (đã bao gồm lý do nếu có)
+                        TempData["SuccessMessage"] = apiResponse?.Message ?? "Product has been archived successfully.";
                     }
                     catch
                     {
-                        TempData["SuccessMessage"] = "Product deleted successfully.";
+                        TempData["SuccessMessage"] = "Product has been archived successfully.";
                     }
                 }
                 else
