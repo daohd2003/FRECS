@@ -85,6 +85,24 @@ namespace ShareItFE.Pages.CheckoutPage
         /// </summary>
         [TempData]
         public Guid? PendingOrderId { get; set; }
+        
+        // Helper methods to work with Session directly
+        private string GetPendingCartOrderIds()
+        {
+            return HttpContext.Session.GetString("PendingCartOrderIds");
+        }
+
+        private void SetPendingCartOrderIds(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                HttpContext.Session.Remove("PendingCartOrderIds");
+            }
+            else
+            {
+                HttpContext.Session.SetString("PendingCartOrderIds", value);
+            }
+        }
 
         /// <summary>
         /// Indicates whether the user's profile has all required information (PhoneNumber and Address)
@@ -104,49 +122,16 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnGetAsync()
         {
-            // If user comes from "Pay Now", save OrderId to TempData for persistence
+            // If user comes from "Pay Now" button on a pending order, save that OrderId to Session
+            // so it can be deleted when user goes back to cart and creates a new order
             if (OrderId.HasValue && OrderId.Value != Guid.Empty)
             {
                 PendingOrderId = OrderId.Value;
-            }
-            // If user came back from cart (OrderId is null) but we have a pending order
-            else if (!OrderId.HasValue && PendingOrderId.HasValue && PendingOrderId.Value != Guid.Empty)
-            {
-                // Check if cart has items - if yes, user wants to checkout new cart, not old order
-                try
-                {
-                    var client = await _clientHelper.GetAuthenticatedClientAsync();
-                    var userId = GetUserId();
-                    var cartResponse = await client.GetAsync($"{backendBaseUrl}/api/cart/{userId}");
-                    
-                    if (cartResponse.IsSuccessStatusCode)
-                    {
-                        var cartContent = await cartResponse.Content.ReadAsStringAsync();
-                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                        var cartData = JsonSerializer.Deserialize<ApiResponse<List<object>>>(cartContent, options);
-                        
-                        // If cart is empty, restore pending order; otherwise, user wants to checkout new cart
-                        if (cartData?.Data == null || cartData.Data.Count == 0)
-                        {
-                            return RedirectToPage("/CheckoutPage/Checkout", new { orderId = PendingOrderId.Value });
-                        }
-                        else
-                        {
-                            // Cart has items, user wants to checkout new cart, clear pending order
-                            PendingOrderId = null;
-                        }
-                    }
-                    else
-                    {
-                        // If cart API fails, assume cart is empty and restore pending order
-                        return RedirectToPage("/CheckoutPage/Checkout", new { orderId = PendingOrderId.Value });
-                    }
-                }
-                catch
-                {
-                    // If error checking cart, restore pending order to be safe
-                    return RedirectToPage("/CheckoutPage/Checkout", new { orderId = PendingOrderId.Value });
-                }
+                
+                // Save this pending order ID to Session so it can be deleted later
+                var orderIdsList = new List<Guid> { OrderId.Value };
+                var orderIdsJson = JsonSerializer.Serialize(orderIdsList);
+                SetPendingCartOrderIds(orderIdsJson);
             }
             
             // Only clear TempData if this is a fresh GET request (not after POST with QR code)
@@ -375,10 +360,18 @@ namespace ShareItFE.Pages.CheckoutPage
             return Page();
         }
 
+        public IActionResult OnPostClearPendingCartOrders()
+        {
+            // Clear pending cart order IDs from session when payment is successful
+            SetPendingCartOrderIds(null);
+            return new JsonResult(new { success = true });
+        }
+
         public async Task<IActionResult> OnPostClearSession(string? transactionId)
         {
-            // Preserve PendingOrderId before clearing TempData
+            // Preserve important data before clearing TempData
             var preservedPendingOrderId = PendingOrderId;
+            // Note: PendingCartOrderIds is now in Session, not TempData, so it's automatically preserved
             
             // Clear TempData and messages when user closes QR modal
             TempData.Clear();
@@ -386,7 +379,7 @@ namespace ShareItFE.Pages.CheckoutPage
             ErrorMessage = null;
             QrCodeUrl = null;
             
-            // Restore PendingOrderId after clearing TempData
+            // Restore preserved data after clearing TempData
             if (preservedPendingOrderId.HasValue)
             {
                 PendingOrderId = preservedPendingOrderId;
@@ -542,7 +535,58 @@ namespace ShareItFE.Pages.CheckoutPage
                 }
                 else // Case 2: Processing a normal cart checkout
                 {
-                    // Clear pending order ID since this is a new checkout from cart
+                    // Check if there are pending orders from previous cart checkout
+                    // If yes, delete them before creating new orders
+                    var pendingCartOrderIds = GetPendingCartOrderIds();
+                    
+                    if (!string.IsNullOrEmpty(pendingCartOrderIds))
+                    {
+                        try
+                        {
+                            var pendingOrderIdList = JsonSerializer.Deserialize<List<Guid>>(pendingCartOrderIds);
+                            
+                            if (pendingOrderIdList != null && pendingOrderIdList.Any())
+                            {
+                                foreach (var pendingOrderId in pendingOrderIdList)
+                                {
+                                    try
+                                    {
+                                        // Step 1: Cancel pending order (must cancel before delete)
+                                        var cancelResponse = await client.PutAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}/cancel", null);
+                                        
+                                        if (cancelResponse.IsSuccessStatusCode)
+                                        {
+                                            // Step 2: Delete the cancelled order permanently
+                                            var deleteResponse = await client.DeleteAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}");
+                                            
+                                            if (!deleteResponse.IsSuccessStatusCode)
+                                            {
+                                                var deleteError = await deleteResponse.Content.ReadAsStringAsync();
+                                                Console.WriteLine($"[WARNING] Could not delete order {pendingOrderId}: {deleteError}");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            var errorContent = await cancelResponse.Content.ReadAsStringAsync();
+                                            Console.WriteLine($"[WARNING] Could not cancel pending order {pendingOrderId}: {errorContent}");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"[ERROR] Failed to process pending order {pendingOrderId}: {ex.Message}");
+                                        // Continue with other orders even if one fails
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ERROR] Could not parse pending order IDs: {ex.Message}");
+                        }
+                    }
+                    
+                    // Clear pending order IDs from session after processing
+                    SetPendingCartOrderIds(null);
                     PendingOrderId = null;
                     
                     // Load discount from session before creating checkout request
@@ -587,6 +631,10 @@ namespace ShareItFE.Pages.CheckoutPage
                     }
                     orderIdsToProcess.AddRange(createdOrdersFromCart.Select(o => o.Id));
                     totalAmountForPayment = createdOrdersFromCart.Sum(o => o.TotalAmount);
+                    
+                    // Save new pending cart order IDs for future cleanup if needed
+                    var orderIdsJson = JsonSerializer.Serialize(orderIdsToProcess);
+                    SetPendingCartOrderIds(orderIdsJson);
                 }
 
                 // Proceed with payment for the order(s) identified in orderIdsToProcess
@@ -682,6 +730,8 @@ namespace ShareItFE.Pages.CheckoutPage
                             
                             // Preserve HasRequiredProfileInfo state
                             HasRequiredProfileInfo = currentHasRequiredInfo;
+                            
+                            // Note: PendingCartOrderIds is now in Session, automatically persists
                             
                             await OnGetAsync();
                             return Page();

@@ -534,7 +534,8 @@
                         console.log('Error reloading notifications:', e);
                     }
                     
-                    // Redirect to order history to prevent creating duplicate pending orders
+                    // Redirect to order history after closing QR modal
+                    // PendingCartOrderIds is now stored in Session, so it won't be lost on redirect
                     setTimeout(() => {
                         window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
                     }, 500);
@@ -568,6 +569,19 @@
 
                             if (status === "completed") {
                                 clearInterval(checkStatusInterval);
+                                
+                                // Clear pending cart order IDs from session since payment is successful
+                                try {
+                                    await fetch('/CheckoutPage/Checkout?handler=ClearPendingCartOrders', {
+                                        method: 'POST',
+                                        headers: {
+                                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                                        }
+                                    });
+                                } catch (e) {
+                                    console.log('Could not clear pending cart orders:', e);
+                                }
+                                
                                 alert("Payment successful!");
                                 // Chuyển hướng đến trang lịch sử đơn hàng sau khi thanh toán thành công
                                 window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
