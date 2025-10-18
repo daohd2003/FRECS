@@ -35,15 +35,20 @@ namespace Services.CustomerDashboardServices
             var (currentStart, currentEnd, previousStart, previousEnd) = GetPeriodDates(now, period);
 
             // Get all customer orders with Items, Product, and Category included
-            var customerOrders = await GetCustomerOrdersWithDetailsAsync(customerId);
+            var allCustomerOrders = await GetCustomerOrdersWithDetailsAsync(customerId);
+            
+            // Filter out pending and cancelled orders for spending calculations
+            var confirmedOrders = allCustomerOrders
+                .Where(o => o.Status != OrderStatus.pending && o.Status != OrderStatus.cancelled)
+                .ToList();
 
-            // Current period orders
-            var currentOrders = customerOrders
+            // Current period confirmed orders
+            var currentOrders = confirmedOrders
                 .Where(o => o.CreatedAt >= currentStart && o.CreatedAt <= currentEnd)
                 .ToList();
 
-            // Previous period orders
-            var previousOrders = customerOrders
+            // Previous period confirmed orders
+            var previousOrders = confirmedOrders
                 .Where(o => o.CreatedAt >= previousStart && o.CreatedAt < previousEnd)
                 .ToList();
 
@@ -72,9 +77,9 @@ namespace Services.CustomerDashboardServices
                 ? ((currentPenaltyPaid - previousPenaltyPaid) / previousPenaltyPaid) * 100
                 : (currentPenaltyPaid > 0 ? 100 : 0);
 
-            // Total amounts all time - broken down by type
-            var totalRentalPurchaseAllTime = customerOrders.Sum(o => o.Subtotal - o.DiscountAmount);
-            var totalDepositedAllTime = customerOrders.Sum(o => o.TotalDeposit); // Total deposits paid by customer
+            // Total amounts all time - broken down by type (exclude pending/cancelled orders)
+            var totalRentalPurchaseAllTime = confirmedOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+            var totalDepositedAllTime = confirmedOrders.Sum(o => o.TotalDeposit); // Total deposits paid by customer
             var totalPenaltiesAllTime = await GetTotalPenaltiesAllTimeAsync(customerId);
 
             // Most Rented Category (from returned orders in current period)
@@ -161,9 +166,11 @@ namespace Services.CustomerDashboardServices
             var now = DateTimeHelper.GetVietnamTime();
             var (startDate, endDate) = GetCurrentPeriodRange(now, period);
 
-            var customerOrders = await GetCustomerOrdersWithDetailsAsync(customerId);
-            var filteredOrders = customerOrders
-                .Where(o => o.CreatedAt >= startDate && o.CreatedAt <= endDate)
+            var allCustomerOrders = await GetCustomerOrdersWithDetailsAsync(customerId);
+            // Filter out pending and cancelled orders for spending trend
+            var filteredOrders = allCustomerOrders
+                .Where(o => o.Status != OrderStatus.pending && o.Status != OrderStatus.cancelled &&
+                           o.CreatedAt >= startDate && o.CreatedAt <= endDate)
                 .ToList();
 
             var trendData = new List<SpendingTrendDto>();
