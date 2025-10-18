@@ -318,7 +318,7 @@ namespace Services.CartServices
             return true;
         }
 
-        public async Task<(bool success, int addedCount, int issuesCount)> AddOrderItemsToCartAsync(Guid customerId, Guid orderId)
+        public async Task<(bool success, int addedCount, int issuesCount)> AddOrderItemsToCartAsync(Guid customerId, Guid orderId, bool preserveDates = false)
         {
             // Get order with items
             var order = await _orderRepository.GetOrderWithItemsAsync(orderId);
@@ -390,6 +390,32 @@ namespace Services.CartServices
                     adjustedCount++;
                 }
 
+                // Determine start date based on preserveDates flag
+                DateTime? startDate = null;
+                DateTime? endDate = null;
+                
+                if (orderItem.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                {
+                    if (preserveDates && order.RentalStart.HasValue)
+                    {
+                        // Pay Now: Use original order's rental dates
+                        startDate = order.RentalStart.Value.Date;
+                        if (orderItem.RentalDays.HasValue)
+                        {
+                            endDate = startDate.Value.AddDays(orderItem.RentalDays.Value);
+                        }
+                    }
+                    else
+                    {
+                        // Rent Again: Set start date to tomorrow (user can adjust in cart)
+                        startDate = DateTime.UtcNow.Date.AddDays(1);
+                        if (orderItem.RentalDays.HasValue)
+                        {
+                            endDate = startDate.Value.AddDays(orderItem.RentalDays.Value);
+                        }
+                    }
+                }
+
                 var cartItem = new CartItem
                 {
                     Id = Guid.NewGuid(),
@@ -398,8 +424,8 @@ namespace Services.CartServices
                     Quantity = quantityToAdd,
                     TransactionType = orderItem.TransactionType,
                     RentalDays = orderItem.RentalDays,
-                    StartDate = null, // User will set this later
-                    EndDate = null
+                    StartDate = startDate,
+                    EndDate = endDate
                 };
 
                 await _cartRepository.AddCartItemAsync(cartItem);

@@ -63,24 +63,24 @@ namespace ShareItFE.Pages
             // Handle VNPay payment status from callback
             if (!string.IsNullOrEmpty(paymentStatus))
             {
-                // Clear any existing TempData messages to prevent showing old toast messages
-                TempData.Remove("SuccessMessage");
-                TempData.Remove("ErrorMessage");
-                
+                // Set message in TempData
                 switch (paymentStatus.ToLower())
                 {
                     case "success":
-                        SuccessMessage = "Payment completed successfully! Your order has been confirmed.";
+                        TempData["SuccessMessage"] = "Payment completed successfully! Your order has been confirmed.";
                         break;
                     case "failed":
-                        ErrorMessage = !string.IsNullOrEmpty(vnp_Message) 
+                        TempData["ErrorMessage"] = !string.IsNullOrEmpty(vnp_Message) 
                             ? $"Payment failed: {vnp_Message}" 
                             : "Payment failed. Please try again.";
                         break;
                     case "error":
-                        ErrorMessage = "An error occurred during payment processing. Please contact support if this persists.";
+                        TempData["ErrorMessage"] = "An error occurred during payment processing. Please contact support if this persists.";
                         break;
                 }
+                
+                // Redirect to remove query string from URL (prevents message from reappearing on back navigation)
+                return RedirectToPage("/Profile", new { tab = tab, page = pageNum });
             }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

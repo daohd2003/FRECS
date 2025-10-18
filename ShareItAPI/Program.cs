@@ -68,6 +68,9 @@ using ShareItAPI.Middlewares;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using Services.CustomerDashboardServices;
+using Services.DepositServices;
+using Repositories.DepositRepositories;
 
 namespace ShareItAPI
 {
@@ -251,6 +254,9 @@ namespace ShareItAPI
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<ICustomerDashboardService, CustomerDashboardService>();
+            builder.Services.AddScoped<IDepositRepository, DepositRepository>();
+            builder.Services.AddScoped<IDepositService, DepositService>();
 
             builder.Services.AddAutoMapper(typeof(UserProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);

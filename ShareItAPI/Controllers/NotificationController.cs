@@ -91,5 +91,20 @@ namespace ShareItAPI.Controllers
             await _notificationService.NotifyOrderItemsUpdate(request.OrderId, request.UpdatedItemIds);
             return Ok(new ApiResponse<string>("Order items update notification sent", null));
         }*/
+
+        // POST: api/notification/transaction-failed?transactionId={guid}&userId={guid}
+        [HttpPost("transaction-failed")]
+        public async Task<IActionResult> NotifyTransactionFailed([FromQuery] Guid transactionId, [FromQuery] Guid userId)
+        {
+            try
+            {
+                await _notificationService.NotifyTransactionFailedByTransactionId(transactionId, userId);
+                return Ok(new ApiResponse<string>("Transaction failed notifications sent", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error sending notification: {ex.Message}", null));
+            }
+        }
     }
 }

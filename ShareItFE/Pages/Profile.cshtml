@@ -794,6 +794,15 @@
                     button.innerHTML = '<i class="bi bi-hourglass"></i> Processing...';
 
                     try {
+                        // Clear pending session before starting rent again flow
+                        await fetch('/CheckoutPage/Checkout?handler=ClearPendingSession', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        });
+
                         const headers = {
                             'Content-Type': 'application/json'
                         };
