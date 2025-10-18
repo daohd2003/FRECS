@@ -367,6 +367,16 @@ namespace ShareItFE.Pages.CheckoutPage
             return new JsonResult(new { success = true });
         }
 
+        /// <summary>
+        /// Clear PendingCartOrderIds session - used when starting a new flow like "Rent Again"
+        /// </summary>
+        [HttpPost]
+        public IActionResult OnPostClearPendingSession()
+        {
+            SetPendingCartOrderIds(null);
+            return new JsonResult(new { success = true });
+        }
+
         public async Task<IActionResult> OnPostClearSession(string? transactionId)
         {
             // Preserve important data before clearing TempData
