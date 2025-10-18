@@ -91,6 +91,7 @@ namespace BusinessObject.DTOs.RevenueDtos
         public string BankName { get; set; }
         public string AccountNumber { get; set; }
         public string AccountHolderName { get; set; }
+        public string? RoutingNumber { get; set; }
         public bool IsPrimary { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Last4Digits => AccountNumber?.Length >= 4 ? AccountNumber.Substring(AccountNumber.Length - 4) : AccountNumber;
@@ -101,6 +102,7 @@ namespace BusinessObject.DTOs.RevenueDtos
         public string BankName { get; set; }
         public string AccountNumber { get; set; }
         public string AccountHolderName { get; set; }
+        public string? RoutingNumber { get; set; }
         public bool SetAsPrimary { get; set; } = false;
     }
 }
