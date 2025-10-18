@@ -477,6 +477,15 @@
                         headers['Authorization'] = `Bearer ${accessToken}`;
                     }
 
+                    // Clear pending session before starting pay now flow
+                    await fetch('/CheckoutPage/Checkout?handler=ClearPendingSession', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                        }
+                    });
+
                     // Call rent-again API to clear cart and add order items (with preserveDates=true for Pay Now)
                     const response = await fetch(`@Model.ApiBaseUrl/cart/rent-again/${orderId}?preserveDates=true`, {
                         method: 'POST',
@@ -817,6 +826,15 @@
                         if (accessToken) {
                             headers['Authorization'] = `Bearer ${accessToken}`;
                         }
+
+                        // Clear pending session before starting rent again flow
+                        await fetch('/CheckoutPage/Checkout?handler=ClearPendingSession', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        });
 
                         const response = await fetch(`@Model.ApiBaseUrl/cart/rent-again/${orderId}`, {
                             method: 'POST',
