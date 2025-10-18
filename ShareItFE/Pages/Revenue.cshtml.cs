@@ -53,6 +53,13 @@ namespace ShareItFE.Pages
 
             // Determine user role
             UserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "customer";
+            
+            // Only providers can access revenue dashboard
+            if (!string.Equals(UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Access denied. Revenue dashboard is only available for providers.";
+                return RedirectToPage("/Index");
+            }
 
             try
             {

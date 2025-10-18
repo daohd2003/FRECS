@@ -2,19 +2,28 @@ using AutoMapper;
 using BusinessObject.DTOs.RevenueDtos;
 using BusinessObject.Enums;
 using BusinessObject.Models;
-using DataAccess;
-using Microsoft.EntityFrameworkCore;
+using Repositories.RevenueRepositories;
+using Repositories.TransactionRepositories;
+using Repositories.BankAccountRepositories;
 
 namespace Services.RevenueServices
 {
     public class RevenueService : IRevenueService
     {
-        private readonly ShareItDbContext _context;
+        private readonly IRevenueRepository _revenueRepository;
+        private readonly ITransactionRepository _transactionRepository;
+        private readonly IBankAccountRepository _bankAccountRepository;
         private readonly IMapper _mapper;
 
-        public RevenueService(ShareItDbContext context, IMapper mapper)
+        public RevenueService(
+            IRevenueRepository revenueRepository,
+            ITransactionRepository transactionRepository,
+            IBankAccountRepository bankAccountRepository,
+            IMapper mapper)
         {
-            _context = context;
+            _revenueRepository = revenueRepository;
+            _transactionRepository = transactionRepository;
+            _bankAccountRepository = bankAccountRepository;
             _mapper = mapper;
         }
 
@@ -46,35 +55,72 @@ namespace Services.RevenueServices
                     break;
             }
 
-            // Get orders for current and previous periods
-            var currentOrders = await GetOrdersInPeriod(userId, currentPeriodStart, currentPeriodEnd);
-            var previousOrders = await GetOrdersInPeriod(userId, previousPeriodStart, previousPeriodEnd);
+            // Get orders for current and previous periods (only returned for revenue calculation)
+            var currentReturnedOrders = await GetOrdersInPeriod(userId, currentPeriodStart, currentPeriodEnd);
+            var previousReturnedOrders = await GetOrdersInPeriod(userId, previousPeriodStart, previousPeriodEnd);
 
-            // Calculate stats
-            var currentRevenue = currentOrders.Sum(o => o.TotalAmount);
-            var previousRevenue = previousOrders.Sum(o => o.TotalAmount);
+            // Get ALL orders for status breakdown
+            var currentAllOrders = await _revenueRepository.GetAllOrdersInPeriodAsync(userId, currentPeriodStart, currentPeriodEnd);
+            var previousAllOrders = await _revenueRepository.GetAllOrdersInPeriodAsync(userId, previousPeriodStart, previousPeriodEnd);
+
+            // Filter valid orders (exclude pending and cancelled - not considered real orders)
+            var currentValidOrders = currentAllOrders
+                .Where(o => o.Status != OrderStatus.pending && o.Status != OrderStatus.cancelled)
+                .ToList();
+            var previousValidOrders = previousAllOrders
+                .Where(o => o.Status != OrderStatus.pending && o.Status != OrderStatus.cancelled)
+                .ToList();
+
+            // Calculate revenue (using ONLY returned orders) - Use Subtotal (excludes deposit)
+            var currentRevenue = currentReturnedOrders.Sum(o => o.Subtotal);
+            var previousRevenue = previousReturnedOrders.Sum(o => o.Subtotal);
             var revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
 
-            var currentOrderCount = currentOrders.Count;
-            var previousOrderCount = previousOrders.Count;
+            // Calculate order count (using valid orders - exclude pending and cancelled)
+            var currentOrderCount = currentValidOrders.Count;
+            var previousOrderCount = previousValidOrders.Count;
             var orderGrowth = previousOrderCount > 0 ? ((decimal)(currentOrderCount - previousOrderCount) / previousOrderCount) * 100 : 0;
 
-            var currentAvgOrderValue = currentOrderCount > 0 ? currentRevenue / currentOrderCount : 0;
-            var previousAvgOrderValue = previousOrderCount > 0 ? previousRevenue / previousOrderCount : 0;
+            // Calculate average order value (using returned orders for accuracy)
+            var currentReturnedCount = currentReturnedOrders.Count;
+            var previousReturnedCount = previousReturnedOrders.Count;
+            var currentAvgOrderValue = currentReturnedCount > 0 ? currentRevenue / currentReturnedCount : 0;
+            var previousAvgOrderValue = previousReturnedCount > 0 ? previousRevenue / previousReturnedCount : 0;
             var avgOrderValueGrowth = previousAvgOrderValue > 0 ? ((currentAvgOrderValue - previousAvgOrderValue) / previousAvgOrderValue) * 100 : 0;
 
-            // Generate chart data
+            // Calculate platform commission breakdown (Rental: 20%, Purchase: 10%)
+            var currentCommissionBreakdown = CalculateCommissionBreakdown(currentReturnedOrders);
+            var previousCommissionBreakdown = CalculateCommissionBreakdown(previousReturnedOrders);
+            
+            var currentPlatformFee = currentCommissionBreakdown.TotalFee;
+            var previousPlatformFee = previousCommissionBreakdown.TotalFee;
+            var platformFeeGrowth = previousPlatformFee > 0 ? ((currentPlatformFee - previousPlatformFee) / previousPlatformFee) * 100 : 0;
+            
+            // Get penalty revenue (from RentalViolations with status CUSTOMER_ACCEPTED or RESOLVED)
+            var currentPenaltyRevenue = await _revenueRepository.GetPenaltyRevenueInPeriodAsync(userId, currentPeriodStart, currentPeriodEnd);
+            var previousPenaltyRevenue = await _revenueRepository.GetPenaltyRevenueInPeriodAsync(userId, previousPeriodStart, previousPeriodEnd);
+            
+            // Calculate net revenue (after platform fees + penalty revenue)
+            var currentNetRevenueFromOrders = currentRevenue - currentPlatformFee;
+            var previousNetRevenueFromOrders = previousRevenue - previousPlatformFee;
+            
+            var currentNetRevenue = currentNetRevenueFromOrders + currentPenaltyRevenue;
+            var previousNetRevenue = previousNetRevenueFromOrders + previousPenaltyRevenue;
+            var netRevenueGrowth = previousNetRevenue > 0 ? ((currentNetRevenue - previousNetRevenue) / previousNetRevenue) * 100 : 0;
+
+            // Generate chart data (using only returned orders)
             var chartData = await GenerateChartData(userId, currentPeriodStart, currentPeriodEnd, period);
 
-            // Generate status breakdown
-            var statusBreakdown = currentOrders
+            // Generate status breakdown (using ALL orders to show all statuses)
+            var totalAllOrders = currentAllOrders.Count;
+            var statusBreakdown = currentAllOrders
                 .GroupBy(o => o.Status)
                 .Select(g => new OrderStatusBreakdownDto
                 {
                     Status = g.Key.ToString(),
                     Count = g.Count(),
-                    Percentage = currentOrderCount > 0 ? (decimal)g.Count() / currentOrderCount * 100 : 0,
-                    Revenue = g.Sum(o => o.TotalAmount)
+                    Percentage = totalAllOrders > 0 ? (decimal)g.Count() / totalAllOrders * 100 : 0,
+                    Revenue = g.Key == OrderStatus.returned ? g.Sum(o => o.Subtotal) : 0 // Only count revenue for returned status (excludes deposit)
                 })
                 .ToList();
 
@@ -89,6 +135,25 @@ namespace Services.RevenueServices
                 AverageOrderValue = currentAvgOrderValue,
                 PreviousAverageOrderValue = previousAvgOrderValue,
                 AvgOrderValueGrowthPercentage = avgOrderValueGrowth,
+                
+                // Net Revenue & Platform Fee
+                NetRevenue = currentNetRevenue,
+                PreviousNetRevenue = previousNetRevenue,
+                NetRevenueGrowthPercentage = netRevenueGrowth,
+                NetRevenueFromOrders = currentNetRevenueFromOrders,
+                NetRevenueFromPenalties = currentPenaltyRevenue,
+                PreviousNetRevenueFromOrders = previousNetRevenueFromOrders,
+                PreviousNetRevenueFromPenalties = previousPenaltyRevenue,
+                PlatformFee = currentPlatformFee,
+                PreviousPlatformFee = previousPlatformFee,
+                PlatformFeeGrowthPercentage = platformFeeGrowth,
+                
+                // Breakdown by transaction type
+                RentalRevenue = currentCommissionBreakdown.RentalRevenue,
+                PurchaseRevenue = currentCommissionBreakdown.PurchaseRevenue,
+                RentalFee = currentCommissionBreakdown.RentalFee,
+                PurchaseFee = currentCommissionBreakdown.PurchaseFee,
+                
                 ChartData = chartData,
                 StatusBreakdown = statusBreakdown
             };
@@ -96,34 +161,21 @@ namespace Services.RevenueServices
 
         public async Task<PayoutSummaryDto> GetPayoutSummaryAsync(Guid userId)
         {
-            // Mock implementation - replace with actual logic
-            var totalEarnings = await _context.Orders
-                .Where(o => o.ProviderId == userId && o.Status == OrderStatus.returned)
-                .SumAsync(o => o.TotalAmount);
-
-            var totalPayouts = await _context.Transactions
-                .Where(t => t.CustomerId == userId && t.Content == "payout")
-                .SumAsync(t => t.Amount);
-
+            var totalEarnings = await _revenueRepository.GetTotalEarningsAsync(userId);
+            var totalPayouts = await _transactionRepository.GetTotalPayoutsByUserAsync(userId);
             var currentBalance = totalEarnings - totalPayouts;
-            var pendingAmount = await _context.Orders
-                .Where(o => o.ProviderId == userId && o.Status == OrderStatus.returned)
-                .SumAsync(o => o.TotalAmount);
+            var pendingAmount = await _revenueRepository.GetPendingAmountAsync(userId);
 
-            var recentPayouts = await _context.Transactions
-                .Where(t => t.CustomerId == userId && t.Content == "payout")
-                .OrderByDescending(t => t.TransactionDate)
-                .Take(5)
-                .Select(t => new PayoutHistoryDto
-                {
-                    Id = t.Id,
-                    Amount = t.Amount,
-                    Date = t.TransactionDate,
-                    Status = "completed",
-                    BankAccountLast4 = "****",
-                    TransactionId = t.Id.ToString()
-                })
-                .ToListAsync();
+            var recentTransactions = await _transactionRepository.GetRecentPayoutsAsync(userId, 5);
+            var recentPayouts = recentTransactions.Select(t => new PayoutHistoryDto
+            {
+                Id = t.Id,
+                Amount = t.Amount,
+                Date = t.TransactionDate,
+                Status = "completed",
+                BankAccountLast4 = "****",
+                TransactionId = t.Id.ToString()
+            }).ToList();
 
             return new PayoutSummaryDto
             {
@@ -138,30 +190,22 @@ namespace Services.RevenueServices
 
         public async Task<List<PayoutHistoryDto>> GetPayoutHistoryAsync(Guid userId, int page = 1, int pageSize = 10)
         {
-            return await _context.Transactions
-                .Where(t => t.CustomerId == userId && t.Content.StartsWith("Thanh to�n")) //t.Content == "payout"
-                .OrderByDescending(t => t.TransactionDate)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(t => new PayoutHistoryDto
-                {
-                    Id = t.Id,
-                    Amount = t.Amount,
-                    Date = t.TransactionDate,
-                    Status = "completed",
-                    BankAccountLast4 = "****",
-                    TransactionId = t.Id.ToString()
-                })
-                .ToListAsync();
+            var transactions = await _transactionRepository.GetPayoutHistoryAsync(userId, page, pageSize);
+            
+            return transactions.Select(t => new PayoutHistoryDto
+            {
+                Id = t.Id,
+                Amount = t.Amount,
+                Date = t.TransactionDate,
+                Status = "completed",
+                BankAccountLast4 = "****",
+                TransactionId = t.Id.ToString()
+            }).ToList();
         }
 
         public async Task<List<BankAccountDto>> GetBankAccountsAsync(Guid userId)
         {
-            var bankAccounts = await _context.BankAccounts
-                .Include(ba => ba.Provider)
-                .ThenInclude(p => p.Profile)
-                .Where(ba => ba.ProviderId == userId)
-                .ToListAsync();
+            var bankAccounts = await _bankAccountRepository.GetBankAccountsWithProviderAsync(userId);
 
             return bankAccounts.Select(ba => new BankAccountDto
             {
@@ -187,22 +231,17 @@ namespace Services.RevenueServices
 
             if (dto.SetAsPrimary)
             {
-                // Remove primary status from other accounts
-                await _context.BankAccounts
-                    .Where(ba => ba.ProviderId == userId && ba.IsPrimary)
-                    .ExecuteUpdateAsync(ba => ba.SetProperty(b => b.IsPrimary, false));
+                await _bankAccountRepository.RemovePrimaryStatusAsync(userId);
             }
 
-            _context.BankAccounts.Add(bankAccount);
-            await _context.SaveChangesAsync();
+            await _bankAccountRepository.AddAsync(bankAccount);
 
             return _mapper.Map<BankAccountDto>(bankAccount);
         }
 
         public async Task<bool> UpdateBankAccountAsync(Guid userId, Guid accountId, CreateBankAccountDto dto)
         {
-            var bankAccount = await _context.BankAccounts
-                .FirstOrDefaultAsync(ba => ba.Id == accountId && ba.ProviderId == userId);
+            var bankAccount = await _bankAccountRepository.GetByIdAndProviderAsync(accountId, userId);
 
             if (bankAccount == null) return false;
 
@@ -211,50 +250,39 @@ namespace Services.RevenueServices
 
             if (dto.SetAsPrimary && !bankAccount.IsPrimary)
             {
-                await _context.BankAccounts
-                    .Where(ba => ba.ProviderId == userId && ba.IsPrimary)
-                    .ExecuteUpdateAsync(ba => ba.SetProperty(b => b.IsPrimary, false));
-
+                await _bankAccountRepository.RemovePrimaryStatusAsync(userId);
                 bankAccount.IsPrimary = true;
             }
 
-            await _context.SaveChangesAsync();
+            await _bankAccountRepository.UpdateAsync(bankAccount);
             return true;
         }
 
         public async Task<bool> DeleteBankAccountAsync(Guid userId, Guid accountId)
         {
-            var bankAccount = await _context.BankAccounts
-                .FirstOrDefaultAsync(ba => ba.Id == accountId && ba.ProviderId == userId);
+            var bankAccount = await _bankAccountRepository.GetByIdAndProviderAsync(accountId, userId);
 
             if (bankAccount == null) return false;
 
-            _context.BankAccounts.Remove(bankAccount);
-            await _context.SaveChangesAsync();
+            await _bankAccountRepository.DeleteAsync(accountId);
             return true;
         }
 
         public async Task<bool> SetPrimaryBankAccountAsync(Guid userId, Guid accountId)
         {
-            var bankAccount = await _context.BankAccounts
-                .FirstOrDefaultAsync(ba => ba.Id == accountId && ba.ProviderId == userId);
+            var bankAccount = await _bankAccountRepository.GetByIdAndProviderAsync(accountId, userId);
 
             if (bankAccount == null) return false;
 
-            // Remove primary status from all accounts
-            await _context.BankAccounts
-                .Where(ba => ba.ProviderId == userId)
-                .ExecuteUpdateAsync(ba => ba.SetProperty(b => b.IsPrimary, false));
+            await _bankAccountRepository.RemovePrimaryStatusAsync(userId);
 
-            // Set new primary
             bankAccount.IsPrimary = true;
-            await _context.SaveChangesAsync();
+            await _bankAccountRepository.UpdateAsync(bankAccount);
             return true;
         }
 
         public async Task<bool> RequestPayoutAsync(Guid userId, decimal amount)
         {
-            // Mock implementation - replace with actual payout logic
             var transaction = new Transaction
             {
                 Id = Guid.NewGuid(),
@@ -265,16 +293,13 @@ namespace Services.RevenueServices
                 TransactionDate = DateTime.UtcNow
             };
 
-            _context.Transactions.Add(transaction);
-            await _context.SaveChangesAsync();
+            await _transactionRepository.AddTransactionAsync(transaction);
             return true;
         }
 
         private async Task<List<Order>> GetOrdersInPeriod(Guid userId, DateTime start, DateTime end)
         {
-            return await _context.Orders
-                .Where(o => o.ProviderId == userId && o.CreatedAt >= start && o.CreatedAt < end)
-                .ToListAsync();
+            return await _revenueRepository.GetOrdersInPeriodAsync(userId, start, end);
         }
 
         private async Task<List<RevenueChartDataDto>> GenerateChartData(Guid userId, DateTime start, DateTime end, string period)
@@ -310,7 +335,7 @@ namespace Services.RevenueServices
                 chartData.Add(new RevenueChartDataDto
                 {
                     Period = periodLabel,
-                    Revenue = periodOrders.Sum(o => o.TotalAmount),
+                    Revenue = periodOrders.Sum(o => o.Subtotal),  // Use Subtotal (excludes deposit)
                     OrderCount = periodOrders.Count(),
                     Date = current
                 });
@@ -320,5 +345,61 @@ namespace Services.RevenueServices
 
             return chartData;
         }
+
+        /// <summary>
+        /// Calculate platform commission breakdown from OrderItems
+        /// Rental: 20% commission, Purchase: 10% commission
+        /// </summary>
+        private CommissionBreakdown CalculateCommissionBreakdown(List<Order> orders)
+        {
+            decimal rentalRevenue = 0;
+            decimal purchaseRevenue = 0;
+
+            foreach (var order in orders)
+            {
+                foreach (var item in order.Items)
+                {
+                    if (item.TransactionType == TransactionType.rental)
+                    {
+                        // Rental: DailyRate × RentalDays × Quantity
+                        var itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
+                        rentalRevenue += itemRevenue;
+                    }
+                    else if (item.TransactionType == TransactionType.purchase)
+                    {
+                        // Purchase: DailyRate × Quantity (DailyRate is used as unit price for purchase)
+                        var itemRevenue = item.DailyRate * item.Quantity;
+                        purchaseRevenue += itemRevenue;
+                    }
+                }
+            }
+
+            const decimal RENTAL_COMMISSION_RATE = 0.20m;  // 20%
+            const decimal PURCHASE_COMMISSION_RATE = 0.10m; // 10%
+
+            var rentalFee = rentalRevenue * RENTAL_COMMISSION_RATE;
+            var purchaseFee = purchaseRevenue * PURCHASE_COMMISSION_RATE;
+
+            return new CommissionBreakdown
+            {
+                RentalRevenue = rentalRevenue,
+                PurchaseRevenue = purchaseRevenue,
+                RentalFee = rentalFee,
+                PurchaseFee = purchaseFee,
+                TotalFee = rentalFee + purchaseFee
+            };
+        }
+    }
+
+    /// <summary>
+    /// Helper class for commission calculation
+    /// </summary>
+    internal class CommissionBreakdown
+    {
+        public decimal RentalRevenue { get; set; }
+        public decimal PurchaseRevenue { get; set; }
+        public decimal RentalFee { get; set; }
+        public decimal PurchaseFee { get; set; }
+        public decimal TotalFee { get; set; }
     }
 }

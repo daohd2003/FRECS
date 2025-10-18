@@ -238,57 +238,47 @@ namespace ShareItAPI.Controllers
             {
                 var providerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 
-                // Get product để check ownership và business rules
+                // Get product để check ownership
                 var product = await _service.GetByIdAsync(id);
                 if (product == null) 
-                    return NotFound("Product not found.");
+                    return NotFound(new ApiResponse<string>("Product not found.", null));
                 
                 // Check ownership
                 if (product.ProviderId != providerId)
                     return Forbid("You can only delete your own products.");
                 
-                // Kiểm tra xem product có tồn tại trong OrderItem không
+                // Kiểm tra xem product có references không
                 var hasOrderItems = await _service.HasOrderItemsAsync(id);
+                var hasTransactions = product.RentCount > 0 || product.BuyCount > 0;
                 
-                // Business logic cho delete - implement smart delete logic
-                string action;
+                // TẤT CẢ sản phẩm khi xóa đều chuyển sang archived
+                product.AvailabilityStatus = "archived";
+                var updateResult = await _service.UpdateAsync(product);
+                
+                if (!updateResult)
+                    return BadRequest(new ApiResponse<string>("Failed to archive product.", null));
+                
+                // Tạo message chi tiết nếu có references
                 string message;
-                
-                // Kiểm tra điều kiện xóa: không có trong OrderItem và cả RentCount và BuyCount đều = 0
-                if (hasOrderItems || product.RentCount > 0 || product.BuyCount > 0)
+                if (hasOrderItems || hasTransactions)
                 {
-                    // Có lịch sử giao dịch - chỉ chuyển status thành archived
-                    product.AvailabilityStatus = "archived";
-                    var updateResult = await _service.UpdateAsync(product);
-                    
-                    if (!updateResult)
-                        return BadRequest(new ApiResponse<string>("Failed to archive product.", null));
-                    
-                    action = "Archived";
                     var reasons = new List<string>();
-                    if (hasOrderItems) reasons.Add("exists in orders");
-                    if (product.RentCount > 0) reasons.Add($"{product.RentCount} rental transactions");
-                    if (product.BuyCount > 0) reasons.Add($"{product.BuyCount} purchase transactions");
+                    if (hasOrderItems) reasons.Add("has order history");
+                    if (product.RentCount > 0) reasons.Add($"{product.RentCount} rental(s)");
+                    if (product.BuyCount > 0) reasons.Add($"{product.BuyCount} purchase(s)");
                     
-                    message = $"Product archived due to: {string.Join(", ", reasons)}.";
+                    message = $"Product archived successfully. Reason: {string.Join(", ", reasons)}.";
                 }
                 else
                 {
-                    // Không có lịch sử giao dịch - có thể xóa vĩnh viễn
-                    var deleteResult = await _service.DeleteAsync(id);
-                    
-                    if (!deleteResult)
-                        return BadRequest(new ApiResponse<string>("Failed to delete product.", null));
-                    
-                    action = "Permanently Deleted";
-                    message = "Product has been permanently removed.";
+                    message = "Product archived successfully.";
                 }
                 
-                return Ok(new ApiResponse<string>(message, action));
+                return Ok(new ApiResponse<string>(message, "Archived"));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+                return StatusCode(500, new ApiResponse<string>($"Error: {ex.Message}", null));
             }
         }
 

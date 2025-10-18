@@ -13,5 +13,8 @@ namespace Repositories.BankAccountRepositories
         Task<BankAccount?> GetPrimaryAccountByProviderAsync(Guid providerId);
         Task<IEnumerable<BankAccount>> GetAllByProviderIdAsync(Guid providerId);
         Task<bool> HasMultiplePrimaryAccounts(Guid providerId);
+        Task<List<BankAccount>> GetBankAccountsWithProviderAsync(Guid providerId);
+        Task RemovePrimaryStatusAsync(Guid providerId);
+        Task<BankAccount?> GetByIdAndProviderAsync(Guid accountId, Guid providerId);
     }
 }

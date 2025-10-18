@@ -41,6 +41,7 @@ using Repositories.RentalViolationRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
+using Repositories.RevenueRepositories;
 using Services.AI;
 using Services.Authentication;
 using Services.CartServices;
@@ -321,6 +322,7 @@ namespace ShareItAPI
             builder.Services.AddScoped<IConversationService, ConversationService>();
 
             // Register Revenue Services
+            builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
             builder.Services.AddScoped<IRevenueService, RevenueService>();
 
             // Register DiscountCode services

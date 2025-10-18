@@ -130,7 +130,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600">Revenue</p>
-                            <p class="text-2xl font-bold text-gray-900">$@Model.RevenueStats.CurrentPeriodRevenue.ToString("N2")</p>
+                            <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.CurrentPeriodRevenue.ToString("N0")₫</p>
                         </div>
                         <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                             <i data-lucide="dollar-sign" class="h-6 w-6 text-green-600"></i>
@@ -148,6 +148,9 @@
                             <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
                         }
                         <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <span class="text-xs text-gray-500">From completed orders</span>
                     </div>
                 </div>
 
@@ -175,59 +178,84 @@
                         }
                         <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
                     </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <span class="text-xs text-gray-500">Exclude pending & cancelled</span>
+                    </div>
                 </div>
 
                 @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                 {
-                    <!-- Active Listings (Provider) -->
+                    <!-- Net Revenue (Provider) -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Active Listings</p>
-                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.ActiveListings</p>
+                                <p class="text-sm font-medium text-gray-600">Net Revenue</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.NetRevenue.ToString("N0")₫</p>
                             </div>
-                            <div class="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="package" class="h-6 w-6 text-purple-600"></i>
+                            <div class="h-12 w-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="wallet" class="h-6 w-6 text-emerald-600"></i>
                             </div>
                         </div>
                         <div class="mt-4 flex items-center">
-                            @if (Model.RevenueStats.ActiveListingsGrowthPercentage >= 0)
+                            @if (Model.RevenueStats.NetRevenueGrowthPercentage >= 0)
                             {
                                 <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
-                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.ActiveListingsGrowthPercentage.ToString("F1")%</span>
+                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
                             }
                             else
                             {
                                 <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
-                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.ActiveListingsGrowthPercentage.ToString("F1")%</span>
+                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
                             }
                             <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                            <span class="text-xs text-gray-500 block mb-2">After platform fees</span>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">From orders:</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromOrders.ToString("N0")₫</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">From penalties:</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromPenalties.ToString("N0")₫</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Customer Rating (Provider) -->
+                    <!-- Platform Fee (Provider) -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Customer Rating</p>
-                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.CustomerRating.ToString("F1")<span class="text-lg text-gray-500">/5.0</span></p>
+                                <p class="text-sm font-medium text-gray-600">Platform Fee</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.PlatformFee.ToString("N0")₫</p>
                             </div>
-                            <div class="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="star" class="h-6 w-6 text-yellow-600"></i>
+                            <div class="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="percent" class="h-6 w-6 text-orange-600"></i>
                             </div>
                         </div>
                         <div class="mt-4 flex items-center">
-                            @if (Model.RevenueStats.CustomerRatingGrowthPercentage >= 0)
+                            @if (Model.RevenueStats.PlatformFeeGrowthPercentage >= 0)
                             {
                                 <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
-                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.CustomerRatingGrowthPercentage.ToString("F1")%</span>
+                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.PlatformFeeGrowthPercentage.ToString("F1")%</span>
                             }
                             else
                             {
                                 <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
-                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.CustomerRatingGrowthPercentage.ToString("F1")%</span>
+                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.PlatformFeeGrowthPercentage.ToString("F1")%</span>
                             }
                             <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                        </div>
+                        <!-- Breakdown Detail -->
+                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">Rental fee (20%):</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.RentalFee.ToString("N0")₫</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">Sales fee (10%):</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.PurchaseFee.ToString("N0")₫</span>
+                            </div>
                         </div>
                     </div>
                 }
@@ -238,7 +266,7 @@
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium text-gray-600">Total Spent</p>
-                                <p class="text-2xl font-bold text-gray-900">$@Model.RevenueStats.TotalSpent.ToString("N2")</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.TotalSpent.ToString("N0")₫</p>
                             </div>
                             <div class="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
                                 <i data-lucide="credit-card" class="h-6 w-6 text-purple-600"></i>
@@ -307,7 +335,7 @@
                         <h3 class="text-lg font-semibold text-gray-900">Current Balance</h3>
                         <i data-lucide="wallet" class="h-6 w-6 text-green-600"></i>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mb-2">$@Model.PayoutSummary.CurrentBalance.ToString("N2")</p>
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.CurrentBalance.ToString("N0")₫</p>
                     <p class="text-sm text-gray-600">Available for payout</p>
                     @if (Model.PayoutSummary.CurrentBalance > 0)
                     {
@@ -326,7 +354,7 @@
                         <h3 class="text-lg font-semibold text-gray-900">Total Earnings</h3>
                         <i data-lucide="trending-up" class="h-6 w-6 text-blue-600"></i>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mb-2">$@Model.PayoutSummary.TotalEarnings.ToString("N2")</p>
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.TotalEarnings.ToString("N0")₫</p>
                     <p class="text-sm text-gray-600">Lifetime earnings</p>
                 </div>
 
@@ -335,7 +363,7 @@
                         <h3 class="text-lg font-semibold text-gray-900">Total Payouts</h3>
                         <i data-lucide="arrow-down-left" class="h-6 w-6 text-purple-600"></i>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mb-2">$@Model.PayoutSummary.TotalPayouts.ToString("N2")</p>
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.TotalPayouts.ToString("N0")₫</p>
                     <p class="text-sm text-gray-600">Total paid out</p>
                 </div>
             </div>
@@ -462,7 +490,7 @@
                                             @payout.Date.ToString("MMM dd, yyyy")
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            $@payout.Amount.ToString("N2")
+                                            @payout.Amount.ToString("N0")₫
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             ****@payout.BankAccountLast4

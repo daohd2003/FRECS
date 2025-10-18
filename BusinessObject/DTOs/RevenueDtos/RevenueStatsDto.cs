@@ -15,13 +15,27 @@ namespace BusinessObject.DTOs.RevenueDtos
         public decimal PreviousAverageOrderValue { get; set; }
         public decimal AvgOrderValueGrowthPercentage { get; set; }
         
-        // New metrics for Provider
-        public int ActiveListings { get; set; }
-        public int PreviousActiveListings { get; set; }
-        public decimal ActiveListingsGrowthPercentage { get; set; }
-        public decimal CustomerRating { get; set; }
-        public decimal PreviousCustomerRating { get; set; }
-        public decimal CustomerRatingGrowthPercentage { get; set; }
+        // Net Revenue (After platform fees)
+        public decimal NetRevenue { get; set; }
+        public decimal PreviousNetRevenue { get; set; }
+        public decimal NetRevenueGrowthPercentage { get; set; }
+        
+        // Net Revenue Breakdown
+        public decimal NetRevenueFromOrders { get; set; }
+        public decimal NetRevenueFromPenalties { get; set; }
+        public decimal PreviousNetRevenueFromOrders { get; set; }
+        public decimal PreviousNetRevenueFromPenalties { get; set; }
+        
+        // Platform Commission Fee
+        public decimal PlatformFee { get; set; }
+        public decimal PreviousPlatformFee { get; set; }
+        public decimal PlatformFeeGrowthPercentage { get; set; }
+        
+        // Breakdown by transaction type
+        public decimal RentalRevenue { get; set; }
+        public decimal PurchaseRevenue { get; set; }
+        public decimal RentalFee { get; set; }  // 20%
+        public decimal PurchaseFee { get; set; }  // 10%
         
         // New metrics for Customer
         public decimal TotalSpent { get; set; }

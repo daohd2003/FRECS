@@ -87,5 +87,37 @@ namespace Repositories.TransactionRepositories
                 Providers = providersWithBankInfo
             };
         }
+
+        public async Task<decimal> GetTotalPayoutsByUserAsync(Guid userId)
+        {
+            return await _context.Transactions
+                .Where(t => t.CustomerId == userId && t.Content == "payout")
+                .SumAsync(t => t.Amount);
+        }
+
+        public async Task<List<Transaction>> GetPayoutHistoryAsync(Guid userId, int page, int pageSize)
+        {
+            return await _context.Transactions
+                .Where(t => t.CustomerId == userId && t.Content.StartsWith("Thanh toán"))
+                .OrderByDescending(t => t.TransactionDate)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
+        public async Task<List<Transaction>> GetRecentPayoutsAsync(Guid userId, int count)
+        {
+            return await _context.Transactions
+                .Where(t => t.CustomerId == userId && t.Content == "payout")
+                .OrderByDescending(t => t.TransactionDate)
+                .Take(count)
+                .ToListAsync();
+        }
+
+        public async Task AddTransactionAsync(Transaction transaction)
+        {
+            _context.Transactions.Add(transaction);
+            await _context.SaveChangesAsync();
+        }
     }
 }

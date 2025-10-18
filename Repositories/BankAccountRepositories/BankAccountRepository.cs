@@ -37,5 +37,27 @@ namespace Repositories.BankAccountRepositories
 
             return countPrimary > 1;
         }
+
+        public async Task<List<BankAccount>> GetBankAccountsWithProviderAsync(Guid providerId)
+        {
+            return await _context.BankAccounts
+                .Include(ba => ba.Provider)
+                .ThenInclude(p => p.Profile)
+                .Where(ba => ba.ProviderId == providerId)
+                .ToListAsync();
+        }
+
+        public async Task RemovePrimaryStatusAsync(Guid providerId)
+        {
+            await _context.BankAccounts
+                .Where(ba => ba.ProviderId == providerId && ba.IsPrimary)
+                .ExecuteUpdateAsync(ba => ba.SetProperty(b => b.IsPrimary, false));
+        }
+
+        public async Task<BankAccount?> GetByIdAndProviderAsync(Guid accountId, Guid providerId)
+        {
+            return await _context.BankAccounts
+                .FirstOrDefaultAsync(ba => ba.Id == accountId && ba.ProviderId == providerId);
+        }
     }
 }
