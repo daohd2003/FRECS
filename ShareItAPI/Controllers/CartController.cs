@@ -175,6 +175,38 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Clear all items from cart
+        /// </summary>
+        [HttpDelete("clear")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiResponse<object>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ApiResponse<object>))]
+        public async Task<IActionResult> ClearCart()
+        {
+            try
+            {
+                var customerId = GetCustomerId();
+                var result = await _cartService.ClearCartAsync(customerId);
+
+                if (result)
+                {
+                    return Ok(new ApiResponse<object>("Cart cleared successfully.", null));
+                }
+                else
+                {
+                    return Ok(new ApiResponse<object>("Cart is already empty.", null));
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
+            }
+        }
+
+        /// <summary>
         /// Initiates the checkout process from the current user's cart, creating an order.
         /// </summary>
         [HttpPost("checkout")]
@@ -248,12 +280,12 @@ namespace ShareItAPI.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiResponse<object>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ApiResponse<object>))]
         [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ApiResponse<object>))]
-        public async Task<IActionResult> RentAgainToCart(Guid orderId)
+        public async Task<IActionResult> RentAgainToCart(Guid orderId, [FromQuery] bool preserveDates = false)
         {
             try
             {
                 var customerId = GetCustomerId();
-                var (success, addedCount, issuesCount) = await _cartService.AddOrderItemsToCartAsync(customerId, orderId);
+                var (success, addedCount, issuesCount) = await _cartService.AddOrderItemsToCartAsync(customerId, orderId, preserveDates);
 
                 if (!success)
                 {

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.SignalR;
 using Repositories.NotificationRepositories;
 using Repositories.RepositoryBase;
 using BusinessObject.Utilities;
+using DataAccess;
+using Microsoft.EntityFrameworkCore;
 
 namespace Services.NotificationServices
 {
@@ -14,12 +16,14 @@ namespace Services.NotificationServices
         private readonly INotificationRepository _notificationRepository;
         private readonly IRepository<Order> _orderRepository;
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ShareItDbContext _context;
 
-        public NotificationService(INotificationRepository notificationRepository, IRepository<Order> orderRepository, IHubContext<NotificationHub> hubContext)
+        public NotificationService(INotificationRepository notificationRepository, IRepository<Order> orderRepository, IHubContext<NotificationHub> hubContext, ShareItDbContext context)
         {
             _notificationRepository = notificationRepository;
             _orderRepository = orderRepository;
             _hubContext = hubContext;
+            _context = context;
         }
 
         public async Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false)
@@ -201,14 +205,40 @@ namespace Services.NotificationServices
         public async Task NotifyTransactionFailed(Guid orderId, Guid userId)
         {
             var message = $"Order #{orderId} transaction has been failed.";
-            // Giả sử có lưu notification vào DB
-            await _notificationRepository.AddAsync(new Notification
+            
+            // Save notification to DB
+            var notification = new Notification
             {
                 OrderId = orderId,
                 Message = message,
                 CreatedAt = DateTimeHelper.GetVietnamTime(),
-                UserId = userId
-            });
+                UserId = userId,
+                Type = NotificationType.order,
+                IsRead = false
+            };
+            
+            await _notificationRepository.AddAsync(notification);
+            
+            // Send realtime notification via SignalR
+            await _hubContext.Clients.Group($"notifications-{userId}")
+                .SendAsync("ReceiveNotification", message);
+        }
+
+        public async Task NotifyTransactionFailedByTransactionId(Guid transactionId, Guid userId)
+        {
+            // Query transaction with orders from database
+            var transaction = await _context.Transactions
+                .Include(t => t.Orders)
+                .FirstOrDefaultAsync(t => t.Id == transactionId);
+
+            if (transaction != null && transaction.Orders != null && transaction.Orders.Any())
+            {
+                // Send notification for each order in the transaction
+                foreach (var order in transaction.Orders)
+                {
+                    await NotifyTransactionFailed(order.Id, userId);
+                }
+            }
         }
 
         /*/// <summary>

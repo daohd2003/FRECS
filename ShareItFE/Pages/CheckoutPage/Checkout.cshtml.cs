@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.DTOs.VNPay;
 using ShareItFE.Extensions;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShareItFE.Pages.CheckoutPage
 {
@@ -78,6 +79,36 @@ namespace ShareItFE.Pages.CheckoutPage
 
         [BindProperty(SupportsGet = true)]
         public Guid? OrderId { get; set; }
+        
+        /// <summary>
+        /// Store OrderId in TempData to persist across page navigation (e.g., back to cart)
+        /// </summary>
+        [TempData]
+        public Guid? PendingOrderId { get; set; }
+        
+        // Helper methods to work with Session directly
+        private string GetPendingCartOrderIds()
+        {
+            return HttpContext.Session.GetString("PendingCartOrderIds");
+        }
+
+        private void SetPendingCartOrderIds(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                HttpContext.Session.Remove("PendingCartOrderIds");
+            }
+            else
+            {
+                HttpContext.Session.SetString("PendingCartOrderIds", value);
+            }
+        }
+
+        /// <summary>
+        /// Indicates whether the user's profile has all required information (PhoneNumber and Address)
+        /// </summary>
+        [TempData]
+        public bool HasRequiredProfileInfo { get; set; } = false;
 
         private Guid GetUserId()
         {
@@ -91,6 +122,30 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnGetAsync()
         {
+            // If user comes from "Pay Now" button on a pending order, save that OrderId to Session
+            // so it can be deleted when user goes back to cart and creates a new order
+            if (OrderId.HasValue && OrderId.Value != Guid.Empty)
+            {
+                PendingOrderId = OrderId.Value;
+                
+                // Save this pending order ID to Session so it can be deleted later
+                var orderIdsList = new List<Guid> { OrderId.Value };
+                var orderIdsJson = JsonSerializer.Serialize(orderIdsList);
+                SetPendingCartOrderIds(orderIdsJson);
+            }
+            
+            // Only clear TempData if this is a fresh GET request (not after POST with QR code)
+            // Check TempData to see if we just created a transaction
+            var hasNewTransaction = TempData.Peek("TransactionId") != null;
+            bool isAfterQRCreation = hasNewTransaction && !string.IsNullOrEmpty(SuccessMessage);
+            
+            if (!hasNewTransaction && string.IsNullOrEmpty(SuccessMessage))
+            {
+                // This is a fresh GET request, clear old data
+                QrCodeUrl = null;
+                TempData["TransactionId"] = null;
+            }
+            
             try
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
@@ -133,7 +188,42 @@ namespace ShareItFE.Pages.CheckoutPage
                         Subtotal = SingleOrder.Subtotal; // Chỉ giá thuê/mua
                         TotalDeposit = SingleOrder.TotalDepositAmount; // Chỉ tiền cọc
                         Total = SingleOrder.TotalAmount; // Tổng = subtotal + deposit
-                        Input.UseSameProfile = true;
+                        
+                        // Populate Input fields with existing shipping address from the order
+                        if (SingleOrder.ShippingAddress != null)
+                        {
+                            Input.CustomerFullName = SingleOrder.ShippingAddress.FullName;
+                            Input.Email = SingleOrder.ShippingAddress.Email;
+                            Input.PhoneNumber = SingleOrder.ShippingAddress.Phone;
+                            Input.Address = SingleOrder.ShippingAddress.Address;
+                            // Don't use profile when loading from existing order
+                            Input.UseSameProfile = false;
+                        }
+                        
+                        // Load profile to check if required info is available (for validation)
+                        var profileResponse = await client.GetAsync("api/profile/my-profile-for-checkout");
+                        if (profileResponse.IsSuccessStatusCode)
+                        {
+                            var profileApiResponse = JsonSerializer.Deserialize<ApiResponse<ProfileDetailDto>>(
+                                await profileResponse.Content.ReadAsStringAsync(), options);
+                            var profile = profileApiResponse?.Data;
+
+                            if (profile != null)
+                            {
+                                // Check if profile has required information (PhoneNumber and Address)
+                                HasRequiredProfileInfo = !string.IsNullOrWhiteSpace(profile.PhoneNumber) && 
+                                                        !string.IsNullOrWhiteSpace(profile.Address);
+                            }
+                            else
+                            {
+                                HasRequiredProfileInfo = false;
+                            }
+                        }
+                        else
+                        {
+                            HasRequiredProfileInfo = false;
+                        }
+                        
                         Cart = null;
 
                     }
@@ -191,7 +281,8 @@ namespace ShareItFE.Pages.CheckoutPage
                     }
 
                     // Lấy thông tin profile cho trang thanh toán
-                    if (string.IsNullOrEmpty(Input.CustomerFullName) && Input.UseSameProfile)
+                    // Skip profile check if we're returning after QR code creation (to preserve HasRequiredProfileInfo)
+                    if (!isAfterQRCreation && string.IsNullOrEmpty(Input.CustomerFullName) && Input.UseSameProfile)
                     {
                         var profileResponse = await client.GetAsync("api/profile/my-profile-for-checkout");
                         // Thêm logging để kiểm tra
@@ -210,13 +301,32 @@ namespace ShareItFE.Pages.CheckoutPage
                                 Input.Email = profile.Email;
                                 Input.PhoneNumber = profile.PhoneNumber;
                                 Input.Address = profile.Address;
-                                Input.UseSameProfile = true;
+                                
+                                // Check if profile has required information (PhoneNumber and Address)
+                                HasRequiredProfileInfo = !string.IsNullOrWhiteSpace(profile.PhoneNumber) && 
+                                                        !string.IsNullOrWhiteSpace(profile.Address);
+                                
+                                // If missing required info, uncheck the checkbox
+                                if (!HasRequiredProfileInfo)
+                                {
+                                    Input.UseSameProfile = false;
+                                }
+                                else
+                                {
+                                    Input.UseSameProfile = true;
+                                }
+                            }
+                            else
+                            {
+                                HasRequiredProfileInfo = false;
+                                Input.UseSameProfile = false;
                             }
                         }
                         else if (profileResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                         {
                             Console.WriteLine("No profile found for this user. Manual input required.");
                             // Nếu không tìm thấy profile, mặc định bỏ chọn "UseSameProfile"
+                            HasRequiredProfileInfo = false;
                             Input.UseSameProfile = false;
                         }
                         else
@@ -224,9 +334,18 @@ namespace ShareItFE.Pages.CheckoutPage
                             var errorContent = await profileResponse.Content.ReadAsStringAsync();
                             ErrorMessage = $"Could not load user profile: {errorContent}";
                             // Mặc định bỏ chọn "UseSameProfile" nếu có lỗi khi tải profile
+                            HasRequiredProfileInfo = false;
                             Input.UseSameProfile = false;
                         }
                     }
+                    else if (!isAfterQRCreation)
+                    {
+                        // If CustomerFullName is already populated, check if we have required info
+                        // But skip if this is after QR creation
+                        HasRequiredProfileInfo = !string.IsNullOrWhiteSpace(Input.PhoneNumber) && 
+                                                !string.IsNullOrWhiteSpace(Input.Address);
+                    }
+                    // If isAfterQRCreation = true, HasRequiredProfileInfo is already preserved from TempData
                 }
 
             }
@@ -241,9 +360,64 @@ namespace ShareItFE.Pages.CheckoutPage
             return Page();
         }
 
+        public IActionResult OnPostClearPendingCartOrders()
+        {
+            // Clear pending cart order IDs from session when payment is successful
+            SetPendingCartOrderIds(null);
+            return new JsonResult(new { success = true });
+        }
+
+        public async Task<IActionResult> OnPostClearSession(string? transactionId)
+        {
+            // Preserve important data before clearing TempData
+            var preservedPendingOrderId = PendingOrderId;
+            // Note: PendingCartOrderIds is now in Session, not TempData, so it's automatically preserved
+            
+            // Clear TempData and messages when user closes QR modal
+            TempData.Clear();
+            SuccessMessage = null;
+            ErrorMessage = null;
+            QrCodeUrl = null;
+            
+            // Restore preserved data after clearing TempData
+            if (preservedPendingOrderId.HasValue)
+            {
+                PendingOrderId = preservedPendingOrderId;
+            }
+            
+            // Send notification if transactionId is provided
+            if (!string.IsNullOrEmpty(transactionId) && Guid.TryParse(transactionId, out var txnId))
+            {
+                try
+                {
+                    var client = await _clientHelper.GetAuthenticatedClientAsync();
+                    var userId = GetUserId();
+                    
+                    // Call API to send transaction failed notification
+                    var notifyUrl = $"{backendBaseUrl}/api/notification/transaction-failed?transactionId={txnId}&userId={userId}";
+                    await client.PostAsync(notifyUrl, null);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error sending notification: {ex.Message}");
+                    // Don't fail the request if notification fails
+                }
+            }
+            
+            return new JsonResult(new { success = true });
+        }
+
         public async Task<IActionResult> OnPostAsync()
         {
             // Policy agreement is handled on Cart page - preserve the value from form submission
+            
+            // Remove validation errors for PhoneNumber and Address if UseSameProfile is true
+            // because these will be loaded from profile
+            if (Input.UseSameProfile)
+            {
+                ModelState.Remove("Input.PhoneNumber");
+                ModelState.Remove("Input.Address");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -290,15 +464,33 @@ namespace ShareItFE.Pages.CheckoutPage
                 List<Guid> orderIdsToProcess = new List<Guid>();
                 decimal totalAmountForPayment = 0;
 
+                // Determine the actual order ID to process (from query string or TempData)
+                var actualOrderId = OrderId ?? PendingOrderId;
+
                 // SỬA: Logic phân biệt giữa "Rent Again" (OrderId đã có) và "Cart Checkout"
-                if (OrderId.HasValue && OrderId.Value != Guid.Empty)
+                if (actualOrderId.HasValue && actualOrderId.Value != Guid.Empty)
                 {
-                    // Case 1: Processing a single order from "Rent Again"
-                    orderIdsToProcess.Add(OrderId.Value);
+                    // Case 1: Processing a single order from "Pay Now" or "Rent Again"
+                    // IMPORTANT: Clear cart first to prevent creating duplicate orders
+                    try
+                    {
+                        var clearCartResponse = await client.DeleteAsync($"{backendBaseUrl}/api/cart/clear");
+                        if (clearCartResponse.IsSuccessStatusCode)
+                        {
+                            Console.WriteLine("Cart cleared successfully before processing order payment.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Could not clear cart: {ex.Message}");
+                        // Continue anyway, clearing cart is not critical
+                    }
+                    
+                    orderIdsToProcess.Add(actualOrderId.Value);
 
                     // Fetch the single order details again to get the accurate TotalAmount for payment
                     // (This ensures we have the latest total and status from the API)
-                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{OrderId.Value}/details");
+                    var orderResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{actualOrderId.Value}/details");
                     if (orderResponse.IsSuccessStatusCode)
                     {
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<OrderDetailsDto>>(
@@ -314,7 +506,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         var updateContactInfoRequest = new UpdateOrderContactInfoDto
                         {
-                            OrderId = OrderId.Value,
+                            OrderId = actualOrderId.Value,
                             CustomerFullName = Input.CustomerFullName ?? "",
                             CustomerEmail = Input.Email ?? "",
                             CustomerPhoneNumber = Input.PhoneNumber ?? "",
@@ -343,6 +535,60 @@ namespace ShareItFE.Pages.CheckoutPage
                 }
                 else // Case 2: Processing a normal cart checkout
                 {
+                    // Check if there are pending orders from previous cart checkout
+                    // If yes, delete them before creating new orders
+                    var pendingCartOrderIds = GetPendingCartOrderIds();
+                    
+                    if (!string.IsNullOrEmpty(pendingCartOrderIds))
+                    {
+                        try
+                        {
+                            var pendingOrderIdList = JsonSerializer.Deserialize<List<Guid>>(pendingCartOrderIds);
+                            
+                            if (pendingOrderIdList != null && pendingOrderIdList.Any())
+                            {
+                                foreach (var pendingOrderId in pendingOrderIdList)
+                                {
+                                    try
+                                    {
+                                        // Step 1: Cancel pending order (must cancel before delete)
+                                        var cancelResponse = await client.PutAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}/cancel", null);
+                                        
+                                        if (cancelResponse.IsSuccessStatusCode)
+                                        {
+                                            // Step 2: Delete the cancelled order permanently
+                                            var deleteResponse = await client.DeleteAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}");
+                                            
+                                            if (!deleteResponse.IsSuccessStatusCode)
+                                            {
+                                                var deleteError = await deleteResponse.Content.ReadAsStringAsync();
+                                                Console.WriteLine($"[WARNING] Could not delete order {pendingOrderId}: {deleteError}");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            var errorContent = await cancelResponse.Content.ReadAsStringAsync();
+                                            Console.WriteLine($"[WARNING] Could not cancel pending order {pendingOrderId}: {errorContent}");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"[ERROR] Failed to process pending order {pendingOrderId}: {ex.Message}");
+                                        // Continue with other orders even if one fails
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ERROR] Could not parse pending order IDs: {ex.Message}");
+                        }
+                    }
+                    
+                    // Clear pending order IDs from session after processing
+                    SetPendingCartOrderIds(null);
+                    PendingOrderId = null;
+                    
                     // Load discount from session before creating checkout request
                     LoadDiscountFromSession();
                     
@@ -385,6 +631,10 @@ namespace ShareItFE.Pages.CheckoutPage
                     }
                     orderIdsToProcess.AddRange(createdOrdersFromCart.Select(o => o.Id));
                     totalAmountForPayment = createdOrdersFromCart.Sum(o => o.TotalAmount);
+                    
+                    // Save new pending cart order IDs for future cleanup if needed
+                    var orderIdsJson = JsonSerializer.Serialize(orderIdsToProcess);
+                    SetPendingCartOrderIds(orderIdsJson);
                 }
 
                 // Proceed with payment for the order(s) identified in orderIdsToProcess
@@ -417,7 +667,21 @@ namespace ShareItFE.Pages.CheckoutPage
 
                         if (!string.IsNullOrEmpty(paymentUrl))
                         {
-                            SuccessMessage = "Redirecting to VNPay for payment...";
+                            // Preserve PendingOrderId before clearing TempData
+                            var preservedPendingOrderId = PendingOrderId;
+                            
+                            // Clear any messages before redirecting to VNPay
+                            // (User won't see them anyway, and they shouldn't appear when user returns)
+                            SuccessMessage = null;
+                            ErrorMessage = null;
+                            TempData.Clear();
+                            
+                            // Restore PendingOrderId after clearing TempData
+                            if (preservedPendingOrderId.HasValue)
+                            {
+                                PendingOrderId = preservedPendingOrderId;
+                            }
+                            
                             return Redirect(paymentUrl);
                         }
                         else
@@ -449,7 +713,26 @@ namespace ShareItFE.Pages.CheckoutPage
                             TempData["TransactionId"] = transactionIdFromApi;
                             SuccessMessage = "QR code created successfully. Please scan to complete payment.";
 
-                            Input = new CheckoutInputModel();
+                            // Save current input values before resetting
+                            var currentInput = Input;
+                            var currentHasRequiredInfo = HasRequiredProfileInfo;
+                            
+                            Input = new CheckoutInputModel
+                            {
+                                CustomerFullName = currentInput.CustomerFullName,
+                                Email = currentInput.Email,
+                                PhoneNumber = currentInput.PhoneNumber,
+                                Address = currentInput.Address,
+                                PaymentMethod = currentInput.PaymentMethod,
+                                // UseSameProfile should be false if profile is incomplete
+                                UseSameProfile = currentHasRequiredInfo
+                            };
+                            
+                            // Preserve HasRequiredProfileInfo state
+                            HasRequiredProfileInfo = currentHasRequiredInfo;
+                            
+                            // Note: PendingCartOrderIds is now in Session, automatically persists
+                            
                             await OnGetAsync();
                             return Page();
                         }
@@ -541,8 +824,13 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public string? CustomerFullName { get; set; }
         public string? Email { get; set; }
+        
+        [Required(ErrorMessage = "Phone number is required")]
         public string? PhoneNumber { get; set; }
+        
+        [Required(ErrorMessage = "Address is required")]
         public string? Address { get; set; }
+        
         public bool HasAgreedToPolicies { get; set; } = false;
 
         public string PaymentMethod { get; set; }
