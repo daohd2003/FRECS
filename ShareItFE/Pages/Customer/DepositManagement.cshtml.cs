@@ -1,34 +1,90 @@
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.DepositDto;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using ShareItFE.Common.Utilities;
+using ShareItFE.Extensions;
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Customer
 {
     public class DepositManagementModel : PageModel
     {
         private readonly ILogger<DepositManagementModel> _logger;
+        private readonly AuthenticatedHttpClientHelper _clientHelper;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public DepositManagementModel(ILogger<DepositManagementModel> logger)
+        public DepositManagementModel(
+            ILogger<DepositManagementModel> logger,
+            AuthenticatedHttpClientHelper clientHelper,
+            IConfiguration configuration,
+            IWebHostEnvironment environment)
         {
             _logger = logger;
+            _clientHelper = clientHelper;
+            _configuration = configuration;
+            _environment = environment;
         }
 
-        public DepositStatsDto Stats { get; set; }
+        public DepositStatsDto Stats { get; set; } = new();
         public List<RefundAccountDto> RefundAccounts { get; set; } = new();
         public List<DepositHistoryDto> DepositHistory { get; set; } = new();
+
+        public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
         public async Task<IActionResult> OnGetAsync()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null) return RedirectToPage("/Auth");
 
-            // TODO: Call API to get actual data
-            // For now, using mock data for UI demonstration
-            LoadMockData();
+            try
+            {
+                await LoadDataFromApi();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading deposit data");
+                // Fallback to mock data if API fails
+                LoadMockData();
+            }
 
             return Page();
+        }
+
+        private async Task LoadDataFromApi()
+        {
+            var client = await _clientHelper.GetAuthenticatedClientAsync();
+            
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
+
+            // 1. Get deposit stats
+            var statsResponse = await client.GetAsync("api/deposits/stats");
+            if (statsResponse.IsSuccessStatusCode)
+            {
+                var statsContent = await statsResponse.Content.ReadAsStringAsync();
+                var statsApiResponse = JsonSerializer.Deserialize<ApiResponse<DepositStatsDto>>(statsContent, options);
+                Stats = statsApiResponse?.Data ?? new DepositStatsDto();
+            }
+
+            // 2. Get deposit history
+            var historyResponse = await client.GetAsync("api/deposits/history");
+            if (historyResponse.IsSuccessStatusCode)
+            {
+                var historyContent = await historyResponse.Content.ReadAsStringAsync();
+                var historyApiResponse = JsonSerializer.Deserialize<ApiResponse<List<DepositHistoryDto>>>(historyContent, options);
+                DepositHistory = historyApiResponse?.Data ?? new List<DepositHistoryDto>();
+            }
+
+            // 3. Load mock refund accounts (UI only - not implemented yet)
+            LoadMockRefundAccounts();
         }
 
         private void LoadMockData()
@@ -36,11 +92,19 @@ namespace ShareItFE.Pages.Customer
             // Mock deposit statistics
             Stats = new DepositStatsDto
             {
-                DepositsRefunded = 735.00m,
-                PendingRefunds = 450.00m,
-                RefundIssues = 1
+                DepositsRefunded = 0m,    // Not implemented - admin deposit refund system
+                PendingRefunds = 0m,      // Not implemented - admin deposit refund system
+                RefundIssues = 0          // Not implemented - admin deposit refund system
             };
 
+            LoadMockRefundAccounts();
+
+            // Mock deposit history - empty since deposit refund system not implemented
+            DepositHistory = new List<DepositHistoryDto>();
+        }
+
+        private void LoadMockRefundAccounts()
+        {
             // Mock refund accounts (UI only)
             RefundAccounts = new List<RefundAccountDto>
             {
@@ -59,44 +123,6 @@ namespace ShareItFE.Pages.Customer
                     AccountNumber = "****5678",
                     AccountHolder = "RentChic LLC",
                     IsPrimary = false
-                }
-            };
-
-            // Mock deposit history
-            DepositHistory = new List<DepositHistoryDto>
-            {
-                new DepositHistoryDto
-                {
-                    OrderId = Guid.NewGuid(),
-                    OrderCode = "ORD001",
-                    ItemName = "Sarah's Designer Collection",
-                    DepositAmount = 735.00m,
-                    RefundMethod = "****1234",
-                    RefundAmount = 735.00m,
-                    Status = TransactionStatus.completed,
-                    RefundDate = new DateTime(2024, 2, 25)
-                },
-                new DepositHistoryDto
-                {
-                    OrderId = Guid.NewGuid(),
-                    OrderCode = "ORD002",
-                    ItemName = "Elite Fashion Rentals",
-                    DepositAmount = 450.00m,
-                    RefundMethod = "****5678",
-                    RefundAmount = 450.00m,
-                    Status = TransactionStatus.initiated,
-                    RefundDate = new DateTime(2024, 2, 28)
-                },
-                new DepositHistoryDto
-                {
-                    OrderId = Guid.NewGuid(),
-                    OrderCode = "ORD003",
-                    ItemName = "Luxury Wardrobe Co.",
-                    DepositAmount = 150.00m,
-                    RefundMethod = "****9012",
-                    RefundAmount = 150.00m,
-                    Status = TransactionStatus.failed,
-                    RefundDate = new DateTime(2024, 2, 28)
                 }
             };
         }

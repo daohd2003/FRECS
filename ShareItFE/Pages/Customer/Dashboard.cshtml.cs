@@ -39,9 +39,9 @@ namespace ShareItFE.Pages.Customer
 
         public string PeriodLabel => Period switch
         {
-            "week" => "This Week's Spending",
-            "year" => "This Year's Spending",
-            _ => "This Month's Spending"
+            "week" => "This Week's",
+            "year" => "This Year's",
+            _ => "This Month's"
         };
 
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
@@ -121,17 +121,20 @@ namespace ShareItFE.Pages.Customer
             {
                 Stats = new CustomerSpendingStatsDto
                 {
-                    ThisMonthSpending = 125.00m, // This week's spending
+                    ThisPeriodSpending = 125.00m, // This week's spending
                     OrdersCount = 2,
-                    TotalSpent = 125.00m,
+                    PenaltyPaidThisPeriod = 0m,
+                    TotalRentalPurchaseAllTime = 3850.00m,      // Total rental + purchase
+                    TotalDepositedAllTime = 1200.00m,           // Total deposits paid by customer  
+                    TotalPenaltiesAllTime = 250.00m,            // Total penalties paid
                     FavoriteCategory = "Cocktail Dresses",
                     FavoriteCategoryRentalCount = 2,
                     SpendingChangePercentage = 15.5m,
                     OrdersChangePercentage = 100.0m,
-                    TotalSpentChangePercentage = 15.5m
+                    PenaltyPaidChangePercentage = 0m
                 };
 
-                // Weekly trend (7 days)
+                // Weekly trend (7 days) - amounts exclude penalty (already subtracted)
                 SpendingTrend = new List<SpendingTrendDto>();
                 var today = DateTime.Today;
                 var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
@@ -141,7 +144,7 @@ namespace ShareItFE.Pages.Customer
                     var date = startOfWeek.AddDays(i);
                     decimal amount = 0;
                     
-                    if (i == 2) amount = 75.00m; // Tuesday
+                    if (i == 2) amount = 75.00m; // Tuesday (Total: 125)
                     if (i == 5) amount = 50.00m; // Friday
 
                     SpendingTrend.Add(new SpendingTrendDto
@@ -161,17 +164,20 @@ namespace ShareItFE.Pages.Customer
             {
                 Stats = new CustomerSpendingStatsDto
                 {
-                    ThisMonthSpending = 3850.00m, // This year's spending
+                    ThisPeriodSpending = 3850.00m, // This year's spending
                     OrdersCount = 15,
-                    TotalSpent = 3850.00m,
+                    PenaltyPaidThisPeriod = 150.00m,
+                    TotalRentalPurchaseAllTime = 3850.00m,      // Total rental + purchase
+                    TotalDepositedAllTime = 1200.00m,           // Total deposits paid by customer  
+                    TotalPenaltiesAllTime = 250.00m,            // Total penalties paid
                     FavoriteCategory = "Evening Dresses",
                     FavoriteCategoryRentalCount = 6,
                     SpendingChangePercentage = 42.3m,
                     OrdersChangePercentage = 50.0m,
-                    TotalSpentChangePercentage = 42.3m
+                    PenaltyPaidChangePercentage = 100.0m
                 };
 
-                // Yearly trend (12 months)
+                // Yearly trend (12 months) - amounts exclude penalty (already subtracted)
                 SpendingTrend = new List<SpendingTrendDto>();
                 var currentYear = DateTime.Today.Year;
                 
@@ -180,12 +186,19 @@ namespace ShareItFE.Pages.Customer
                     var date = new DateTime(currentYear, i, 1);
                     decimal amount = 0;
                     
-                    // Simulate varying spending throughout the year
+                    // Simulate varying spending throughout the year (Total: 3850)
+                    if (i == 1) amount = 250.00m;  // January
                     if (i == 2) amount = 450.00m;  // February
+                    if (i == 3) amount = 180.00m;  // March
+                    if (i == 4) amount = 320.00m;  // April
                     if (i == 5) amount = 380.00m;  // May
+                    if (i == 6) amount = 290.00m;  // June
                     if (i == 7) amount = 520.00m;  // July
+                    if (i == 8) amount = 210.00m;  // August
+                    if (i == 9) amount = 340.00m;  // September
                     if (i == 10) amount = 410.00m; // October
-                    if (i == 12) amount = 680.00m; // December
+                    if (i == 11) amount = 320.00m; // November
+                    if (i == 12) amount = 180.00m; // December
 
                     SpendingTrend.Add(new SpendingTrendDto
                     {
@@ -206,17 +219,20 @@ namespace ShareItFE.Pages.Customer
             {
                 Stats = new CustomerSpendingStatsDto
                 {
-                    ThisMonthSpending = 285.00m, // This month's spending
+                    ThisPeriodSpending = 285.00m, // This month's spending
                     OrdersCount = 4,
-                    TotalSpent = 1250.00m,
+                    PenaltyPaidThisPeriod = 50.00m,
+                    TotalRentalPurchaseAllTime = 3850.00m,      // Total rental + purchase
+                    TotalDepositedAllTime = 1200.00m,           // Total deposits paid by customer  
+                    TotalPenaltiesAllTime = 250.00m,            // Total penalties paid
                     FavoriteCategory = "Evening Dresses",
                     FavoriteCategoryRentalCount = 3,
                     SpendingChangePercentage = 12.8m,
                     OrdersChangePercentage = 33.3m,
-                    TotalSpentChangePercentage = 27.6m
+                    PenaltyPaidChangePercentage = -25.0m
                 };
 
-                // Monthly trend (current month days)
+                // Monthly trend (current month days) - amounts exclude penalty (already subtracted)
                 SpendingTrend = new List<SpendingTrendDto>();
                 var today = DateTime.Today;
                 var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
@@ -227,7 +243,7 @@ namespace ShareItFE.Pages.Customer
                     var date = startDate.AddDays(i);
                     decimal amount = 0;
                     
-                    // Add spending on specific days
+                    // Add spending on specific days (Total: 285)
                     if (i == 5) amount = 85.00m;
                     if (i == 14) amount = 125.00m;
                     if (i == 23) amount = 75.00m;

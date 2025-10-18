@@ -40,7 +40,7 @@
             <div class="stat-content">
                 <div class="stat-info">
                     <p class="stat-label">Deposits Refunded</p>
-                    <h3 class="stat-value">$@Model.Stats.DepositsRefunded.ToString("N2")</h3>
+                    <h3 class="stat-value">@Model.Stats.DepositsRefunded.ToString("N0")₫</h3>
                 </div>
                 <div class="stat-icon green">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -55,7 +55,7 @@
             <div class="stat-content">
                 <div class="stat-info">
                     <p class="stat-label">Pending Refunds</p>
-                    <h3 class="stat-value">$@Model.Stats.PendingRefunds.ToString("N2")</h3>
+                    <h3 class="stat-value">@Model.Stats.PendingRefunds.ToString("N0")₫</h3>
                 </div>
                 <div class="stat-icon yellow">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -178,7 +178,7 @@
                                     <div class="item-code">@deposit.OrderCode</div>
                                 </div>
                             </td>
-                            <td class="amount-cell">$@deposit.DepositAmount.ToString("N2")</td>
+                            <td class="amount-cell">@deposit.DepositAmount.ToString("N0")₫</td>
                             <td>
                                 <div class="method-cell">
                                     <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -187,7 +187,7 @@
                                     @deposit.RefundMethod
                                 </div>
                             </td>
-                            <td class="amount-cell">$@deposit.RefundAmount.ToString("N2")</td>
+                            <td class="amount-cell">@deposit.RefundAmount.ToString("N0")₫</td>
                             <td>
                                 <span class="status-badge @statusClass">
                                     @if (deposit.Status == BusinessObject.Enums.TransactionStatus.completed)

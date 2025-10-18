@@ -49,16 +49,16 @@
                 Export Report
             </button>
         </form>
-    </div>
+        </div>
 
     <!-- Statistics Cards -->
-    <div class="stats-grid">
-        <!-- Revenue Card -->
-        <div class="stat-card">
+        <div class="stats-grid">
+        <!-- Spending Card (Rent + Purchase) -->
+            <div class="stat-card">
             <div class="stat-content">
                 <div class="stat-info">
-                    <p class="stat-label">@Model.PeriodLabel</p>
-                    <h3 class="stat-value">$@Model.Stats.ThisMonthSpending.ToString("N0")</h3>
+                    <p class="stat-label">@Model.PeriodLabel Spending</p>
+                    <h3 class="stat-value">@Model.Stats.ThisPeriodSpending.ToString("N0")₫</h3>
                     <div class="stat-change @(Model.Stats.SpendingChangePercentage >= 0 ? "positive" : "negative")">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -71,13 +71,13 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
+                    </div>
                 </div>
             </div>
-        </div>
 
         <!-- Orders Card -->
-        <div class="stat-card">
-            <div class="stat-content">
+            <div class="stat-card">
+                <div class="stat-content">
                 <div class="stat-info">
                     <p class="stat-label">Orders</p>
                     <h3 class="stat-value">@Model.Stats.OrdersCount</h3>
@@ -93,34 +93,34 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Total Spent Card -->
-        <div class="stat-card">
+        <!-- Penalty Paid Card -->
+            <div class="stat-card">
             <div class="stat-content">
                 <div class="stat-info">
-                    <p class="stat-label">Total Spent (All Time)</p>
-                    <h3 class="stat-value">$@Model.Stats.TotalSpent.ToString("N0")</h3>
-                    <div class="stat-change @(Model.Stats.TotalSpentChangePercentage >= 0 ? "positive" : "negative")">
+                    <p class="stat-label">@Model.PeriodLabel Penalty Paid</p>
+                    <h3 class="stat-value">@Model.Stats.PenaltyPaidThisPeriod.ToString("N0")₫</h3>
+                    <div class="stat-change @(Model.Stats.PenaltyPaidChangePercentage >= 0 ? "positive" : "negative")">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
-                        <span>@(Model.Stats.TotalSpentChangePercentage >= 0 ? "+" : "")@Model.Stats.TotalSpentChangePercentage.ToString("N1")%</span>
+                        <span>@(Model.Stats.PenaltyPaidChangePercentage >= 0 ? "+" : "")@Model.Stats.PenaltyPaidChangePercentage.ToString("N1")%</span>
                         <span class="vs-text">vs last @Model.Period</span>
                     </div>
                 </div>
                 <div class="stat-icon purple">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
+                    </div>
                 </div>
             </div>
-        </div>
 
         <!-- Most Rented Category Card -->
-        <div class="stat-card">
+            <div class="stat-card">
             <div class="stat-content">
                 <div class="stat-info">
                     <p class="stat-label">Most Rented Category</p>
@@ -132,14 +132,66 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                 </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- Summary Section - All Time Totals -->
+    <div class="totals-grid" style="margin: 2rem 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+        
+        <!-- Total Rental + Purchase -->
+        <div class="total-card" style="padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+                <div>
+                    <p style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Rental + Purchase</p>
+                    <h3 style="font-size: 1.75rem; font-weight: bold; margin: 0;">@Model.Stats.TotalRentalPurchaseAllTime.ToString("N0")₫</h3>
+                    <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">All time rentals and purchases</p>
+                </div>
+                <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Deposited -->
+        <div class="total-card" style="padding: 1.5rem; background: linear-gradient(135deg, #2980b9 0%, #3498db 100%); border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+                <div>
+                    <p style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Deposited</p>
+                    <h3 style="font-size: 1.75rem; font-weight: bold; margin: 0;">@Model.Stats.TotalDepositedAllTime.ToString("N0")₫</h3>
+                    <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">All time security deposits paid</p>
+                </div>
+                <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Penalties -->
+        <div class="total-card" style="padding: 1.5rem; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+                <div>
+                    <p style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Penalties</p>
+                    <h3 style="font-size: 1.75rem; font-weight: bold; margin: 0;">@Model.Stats.TotalPenaltiesAllTime.ToString("N0")₫</h3>
+                    <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">All time penalties paid</p>
+                </div>
+                <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="charts-grid">
+        <!-- Charts Section -->
+        <div class="charts-grid">
         <!-- Spending Charts with Tabs -->
-        <div class="chart-card">
+            <div class="chart-card">
             <div class="chart-tabs">
                 <button class="chart-tab active" data-chart="trend">Spending Trend</button>
                 <button class="chart-tab" data-chart="category">Spending by Category</button>
@@ -149,12 +201,12 @@
             </div>
             <div class="chart-container" id="categoryChartContainer" style="display: none;">
                 <canvas id="spendingCategoryChart"></canvas>
+                </div>
             </div>
-        </div>
 
         <!-- Order Status Breakdown Chart -->
-        <div class="chart-card">
-            <h3 class="chart-title">Order Status Breakdown</h3>
+            <div class="chart-card">
+                <h3 class="chart-title">Order Status Breakdown</h3>
             <div class="chart-container">
                 <canvas id="orderStatusChart"></canvas>
             </div>
@@ -217,7 +269,7 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return '$' + value;
+                                    return value.toLocaleString('vi-VN') + '₫';
                                 }
                             }
                         }
@@ -277,7 +329,7 @@
                                 label: function(context) {
                                     const category = categoryData[context.dataIndex];
                                     return [
-                                        'Total: $' + context.parsed.y.toFixed(0),
+                                        'Total: ' + context.parsed.y.toLocaleString('vi-VN') + '₫',
                                         'Orders: ' + category.orderCount
                                     ];
                                 }
@@ -289,7 +341,7 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return '$' + value;
+                                    return value.toLocaleString('vi-VN') + '₫';
                                 }
                             }
                         }

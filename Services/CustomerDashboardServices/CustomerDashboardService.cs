@@ -47,9 +47,10 @@ namespace Services.CustomerDashboardServices
                 .Where(o => o.CreatedAt >= previousStart && o.CreatedAt < previousEnd)
                 .ToList();
 
-            // Calculate current period spending
-            var currentSpending = currentOrders.Sum(o => o.TotalAmount);
-            var previousSpending = previousOrders.Sum(o => o.TotalAmount);
+            // Calculate current period spending (Subtotal - DiscountAmount)
+            // This excludes deposit and penalty
+            var currentSpending = currentOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+            var previousSpending = previousOrders.Sum(o => o.Subtotal - o.DiscountAmount);
             
             // Calculate spending change percentage
             var spendingChangePercentage = previousSpending > 0 
@@ -63,9 +64,18 @@ namespace Services.CustomerDashboardServices
                 ? ((decimal)(currentOrdersCount - previousOrdersCount) / previousOrdersCount) * 100 
                 : (currentOrdersCount > 0 ? 100 : 0);
 
-            // Total spent (all time)
-            var totalSpent = customerOrders.Sum(o => o.TotalAmount);
-            var totalSpentChangePercentage = spendingChangePercentage; // Same as current period change
+            // Calculate penalty paid for current period
+            var currentPenaltyPaid = await GetPenaltyPaidAsync(customerId, currentStart, currentEnd);
+            var previousPenaltyPaid = await GetPenaltyPaidAsync(customerId, previousStart, previousEnd);
+            
+            var penaltyPaidChangePercentage = previousPenaltyPaid > 0
+                ? ((currentPenaltyPaid - previousPenaltyPaid) / previousPenaltyPaid) * 100
+                : (currentPenaltyPaid > 0 ? 100 : 0);
+
+            // Total amounts all time - broken down by type
+            var totalRentalPurchaseAllTime = customerOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+            var totalDepositedAllTime = customerOrders.Sum(o => o.TotalDeposit); // Total deposits paid by customer
+            var totalPenaltiesAllTime = await GetTotalPenaltiesAllTimeAsync(customerId);
 
             // Most Rented Category (from returned orders in current period)
             var returnedOrders = currentOrders
@@ -105,15 +115,45 @@ namespace Services.CustomerDashboardServices
 
             return new CustomerSpendingStatsDto
             {
-                ThisMonthSpending = currentSpending,
+                ThisPeriodSpending = currentSpending,
                 OrdersCount = currentOrdersCount,
-                TotalSpent = totalSpent,
+                PenaltyPaidThisPeriod = currentPenaltyPaid,
+                TotalRentalPurchaseAllTime = totalRentalPurchaseAllTime,
+                TotalDepositedAllTime = totalDepositedAllTime,
+                TotalPenaltiesAllTime = totalPenaltiesAllTime,
                 FavoriteCategory = favoriteCategory,
                 FavoriteCategoryRentalCount = favoriteCategoryCount,
                 SpendingChangePercentage = spendingChangePercentage,
                 OrdersChangePercentage = ordersChangePercentage,
-                TotalSpentChangePercentage = totalSpentChangePercentage
+                PenaltyPaidChangePercentage = penaltyPaidChangePercentage
             };
+        }
+
+        private async Task<decimal> GetPenaltyPaidAsync(Guid customerId, DateTime startDate, DateTime endDate)
+        {
+            // Get all violations for this customer's orders within the period
+            // Status must be CUSTOMER_ACCEPTED or RESOLVED
+            var penaltyPaid = await _context.RentalViolations
+                .Where(v => v.OrderItem.Order.CustomerId == customerId
+                         && v.CustomerResponseAt.HasValue
+                         && v.CustomerResponseAt >= startDate
+                         && v.CustomerResponseAt <= endDate
+                         && (v.Status == ViolationStatus.CUSTOMER_ACCEPTED || v.Status == ViolationStatus.RESOLVED))
+                .SumAsync(v => v.PenaltyAmount);
+
+            return penaltyPaid;
+        }
+
+        private async Task<decimal> GetTotalPenaltiesAllTimeAsync(Guid customerId)
+        {
+            // Get all violations for this customer's orders from the beginning
+            // Status must be CUSTOMER_ACCEPTED or RESOLVED
+            var totalPenalties = await _context.RentalViolations
+                .Where(v => v.OrderItem.Order.CustomerId == customerId
+                         && (v.Status == ViolationStatus.CUSTOMER_ACCEPTED || v.Status == ViolationStatus.RESOLVED))
+                .SumAsync(v => v.PenaltyAmount);
+
+            return totalPenalties;
         }
 
         public async Task<List<SpendingTrendDto>> GetSpendingTrendAsync(Guid customerId, string period)
@@ -136,7 +176,7 @@ namespace Services.CustomerDashboardServices
                 {
                     var date = startOfWeek.AddDays(i);
                     var dayOrders = filteredOrders.Where(o => o.CreatedAt.Date == date.Date);
-                    var amount = dayOrders.Sum(o => o.TotalAmount);
+                    var amount = dayOrders.Sum(o => o.Subtotal - o.DiscountAmount); // Exclude deposits
 
                     trendData.Add(new SpendingTrendDto
                     {
@@ -154,7 +194,7 @@ namespace Services.CustomerDashboardServices
                     var monthStart = new DateTime(year, month, 1);
                     var monthEnd = monthStart.AddMonths(1).AddDays(-1);
                     var monthOrders = filteredOrders.Where(o => o.CreatedAt.Month == month && o.CreatedAt.Year == year);
-                    var amount = monthOrders.Sum(o => o.TotalAmount);
+                    var amount = monthOrders.Sum(o => o.Subtotal - o.DiscountAmount); // Exclude deposits
 
                     trendData.Add(new SpendingTrendDto
                     {
@@ -171,7 +211,7 @@ namespace Services.CustomerDashboardServices
                 {
                     var date = new DateTime(startDate.Year, startDate.Month, day);
                     var dayOrders = filteredOrders.Where(o => o.CreatedAt.Date == date.Date);
-                    var amount = dayOrders.Sum(o => o.TotalAmount);
+                    var amount = dayOrders.Sum(o => o.Subtotal - o.DiscountAmount); // Exclude deposits
 
                     trendData.Add(new SpendingTrendDto
                     {
@@ -233,8 +273,24 @@ namespace Services.CustomerDashboardServices
 
             foreach (var order in returnedOrders)
             {
-                if (order.Items != null)
+                if (order.Items != null && order.Items.Any())
                 {
+                    // Calculate total item subtotal for this order (used for discount allocation)
+                    decimal orderItemsSubtotal = 0;
+                    var itemSubtotals = new Dictionary<Guid, decimal>();
+                    
+                    foreach (var item in order.Items)
+                    {
+                        // Calculate actual item subtotal based on transaction type
+                        decimal itemSubtotal = (item.TransactionType == TransactionType.rental)
+                            ? item.DailyRate * (item.RentalDays ?? 1) * item.Quantity
+                            : item.DailyRate * item.Quantity;
+                            
+                        itemSubtotals[item.Id] = itemSubtotal;
+                        orderItemsSubtotal += itemSubtotal;
+                    }
+                    
+                    // Now calculate spending for each item with proper discount allocation
                     foreach (var item in order.Items)
                     {
                         if (item.Product?.Category != null)
@@ -246,13 +302,21 @@ namespace Services.CustomerDashboardServices
                                 categorySpending[categoryName] = (0, 0);
                             }
 
-                            // Add item's portion of total order amount
-                            // For simplicity, we'll distribute the order amount evenly across items
-                            var itemCount = order.Items.Count;
-                            var itemAmount = order.TotalAmount / itemCount;
+                            // Get item's subtotal
+                            var itemSubtotal = itemSubtotals[item.Id];
+                            
+                            // Calculate item's share of order discount (proportional to its subtotal)
+                            decimal itemDiscountShare = 0;
+                            if (orderItemsSubtotal > 0)
+                            {
+                                itemDiscountShare = (itemSubtotal / orderItemsSubtotal) * order.DiscountAmount;
+                            }
+                            
+                            // Final spending amount for this item (excluding deposits)
+                            var itemFinalSpending = itemSubtotal - itemDiscountShare;
                             
                             categorySpending[categoryName] = (
-                                categorySpending[categoryName].totalSpending + itemAmount,
+                                categorySpending[categoryName].totalSpending + itemFinalSpending,
                                 categorySpending[categoryName].orderCount + 1
                             );
                         }
