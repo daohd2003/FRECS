@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251019121254_AddDepositRefundTable")]
+    partial class AddDepositRefundTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -232,8 +235,13 @@ namespace DataAccess.Migrations
                     b.Property<decimal>("RefundAmount")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<Guid?>("RefundBankAccountId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("RefundMethod")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RefundReferenceCode")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -249,8 +257,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("ProcessedByAdminId");
-
-                    b.HasIndex("RefundBankAccountId");
 
                     b.ToTable("DepositRefunds");
                 });
@@ -1149,18 +1155,11 @@ namespace DataAccess.Migrations
                         .HasForeignKey("ProcessedByAdminId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("BusinessObject.Models.BankAccount", "RefundBankAccount")
-                        .WithMany()
-                        .HasForeignKey("RefundBankAccountId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Customer");
 
                     b.Navigation("Order");
 
                     b.Navigation("ProcessedByAdmin");
-
-                    b.Navigation("RefundBankAccount");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
