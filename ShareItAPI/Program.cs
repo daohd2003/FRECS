@@ -14,6 +14,7 @@ using DataAccess;
 using Hubs;
 using LibraryManagement.Services.Payments.Transactions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
@@ -185,7 +186,9 @@ namespace ShareItAPI
 
                         // Nếu có token và request đang hướng đến hub của chúng ta
                         if (!string.IsNullOrEmpty(accessToken) &&
-                        (path.StartsWithSegments("/reportHub") || path.StartsWithSegments("/chathub")))
+                        (path.StartsWithSegments("/reportHub") || 
+                         path.StartsWithSegments("/chathub") || 
+                         path.StartsWithSegments("/activeUsersHub")))
 
                         {
                             // Gán token này để middleware xác thực
@@ -338,6 +341,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<IRentalViolationRepository, RentalViolationRepository>();
             builder.Services.AddScoped<IRentalViolationService, RentalViolationService>();
 
+            // Register Dashboard services
+            builder.Services.AddScoped<Repositories.DashboardRepositories.IDashboardRepository, Repositories.DashboardRepositories.DashboardRepository>();
+            builder.Services.AddScoped<Services.DashboardServices.IDashboardService, Services.DashboardServices.DashboardService>();
+
             builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();
@@ -365,9 +372,14 @@ namespace ShareItAPI
             // Cấu hình endpoint
             app.MapHub<NotificationHub>("/notificationHub");
             app.MapHub<ChatHub>("/chathub");
+            app.MapHub<ActiveUsersHub>("/activeUsersHub");
             app.MapHub<ReportHub>("/reportHub");
 
             app.MapControllers();
+
+            // Set HubContext cho ActiveUsersHub để có thể broadcast từ background tasks
+            var hubContext = app.Services.GetRequiredService<IHubContext<ActiveUsersHub>>();
+            ActiveUsersHub.SetHubContext(hubContext);
 
             app.Run();
 

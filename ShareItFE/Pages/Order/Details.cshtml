@@ -1,7 +1,11 @@
 ﻿@page "{id:guid}"
 @model ShareItFE.Pages.Order.DetailsModel
+@using System.Security.Claims
 @{
     ViewData["Title"] = Model.Order != null ? $"Order Details - {Model.Order.OrderCode}" : "Order Details";
+
+    // Check if current user is admin (read-only mode)
+    var isAdmin = User.IsInRole("admin");
 
     // --- Helper functions ---
     Func<BusinessObject.Enums.OrderStatus, string> GetStatusColor = status =>
@@ -119,6 +123,12 @@
                                                    Model.Order.Status == BusinessObject.Enums.OrderStatus.returned ||
                                                    Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue;
                                     }
+                                    
+                                    // Admin cannot review - read-only access
+                                    if (isAdmin)
+                                    {
+                                        canReview = false;
+                                    }
                                 }
                                 @if (canReview)
                                 {
@@ -137,10 +147,12 @@
 
             <div class="card">
                 <h2 class="card-title">Order Status</h2>
-                <div class="actions-grid">
-                    <a href="/Contact" class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</a>
+                @if (!isAdmin)
+                {
+                    <div class="actions-grid">
+                        <a href="/Contact" class="btn btn-primary"><i class="bi bi-chat-dots"></i> Contact Support</a>
 
-                    @if (isPurchaseOnly)
+                        @if (isPurchaseOnly)
                     {
                         <!-- Purchase-only workflow -->
                         
@@ -273,7 +285,8 @@
                             }
                         }
                     }
-                </div>
+                    </div>
+                }
             </div>
         </div>
 

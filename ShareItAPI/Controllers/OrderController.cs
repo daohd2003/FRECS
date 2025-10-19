@@ -10,7 +10,7 @@ namespace ShareItAPI.Controllers
 {
     [ApiController]
     [Route("api/orders")]
-    [Authorize(Roles = "customer,provider")]
+    [Authorize(Roles = "customer,provider,admin")]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;

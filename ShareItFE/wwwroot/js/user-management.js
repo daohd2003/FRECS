@@ -24,6 +24,30 @@ class UserManagement {
         this.createToastContainer();
         this.bindEvents();
         this.loadUsers();
+        
+        // Check if we need to auto-open a user detail modal from URL params
+        this.checkUrlParams();
+    }
+    
+    checkUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        const openDetail = urlParams.get('openDetail');
+        
+        if (userId && openDetail === 'true') {
+            // Wait for users to load, then open the detail modal
+            const checkUsersLoaded = setInterval(() => {
+                if (this.users && this.users.length > 0) {
+                    clearInterval(checkUsersLoaded);
+                    this.showUserDetail(userId);
+                    // Clean up URL without page reload
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }, 100);
+            
+            // Timeout after 5 seconds
+            setTimeout(() => clearInterval(checkUsersLoaded), 5000);
+        }
     }
 
     bindEvents() {

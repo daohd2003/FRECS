@@ -292,6 +292,29 @@
             const modal = document.getElementById('report-detail-modal');
             const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
             let currentReport = null; // To store the data of the currently opened report
+            
+            // Check URL params for auto-opening detail modal
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportIdParam = urlParams.get('reportId');
+            const openDetail = urlParams.get('openDetail');
+            
+            if (reportIdParam && openDetail === 'true') {
+                // Wait a bit for the page to fully render, then trigger the view details
+                setTimeout(async function() {
+                    const response = await fetch(`?handler=ReportDetails&id=${reportIdParam}`);
+                    if (response.ok) {
+                        try {
+                            currentReport = await response.json();
+                            populateModal(currentReport);
+                            modal.classList.remove('hidden');
+                            // Clean up URL without page reload
+                            window.history.replaceState({}, document.title, window.location.pathname + '?tab=' + (urlParams.get('tab') || 'mytasks'));
+                        } catch(err) {
+                            console.error("Error loading report details:", err);
+                        }
+                    }
+                }, 500);
+            }
 
             const adminsList = @Json.Serialize(Model.Admins);
             // === SỬA LỖI Ở ĐÂY: Thêm lại logic SignalR đã bị thiếu ===
