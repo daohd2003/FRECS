@@ -235,6 +235,23 @@
                 }
             }
             // END: Thêm code cho SignalR Real-time Notification
+
+            // START: ActiveUsersHub Connection (for admin tracking)
+            @if (isAuthenticated)
+            {
+                <text>
+            const activeUsersConnection = new signalR.HubConnectionBuilder()
+                .withUrl(apiRootUrl + "/activeUsersHub", {
+                    accessTokenFactory: () => window.adminChatConfig?.accessToken || '@Context.Request.Cookies["AccessToken"]'
+                })
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            activeUsersConnection.start().catch(() => {});
+                </text>
+            }
+            // END: ActiveUsersHub Connection
         });
     </script>
 
