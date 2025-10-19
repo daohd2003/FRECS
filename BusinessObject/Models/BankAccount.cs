@@ -32,7 +32,7 @@ namespace BusinessObject.Models
         public string AccountHolderName { get; set; }
 
         [MaxLength(50)]
-        public string RoutingNumber { get; set; }
+        public string? RoutingNumber { get; set; }
 
         public bool IsPrimary { get; set; } = false;
     }

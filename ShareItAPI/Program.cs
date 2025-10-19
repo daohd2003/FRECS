@@ -48,6 +48,7 @@ using Services.CartServices;
 using Services.CloudServices;
 using Services.CategoryServices;
 using Services.ConversationServices;
+using Services.CustomerBankServices;
 using Services.DiscountCodeServices;
 using Services.EmailServices;
 using Services.FavoriteServices;
@@ -324,6 +325,9 @@ namespace ShareItAPI
             // Register Revenue Services
             builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
             builder.Services.AddScoped<IRevenueService, RevenueService>();
+
+            // Register Customer Bank Services
+            builder.Services.AddScoped<ICustomerBankService, CustomerBankService>();
 
             // Register DiscountCode services
             builder.Services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
