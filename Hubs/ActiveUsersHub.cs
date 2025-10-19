@@ -65,24 +65,46 @@ namespace Hubs
                     cts.Dispose();
                 }
 
-                // Lấy thông tin user từ database
-                var user = await _context.Users
-                    .Include(u => u.Profile)
-                    .FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId));
-
-                var connectionInfo = new UserConnectionInfo
-                {
-                    UserId = userId,
-                    ConnectionId = Context.ConnectionId,
-                    Email = userEmail ?? user?.Email ?? "Unknown",
-                    FullName = user?.Profile?.FullName ?? "Unknown User",
-                    Role = userRole ?? user?.Role.ToString() ?? "Unknown",
-                    AvatarUrl = user?.Profile?.ProfilePictureUrl,
-                    ConnectedAt = DateTime.UtcNow,
-                    LastActivity = DateTime.UtcNow
-                };
-
                 var isNewConnection = !ActiveUsers.ContainsKey(userId);
+                UserConnectionInfo connectionInfo;
+
+                // OPTIMIZATION: Chỉ query database nếu user CHƯA CÓ trong cache
+                // Giảm database queries khi user navigate giữa các pages
+                if (isNewConnection)
+                {
+                    // Query database chỉ cho new connection
+                    var user = await _context.Users
+                        .Include(u => u.Profile)
+                        .FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId));
+
+                    connectionInfo = new UserConnectionInfo
+                    {
+                        UserId = userId,
+                        ConnectionId = Context.ConnectionId,
+                        Email = userEmail ?? user?.Email ?? "Unknown",
+                        FullName = user?.Profile?.FullName ?? "Unknown User",
+                        Role = userRole ?? user?.Role.ToString() ?? "Unknown",
+                        AvatarUrl = user?.Profile?.ProfilePictureUrl,
+                        ConnectedAt = DateTime.UtcNow,
+                        LastActivity = DateTime.UtcNow
+                    };
+                }
+                else
+                {
+                    // Reuse cached info for reconnection (page navigation)
+                    var existingInfo = ActiveUsers[userId];
+                    connectionInfo = new UserConnectionInfo
+                    {
+                        UserId = userId,
+                        ConnectionId = Context.ConnectionId,
+                        Email = existingInfo.Email,
+                        FullName = existingInfo.FullName,
+                        Role = existingInfo.Role,
+                        AvatarUrl = existingInfo.AvatarUrl,
+                        ConnectedAt = existingInfo.ConnectedAt, // Keep original connect time
+                        LastActivity = DateTime.UtcNow
+                    };
+                }
 
                 ActiveUsers.AddOrUpdate(userId, connectionInfo, (key, existing) =>
                 {
