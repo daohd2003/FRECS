@@ -28,7 +28,7 @@ namespace Services.ProviderFinanceServices
 
         public async Task<BankAccount?> GetPrimaryBankAccount(Guid providerId)
         {
-            return await _bankAccountRepo.GetPrimaryAccountByProviderAsync(providerId);
+            return await _bankAccountRepo.GetPrimaryAccountByUserAsync(providerId);
         }
 
         public async Task<IEnumerable<TransactionSummaryDto>> GetTransactionDetails(Guid providerId)

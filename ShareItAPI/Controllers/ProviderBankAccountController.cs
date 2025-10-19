@@ -38,7 +38,7 @@ namespace ShareItAPI.Controllers
             if (account == null)
                 return NotFound(new ApiResponse<object>("Bank account not found", null));
 
-            if (!_userHelper.IsAdmin() && !_userHelper.IsOwner(account.ProviderId))
+            if (!_userHelper.IsAdmin() && !_userHelper.IsOwner(account.UserId))
                 throw new InvalidOperationException("You are not authorized to access these bank accounts.");
 
             return Ok(new ApiResponse<object>("Bank account found", account));

@@ -1,0 +1,706 @@
+@page "/revenue"
+@model ShareItFE.Pages.RevenueModel
+@{
+    ViewData["Title"] = "Revenue Dashboard";
+}
+
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    /* Đảm bảo container không bị overflow */
+    .revenue-dashboard {
+        overflow-x: hidden;
+        width: 100%;
+    }
+    
+    /* Đảm bảo charts responsive đúng cách */
+    .chart-container {
+        position: relative;
+        height: 320px;
+        width: 100%;
+        overflow: hidden;
+    }
+    
+    .chart-container canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+    }
+</style>
+
+<div class="min-h-screen bg-gray-50 revenue-dashboard">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Provider Dashboard</h1>
+                <p class="text-gray-600">Track your earnings, manage payouts, and view rental insights</p>
+            }
+            else
+            {
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Customer Dashboard</h1>
+                <p class="text-gray-600">Track your spending, view rental history, and manage finances</p>
+            }
+        </div>
+
+        <!-- Alert Messages -->
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                <div class="flex items-center">
+                    <i data-lucide="check-circle" class="h-5 w-5 mr-2"></i>
+                    @Model.SuccessMessage
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                <div class="flex items-center">
+                    <i data-lucide="alert-circle" class="h-5 w-5 mr-2"></i>
+                    @Model.ErrorMessage
+                </div>
+            </div>
+        }
+
+        <!-- Tab Navigation -->
+        <div class="mb-8">
+            <nav class="flex space-x-8 border-b border-gray-200">
+                @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+                {
+                    <a href="?tab=overview&period=@Model.Period" 
+                       class="py-2 px-1 border-b-2 font-medium text-sm @(Model.Tab == "overview" ? "border-purple-500 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")">
+                        <i data-lucide="bar-chart-3" class="h-4 w-4 inline mr-2"></i>
+                        Revenue & Insights
+                    </a>
+                    <a href="?tab=payout&period=@Model.Period" 
+                       class="py-2 px-1 border-b-2 font-medium text-sm @(Model.Tab == "payout" ? "border-purple-500 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")">
+                        <i data-lucide="credit-card" class="h-4 w-4 inline mr-2"></i>
+                        Payout Management
+                    </a>
+                }
+                else
+                {
+                    <a href="?tab=overview&period=@Model.Period" 
+                       class="py-2 px-1 border-b-2 font-medium text-sm @(Model.Tab == "overview" ? "border-purple-500 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")">
+                        <i data-lucide="bar-chart-3" class="h-4 w-4 inline mr-2"></i>
+                        Spending Overview
+                    </a>
+                }
+            </nav>
+        </div>
+
+        @if (Model.Tab == "overview")
+        {
+            <!-- Revenue/Purchase Statistics Tab -->
+            
+            <!-- Period Selector -->
+            <div class="mb-6 flex justify-between items-center">
+                <div class="flex space-x-4">
+                    <a href="?tab=overview&period=week" 
+                       class="px-4 py-2 rounded-lg text-sm font-medium @(Model.Period == "week" ? "bg-purple-600 text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50")">
+                        Week
+                    </a>
+                    <a href="?tab=overview&period=month" 
+                       class="px-4 py-2 rounded-lg text-sm font-medium @(Model.Period == "month" ? "bg-purple-600 text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50")">
+                        Month
+                    </a>
+                    <a href="?tab=overview&period=year" 
+                       class="px-4 py-2 rounded-lg text-sm font-medium @(Model.Period == "year" ? "bg-purple-600 text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50")">
+                        Year
+                    </a>
+                </div>
+                <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
+                    <i data-lucide="download" class="h-4 w-4 mr-2"></i>
+                    Export Report
+                </button>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Revenue Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Revenue</p>
+                            <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.CurrentPeriodRevenue.ToString("N0")₫</p>
+                        </div>
+                        <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="dollar-sign" class="h-6 w-6 text-green-600"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center">
+                        @if (Model.RevenueStats.RevenueGrowthPercentage >= 0)
+                        {
+                            <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                            <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
+                        }
+                        else
+                        {
+                            <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                            <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
+                        }
+                        <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <span class="text-xs text-gray-500">From completed orders</span>
+                    </div>
+                </div>
+
+                <!-- Orders Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Orders</p>
+                            <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.CurrentPeriodOrders</p>
+                        </div>
+                        <div class="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="shopping-bag" class="h-6 w-6 text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center">
+                        @if (Model.RevenueStats.OrderGrowthPercentage >= 0)
+                        {
+                            <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                            <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.OrderGrowthPercentage.ToString("F1")%</span>
+                        }
+                        else
+                        {
+                            <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                            <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.OrderGrowthPercentage.ToString("F1")%</span>
+                        }
+                        <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <span class="text-xs text-gray-500">Exclude pending & cancelled</span>
+                    </div>
+                </div>
+
+                @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+                {
+                    <!-- Net Revenue (Provider) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Net Revenue</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.NetRevenue.ToString("N0")₫</p>
+                            </div>
+                            <div class="h-12 w-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="wallet" class="h-6 w-6 text-emerald-600"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            @if (Model.RevenueStats.NetRevenueGrowthPercentage >= 0)
+                            {
+                                <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
+                            }
+                            else
+                            {
+                                <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
+                            }
+                            <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                            <span class="text-xs text-gray-500 block mb-2">After platform fees</span>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">From orders:</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromOrders.ToString("N0")₫</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">From penalties:</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromPenalties.ToString("N0")₫</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Platform Fee (Provider) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Platform Fee</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.PlatformFee.ToString("N0")₫</p>
+                            </div>
+                            <div class="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="percent" class="h-6 w-6 text-orange-600"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            @if (Model.RevenueStats.PlatformFeeGrowthPercentage >= 0)
+                            {
+                                <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.PlatformFeeGrowthPercentage.ToString("F1")%</span>
+                            }
+                            else
+                            {
+                                <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.PlatformFeeGrowthPercentage.ToString("F1")%</span>
+                            }
+                            <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                        </div>
+                        <!-- Breakdown Detail -->
+                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">Rental fee (20%):</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.RentalFee.ToString("N0")₫</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">Sales fee (10%):</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.PurchaseFee.ToString("N0")₫</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Total Spent (Customer) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Spent</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.TotalSpent.ToString("N0")₫</p>
+                            </div>
+                            <div class="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="credit-card" class="h-6 w-6 text-purple-600"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            @if (Model.RevenueStats.TotalSpentGrowthPercentage >= 0)
+                            {
+                                <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.TotalSpentGrowthPercentage.ToString("F1")%</span>
+                            }
+                            else
+                            {
+                                <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.TotalSpentGrowthPercentage.ToString("F1")%</span>
+                            }
+                            <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                        </div>
+                    </div>
+
+                    <!-- Favorite Category (Customer) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Favorite Category</p>
+                                <p class="text-2xl font-bold text-gray-900">@(!string.IsNullOrEmpty(Model.RevenueStats.FavoriteCategory) ? Model.RevenueStats.FavoriteCategory : "None")</p>
+                            </div>
+                            <div class="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="heart" class="h-6 w-6 text-yellow-600"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-sm text-gray-500">@Model.RevenueStats.FavoriteCategoryCount rentals this @Model.Period.ToLower()</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Revenue Chart -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Order Status Breakdown -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Order Status Breakdown</h3>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+        {
+            <!-- Payout Management Tab -->
+            
+            <!-- Payout Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Current Balance</h3>
+                        <i data-lucide="wallet" class="h-6 w-6 text-green-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.CurrentBalance.ToString("N0")₫</p>
+                    <p class="text-sm text-gray-600">Available for payout</p>
+                    @if (Model.PayoutSummary.CurrentBalance > 0)
+                    {
+                        <form method="post" asp-page-handler="RequestPayout" class="mt-4">
+                            <input type="hidden" name="amount" value="@Model.PayoutSummary.CurrentBalance" />
+                            <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center">
+                                <i data-lucide="send" class="h-4 w-4 mr-2"></i>
+                                Request Payout
+                            </button>
+                        </form>
+                    }
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Total Earnings</h3>
+                        <i data-lucide="trending-up" class="h-6 w-6 text-blue-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.TotalEarnings.ToString("N0")₫</p>
+                    <p class="text-sm text-gray-600">Lifetime earnings</p>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Total Payouts</h3>
+                        <i data-lucide="arrow-down-left" class="h-6 w-6 text-purple-600"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.TotalPayouts.ToString("N0")₫</p>
+                    <p class="text-sm text-gray-600">Total paid out</p>
+                </div>
+            </div>
+
+            <!-- Bank Accounts Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900">Bank Accounts</h3>
+                    <button type="button" onclick="openAddBankAccountModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
+                        <i data-lucide="plus" class="h-4 w-4 mr-2"></i>
+                        Add Account
+                    </button>
+                </div>
+
+                <!-- Bank Accounts Grid -->
+                    @if (Model.BankAccounts.Any())
+                    {
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @foreach (var account in Model.BankAccounts)
+                        {
+                            <div class="relative border @(account.IsPrimary ? "border-purple-500 bg-purple-50" : "border-gray-200 bg-white") rounded-xl p-6 hover:shadow-lg transition-shadow">
+                                <!-- Primary Badge (top right corner) -->
+                                    @if (account.IsPrimary)
+                                    {
+                                    <div class="absolute top-4 right-4">
+                                        <span class="bg-purple-600 text-white text-xs font-medium px-3 py-1 rounded-full">Primary</span>
+                                    </div>
+                                }
+                                
+                                <!-- Bank Icon & Name -->
+                                <div class="flex items-start mb-4">
+                                    <div class="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="building-2" class="h-6 w-6 text-gray-600"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Bank Info -->
+                                <div class="mb-4 space-y-2">
+                                    <h4 class="text-lg font-semibold text-gray-900">@account.BankName</h4>
+                                    <p class="text-sm text-gray-600">Account: ****@account.Last4Digits</p>
+                                    @if (!string.IsNullOrEmpty(account.RoutingNumber))
+                                    {
+                                        <p class="text-sm text-gray-500">Routing: @account.RoutingNumber</p>
+                                    }
+                                    <p class="text-sm text-gray-600">Holder: @account.AccountHolderName</p>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                                    @if (!account.IsPrimary)
+                                    {
+                                        <form method="post" asp-page-handler="SetPrimaryAccount" class="inline-flex">
+                                            <input type="hidden" name="accountId" value="@account.Id" />
+                                            <button type="submit" class="text-purple-600 hover:text-purple-800 text-sm font-medium underline">
+                                                Set as Primary
+                                            </button>
+                                        </form>
+                                    }
+                                    <button type="button" onclick="editBankAccount('@account.Id', '@account.BankName', '@account.AccountNumber', '@account.AccountHolderName', '@(account.RoutingNumber ?? "")')" class="text-blue-600 hover:text-blue-800 text-sm font-medium underline">
+                                        Edit
+                                    </button>
+                                    <form method="post" asp-page-handler="DeleteBankAccount" class="inline-flex" onsubmit="return confirm('Are you sure you want to delete this account?')">
+                                        <input type="hidden" name="accountId" value="@account.Id" />
+                                        <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium underline">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    }
+                    else
+                    {
+                    <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                        <i data-lucide="building-2" class="h-16 w-16 mx-auto text-gray-300 mb-4"></i>
+                        <p class="text-gray-500 font-medium">No bank accounts added yet</p>
+                        <p class="text-sm text-gray-400 mt-2">Add a bank account to receive payouts</p>
+                        <button type="button" onclick="openAddBankAccountModal()" class="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 inline-flex items-center">
+                            <i data-lucide="plus" class="h-4 w-4 mr-2"></i>
+                            Add Your First Account
+                        </button>
+                        </div>
+                    }
+                </div>
+
+            <!-- Add/Edit Bank Account Modal -->
+            <div id="bankAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-xl font-semibold text-gray-900" id="modalTitle">Add New Bank Account</h4>
+                            <button type="button" onclick="closeBankAccountModal()" class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="x" class="h-6 w-6"></i>
+                            </button>
+                        </div>
+                        <form method="post" id="bankAccountForm" asp-page-handler="CreateBankAccount">
+                            <input type="hidden" id="accountIdField" name="accountId" value="" />
+                            <input type="hidden" asp-for="Tab" />
+                            <input type="hidden" asp-for="Period" />
+                            <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+                                    <input type="text" id="bankNameField" asp-for="NewBankAccount.BankName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. Chase Bank" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Account Holder Name</label>
+                                    <input type="text" id="accountHolderNameField" asp-for="NewBankAccount.AccountHolderName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. John Doe" />
+                            </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
+                                    <input type="text" id="accountNumberField" asp-for="NewBankAccount.AccountNumber" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. 1234567890" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Routing Number (Optional)</label>
+                                    <input type="text" id="routingNumberField" asp-for="NewBankAccount.RoutingNumber" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. 021000021" />
+                                </div>
+                                <div>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="setAsPrimaryField" asp-for="NewBankAccount.SetAsPrimary" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                                        <span class="ml-2 text-sm text-gray-700">Set as primary account</span>
+                                    </label>
+                                </div>
+                        </div>
+                            <div class="flex space-x-3 mt-6">
+                                <button type="submit" class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium">
+                                    Save Account
+                            </button>
+                                <button type="button" onclick="closeBankAccountModal()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payout History -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Payout History</h3>
+                
+                @if (Model.PayoutHistory.Any())
+                {
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction ID</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @foreach (var payout in Model.PayoutHistory)
+                                {
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            @payout.Date.ToString("MMM dd, yyyy")
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            @payout.Amount.ToString("N0")₫
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            ****@payout.BankAccountLast4
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                                @(payout.Status == "completed" ? "bg-green-100 text-green-800" : 
+                                                  payout.Status == "pending" ? "bg-yellow-100 text-yellow-800" : 
+                                                  "bg-red-100 text-red-800")">
+                                                @payout.Status.ToUpper()
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            @payout.TransactionId.Substring(0, 8)...
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-8 text-gray-500">
+                        <i data-lucide="credit-card" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
+                        <p>No payout history</p>
+                        <p class="text-sm">Your payout transactions will appear here</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Bank Account Modal Functions
+        function openAddBankAccountModal() {
+            const form = document.getElementById('bankAccountForm');
+            const modal = document.getElementById('bankAccountModal');
+            
+            // Set title and form action
+            document.getElementById('modalTitle').textContent = 'Add New Bank Account';
+            form.setAttribute('action', '?handler=CreateBankAccount');
+            
+            // Clear all fields
+            document.getElementById('accountIdField').value = '';
+            document.getElementById('bankNameField').value = '';
+            document.getElementById('accountHolderNameField').value = '';
+            document.getElementById('accountNumberField').value = '';
+            document.getElementById('routingNumberField').value = '';
+            document.getElementById('setAsPrimaryField').checked = false;
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function editBankAccount(id, bankName, accountNumber, accountHolderName, routingNumber) {
+            const form = document.getElementById('bankAccountForm');
+            const modal = document.getElementById('bankAccountModal');
+            
+            // Set title and form action
+            document.getElementById('modalTitle').textContent = 'Edit Bank Account';
+            form.setAttribute('action', '?handler=UpdateBankAccount&accountId=' + id);
+            
+            // Fill form with data
+            document.getElementById('accountIdField').value = id;
+            document.getElementById('bankNameField').value = bankName;
+            document.getElementById('accountHolderNameField').value = accountHolderName;
+            document.getElementById('accountNumberField').value = accountNumber;
+            document.getElementById('routingNumberField').value = routingNumber || '';
+            document.getElementById('setAsPrimaryField').checked = false;
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeBankAccountModal() {
+            document.getElementById('bankAccountModal').classList.add('hidden');
+        }
+
+        // Close modal on outside click
+        document.getElementById('bankAccountModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeBankAccountModal();
+            }
+        });
+
+        // ESC key to close modal
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeBankAccountModal();
+            }
+        });
+
+        // Make functions global
+        window.openAddBankAccountModal = openAddBankAccountModal;
+        window.editBankAccount = editBankAccount;
+        window.closeBankAccountModal = closeBankAccountModal;
+
+        @if (Model.Tab == "overview")
+        {
+            <text>
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueStats.ChartData.Select(x => x.Period))),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueStats.ChartData.Select(x => x.Revenue))),
+                        borderColor: 'rgb(139, 92, 246)',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Status Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueStats.StatusBreakdown.Select(x => x.Status))),
+                    datasets: [{
+                        data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RevenueStats.StatusBreakdown.Select(x => x.Count))),
+                        backgroundColor: [
+                            'rgb(34, 197, 94)',
+                            'rgb(59, 130, 246)', 
+                            'rgb(251, 191, 36)',
+                            'rgb(239, 68, 68)',
+                            'rgb(139, 92, 246)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            </text>
+        }
+    </script>
+}
+

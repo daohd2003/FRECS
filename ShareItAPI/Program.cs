@@ -41,6 +41,7 @@ using Repositories.RentalViolationRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
+using Repositories.RevenueRepositories;
 using Services.AI;
 using Services.Authentication;
 using Services.CartServices;
@@ -61,6 +62,7 @@ using Services.ProviderApplicationServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
 using Services.ReportService;
+using Services.RevenueServices;
 using Services.Transactions;
 using Services.UserServices;
 using ShareItAPI.Middlewares;
@@ -263,6 +265,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CategoryProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(RevenueProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(DiscountCodeProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
@@ -317,6 +320,10 @@ namespace ShareItAPI
 
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
+
+            // Register Revenue Services
+            builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
+            builder.Services.AddScoped<IRevenueService, RevenueService>();
 
             // Register DiscountCode services
             builder.Services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
