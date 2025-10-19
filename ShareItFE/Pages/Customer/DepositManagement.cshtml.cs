@@ -1,11 +1,13 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.DepositDto;
+using BusinessObject.DTOs.RevenueDtos;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
 using ShareItFE.Extensions;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -31,8 +33,11 @@ namespace ShareItFE.Pages.Customer
         }
 
         public DepositStatsDto Stats { get; set; } = new();
-        public List<RefundAccountDto> RefundAccounts { get; set; } = new();
         public List<DepositHistoryDto> DepositHistory { get; set; } = new();
+        public List<BankAccountDto> BankAccounts { get; set; } = new();
+
+        public string SuccessMessage { get; set; } = "";
+        public string ErrorMessage { get; set; } = "";
 
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
@@ -44,15 +49,166 @@ namespace ShareItFE.Pages.Customer
             try
             {
                 await LoadDataFromApi();
+                await LoadBankAccountsFromApi();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading deposit data");
+                _logger.LogError(ex, "Error loading data");
                 // Fallback to mock data if API fails
                 LoadMockData();
+                BankAccounts = new List<BankAccountDto>();
             }
 
             return Page();
+        }
+
+        private async Task LoadBankAccountsFromApi()
+        {
+            var client = await _clientHelper.GetAuthenticatedClientAsync();
+            var response = await client.GetAsync("api/customer/banks");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var accounts = JsonSerializer.Deserialize<List<BankAccountDto>>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
+                }) ?? new List<BankAccountDto>();
+                
+                // Sort: Primary account first, then by creation date (newest first)
+                BankAccounts = accounts.OrderByDescending(a => a.IsPrimary).ThenByDescending(a => a.CreatedAt).ToList();
+            }
+            else
+            {
+                BankAccounts = new List<BankAccountDto>();
+            }
+        }
+
+        public async Task<IActionResult> OnPostCreateBankAccountAsync(string bankName, string accountNumber, string accountHolderName, string routingNumber, bool setAsPrimary)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                
+                var bankAccountDto = new CreateBankAccountDto
+                {
+                    BankName = bankName,
+                    AccountNumber = accountNumber,
+                    AccountHolderName = accountHolderName,
+                    RoutingNumber = string.IsNullOrEmpty(routingNumber) ? null : routingNumber,
+                    SetAsPrimary = setAsPrimary
+                };
+
+                var json = JsonSerializer.Serialize(bankAccountDto);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync("api/customer/banks", content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Bank account created successfully!";
+                }
+                else
+                {
+                    ErrorMessage = "Failed to create bank account.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating bank account");
+                ErrorMessage = "An error occurred. Please try again later.";
+            }
+
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostUpdateBankAccountAsync(Guid accountId, string bankName, string accountNumber, string accountHolderName, string routingNumber, bool setAsPrimary)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                
+                var bankAccountDto = new CreateBankAccountDto
+                {
+                    BankName = bankName,
+                    AccountNumber = accountNumber, 
+                    AccountHolderName = accountHolderName,
+                    RoutingNumber = string.IsNullOrEmpty(routingNumber) ? null : routingNumber,
+                    SetAsPrimary = setAsPrimary
+                };
+
+                var json = JsonSerializer.Serialize(bankAccountDto);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PutAsync($"api/customer/banks/{accountId}", content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Refund account updated successfully!";
+                }
+                else
+                {
+                    ErrorMessage = "Failed to update refund account.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating refund account");
+                ErrorMessage = "An error occurred. Please try again later.";
+            }
+
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostDeleteBankAccountAsync(Guid accountId)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.DeleteAsync($"api/customer/banks/{accountId}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Refund account deleted successfully!";
+                }
+                else
+                {
+                    ErrorMessage = "Failed to delete refund account.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting refund account");
+                ErrorMessage = "An error occurred. Please try again later.";
+            }
+
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostSetPrimaryBankAccountAsync(Guid accountId)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.PostAsync($"api/customer/banks/{accountId}/set-primary", null);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Primary refund account updated successfully!";
+                }
+                else
+                {
+                    ErrorMessage = "Failed to update primary refund account.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting primary refund account");
+                ErrorMessage = "An error occurred. Please try again later.";
+            }
+
+            return RedirectToPage();
         }
 
         private async Task LoadDataFromApi()
@@ -83,8 +239,6 @@ namespace ShareItFE.Pages.Customer
                 DepositHistory = historyApiResponse?.Data ?? new List<DepositHistoryDto>();
             }
 
-            // 3. Load mock refund accounts (UI only - not implemented yet)
-            LoadMockRefundAccounts();
         }
 
         private void LoadMockData()
@@ -97,34 +251,8 @@ namespace ShareItFE.Pages.Customer
                 RefundIssues = 0          // Not implemented - admin deposit refund system
             };
 
-            LoadMockRefundAccounts();
-
             // Mock deposit history - empty since deposit refund system not implemented
             DepositHistory = new List<DepositHistoryDto>();
-        }
-
-        private void LoadMockRefundAccounts()
-        {
-            // Mock refund accounts (UI only)
-            RefundAccounts = new List<RefundAccountDto>
-            {
-                new RefundAccountDto
-                {
-                    Id = Guid.NewGuid(),
-                    BankName = "Chase Bank",
-                    AccountNumber = "****1234",
-                    AccountHolder = "RentChic LLC",
-                    IsPrimary = true
-                },
-                new RefundAccountDto
-                {
-                    Id = Guid.NewGuid(),
-                    BankName = "Bank of America",
-                    AccountNumber = "****5678",
-                    AccountHolder = "RentChic LLC",
-                    IsPrimary = false
-                }
-            };
         }
 
         public async Task<IActionResult> OnPostFilterAsync()
@@ -141,4 +269,3 @@ namespace ShareItFE.Pages.Customer
         }
     }
 }
-

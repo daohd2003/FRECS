@@ -33,6 +33,27 @@
         </a>
     </div>
 
+    <!-- Alert Messages -->
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            @Model.SuccessMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            @Model.ErrorMessage
+        </div>
+    }
+
     <!-- Statistics Cards -->
     <div class="stats-grid deposit-stats">
         <!-- Deposits Refunded -->
@@ -88,7 +109,7 @@
                 <h2 class="section-title">Refund Account Management</h2>
                 <p class="section-subtitle">Manage your bank accounts designated for receiving deposit refunds</p>
             </div>
-            <button class="add-btn" onclick="alert('Add Refund Account feature coming soon!')">
+            <button class="add-btn" onclick="showAddBankModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
@@ -96,34 +117,77 @@
             </button>
         </div>
 
-        <div class="accounts-grid">
-            @foreach (var account in Model.RefundAccounts)
-            {
-                <div class="account-card @(account.IsPrimary ? "primary" : "")">
-                    @if (account.IsPrimary)
-                    {
-                        <span class="primary-badge">Primary</span>
-                    }
-                    <div class="account-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    </div>
-                    <div class="account-info">
-                        <h4 class="account-bank">@account.BankName</h4>
-                        <p class="account-number">Account: @account.AccountNumber</p>
-                        <p class="account-routing">Holder: @account.AccountHolder</p>
-                    </div>
-                    <div class="account-actions">
-                        @if (!account.IsPrimary)
+        @if (Model.BankAccounts.Any())
+        {
+            <div class="accounts-grid">
+                @foreach (var account in Model.BankAccounts)
+                {
+                    <div class="account-card @(account.IsPrimary ? "primary" : "")">
+                        @if (account.IsPrimary)
                         {
-                            <button class="btn-link" onclick="alert('Set as Primary feature coming soon!')">Set as Primary</button>
+                            <span class="primary-badge">Primary</span>
                         }
-                        <button class="btn-link" onclick="alert('Edit Account feature coming soon!')">Edit</button>
+                        <div class="account-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <div class="account-info">
+                            <h4 class="account-bank">@account.BankName</h4>
+                            <p class="account-number">Account: ****@account.Last4Digits</p>
+                            <p class="account-routing">Holder: @account.AccountHolderName</p>
+                            @if (!string.IsNullOrEmpty(account.RoutingNumber))
+                            {
+                                <p class="account-routing">Routing: @account.RoutingNumber</p>
+                            }
+                        </div>
+                        <div class="account-actions">
+                            @if (!account.IsPrimary)
+                            {
+                                <form method="post" asp-page-handler="SetPrimaryBankAccount" class="inline-form">
+                                    <input type="hidden" name="accountId" value="@account.Id" />
+                                    <button type="submit" class="action-btn primary-btn">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Set Primary
+                                    </button>
+                                </form>
+                            }
+                            <button class="action-btn edit-btn" onclick="editBankAccount('@account.Id', '@account.BankName', '@account.AccountNumber', '@account.AccountHolderName', '@(account.RoutingNumber ?? "")')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Edit
+                            </button>
+                            <form method="post" asp-page-handler="DeleteBankAccount" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this account?')">
+                                <input type="hidden" name="accountId" value="@account.Id" />
+                                <button type="submit" class="action-btn delete-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
                     </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
                 </div>
-            }
-        </div>
+                <h3>No Refund Accounts</h3>
+                <p>Add a bank account to receive deposit refunds</p>
+            </div>
+        }
     </div>
 
     <!-- Deposit History Section -->
@@ -233,5 +297,326 @@
             </table>
         </div>
     </div>
+
+    <!-- Bank Account Modal -->
+    <div id="bankAccountModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Bank Account</h3>
+                <button type="button" class="close-btn" onclick="closeBankModal()">&times;</button>
+            </div>
+            <form id="bankAccountForm" method="post" asp-page-handler="CreateBankAccount">
+                <input type="hidden" id="accountId" name="accountId" />
+                <div class="form-group">
+                    <label for="bankName">Bank Name</label>
+                    <input type="text" id="bankName" name="bankName" required />
+                </div>
+                <div class="form-group">
+                    <label for="accountNumber">Account Number</label>
+                    <input type="text" id="accountNumber" name="accountNumber" required />
+                </div>
+                <div class="form-group">
+                    <label for="accountHolderName">Account Holder Name</label>  
+                    <input type="text" id="accountHolderName" name="accountHolderName" required />
+                </div>
+                <div class="form-group">
+                    <label for="routingNumber">Routing Number (Optional)</label>
+                    <input type="text" id="routingNumber" name="routingNumber" />
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setAsPrimary" name="setAsPrimary" value="true" />
+                        Set as primary account
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeBankModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+function showAddBankModal() {
+    document.getElementById('modalTitle').textContent = 'Add Refund Account';
+    document.getElementById('bankAccountForm').action = '?handler=CreateBankAccount';
+    document.getElementById('accountId').value = '';
+    document.getElementById('bankName').value = '';
+    document.getElementById('accountNumber').value = '';
+    document.getElementById('accountHolderName').value = '';
+    document.getElementById('routingNumber').value = '';
+    document.getElementById('setAsPrimary').checked = false;
+    document.getElementById('bankAccountModal').style.display = 'block';
+}
+
+function editBankAccount(id, bankName, accountNumber, accountHolderName, routingNumber) {
+    document.getElementById('modalTitle').textContent = 'Edit Refund Account';
+    document.getElementById('bankAccountForm').action = '?handler=UpdateBankAccount';
+    document.getElementById('accountId').value = id;
+    document.getElementById('bankName').value = bankName;
+    document.getElementById('accountNumber').value = accountNumber;
+    document.getElementById('accountHolderName').value = accountHolderName;
+    document.getElementById('routingNumber').value = routingNumber || '';
+    document.getElementById('setAsPrimary').checked = false;
+    document.getElementById('bankAccountModal').style.display = 'block';
+}
+
+function closeBankModal() {
+    document.getElementById('bankAccountModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('bankAccountModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+</script>
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.close-btn:hover {
+    color: #374151;
+}
+
+#bankAccountForm {
+    padding: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+.form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.btn-secondary {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background-color: white;
+    color: #374151;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-secondary:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+    border-color: #9ca3af;
+}
+
+.btn-primary {
+    padding: 0.5rem 1rem;
+    background-color: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background-color: #5b59f6;
+}
+
+.inline-form {
+    display: inline-block;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid;
+}
+
+.action-btn svg {
+    width: 1rem;
+    height: 1rem;
+    stroke-width: 2;
+}
+
+.primary-btn {
+    background-color: #eff6ff;
+    color: #1e40af;
+    border-color: #bfdbfe;
+}
+
+.primary-btn:hover {
+    background-color: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.edit-btn {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border-color: #bbf7d0;
+}
+
+.edit-btn:hover {
+    background-color: #dcfce7;
+    border-color: #86efac;
+}
+
+.delete-btn {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.delete-btn:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6b7280;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon {
+    margin: 0 auto 1rem;
+    width: 48px;
+    height: 48px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: #6b7280;
+    margin: 0;
+}
+
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+</style>
 
