@@ -71,7 +71,7 @@ namespace Repositories.TransactionRepositories
             foreach (var provider in providers)
             {
                 var bankAccount = await _context.BankAccounts
-                    .Where(b => b.ProviderId == provider.ProviderId && b.IsPrimary)
+                    .Where(b => b.UserId == provider.ProviderId && b.IsPrimary)
                     .FirstOrDefaultAsync();
                 
                 provider.BankAccount = bankAccount?.AccountNumber;

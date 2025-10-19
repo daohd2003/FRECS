@@ -205,14 +205,15 @@ namespace Services.RevenueServices
 
         public async Task<List<BankAccountDto>> GetBankAccountsAsync(Guid userId)
         {
-            var bankAccounts = await _bankAccountRepository.GetBankAccountsWithProviderAsync(userId);
+            var bankAccounts = await _bankAccountRepository.GetBankAccountsByUserAsync(userId);
 
             return bankAccounts.Select(ba => new BankAccountDto
             {
                 Id = ba.Id,
                 BankName = ba.BankName,
                 AccountNumber = ba.AccountNumber,
-                AccountHolderName = ba.Provider?.Profile?.FullName ?? "Unknown",
+                AccountHolderName = ba.AccountHolderName,
+                RoutingNumber = ba.RoutingNumber,
                 IsPrimary = ba.IsPrimary,
                 CreatedAt = DateTime.UtcNow // BankAccount doesn't have CreatedAt, using current time
             }).ToList();
@@ -223,9 +224,11 @@ namespace Services.RevenueServices
             var bankAccount = new BankAccount
             {
                 Id = Guid.NewGuid(),
-                ProviderId = userId,
+                UserId = userId,
                 BankName = dto.BankName,
                 AccountNumber = dto.AccountNumber,
+                AccountHolderName = dto.AccountHolderName,
+                RoutingNumber = dto.RoutingNumber,
                 IsPrimary = dto.SetAsPrimary
             };
 
@@ -241,12 +244,14 @@ namespace Services.RevenueServices
 
         public async Task<bool> UpdateBankAccountAsync(Guid userId, Guid accountId, CreateBankAccountDto dto)
         {
-            var bankAccount = await _bankAccountRepository.GetByIdAndProviderAsync(accountId, userId);
+            var bankAccount = await _bankAccountRepository.GetByIdAndUserAsync(accountId, userId);
 
             if (bankAccount == null) return false;
 
             bankAccount.BankName = dto.BankName;
             bankAccount.AccountNumber = dto.AccountNumber;
+            bankAccount.AccountHolderName = dto.AccountHolderName;
+            bankAccount.RoutingNumber = dto.RoutingNumber;
 
             if (dto.SetAsPrimary && !bankAccount.IsPrimary)
             {
@@ -260,7 +265,7 @@ namespace Services.RevenueServices
 
         public async Task<bool> DeleteBankAccountAsync(Guid userId, Guid accountId)
         {
-            var bankAccount = await _bankAccountRepository.GetByIdAndProviderAsync(accountId, userId);
+            var bankAccount = await _bankAccountRepository.GetByIdAndUserAsync(accountId, userId);
 
             if (bankAccount == null) return false;
 
@@ -270,7 +275,7 @@ namespace Services.RevenueServices
 
         public async Task<bool> SetPrimaryBankAccountAsync(Guid userId, Guid accountId)
         {
-            var bankAccount = await _bankAccountRepository.GetByIdAndProviderAsync(accountId, userId);
+            var bankAccount = await _bankAccountRepository.GetByIdAndUserAsync(accountId, userId);
 
             if (bankAccount == null) return false;
 

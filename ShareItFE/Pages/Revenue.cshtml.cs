@@ -108,6 +108,10 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostCreateBankAccountAsync()
         {
+            // Remove validation errors for Tab and Period (they're not part of the form)
+            ModelState.Remove("Tab");
+            ModelState.Remove("Period");
+            
             if (!ModelState.IsValid)
             {
                 ErrorMessage = "Please check your input and try again.";
@@ -134,6 +138,43 @@ namespace ShareItFE.Pages
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating bank account");
+                ErrorMessage = "An error occurred. Please try again later.";
+            }
+
+            return RedirectToPage(new { Tab = "payout" });
+        }
+
+        public async Task<IActionResult> OnPostUpdateBankAccountAsync(Guid accountId)
+        {
+            // Remove validation errors for Tab and Period (they're not part of the form)
+            ModelState.Remove("Tab");
+            ModelState.Remove("Period");
+            
+            if (!ModelState.IsValid)
+            {
+                ErrorMessage = "Please check your input and try again.";
+                return await OnGetAsync();
+            }
+
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var json = JsonSerializer.Serialize(NewBankAccount);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PutAsync($"api/revenue/bank-accounts/{accountId}", content);
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Bank account updated successfully!";
+                }
+                else
+                {
+                    ErrorMessage = "Failed to update bank account. Please try again.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating bank account");
                 ErrorMessage = "An error occurred. Please try again later.";
             }
 

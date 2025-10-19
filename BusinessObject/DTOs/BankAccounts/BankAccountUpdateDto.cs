@@ -11,6 +11,7 @@ namespace BusinessObject.DTOs.BankAccounts
         public Guid Id { get; set; }  // ID của tài khoản ngân hàng cần cập nhật
         public string BankName { get; set; } = string.Empty;
         public string AccountNumber { get; set; } = string.Empty;
+        public string AccountHolderName { get; set; } = string.Empty;
         public string? RoutingNumber { get; set; }
         public bool IsPrimary { get; set; }
     }
