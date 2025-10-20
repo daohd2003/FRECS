@@ -49,25 +49,27 @@
             }
         </div>
 
-        <!-- Alert Messages -->
+        <!-- Toast Container -->
+        <div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
+
+        <!-- Alert Messages (will convert to toast) -->
         @if (!string.IsNullOrEmpty(Model.SuccessMessage))
         {
-            <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                <div class="flex items-center">
-                    <i data-lucide="check-circle" class="h-5 w-5 mr-2"></i>
-                    @Model.SuccessMessage
-                </div>
-            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('Success message:', '@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SuccessMessage))');
+                    showToast('@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SuccessMessage))', 'success');
+                });
+            </script>
         }
-
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        else if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
-            <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                <div class="flex items-center">
-                    <i data-lucide="alert-circle" class="h-5 w-5 mr-2"></i>
-                    @Model.ErrorMessage
-                </div>
-            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('Error message:', '@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ErrorMessage))');
+                    showToast('@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ErrorMessage))', 'error');
+                });
+            </script>
         }
 
         <!-- Tab Navigation -->
@@ -332,20 +334,21 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Current Balance</h3>
+                        <h3 class="text-lg font-semibold text-gray-900">Available Balance</h3>
                         <i data-lucide="wallet" class="h-6 w-6 text-green-600"></i>
                     </div>
-                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.PayoutSummary.CurrentBalance.ToString("N0")₫</p>
-                    <p class="text-sm text-gray-600">Available for payout</p>
-                    @if (Model.PayoutSummary.CurrentBalance > 0)
+                    <p class="text-3xl font-bold text-gray-900 mb-2">@Model.AvailableBalance.ToString("N0")₫</p>
+                    <p class="text-sm text-gray-600">Ready for withdrawal</p>
+                    @if (Model.AvailableBalance >= 50000)
                     {
-                        <form method="post" asp-page-handler="RequestPayout" class="mt-4">
-                            <input type="hidden" name="amount" value="@Model.PayoutSummary.CurrentBalance" />
-                            <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center">
+                        <button type="button" onclick="openWithdrawalModal()" class="mt-4 w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center">
                                 <i data-lucide="send" class="h-4 w-4 mr-2"></i>
                                 Request Payout
                             </button>
-                        </form>
+                    }
+                    else
+                    {
+                        <p class="mt-4 text-xs text-red-600">Minimum withdrawal: 50,000₫</p>
                     }
                 </div>
 
@@ -501,46 +504,164 @@
                 </div>
             </div>
 
-            <!-- Payout History -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Payout History</h3>
+            <!-- Request Withdrawal Modal -->
+            <div id="withdrawalModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-xl font-semibold text-gray-900">Request Withdrawal</h4>
+                            <button type="button" onclick="closeWithdrawalModal()" class="text-gray-400 hover:text-gray-600">
+                                <i data-lucide="x" class="h-6 w-6"></i>
+                            </button>
+                        </div>
+                        <form method="post" asp-page-handler="RequestWithdrawal" id="withdrawalForm" onsubmit="return confirmWithdrawal(event)">
+                            <input type="hidden" asp-for="Tab" />
+                            <input type="hidden" asp-for="Period" />
+                            <div class="space-y-4">
+                                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                                    <p class="text-sm text-gray-700"><strong>Available Balance:</strong></p>
+                                    <p class="text-2xl font-bold text-purple-600" id="availableBalanceDisplay">@Model.AvailableBalance.ToString("N0")₫</p>
+                                    <input type="hidden" id="availableBalance" value="@Model.AvailableBalance" />
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bank Account *</label>
+                                    <select asp-for="WithdrawalRequest.BankAccountId" id="withdrawalBankAccount" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <option value="">Select a bank account</option>
+                                        @foreach (var account in Model.BankAccounts)
+                                        {
+                                            <option value="@account.Id" data-bank-name="@account.BankName" data-last4="@account.Last4Digits">@account.BankName - ****@account.Last4Digits @(account.IsPrimary ? "(Primary)" : "")</option>
+                                        }
+                                    </select>
+                                    @if (!Model.BankAccounts.Any())
+                                    {
+                                        <p class="mt-2 text-sm text-red-600">Please add a bank account first.</p>
+                                    }
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount (VND) *</label>
+                                    <input type="text" id="withdrawalAmountInput" name="withdrawalAmountDisplay" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Minimum 50,000₫" oninput="formatAndValidateAmount(this)" />
+                                    <input type="hidden" id="withdrawalAmountHidden" asp-for="WithdrawalRequest.Amount" />
+                                    <div class="mt-2 space-y-1">
+                                        <p class="text-xs text-gray-500">Minimum withdrawal: <span class="font-semibold">50,000₫</span></p>
+                                        <div id="remainingBalance" class="text-xs font-medium"></div>
+                                        <div id="amountError" class="text-xs text-red-600 hidden"></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                                    <textarea asp-for="WithdrawalRequest.Notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Add any notes about this withdrawal..."></textarea>
+                                </div>
+                                
+
+                            </div>
+                            <div class="flex space-x-3 mt-6">
+                                <button type="submit" id="submitWithdrawalBtn" class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed transition-all" disabled>
+                                    <span id="submitBtnText">Submit Request</span>
+                                    <span id="submitBtnLoader" class="hidden">
+                                        <svg class="animate-spin h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Processing...
+                                    </span>
+                                </button>
+                                <button type="button" onclick="closeWithdrawalModal()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confirmation Modal -->
+            <div id="confirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
+                <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4">
+                    <div class="p-6">
+                        <div class="text-center mb-4">
+                            <div class="mx-auto w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-3">
+                                <i data-lucide="alert-triangle" class="h-6 w-6 text-yellow-600"></i>
+                            </div>
+                            <h4 class="text-lg font-semibold text-gray-900">Confirm Withdrawal</h4>
+                        </div>
+                        <div class="space-y-2 mb-6 text-sm">
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">Amount:</span>
+                                <span class="font-semibold" id="confirmAmount"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">Bank Account:</span>
+                                <span class="font-semibold" id="confirmBank"></span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b">
+                                <span class="text-gray-600">Current Balance:</span>
+                                <span class="font-semibold" id="confirmCurrentBalance"></span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span class="text-gray-600">Remaining Balance:</span>
+                                <span class="font-semibold text-purple-600" id="confirmRemainingBalance"></span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-600 mb-4 text-center">Are you sure you want to proceed with this withdrawal?</p>
+                        <div class="flex space-x-3">
+                            <button type="button" onclick="proceedWithdrawal()" class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium">
+                                Yes, Proceed
+                            </button>
+                            <button type="button" onclick="closeConfirmationModal()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Withdrawal History -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Withdrawal History</h3>
                 
-                @if (Model.PayoutHistory.Any())
+                @if (Model.WithdrawalHistory.Any())
                 {
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Date</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bank Account</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed Date</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach (var payout in Model.PayoutHistory)
+                                @foreach (var withdrawal in Model.WithdrawalHistory)
                                 {
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            @payout.Date.ToString("MMM dd, yyyy")
+                                            @withdrawal.RequestDate.ToString("MMM dd, yyyy HH:mm")
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            @payout.Amount.ToString("N0")₫
+                                            @withdrawal.Amount.ToString("N0")₫
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            ****@payout.BankAccountLast4
+                                            @withdrawal.BankName - ****@withdrawal.AccountLast4
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
-                                                @(payout.Status == "completed" ? "bg-green-100 text-green-800" : 
-                                                  payout.Status == "pending" ? "bg-yellow-100 text-yellow-800" : 
+                                                @(withdrawal.Status == "Completed" ? "bg-green-100 text-green-800" : 
+                                                  withdrawal.Status == "Initiated" ? "bg-yellow-100 text-yellow-800" : 
                                                   "bg-red-100 text-red-800")">
-                                                @payout.Status.ToUpper()
+                                                @withdrawal.Status.ToUpper()
                                             </span>
+                                            @if (!string.IsNullOrEmpty(withdrawal.RejectionReason))
+                                            {
+                                                <p class="mt-1 text-xs text-red-600">@withdrawal.RejectionReason</p>
+                                            }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @payout.TransactionId.Substring(0, 8)...
+                                            @(withdrawal.ProcessedAt.HasValue ? withdrawal.ProcessedAt.Value.ToString("MMM dd, yyyy HH:mm") : "-")
                                         </td>
                                     </tr>
                                 }
@@ -551,9 +672,9 @@
                 else
                 {
                     <div class="text-center py-8 text-gray-500">
-                        <i data-lucide="credit-card" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
-                        <p>No payout history</p>
-                        <p class="text-sm">Your payout transactions will appear here</p>
+                        <i data-lucide="file-text" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
+                        <p>No withdrawal history</p>
+                        <p class="text-sm">Your withdrawal requests will appear here</p>
                     </div>
                 }
             </div>
@@ -565,6 +686,86 @@
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+
+        // Toast Notification System
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const toastId = 'toast-' + Date.now();
+            toast.id = toastId;
+            
+            // Define colors and icons based on type
+            let bgColor, borderColor, textColor, iconSvg;
+            switch(type) {
+                case 'success':
+                    bgColor = 'bg-green-50';
+                    borderColor = 'border-green-200';
+                    textColor = 'text-green-800';
+                    iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-50';
+                    borderColor = 'border-red-200';
+                    textColor = 'text-red-800';
+                    iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-50';
+                    borderColor = 'border-yellow-200';
+                    textColor = 'text-yellow-800';
+                    iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+                    break;
+                default:
+                    bgColor = 'bg-blue-50';
+                    borderColor = 'border-blue-200';
+                    textColor = 'text-blue-800';
+                    iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+            }
+            
+            toast.className = `${bgColor} ${borderColor} border-l-4 ${textColor} px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out opacity-0 translate-x-full max-w-md`;
+            toast.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mr-3 mt-0.5">
+                            ${iconSvg}
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium">${message}</p>
+                        </div>
+                    </div>
+                    <button onclick="closeToast('${toastId}')" class="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-x-full');
+                toast.classList.add('opacity-100', 'translate-x-0');
+            }, 10);
+            
+            // Auto remove after duration
+            setTimeout(() => {
+                closeToast(toastId);
+            }, duration);
+        }
+
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }
+        }
+
+        // Make toast functions global
+        window.showToast = showToast;
+        window.closeToast = closeToast;
 
         // Bank Account Modal Functions
         function openAddBankAccountModal() {
@@ -613,17 +814,192 @@
             document.getElementById('bankAccountModal').classList.add('hidden');
         }
 
-        // Close modal on outside click
+        // Withdrawal Modal Functions
+        function openWithdrawalModal() {
+            const modal = document.getElementById('withdrawalModal');
+            // Reset form
+            document.getElementById('withdrawalForm').reset();
+            document.getElementById('withdrawalAmountInput').value = '';
+            document.getElementById('remainingBalance').innerHTML = '';
+            document.getElementById('amountError').classList.add('hidden');
+            document.getElementById('submitWithdrawalBtn').disabled = true;
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeWithdrawalModal() {
+            document.getElementById('withdrawalModal').classList.add('hidden');
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').classList.add('hidden');
+        }
+
+        // Format number with commas (Vietnamese style - no decimals)
+        function formatNumber(num) {
+            // Convert to integer to remove any decimals
+            const intNum = Math.floor(Number(num));
+            // Format with dot as thousand separator for Vietnamese
+            return intNum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        // Parse formatted number (Vietnamese uses dot separator)
+        function parseFormattedNumber(str) {
+            // Remove dots (Vietnamese thousand separator) and parse
+            return parseInt(str.replace(/\./g, '').replace(/,/g, '')) || 0;
+        }
+
+        // Format and validate amount input
+        function formatAndValidateAmount(input) {
+            const availableBalance = parseFloat(document.getElementById('availableBalance').value);
+            const minAmount = 50000;
+            
+            // Remove non-numeric characters except digits
+            let value = input.value.replace(/[^\d]/g, '');
+            const numericValue = parseInt(value) || 0;
+            
+            // Format with commas
+            input.value = value ? formatNumber(numericValue) : '';
+            
+            // Update hidden field with numeric value
+            document.getElementById('withdrawalAmountHidden').value = numericValue;
+            
+            const errorDiv = document.getElementById('amountError');
+            const remainingDiv = document.getElementById('remainingBalance');
+            const submitBtn = document.getElementById('submitWithdrawalBtn');
+            const bankAccount = document.getElementById('withdrawalBankAccount');
+            
+            // Validation
+            let isValid = true;
+            let errorMessage = '';
+            
+            if (numericValue > 0) {
+                if (numericValue < minAmount) {
+                    errorMessage = `Amount must be at least ${formatNumber(minAmount)}₫`;
+                    isValid = false;
+                } else if (numericValue > availableBalance) {
+                    const shortage = numericValue - availableBalance;
+                    errorMessage = `Insufficient balance. You need ${formatNumber(shortage)}₫ more.`;
+                    isValid = false;
+                } else {
+                    // Show remaining balance
+                    const remaining = availableBalance - numericValue;
+                    remainingDiv.innerHTML = `<span class="text-green-600">✓ Remaining after withdrawal: <strong>${formatNumber(remaining)}₫</strong></span>`;
+                    remainingDiv.classList.remove('hidden');
+                }
+            } else {
+                remainingDiv.innerHTML = '';
+            }
+            
+            // Display error
+            if (errorMessage) {
+                errorDiv.textContent = errorMessage;
+                errorDiv.classList.remove('hidden');
+                remainingDiv.innerHTML = '';
+            } else {
+                errorDiv.classList.add('hidden');
+            }
+            
+            // Enable/disable submit button
+            submitBtn.disabled = !isValid || numericValue === 0 || !bankAccount.value;
+        }
+
+        // Enable submit button when bank account is selected
+        document.getElementById('withdrawalBankAccount')?.addEventListener('change', function() {
+            const amount = parseFormattedNumber(document.getElementById('withdrawalAmountInput').value);
+            const submitBtn = document.getElementById('submitWithdrawalBtn');
+            const availableBalance = parseFloat(document.getElementById('availableBalance').value);
+            
+            submitBtn.disabled = !this.value || amount < 50000 || amount > availableBalance;
+        });
+
+        // Confirmation before submit
+        function confirmWithdrawal(event) {
+            event.preventDefault();
+            
+            const amount = parseFormattedNumber(document.getElementById('withdrawalAmountInput').value);
+            const availableBalance = parseFloat(document.getElementById('availableBalance').value);
+            const bankAccount = document.getElementById('withdrawalBankAccount');
+            const selectedOption = bankAccount.options[bankAccount.selectedIndex];
+            
+            if (!selectedOption || !selectedOption.value) {
+                alert('Please select a bank account');
+                return false;
+            }
+            
+            const bankName = selectedOption.dataset.bankName;
+            const last4 = selectedOption.dataset.last4;
+            const remaining = availableBalance - amount;
+            
+            // Populate confirmation modal
+            document.getElementById('confirmAmount').textContent = formatNumber(amount) + '₫';
+            document.getElementById('confirmBank').textContent = bankName + ' - ****' + last4;
+            document.getElementById('confirmCurrentBalance').textContent = formatNumber(availableBalance) + '₫';
+            document.getElementById('confirmRemainingBalance').textContent = formatNumber(remaining) + '₫';
+            
+            // Show confirmation modal
+            document.getElementById('confirmationModal').classList.remove('hidden');
+            lucide.createIcons();
+            
+            return false;
+        }
+
+        // Proceed with withdrawal after confirmation
+        function proceedWithdrawal() {
+            const submitBtn = document.getElementById('submitWithdrawalBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const submitBtnLoader = document.getElementById('submitBtnLoader');
+            
+            // CRITICAL: Ensure hidden field has the correct numeric value before submit
+            const displayInput = document.getElementById('withdrawalAmountInput');
+            const hiddenInput = document.getElementById('withdrawalAmountHidden');
+            const numericValue = parseFormattedNumber(displayInput.value);
+            hiddenInput.value = numericValue;
+            
+            // Log for debugging
+            console.log('Submitting withdrawal:', {
+                display: displayInput.value,
+                numeric: numericValue,
+                hidden: hiddenInput.value
+            });
+            
+            // Close confirmation modal
+            closeConfirmationModal();
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtnText.classList.add('hidden');
+            submitBtnLoader.classList.remove('hidden');
+            
+            // Submit form
+            document.getElementById('withdrawalForm').submit();
+        }
+
+        // Close modals on outside click
         document.getElementById('bankAccountModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeBankAccountModal();
             }
         });
 
-        // ESC key to close modal
+        document.getElementById('withdrawalModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeWithdrawalModal();
+            }
+        });
+
+        document.getElementById('confirmationModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeConfirmationModal();
+            }
+        });
+
+        // ESC key to close modals
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeBankAccountModal();
+                closeWithdrawalModal();
+                closeConfirmationModal();
             }
         });
 
@@ -631,6 +1007,12 @@
         window.openAddBankAccountModal = openAddBankAccountModal;
         window.editBankAccount = editBankAccount;
         window.closeBankAccountModal = closeBankAccountModal;
+        window.openWithdrawalModal = openWithdrawalModal;
+        window.closeWithdrawalModal = closeWithdrawalModal;
+        window.closeConfirmationModal = closeConfirmationModal;
+        window.formatAndValidateAmount = formatAndValidateAmount;
+        window.confirmWithdrawal = confirmWithdrawal;
+        window.proceedWithdrawal = proceedWithdrawal;
 
         @if (Model.Tab == "overview")
         {

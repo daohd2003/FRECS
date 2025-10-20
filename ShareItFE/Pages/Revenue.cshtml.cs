@@ -1,4 +1,6 @@
 using BusinessObject.DTOs.RevenueDtos;
+using BusinessObject.DTOs.WithdrawalDto;
+using BusinessObject.DTOs.ApiResponses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -24,10 +26,14 @@ namespace ShareItFE.Pages
         public RevenueStatsDto RevenueStats { get; set; } = new RevenueStatsDto();
         public PayoutSummaryDto PayoutSummary { get; set; } = new PayoutSummaryDto();
         public List<BankAccountDto> BankAccounts { get; set; } = new List<BankAccountDto>();
-        public List<PayoutHistoryDto> PayoutHistory { get; set; } = new List<PayoutHistoryDto>();
+        public List<WithdrawalHistoryDto> WithdrawalHistory { get; set; } = new List<WithdrawalHistoryDto>();
+        public decimal AvailableBalance { get; set; } = 0;
 
         [BindProperty]
         public CreateBankAccountDto NewBankAccount { get; set; } = new CreateBankAccountDto();
+
+        [BindProperty]
+        public WithdrawalRequestDto WithdrawalRequest { get; set; } = new WithdrawalRequestDto();
 
         [BindProperty(SupportsGet = true)]
         public string Period { get; set; } = "month";
@@ -89,12 +95,22 @@ namespace ShareItFE.Pages
                     BankAccounts = JsonSerializer.Deserialize<List<BankAccountDto>>(bankJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<BankAccountDto>();
                 }
 
-                // Get payout history
-                var historyResponse = await client.GetAsync("api/revenue/payout-history");
-                if (historyResponse.IsSuccessStatusCode)
+                // Get withdrawal history (New system using WithdrawalRequests table)
+                var withdrawalHistoryResponse = await client.GetAsync("api/withdrawals/history");
+                if (withdrawalHistoryResponse.IsSuccessStatusCode)
                 {
-                    var historyJson = await historyResponse.Content.ReadAsStringAsync();
-                    PayoutHistory = JsonSerializer.Deserialize<List<PayoutHistoryDto>>(historyJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<PayoutHistoryDto>();
+                    var withdrawalJson = await withdrawalHistoryResponse.Content.ReadAsStringAsync();
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<IEnumerable<WithdrawalHistoryDto>>>(withdrawalJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    WithdrawalHistory = apiResponse?.Data?.ToList() ?? new List<WithdrawalHistoryDto>();
+                }
+
+                // Get available balance
+                var balanceResponse = await client.GetAsync("api/withdrawals/available-balance");
+                if (balanceResponse.IsSuccessStatusCode)
+                {
+                    var balanceJson = await balanceResponse.Content.ReadAsStringAsync();
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<decimal>>(balanceJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    AvailableBalance = apiResponse?.Data ?? 0;
                 }
             }
             catch (Exception ex)
@@ -108,13 +124,21 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostCreateBankAccountAsync()
         {
-            // Remove validation errors for Tab and Period (they're not part of the form)
-            ModelState.Remove("Tab");
-            ModelState.Remove("Period");
+            // Only validate NewBankAccount fields
+            var validationErrors = ModelState
+                .Where(x => !x.Key.StartsWith("NewBankAccount."))
+                .Select(x => x.Key)
+                .ToList();
+
+            foreach (var key in validationErrors)
+            {
+                ModelState.Remove(key);
+            }
             
             if (!ModelState.IsValid)
             {
-                ErrorMessage = "Please check your input and try again.";
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                ErrorMessage = string.Join(", ", errors);
                 return await OnGetAsync();
             }
 
@@ -128,17 +152,20 @@ namespace ShareItFE.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Bank account added successfully!";
+                    ErrorMessage = string.Empty;
                     NewBankAccount = new CreateBankAccountDto(); // Reset form
                 }
                 else
                 {
                     ErrorMessage = "Failed to add bank account. Please try again.";
+                    SuccessMessage = string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating bank account");
                 ErrorMessage = "An error occurred. Please try again later.";
+                SuccessMessage = string.Empty;
             }
 
             return RedirectToPage(new { Tab = "payout" });
@@ -146,13 +173,21 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostUpdateBankAccountAsync(Guid accountId)
         {
-            // Remove validation errors for Tab and Period (they're not part of the form)
-            ModelState.Remove("Tab");
-            ModelState.Remove("Period");
+            // Only validate NewBankAccount fields
+            var validationErrors = ModelState
+                .Where(x => !x.Key.StartsWith("NewBankAccount."))
+                .Select(x => x.Key)
+                .ToList();
+
+            foreach (var key in validationErrors)
+            {
+                ModelState.Remove(key);
+            }
             
             if (!ModelState.IsValid)
             {
-                ErrorMessage = "Please check your input and try again.";
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                ErrorMessage = string.Join(", ", errors);
                 return await OnGetAsync();
             }
 
@@ -166,16 +201,19 @@ namespace ShareItFE.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Bank account updated successfully!";
+                    ErrorMessage = string.Empty;
                 }
                 else
                 {
                     ErrorMessage = "Failed to update bank account. Please try again.";
+                    SuccessMessage = string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating bank account");
                 ErrorMessage = "An error occurred. Please try again later.";
+                SuccessMessage = string.Empty;
             }
 
             return RedirectToPage(new { Tab = "payout" });
@@ -191,16 +229,19 @@ namespace ShareItFE.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Bank account deleted successfully!";
+                    ErrorMessage = string.Empty;
                 }
                 else
                 {
                     ErrorMessage = "Failed to delete bank account.";
+                    SuccessMessage = string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting bank account");
                 ErrorMessage = "An error occurred. Please try again later.";
+                SuccessMessage = string.Empty;
             }
 
             return RedirectToPage(new { Tab = "payout" });
@@ -216,16 +257,19 @@ namespace ShareItFE.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Primary account updated successfully!";
+                    ErrorMessage = string.Empty;
                 }
                 else
                 {
                     ErrorMessage = "Failed to update primary account.";
+                    SuccessMessage = string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting primary account");
                 ErrorMessage = "An error occurred. Please try again later.";
+                SuccessMessage = string.Empty;
             }
 
             return RedirectToPage(new { Tab = "payout" });
@@ -244,16 +288,71 @@ namespace ShareItFE.Pages
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Payout request submitted successfully!";
+                    ErrorMessage = string.Empty;
                 }
                 else
                 {
                     ErrorMessage = "Failed to request payout. Please check your balance and try again.";
+                    SuccessMessage = string.Empty;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error requesting payout");
                 ErrorMessage = "An error occurred. Please try again later.";
+                SuccessMessage = string.Empty;
+            }
+
+            return RedirectToPage(new { Tab = "payout" });
+        }
+
+        public async Task<IActionResult> OnPostRequestWithdrawalAsync()
+        {
+            // Only validate WithdrawalRequest fields
+            var validationErrors = ModelState
+                .Where(x => !x.Key.StartsWith("WithdrawalRequest."))
+                .Select(x => x.Key)
+                .ToList();
+
+            foreach (var key in validationErrors)
+            {
+                ModelState.Remove(key);
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                ErrorMessage = string.Join(", ", errors);
+                return await OnGetAsync();
+            }
+
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var json = JsonSerializer.Serialize(WithdrawalRequest);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync("api/withdrawals/request", content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    SuccessMessage = "Withdrawal request submitted successfully! Status: Initiated";
+                    ErrorMessage = string.Empty; // Clear any previous error
+                    WithdrawalRequest = new WithdrawalRequestDto(); // Reset form
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<string>>(errorContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    ErrorMessage = errorResponse?.Message ?? "Failed to submit withdrawal request. Please try again.";
+                    SuccessMessage = string.Empty; // Clear any previous success
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error requesting withdrawal");
+                ErrorMessage = "An error occurred. Please try again later.";
+                SuccessMessage = string.Empty; // Clear any previous success
             }
 
             return RedirectToPage(new { Tab = "payout" });
