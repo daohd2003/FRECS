@@ -74,6 +74,8 @@ using System.Text.Json.Serialization;
 using Services.CustomerDashboardServices;
 using Services.DepositServices;
 using Repositories.DepositRepositories;
+using Services.WithdrawalServices;
+using Repositories.WithdrawalRepositories;
 
 namespace ShareItAPI
 {
@@ -348,6 +350,10 @@ namespace ShareItAPI
             // Register DepositRefund services
             builder.Services.AddScoped<Repositories.DepositRefundRepositories.IDepositRefundRepository, Repositories.DepositRefundRepositories.DepositRefundRepository>();
             builder.Services.AddScoped<Services.DepositRefundServices.IDepositRefundService, Services.DepositRefundServices.DepositRefundService>();
+
+            // Register Withdrawal services
+            builder.Services.AddScoped<IWithdrawalRepository, WithdrawalRepository>();
+            builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 

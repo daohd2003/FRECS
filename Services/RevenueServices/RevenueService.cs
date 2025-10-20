@@ -5,6 +5,7 @@ using BusinessObject.Models;
 using Repositories.RevenueRepositories;
 using Repositories.TransactionRepositories;
 using Repositories.BankAccountRepositories;
+using Repositories.WithdrawalRepositories;
 
 namespace Services.RevenueServices
 {
@@ -13,17 +14,20 @@ namespace Services.RevenueServices
         private readonly IRevenueRepository _revenueRepository;
         private readonly ITransactionRepository _transactionRepository;
         private readonly IBankAccountRepository _bankAccountRepository;
+        private readonly IWithdrawalRepository _withdrawalRepository;
         private readonly IMapper _mapper;
 
         public RevenueService(
             IRevenueRepository revenueRepository,
             ITransactionRepository transactionRepository,
             IBankAccountRepository bankAccountRepository,
+            IWithdrawalRepository withdrawalRepository,
             IMapper mapper)
         {
             _revenueRepository = revenueRepository;
             _transactionRepository = transactionRepository;
             _bankAccountRepository = bankAccountRepository;
+            _withdrawalRepository = withdrawalRepository;
             _mapper = mapper;
         }
 
@@ -162,9 +166,10 @@ namespace Services.RevenueServices
         public async Task<PayoutSummaryDto> GetPayoutSummaryAsync(Guid userId)
         {
             var totalEarnings = await _revenueRepository.GetTotalEarningsAsync(userId);
-            var totalPayouts = await _transactionRepository.GetTotalPayoutsByUserAsync(userId);
+            // Lấy tổng số tiền đã rút thành công từ bảng WithdrawalRequests
+            var totalPayouts = await _withdrawalRepository.GetTotalCompletedAmountAsync(userId);
             var currentBalance = totalEarnings - totalPayouts;
-            var pendingAmount = await _revenueRepository.GetPendingAmountAsync(userId);
+            var pendingAmount = await _withdrawalRepository.GetTotalPendingAmountAsync(userId);
 
             var recentTransactions = await _transactionRepository.GetRecentPayoutsAsync(userId, 5);
             var recentPayouts = recentTransactions.Select(t => new PayoutHistoryDto
