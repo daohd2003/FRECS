@@ -42,6 +42,9 @@ namespace DataAccess
         // Deposit Refund table
         public DbSet<DepositRefund> DepositRefunds { get; set; }
 
+        // Withdrawal Request table
+        public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -422,6 +425,33 @@ namespace DataAccess
                 .HasOne(dr => dr.RefundBankAccount)
                 .WithMany()
                 .HasForeignKey(dr => dr.RefundBankAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // WithdrawalRequest configuration
+            modelBuilder.Entity<WithdrawalRequest>()
+                .Property(wr => wr.Amount)
+                .HasColumnType("decimal(18, 0)");
+            
+            modelBuilder.Entity<WithdrawalRequest>()
+                .Property(wr => wr.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<WithdrawalRequest>()
+                .HasOne(wr => wr.Provider)
+                .WithMany()
+                .HasForeignKey(wr => wr.ProviderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WithdrawalRequest>()
+                .HasOne(wr => wr.ProcessedByAdmin)
+                .WithMany()
+                .HasForeignKey(wr => wr.ProcessedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WithdrawalRequest>()
+                .HasOne(wr => wr.BankAccount)
+                .WithMany()
+                .HasForeignKey(wr => wr.BankAccountId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
