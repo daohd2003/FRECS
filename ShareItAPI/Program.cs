@@ -345,6 +345,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<Repositories.DashboardRepositories.IDashboardRepository, Repositories.DashboardRepositories.DashboardRepository>();
             builder.Services.AddScoped<Services.DashboardServices.IDashboardService, Services.DashboardServices.DashboardService>();
 
+            // Register DepositRefund services
+            builder.Services.AddScoped<Repositories.DepositRefundRepositories.IDepositRefundRepository, Repositories.DepositRefundRepositories.DepositRefundRepository>();
+            builder.Services.AddScoped<Services.DepositRefundServices.IDepositRefundService, Services.DepositRefundServices.DepositRefundService>();
+
             builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();

@@ -1,5 +1,6 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.DepositDto;
+using BusinessObject.DTOs.DepositRefundDto;
 using BusinessObject.DTOs.RevenueDtos;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,7 @@ namespace ShareItFE.Pages.Customer
         public DepositStatsDto Stats { get; set; } = new();
         public List<DepositHistoryDto> DepositHistory { get; set; } = new();
         public List<BankAccountDto> BankAccounts { get; set; } = new();
+        public List<DepositRefundDto> DepositRefunds { get; set; } = new();
 
         public string SuccessMessage { get; set; } = "";
         public string ErrorMessage { get; set; } = "";
@@ -221,16 +223,24 @@ namespace ShareItFE.Pages.Customer
                 Converters = { new JsonStringEnumConverter() }
             };
 
-            // 1. Get deposit stats
-            var statsResponse = await client.GetAsync("api/deposits/stats");
-            if (statsResponse.IsSuccessStatusCode)
+            // 1. Get deposit refunds (customer's refund history)
+            var refundsResponse = await client.GetAsync("api/depositrefunds/my");
+            if (refundsResponse.IsSuccessStatusCode)
             {
-                var statsContent = await statsResponse.Content.ReadAsStringAsync();
-                var statsApiResponse = JsonSerializer.Deserialize<ApiResponse<DepositStatsDto>>(statsContent, options);
-                Stats = statsApiResponse?.Data ?? new DepositStatsDto();
+                var refundsContent = await refundsResponse.Content.ReadAsStringAsync();
+                var refundsApiResponse = JsonSerializer.Deserialize<ApiResponse<List<DepositRefundDto>>>(refundsContent, options);
+                DepositRefunds = refundsApiResponse?.Data ?? new List<DepositRefundDto>();
+                
+                // Calculate stats from deposit refunds
+                CalculateStatsFromRefunds();
+            }
+            else
+            {
+                DepositRefunds = new List<DepositRefundDto>();
+                Stats = new DepositStatsDto();
             }
 
-            // 2. Get deposit history
+            // 2. Get deposit history (legacy - can be deprecated if not needed)
             var historyResponse = await client.GetAsync("api/deposits/history");
             if (historyResponse.IsSuccessStatusCode)
             {
@@ -238,7 +248,23 @@ namespace ShareItFE.Pages.Customer
                 var historyApiResponse = JsonSerializer.Deserialize<ApiResponse<List<DepositHistoryDto>>>(historyContent, options);
                 DepositHistory = historyApiResponse?.Data ?? new List<DepositHistoryDto>();
             }
+        }
 
+        private void CalculateStatsFromRefunds()
+        {
+            // Deposits Refunded: Sum of completed refunds
+            Stats.DepositsRefunded = DepositRefunds
+                .Where(r => r.Status == TransactionStatus.completed)
+                .Sum(r => r.RefundAmount);
+
+            // Pending Refunds: Sum of initiated (pending) refunds
+            Stats.PendingRefunds = DepositRefunds
+                .Where(r => r.Status == TransactionStatus.initiated)
+                .Sum(r => r.RefundAmount);
+
+            // Refund Issues: Count of failed refunds
+            Stats.RefundIssues = DepositRefunds
+                .Count(r => r.Status == TransactionStatus.failed);
         }
 
         private void LoadMockData()
@@ -246,12 +272,13 @@ namespace ShareItFE.Pages.Customer
             // Mock deposit statistics
             Stats = new DepositStatsDto
             {
-                DepositsRefunded = 0m,    // Not implemented - admin deposit refund system
-                PendingRefunds = 0m,      // Not implemented - admin deposit refund system
-                RefundIssues = 0          // Not implemented - admin deposit refund system
+                DepositsRefunded = 0m,
+                PendingRefunds = 0m,
+                RefundIssues = 0
             };
 
-            // Mock deposit history - empty since deposit refund system not implemented
+            // Mock deposit refunds and history
+            DepositRefunds = new List<DepositRefundDto>();
             DepositHistory = new List<DepositHistoryDto>();
         }
 
@@ -266,6 +293,37 @@ namespace ShareItFE.Pages.Customer
             // TODO: Implement export functionality
             TempData["SuccessMessage"] = "Export feature coming soon!";
             return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnGetRefundDetailAsync(Guid refundId)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.GetAsync($"api/depositrefunds/{refundId}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    return new JsonResult(new { success = true, data = content });
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to load refund detail. Status: {StatusCode}, Response: {Response}",
+                        response.StatusCode, errorContent);
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        message = $"Failed to load refund detail. Status: {response.StatusCode}"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading refund detail for ID: {RefundId}", refundId);
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
         }
     }
 }

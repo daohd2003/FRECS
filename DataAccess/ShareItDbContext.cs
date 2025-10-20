@@ -39,6 +39,9 @@ namespace DataAccess
         public DbSet<RentalViolation> RentalViolations { get; set; }
         public DbSet<RentalViolationImage> RentalViolationImages { get; set; }
 
+        // Deposit Refund table
+        public DbSet<DepositRefund> DepositRefunds { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -391,6 +394,35 @@ namespace DataAccess
                 .WithMany(rv => rv.Images)
                 .HasForeignKey(rvi => rvi.ViolationId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // DepositRefund configuration
+            modelBuilder.Entity<DepositRefund>()
+                .Property(dr => dr.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<DepositRefund>()
+                .HasOne(dr => dr.Order)
+                .WithMany()
+                .HasForeignKey(dr => dr.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DepositRefund>()
+                .HasOne(dr => dr.Customer)
+                .WithMany()
+                .HasForeignKey(dr => dr.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DepositRefund>()
+                .HasOne(dr => dr.ProcessedByAdmin)
+                .WithMany()
+                .HasForeignKey(dr => dr.ProcessedByAdminId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DepositRefund>()
+                .HasOne(dr => dr.RefundBankAccount)
+                .WithMany()
+                .HasForeignKey(dr => dr.RefundBankAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);
         }

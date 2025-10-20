@@ -100,6 +100,11 @@
                     
                     @if (userRole == "admin")
                     {
+                        <a asp-page="/Admin/CustomerRefunds" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/CustomerRefunds" ? "active" : "")">
+                            <i class="bi bi-cash-coin"></i>
+                            <span>Customer Refunds</span>
+                        </a>
+
                         <a asp-page="/Admin/StaffManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/StaffManagement" ? "active" : "")">
                             <i class="bi bi-people-fill"></i>
                             <span>Staff Management</span>

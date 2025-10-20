@@ -224,77 +224,262 @@
                     </tr>
                 </thead>
                 <tbody>
-                     @foreach (var deposit in Model.DepositHistory)
+                     @if (Model.DepositRefunds.Any())
                     {
-                        var statusClass = deposit.Status.ToString().ToLower() switch
+                        foreach (var refund in Model.DepositRefunds.OrderByDescending(r => r.CreatedAt))
                         {
-                            "completed" => "status-completed",
-                            "pending" => "status-pending",
-                            "initiated" => "status-initiated",
-                            "failed" => "status-failed",
-                            _ => "status-pending"
-                        };
+                            var statusClass = refund.Status.ToString().ToLower() switch
+                            {
+                                "completed" => "status-completed",
+                                "pending" => "status-pending",
+                                "initiated" => "status-initiated",
+                                "failed" => "status-failed",
+                                _ => "status-pending"
+                            };
 
+                            <tr>
+                                <td>
+                                    <div class="item-cell">
+                                        <div class="item-name">Deposit Refund</div>
+                                        <div class="item-code">@refund.OrderCode</div>
+                                    </div>
+                                </td>
+                                <td class="amount-cell">@refund.OriginalDepositAmount.ToString("N0")₫</td>
+                                <td>
+                                    <div class="method-cell">
+                                        <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                        </svg>
+                                        @if (!string.IsNullOrEmpty(refund.CustomerBankName))
+                                        {
+                                            <span>@refund.CustomerBankName</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Bank Transfer</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="amount-cell">
+                                    <span>@refund.RefundAmount.ToString("N0")₫</span>
+                                    @if (refund.TotalPenaltyAmount > 0)
+                                    {
+                                        <small class="text-muted d-block" style="font-size: 0.75rem; color: #dc3545;">
+                                            (Penalty: -@refund.TotalPenaltyAmount.ToString("N0")₫)
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="status-badge @statusClass">
+                                        @if (refund.Status == BusinessObject.Enums.TransactionStatus.completed)
+                                        {
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span>Completed</span>
+                                        }
+                                        else if (refund.Status == BusinessObject.Enums.TransactionStatus.initiated)
+                                        {
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>Initiated</span>
+                                        }
+                                        else if (refund.Status == BusinessObject.Enums.TransactionStatus.failed)
+                                        {
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            <span>Failed</span>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="date-cell">
+                                    @if (refund.ProcessedAt.HasValue)
+                                    {
+                                        @refund.ProcessedAt.Value.ToString("yyyy-MM-dd")
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="action-btn" title="View Details" onclick="viewRefundDetails('@refund.Id')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
                         <tr>
-                            <td>
-                                <div class="item-cell">
-                                    <div class="item-name">@deposit.ItemName</div>
-                                    <div class="item-code">@deposit.OrderCode</div>
+                            <td colspan="7" class="text-center" style="padding: 3rem;">
+                                <div style="color: #6c757d;">
+                                    <svg style="width: 48px; height: 48px; margin: 0 auto 1rem; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                    </svg>
+                                    <h3 style="margin-bottom: 0.5rem;">No Deposit Refund History</h3>
+                                    <p>Your deposit refund history will appear here when available.</p>
                                 </div>
-                            </td>
-                            <td class="amount-cell">@deposit.DepositAmount.ToString("N0")₫</td>
-                            <td>
-                                <div class="method-cell">
-                                    <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                    </svg>
-                                    @deposit.RefundMethod
-                                </div>
-                            </td>
-                            <td class="amount-cell">@deposit.RefundAmount.ToString("N0")₫</td>
-                            <td>
-                                <span class="status-badge @statusClass">
-                                    @if (deposit.Status == BusinessObject.Enums.TransactionStatus.completed)
-                                    {
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        <span>Completed</span>
-                                    }
-                                    else if (deposit.Status == BusinessObject.Enums.TransactionStatus.initiated)
-                                    {
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span>Initiated</span>
-                                    }
-                                    else if (deposit.Status == BusinessObject.Enums.TransactionStatus.failed)
-                                    {
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        <span>Failed</span>
-                                    }
-                                </span>
-                            </td>
-                            <td class="date-cell">@deposit.RefundDate?.ToString("yyyy-MM-dd")</td>
-                            <td>
-                                <button class="action-btn" title="View Details" onclick="alert('View details feature coming soon!')">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </button>
-                                <button class="action-btn" title="More Actions">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                    </svg>
-                                </button>
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Refund Detail Modal -->
+    <div id="refundDetailModal" class="modal" style="display: none;">
+        <div class="modal-content refund-detail-modal">
+            <div class="modal-header">
+                <h3>Deposit Refund Details</h3>
+                <button type="button" class="close-btn" onclick="closeRefundDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading State -->
+                <div id="refundLoading" class="loading-state">
+                    <svg class="spinner" viewBox="0 0 50 50">
+                        <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                    </svg>
+                    <p>Loading refund details...</p>
+                </div>
+
+                <!-- Refund Details Content -->
+                <div id="refundContent" style="display: none;">
+                    <!-- Refund Status Banner -->
+                    <div id="refundStatusBanner" class="refund-status-banner">
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <h4 id="refundStatusTitle">Refund Status</h4>
+                            <p id="refundStatusDescription">Description</p>
+                        </div>
+                    </div>
+
+                    <!-- Order Information -->
+                    <div class="detail-section">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            Order Information
+                        </h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Order Code</span>
+                                <span class="detail-value" id="refundOrderCode">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Request Created</span>
+                                <span class="detail-value" id="refundCreatedDate">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Processed Date</span>
+                                <span class="detail-value" id="refundProcessedDate">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amount Breakdown -->
+                    <div class="detail-section">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Amount Breakdown
+                        </h4>
+                        <div class="amount-breakdown">
+                            <div class="amount-row">
+                                <span>Original Deposit</span>
+                                <span class="amount-value" id="refundOriginalAmount">0₫</span>
+                            </div>
+                            <div class="amount-row penalty" id="penaltyRow" style="display: none;">
+                                <span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    Penalty Deduction
+                                </span>
+                                <span class="amount-value penalty-amount" id="refundPenaltyAmount">0₫</span>
+                            </div>
+                            <div class="amount-row total">
+                                <span>Final Refund Amount</span>
+                                <span class="amount-value total-amount" id="refundTotalAmount">0₫</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Violations (if any) -->
+                    <div class="detail-section" id="violationsSection" style="display: none;">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Rental Violations & Penalties
+                        </h4>
+                        <div id="violationsList" class="violations-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Bank Account Information -->
+                    <div class="detail-section">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Your Refund Bank Account
+                        </h4>
+                        <div id="bankInfoContent" class="bank-info-box">
+                            <div class="bank-info-row">
+                                <span class="bank-label">Bank Name</span>
+                                <span class="bank-value" id="refundBankName">-</span>
+                            </div>
+                            <div class="bank-info-row">
+                                <span class="bank-label">Account Holder</span>
+                                <span class="bank-value" id="refundAccountHolder">-</span>
+                            </div>
+                            <div class="bank-info-row">
+                                <span class="bank-label">Account Number</span>
+                                <span class="bank-value account-number" id="refundAccountNumber">-</span>
+                            </div>
+                            <div class="bank-info-row" id="routingNumberRow" style="display: none;">
+                                <span class="bank-label">Routing Number</span>
+                                <span class="bank-value" id="refundRoutingNumber">-</span>
+                            </div>
+                        </div>
+                        <div id="noBankInfo" class="no-bank-info" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <p>No bank account registered for this refund. Please add a bank account.</p>
+                        </div>
+                    </div>
+
+                    <!-- Admin Notes (if any) -->
+                    <div class="detail-section" id="adminNotesSection" style="display: none;">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                            Admin Notes
+                        </h4>
+                        <div class="admin-notes-box">
+                            <p id="refundAdminNotes">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeRefundDetailModal()">Close</button>
+            </div>
         </div>
     </div>
 
@@ -367,11 +552,189 @@ function closeBankModal() {
     document.getElementById('bankAccountModal').style.display = 'none';
 }
 
+// View refund details
+async function viewRefundDetails(refundId) {
+    const modal = document.getElementById('refundDetailModal');
+    const loading = document.getElementById('refundLoading');
+    const content = document.getElementById('refundContent');
+    
+    // Show modal with loading state
+    modal.style.display = 'block';
+    loading.style.display = 'flex';
+    content.style.display = 'none';
+    
+    try {
+        // Call through PageModel handler to use server-side authentication
+        const response = await fetch(`?handler=RefundDetail&refundId=${refundId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load refund details');
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to load refund details');
+        }
+        
+        // Parse the nested JSON response
+        const apiResponse = JSON.parse(result.data);
+        const refund = apiResponse.data;
+        
+        // Hide loading, show content
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        
+        // Populate status banner
+        populateStatusBanner(refund);
+        
+        // Populate order information
+        document.getElementById('refundOrderCode').textContent = refund.orderCode || '-';
+        document.getElementById('refundCreatedDate').textContent = refund.createdAt ? 
+            new Date(refund.createdAt).toLocaleString('vi-VN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : '-';
+        document.getElementById('refundProcessedDate').textContent = refund.processedAt ? 
+            new Date(refund.processedAt).toLocaleString('vi-VN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : 'Pending';
+        
+        // Populate amount breakdown
+        document.getElementById('refundOriginalAmount').textContent = formatCurrency(refund.originalDepositAmount);
+        
+        const penaltyRow = document.getElementById('penaltyRow');
+        if (refund.totalPenaltyAmount > 0) {
+            penaltyRow.style.display = 'flex';
+            document.getElementById('refundPenaltyAmount').textContent = '-' + formatCurrency(refund.totalPenaltyAmount);
+        } else {
+            penaltyRow.style.display = 'none';
+        }
+        
+        document.getElementById('refundTotalAmount').textContent = formatCurrency(refund.refundAmount);
+        
+        // Populate violations (if any)
+        const violationsSection = document.getElementById('violationsSection');
+        const violationsList = document.getElementById('violationsList');
+        
+        if (refund.violations && refund.violations.length > 0) {
+            violationsSection.style.display = 'block';
+            violationsList.innerHTML = refund.violations.map(v => `
+                <div class="violation-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div class="violation-content">
+                        <div class="violation-type">${v.violationType || 'Violation'}</div>
+                        <div class="violation-description">${v.description || 'No description provided'}</div>
+                        <div class="violation-penalty">Penalty: ${formatCurrency(v.penaltyAmount)}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            violationsSection.style.display = 'none';
+        }
+        
+        // Populate bank account information
+        const bankInfoContent = document.getElementById('bankInfoContent');
+        const noBankInfo = document.getElementById('noBankInfo');
+        
+        if (refund.bankInfo && refund.bankInfo.bankName) {
+            bankInfoContent.style.display = 'block';
+            noBankInfo.style.display = 'none';
+            
+            document.getElementById('refundBankName').textContent = refund.bankInfo.bankName || '-';
+            document.getElementById('refundAccountHolder').textContent = refund.bankInfo.accountHolderName || '-';
+            document.getElementById('refundAccountNumber').textContent = refund.bankInfo.accountNumber || '-';
+            
+            const routingNumberRow = document.getElementById('routingNumberRow');
+            if (refund.bankInfo.routingNumber) {
+                routingNumberRow.style.display = 'flex';
+                document.getElementById('refundRoutingNumber').textContent = refund.bankInfo.routingNumber;
+            } else {
+                routingNumberRow.style.display = 'none';
+            }
+        } else {
+            bankInfoContent.style.display = 'none';
+            noBankInfo.style.display = 'flex';
+        }
+        
+        // Populate admin notes (if any)
+        const adminNotesSection = document.getElementById('adminNotesSection');
+        if (refund.notes) {
+            adminNotesSection.style.display = 'block';
+            document.getElementById('refundAdminNotes').textContent = refund.notes;
+        } else {
+            adminNotesSection.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Error loading refund details:', error);
+        alert('Failed to load refund details. Please try again.');
+        modal.style.display = 'none';
+    }
+}
+
+function populateStatusBanner(refund) {
+    const banner = document.getElementById('refundStatusBanner');
+    const title = document.getElementById('refundStatusTitle');
+    const description = document.getElementById('refundStatusDescription');
+    const icon = banner.querySelector('.status-icon');
+    
+    // Remove existing status classes
+    banner.classList.remove('completed', 'initiated', 'failed');
+    
+    const status = refund.status.toLowerCase();
+    
+    if (status === 'completed') {
+        banner.classList.add('completed');
+        title.textContent = 'Refund Completed ✓';
+        description.textContent = 'Your deposit has been successfully refunded to your bank account.';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else if (status === 'initiated') {
+        banner.classList.add('initiated');
+        title.textContent = 'Refund In Progress';
+        description.textContent = 'Your refund request is being processed by our admin team. Please allow 3-5 business days.';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else if (status === 'failed') {
+        banner.classList.add('failed');
+        title.textContent = 'Refund Failed';
+        description.textContent = 'There was an issue processing your refund. Please contact our support team for assistance.';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+    }
+}
+
+function closeRefundDetailModal() {
+    document.getElementById('refundDetailModal').style.display = 'none';
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
+}
+
 // Close modal when clicking outside
 window.onclick = function(event) {
-    const modal = document.getElementById('bankAccountModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
+    const bankModal = document.getElementById('bankAccountModal');
+    const refundModal = document.getElementById('refundDetailModal');
+    
+    if (event.target == bankModal) {
+        bankModal.style.display = 'none';
+    }
+    
+    if (event.target == refundModal) {
+        refundModal.style.display = 'none';
     }
 }
 </script>
@@ -617,6 +980,333 @@ window.onclick = function(event) {
     background-color: #fee2e2;
     color: #991b1b;
     border: 1px solid #fca5a5;
+}
+
+/* Refund Detail Modal Styles */
+.refund-detail-modal {
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.refund-detail-modal .modal-body {
+    padding: 0;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #6b7280;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 1rem;
+    animation: rotate 1s linear infinite;
+}
+
+.spinner circle {
+    stroke: #8b5cf6;
+    stroke-linecap: round;
+    animation: dash 1.5s ease-in-out infinite;
+}
+
+@@keyframes rotate {
+    100% { transform: rotate(360deg); }
+}
+
+@@keyframes dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -124;
+    }
+}
+
+.refund-status-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    margin: 1.5rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.refund-status-banner.completed {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.refund-status-banner.initiated {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.refund-status-banner.failed {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.refund-status-banner .status-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.refund-status-banner h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.refund-status-banner p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.875rem;
+}
+
+.detail-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.section-title svg {
+    width: 20px;
+    height: 20px;
+    color: #8b5cf6;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detail-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: #111827;
+    font-weight: 600;
+}
+
+/* Amount Breakdown */
+.amount-breakdown {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+}
+
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.amount-row:last-child {
+    border-bottom: none;
+}
+
+.amount-row.penalty {
+    color: #dc2626;
+}
+
+.amount-row.penalty span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.amount-row.penalty svg {
+    width: 18px;
+    height: 18px;
+}
+
+.amount-row.total {
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 2px solid #d1d5db;
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.amount-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.penalty-amount {
+    color: #dc2626;
+}
+
+.total-amount {
+    font-size: 1.5rem;
+    color: #10b981;
+}
+
+/* Violations */
+.violations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.violation-item {
+    display: flex;
+    align-items: start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+    border-radius: 6px;
+}
+
+.violation-item svg {
+    width: 20px;
+    height: 20px;
+    color: #dc2626;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.violation-content {
+    flex: 1;
+}
+
+.violation-type {
+    font-weight: 600;
+    color: #991b1b;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.violation-description {
+    font-size: 0.875rem;
+    color: #7f1d1d;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.violation-penalty {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #dc2626;
+}
+
+/* Bank Info */
+.bank-info-box {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.bank-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #dcfce7;
+}
+
+.bank-info-row:last-child {
+    border-bottom: none;
+}
+
+.bank-label {
+    font-size: 0.875rem;
+    color: #166534;
+    font-weight: 500;
+}
+
+.bank-value {
+    font-size: 1rem;
+    color: #14532d;
+    font-weight: 600;
+}
+
+.bank-value.account-number {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+.no-bank-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+    background: #fef2f2;
+    border: 1px dashed #fca5a5;
+    border-radius: 8px;
+}
+
+.no-bank-info svg {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.75rem;
+    color: #f87171;
+}
+
+.no-bank-info p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #991b1b;
+}
+
+/* Admin Notes */
+.admin-notes-box {
+    background: #fefce8;
+    border: 1px solid #fde047;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.admin-notes-box p {
+    margin: 0;
+    color: #713f12;
+    font-size: 0.875rem;
+    line-height: 1.6;
 }
 </style>
 
