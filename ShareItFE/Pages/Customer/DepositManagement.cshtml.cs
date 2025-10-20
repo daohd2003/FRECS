@@ -282,12 +282,6 @@ namespace ShareItFE.Pages.Customer
             DepositHistory = new List<DepositHistoryDto>();
         }
 
-        public async Task<IActionResult> OnPostFilterAsync()
-        {
-            // TODO: Implement filter functionality
-            return RedirectToPage();
-        }
-
         public async Task<IActionResult> OnPostExportAsync()
         {
             // TODO: Implement export functionality
