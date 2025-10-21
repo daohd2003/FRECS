@@ -19,6 +19,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hubs", "Hubs\Hubs.csproj", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShareItFE", "ShareItFE\ShareItFE.csproj", "{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "Services.Tests\Services.Tests.csproj", "{B8D5F2C1-4E3A-4B9C-9D1F-8E5A7C3D2B4E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{28E3D2C5-4325-42C9-8B29-5C02842CDDEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8D5F2C1-4E3A-4B9C-9D1F-8E5A7C3D2B4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8D5F2C1-4E3A-4B9C-9D1F-8E5A7C3D2B4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8D5F2C1-4E3A-4B9C-9D1F-8E5A7C3D2B4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8D5F2C1-4E3A-4B9C-9D1F-8E5A7C3D2B4E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

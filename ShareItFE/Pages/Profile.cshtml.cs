@@ -141,6 +141,12 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostUpdateProfileAsync()
         {
+            if (!ModelState.IsValid)
+            {
+                await OnGetAsync();
+                return Page();
+            }
+
             var profileUpdateDto = new BusinessObject.DTOs.ProfileDtos.ProfileUpdateDto
             {
                 FullName = Profile.FullName,
