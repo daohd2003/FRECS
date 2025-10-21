@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit Test Project for ShareIt Backend Services
+    
+    Test Coverage:
+    - Authentication/LoginAuthenticationTests.cs: Login functionality tests
+      * 6 core test cases (UTCID01-UTCID06)
+      * 3 additional tests
+      * Total: 9 unit tests
+    
+    - Authentication/RegisterAuthenticationTests.cs: Register functionality tests
+      * 8 core test cases (UTCID01-UTCID08)
+      * 2 additional tests
+      * Total: 10 unit tests
+    
+    - Authentication/ForgotPasswordTests.cs: Forgot/Reset Password functionality tests
+      * 7 core test cases (UTCID01-UTCID07)
+      * 4 additional tests
+      * Total: 11 unit tests
+    
+    - Product/ProductServiceTests.cs: View Product Details functionality tests
+      * 2 core test cases (UTCID01-UTCID02)
+      * 3 additional tests
+      * Total: 5 unit tests
+    
+    - Feedback/FeedbackServiceTests.cs: View Feedback functionality tests
+      * 4 core test cases (UTCID01-UTCID04)
+      * 3 additional tests
+      * Total: 7 unit tests
+    
+            - Authentication/ChangePasswordTests.cs: Change Password functionality tests
+              * 7 core test cases (UTCID01-UTCID07)
+              * 2 additional tests
+              * Total: 9 unit tests
+            
+            - Profile/ProfileServiceTests.cs: View & Update Profile functionality tests (Service Layer)
+              * View Profile: 2 core test cases (UTCID01-UTCID02) + 2 additional tests
+              * Update Profile: 2 service tests
+              * Total: 6 unit tests
+            
+            - Controllers/ProfileControllerTests.cs: View & Update Profile functionality tests (Controller Layer)
+              * View Profile: 2 core test cases (UTCID01-UTCID02) + 2 additional tests
+              * Update Profile: 4 core test cases (UTCID01-UTCID04) + 2 additional tests
+              * Total: 10 unit tests
+            
+            - Controllers/AuthControllerTests.cs: Authentication functionality tests (Controller Layer - API Messages)
+              * Login tests: 4 tests (Success, Invalid credentials, Blocked account, Unverified email)
+              * Register tests: 3 tests (Success, Email exists, Email unverified)
+              * Forgot Password tests: 2 tests (Success, Email not found)
+              * Reset Password tests: 2 tests (Success, Invalid token)
+              * Change Password tests: 2 tests (Success, Incorrect password)
+              * Total: 13 unit tests
+            
+            - Controllers/ProductControllerTests.cs: View Product functionality tests (Controller Layer)
+              * Get By ID tests: 2 core + 1 additional
+              * Get All tests: 2 tests
+              * Total: 5 unit tests
+            
+            - Controllers/FeedbackControllerTests.cs: View Feedback functionality tests (Controller Layer)
+              * Get Feedbacks By Product tests: 3 core + 1 additional
+              * Total: 4 unit tests
+            
+            Overall: 89 unit tests
+    
+    Run tests: dotnet test
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Services\Services.csproj" />
+    <ProjectReference Include="..\BusinessObject\BusinessObject.csproj" />
+    <ProjectReference Include="..\Repositories\Repositories.csproj" />
+    <ProjectReference Include="..\ShareItAPI\ShareItAPI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
+
