@@ -109,6 +109,12 @@ namespace Services.WithdrawalServices
             return requests.Select(MapToResponseDto);
         }
 
+        public async Task<IEnumerable<WithdrawalResponseDto>> GetAllRequestsAsync()
+        {
+            var requests = await _withdrawalRepo.GetAllRequestsAsync();
+            return requests.Select(MapToResponseDto);
+        }
+
         public async Task<WithdrawalResponseDto> ProcessWithdrawalAsync(Guid adminId, ProcessWithdrawalRequestDto dto)
         {
             var withdrawal = await _withdrawalRepo.GetByIdAsync(dto.WithdrawalRequestId);
@@ -165,10 +171,12 @@ namespace Services.WithdrawalServices
                 Id = withdrawal.Id,
                 ProviderId = withdrawal.ProviderId,
                 ProviderName = withdrawal.Provider?.Profile?.FullName ?? "Unknown",
+                ProviderEmail = withdrawal.Provider?.Email,
                 BankAccountId = withdrawal.BankAccountId,
                 BankName = withdrawal.BankAccount.BankName,
                 AccountNumber = withdrawal.BankAccount.AccountNumber,
                 AccountHolderName = withdrawal.BankAccount.AccountHolderName,
+                RoutingNumber = withdrawal.BankAccount.RoutingNumber,
                 Amount = withdrawal.Amount,
                 Status = withdrawal.Status.ToString(),
                 RequestDate = withdrawal.RequestDate,
