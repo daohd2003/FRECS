@@ -238,8 +238,12 @@
 
             async function loadConversations() {
                 try {
-                    const response = await fetch(`${apiUrl}/conversations`, {
-                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    // ✅ Cache-busting: Force fresh data mỗi lần load
+                    const response = await fetch(`${apiUrl}/conversations?_=${Date.now()}`, {
+                        headers: { 
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Cache-Control': 'no-cache' // ✅ Disable browser cache
+                        }
                     });
                     if (!response.ok) throw new Error("Failed to load conversations");
                     conversations = await response.json();
@@ -258,11 +262,11 @@
 
                     const messages = await response.json();
 
-                    // Thêm vào đầu (cũ nhất trên đầu)
-                    messages.reverse().forEach(msg => {
+                    // Thêm messages - mới nhất ở dưới cùng (traditional chat style)
+                    messages.forEach(msg => {
                         const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
                         const el = createMessageElement(msg, isMe);
-                        messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
+                        messagesContainerEl.appendChild(el); // Append to bottom
                     });
 
                     return messages.length;
@@ -295,7 +299,7 @@
                 messagesContainerEl.innerHTML = '';
                 currentPage = 1;
                 await loadMessages(conversationId, currentPage);
-                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight; // Scroll xuống dưới
 
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
@@ -461,6 +465,10 @@
                                 convoToUpdate.unreadMessageCount = (convoToUpdate.unreadMessageCount || 0) + 1;
                             }
                             renderConversationList();
+                        } else {
+                            // ✅ NEW: Conversation mới (chưa có trong danh sách) → Reload
+                            console.log("[CHAT] New conversation detected - reloading conversation list");
+                            loadConversations(); // Reload để hiển thị conversation mới từ Staff/Admin
                         }
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {
@@ -468,8 +476,8 @@
                             // Only display message if it's not from current user (to avoid duplicate with temp message)
                             if (!isMe) {
                                 const el = createMessageElement(message, isMe);
-                                messagesContainerEl.appendChild(el);
-                                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                                messagesContainerEl.appendChild(el); // Thêm vào CUỐI
+                                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight; // Scroll xuống dưới
                             }
                             // QUAN TRỌNG: Cập nhật banner sản phẩm ngay lập tức (regardless of who sent it)
                             if (message.productContext) {

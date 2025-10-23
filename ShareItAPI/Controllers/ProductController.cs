@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Results;
 using Services.ProductServices;
+using Services.ContentModeration;
+using Services.ConversationServices;
 using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
@@ -18,11 +20,19 @@ namespace ShareItAPI.Controllers
     {
         private readonly IProductService _service;
         private readonly IMapper _mapper;
+        private readonly IContentModerationService _moderationService;
+        private readonly IConversationService _conversationService;
 
-        public ProductController(IProductService service, IMapper mapper)
+        public ProductController(
+            IProductService service, 
+            IMapper mapper,
+            IContentModerationService moderationService,
+            IConversationService conversationService)
         {
             _service = service;
             _mapper = mapper;
+            _moderationService = moderationService;
+            _conversationService = conversationService;
         }
 
         [HttpGet("{id}")]
@@ -30,8 +40,8 @@ namespace ShareItAPI.Controllers
         public async Task<IActionResult> GetById(Guid id)
         {
             var product = await _service.GetByIdAsync(id);
-            if (product == null) return NotFound();
-            return Ok(product);
+            if (product == null) return NotFound(new ApiResponse<string>("Product not found", null));
+            return Ok(new ApiResponse<ProductDTO>("Product retrieved successfully", product));
         }
 
         [HttpGet()]
@@ -106,6 +116,10 @@ namespace ShareItAPI.Controllers
              var created = await _service.AddAsync(dto);
              return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
          }*/
+        /// <summary>
+        /// Create a new product with AUTOMATIC AI content moderation
+        /// Product will be checked BEFORE being made available to customers
+        /// </summary>
         [HttpPost]
         [Authorize] // Đảm bảo người dùng đã đăng nhập
         public async Task<IActionResult> Create([FromBody] ProductRequestDTO dto)
@@ -114,19 +128,45 @@ namespace ShareItAPI.Controllers
             {
                 // Lấy thông tin Provider từ token
                 dto.ProviderId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                /*  dto.ProviderName = User.FindFirstValue(ClaimTypes.Name); // Hoặc một claim khác chứa tên*/
 
+                // SYNCHRONOUS AI moderation check happens inside AddAsync
+                // Provider will wait 2-3 seconds for AI check to complete
                 var createdProduct = await _service.AddAsync(dto);
 
-                // Sử dụng AutoMapper để map Product entity trả về thành ProductDTO để hiển thị
-                // var resultDto = _mapper.Map<ProductDTO>(createdProduct);
-
-                // Hoặc trả về chính object đã tạo
-                return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
+                // Return different messages based on moderation result
+                if (createdProduct.AvailabilityStatus.ToLower() == "pending")
+                {
+                    // Product was flagged by AI
+                    return StatusCode(201, new ApiResponse<ProductDTO>(
+                        "⚠️ Product created but flagged for review. " +
+                        "Your product contains content that may violate our guidelines and has been set to PENDING. " +
+                        "Please check your email for details and make necessary corrections. " +
+                        "The product will NOT be visible to customers until approved by staff.",
+                        createdProduct
+                    ));
+                }
+                else
+                {
+                    // Product passed AI check
+                    return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, 
+                        new ApiResponse<ProductDTO>(
+                            "✅ Product created successfully and is now AVAILABLE to customers. " +
+                            "Your product passed our automated content moderation check.",
+                            createdProduct
+                        ));
+                }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("community guidelines"))
+            {
+                // Trả về lỗi rõ ràng cho trường hợp vi phạm content
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+                return StatusCode(500, new ApiResponse<string>(
+                    "Failed to create product: " + ex.Message, 
+                    null
+                ));
             }
         }
 
@@ -165,6 +205,54 @@ namespace ShareItAPI.Controllers
                 if (!result) return NotFound("Product not found or update failed.");
                 
                 return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin/Staff: Update product without changing ProviderId
+        /// </summary>
+        [HttpPut("admin/{id}")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> AdminUpdate(Guid id, [FromBody] AdminProductUpdateDTO dto)
+        {
+            try
+            {
+                // Get existing product first to preserve ProviderId
+                var existingProduct = await _service.GetByIdAsync(id);
+                if (existingProduct == null) 
+                    return NotFound(new ApiResponse<string>("Product not found.", null));
+                
+                // Update fields but KEEP original ProviderId
+                var productDto = new ProductDTO
+                {
+                    Id = id,
+                    ProviderId = existingProduct.ProviderId, // ✅ Preserve original provider
+                    Name = dto.Name,
+                    Description = dto.Description,
+                    CategoryId = dto.CategoryId,
+                    Category = dto.Category,
+                    Size = dto.Size,
+                    Color = dto.Color,
+                    PricePerDay = dto.PricePerDay,
+                    PurchasePrice = dto.PurchasePrice ?? 0,
+                    PurchaseQuantity = dto.PurchaseQuantity ?? 0,
+                    RentalQuantity = dto.RentalQuantity ?? 0,
+                    SecurityDeposit = dto.SecurityDeposit,
+                    Gender = dto.Gender,
+                    RentalStatus = dto.RentalStatus,
+                    PurchaseStatus = dto.PurchaseStatus,
+                    AvailabilityStatus = dto.AvailabilityStatus ?? existingProduct.AvailabilityStatus,
+                    Images = existingProduct.Images // Keep existing images
+                };
+
+                var result = await _service.UpdateAsync(productDto);
+                if (!result) return BadRequest(new ApiResponse<string>("Update failed.", null));
+                
+                return Ok(new ApiResponse<string>("Product updated successfully.", null));
             }
             catch (Exception ex)
             {
@@ -317,5 +405,479 @@ namespace ShareItAPI.Controllers
                 return StatusCode(500, new ApiResponse<string>(ex.Message, null));
             }
         }
+
+        // ============================================
+        // ADMIN ENDPOINTS
+        // ============================================
+
+        /// <summary>
+        /// Admin: Get product statistics
+        /// </summary>
+        [HttpGet("admin/statistics")]
+        [Authorize(Roles = "admin,staff")]
+        public IActionResult GetStatistics()
+        {
+            try
+            {
+                var allProducts = _service.GetAll();
+                
+                var stats = new
+                {
+                    TotalProducts = allProducts.Count(),
+                    Available = allProducts.Count(p => p.AvailabilityStatus.ToLower() == "available"),
+                    Pending = allProducts.Count(p => p.AvailabilityStatus.ToLower() == "pending"),
+                    Rejected = allProducts.Count(p => p.AvailabilityStatus.ToLower() == "rejected"),
+                    Archived = allProducts.Count(p => p.AvailabilityStatus.ToLower() == "archived"),
+                    Deleted = allProducts.Count(p => p.AvailabilityStatus.ToLower() == "deleted"),
+                    TotalRented = allProducts.Sum(p => p.RentCount),
+                    TotalSold = allProducts.Sum(p => p.BuyCount)
+                };
+                
+                return Ok(new ApiResponse<object>("Statistics retrieved successfully.", stats));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Get all products with filtering
+        /// </summary>
+        [HttpGet("admin/all")]
+        [Authorize(Roles = "admin,staff")]
+        public IActionResult GetAllForAdmin(
+            [FromQuery] string? searchTerm,
+            [FromQuery] string? availabilityStatus,
+            [FromQuery] Guid? providerId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+
+                var query = _service.GetAll();
+
+                // Filter by search term
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    var lowerSearchTerm = searchTerm.ToLower();
+                    query = query.Where(p =>
+                        p.Name.ToLower().Contains(lowerSearchTerm) ||
+                        (p.Description != null && p.Description.ToLower().Contains(lowerSearchTerm)) ||
+                        p.ProviderName.ToLower().Contains(lowerSearchTerm)
+                    );
+                }
+
+                // Filter by availability status
+                if (!string.IsNullOrWhiteSpace(availabilityStatus) && availabilityStatus.ToLower() != "all")
+                {
+                    var lowerStatus = availabilityStatus.ToLower();
+                    query = query.Where(p => p.AvailabilityStatus.ToLower() == lowerStatus);
+                }
+
+                // Filter by provider
+                if (providerId.HasValue)
+                {
+                    query = query.Where(p => p.ProviderId == providerId.Value);
+                }
+
+                var totalCount = query.Count();
+                var items = query
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var pagedResult = new PagedResult<ProductDTO>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    CurrentPage = page,
+                    PageSize = pageSize
+                };
+
+                return Ok(new ApiResponse<PagedResult<ProductDTO>>("Products retrieved successfully.", pagedResult));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Get pending products
+        /// </summary>
+        [HttpGet("admin/pending")]
+        [Authorize(Roles = "admin,staff")]
+        public IActionResult GetPendingProducts(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+
+                var query = _service.GetAll()
+                    .Where(p => p.AvailabilityStatus.ToLower() == "pending");
+
+                var totalCount = query.Count();
+                var items = query
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var pagedResult = new PagedResult<ProductDTO>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    CurrentPage = page,
+                    PageSize = pageSize
+                };
+
+                return Ok(new ApiResponse<PagedResult<ProductDTO>>("Pending products retrieved successfully.", pagedResult));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Get products by provider
+        /// </summary>
+        [HttpGet("admin/by-provider")]
+        [Authorize(Roles = "admin,staff")]
+        public IActionResult GetProductsByProvider(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 10;
+
+                var allProducts = _service.GetAll();
+                
+                var groupedByProvider = allProducts
+                    .GroupBy(p => new { p.ProviderId, p.ProviderName })
+                    .Select(g => new
+                    {
+                        ProviderId = g.Key.ProviderId,
+                        ProviderName = g.Key.ProviderName,
+                        TotalProducts = g.Count(),
+                        AvailableProducts = g.Count(p => p.AvailabilityStatus.ToLower() == "available"),
+                        PendingProducts = g.Count(p => p.AvailabilityStatus.ToLower() == "pending"),
+                        RejectedProducts = g.Count(p => p.AvailabilityStatus.ToLower() == "rejected"),
+                        Products = g.OrderByDescending(p => p.CreatedAt).ToList()
+                    })
+                    .OrderByDescending(g => g.TotalProducts)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var totalProviders = allProducts
+                    .Select(p => p.ProviderId)
+                    .Distinct()
+                    .Count();
+
+                var result = new
+                {
+                    TotalProviders = totalProviders,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Data = groupedByProvider
+                };
+
+                return Ok(new ApiResponse<object>("Products grouped by provider retrieved successfully.", result));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Approve or reject a product
+        /// </summary>
+        [HttpPut("admin/approve-reject/{id}")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> ApproveOrRejectProduct(
+            Guid id,
+            [FromBody] ProductStatusUpdateDto request)
+        {
+            try
+            {
+                if (id != request.ProductId)
+                {
+                    return BadRequest("Product ID mismatch.");
+                }
+
+                var result = await _service.UpdateProductStatusAsync(request);
+                
+                if (!result)
+                {
+                    return NotFound("Product not found or status update failed.");
+                }
+
+                return Ok(new ApiResponse<string>("Product status updated successfully.", request.NewAvailabilityStatus));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Delete any product (hard delete or archive)
+        /// </summary>
+        [HttpDelete("admin/delete/{id}")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> AdminDeleteProduct(Guid id, [FromQuery] bool hardDelete = false)
+        {
+            try
+            {
+                var product = await _service.GetByIdAsync(id);
+                if (product == null) 
+                    return NotFound("Product not found.");
+
+                if (hardDelete)
+                {
+                    // Hard delete
+                    var deleteResult = await _service.DeleteAsync(id);
+                    if (!deleteResult)
+                        return BadRequest("Failed to delete product.");
+                    
+                    return Ok(new ApiResponse<string>("Product permanently deleted.", "Deleted"));
+                }
+                else
+                {
+                    // Soft delete - archive
+                    product.AvailabilityStatus = "archived";
+                    var updateResult = await _service.UpdateAsync(product);
+                    
+                    if (!updateResult)
+                        return BadRequest("Failed to archive product.");
+                    
+                    return Ok(new ApiResponse<string>("Product archived successfully.", "Archived"));
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Manually flag product for violation and send chat notification to provider
+        /// </summary>
+        [HttpPost("admin/{id}/flag")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> FlagProductViolation(
+            Guid id, 
+            [FromBody] ManualFlagRequest request)
+        {
+            try
+            {
+                var product = await _service.GetByIdAsync(id);
+                if (product == null) 
+                    return NotFound("Product not found.");
+
+                // Update product status to pending
+                product.AvailabilityStatus = "pending";
+                var updateResult = await _service.UpdateAsync(product);
+                
+                if (!updateResult)
+                    return BadRequest("Failed to update product status.");
+
+                // ✅ Send CHAT notification to provider (instead of email)
+                if (product.ProviderId != Guid.Empty)
+                {
+                    try
+                    {
+                        // Get current staff ID from claims
+                        var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        if (Guid.TryParse(staffIdClaim, out var staffId))
+                        {
+                            await _conversationService.SendViolationMessageToProviderAsync(
+                                staffId: staffId,
+                                providerId: product.ProviderId,
+                                productId: product.Id,
+                                productName: product.Name,
+                                reason: request.Reason ?? "Content violates community guidelines (Manual Review)",
+                                violatedTerms: string.Join(", ", request.ViolatedTerms ?? new List<string>())
+                            );
+                            
+                            return Ok(new ApiResponse<string>(
+                                "Product flagged successfully and chat notification sent to provider.", 
+                                "Flagged"));
+                        }
+                        else
+                        {
+                            return Ok(new ApiResponse<string>(
+                                "Product flagged successfully but failed to get staff ID for notification.", 
+                                "Flagged"));
+                        }
+                    }
+                    catch (Exception chatEx)
+                    {
+                        // Log but don't fail the operation
+                        Console.WriteLine($"Failed to send chat notification: {chatEx.Message}");
+                        return Ok(new ApiResponse<string>(
+                            "Product flagged successfully but chat notification failed.", 
+                            "Flagged"));
+                    }
+                }
+
+                return Ok(new ApiResponse<string>(
+                    "Product flagged successfully.", 
+                    "Flagged"));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin: Approve/Unflag a pending product
+        /// </summary>
+        [HttpPut("admin/{id}/approve")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> ApproveProduct(
+            Guid id, 
+            [FromBody] ApproveProductRequest request)
+        {
+            try
+            {
+                var product = await _service.GetByIdAsync(id);
+                if (product == null) 
+                    return NotFound("Product not found.");
+
+                // Update product status
+                product.AvailabilityStatus = request.NewStatus ?? "available";
+                var updateResult = await _service.UpdateAsync(product);
+                
+                if (!updateResult)
+                    return BadRequest("Failed to update product status.");
+
+                return Ok(new ApiResponse<string>(
+                    "Product approved successfully.", 
+                    product.AvailabilityStatus));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Admin/Staff: Manually re-check product content moderation
+        /// </summary>
+        [HttpPost("admin/{id}/recheck-moderation")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> RecheckModeration(Guid id)
+        {
+            try
+            {
+                var product = await _service.GetByIdAsync(id);
+                if (product == null) 
+                    return NotFound("Product not found.");
+
+                // Run content moderation check
+                var moderationResult = await _moderationService.CheckProductContentAsync(
+                    product.Name,
+                    product.Description
+                );
+
+                // Update product status based on result
+                if (moderationResult.IsAppropriate)
+                {
+                    // ✅ Passed - set to available if currently pending
+                    if (product.AvailabilityStatus.ToLower() == "pending")
+                    {
+                        product.AvailabilityStatus = "available";
+                        await _service.UpdateAsync(product);
+                    }
+                    
+                    return Ok(new ApiResponse<object>(
+                        "Product passed moderation check.", 
+                        new { 
+                            IsAppropriate = true,
+                            NewStatus = product.AvailabilityStatus,
+                            Message = "Product content is appropriate"
+                        }));
+                }
+                else
+                {
+                    // ❌ Failed - set to pending and send chat notification
+                    product.AvailabilityStatus = "pending";
+                    await _service.UpdateAsync(product);
+
+                    // ✅ Send CHAT notification to provider (instead of email)
+                    if (product.ProviderId != Guid.Empty)
+                    {
+                        try
+                        {
+                            // Get current staff ID from claims
+                            var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                            if (Guid.TryParse(staffIdClaim, out var staffId))
+                            {
+                                await _conversationService.SendViolationMessageToProviderAsync(
+                                    staffId: staffId,
+                                    providerId: product.ProviderId,
+                                    productId: product.Id,
+                                    productName: product.Name,
+                                    reason: moderationResult.Reason ?? "Content violates community guidelines",
+                                    violatedTerms: string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())
+                                );
+                                
+                                Console.WriteLine($"[RECHECK] ✅ Chat notification sent to Provider {product.ProviderId}");
+                            }
+                        }
+                        catch (Exception chatEx)
+                        {
+                            Console.WriteLine($"[RECHECK] ERROR sending chat notification: {chatEx.Message}");
+                        }
+                    }
+
+                    return Ok(new ApiResponse<object>(
+                        "Product violated moderation rules and has been flagged.", 
+                        new { 
+                            IsAppropriate = false,
+                            NewStatus = "pending",
+                            Reason = moderationResult.Reason,
+                            ViolatedTerms = moderationResult.ViolatedTerms
+                        }));
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Re-check failed: {ex.Message}", null));
+            }
+        }
     }
+}
+
+// DTO for manual flagging
+public class ManualFlagRequest
+{
+    public string? Reason { get; set; }
+    public List<string>? ViolatedTerms { get; set; }
+}
+
+// DTO for approve product
+public class ApproveProductRequest
+{
+    public string? NewStatus { get; set; }
+}
+
+// DTO for re-check moderation
+public class RecheckModerationRequest
+{
+    public Guid ProductId { get; set; }
 }

@@ -312,6 +312,17 @@ namespace ShareItAPI
                 });
             builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
             builder.Services.AddScoped<IAiSearchService, AiSearchService>();
+            
+            // Cấu hình ContentModerationOptions - Key riêng cho content moderation
+            builder.Services.AddHttpClient("ContentModeration")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .ConfigureHttpClient(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                });
+            builder.Services.Configure<ContentModerationOptions>(builder.Configuration.GetSection("ContentModeration"));
+            builder.Services.AddScoped<Services.ContentModeration.IContentModerationService, Services.ContentModeration.ContentModerationService>();
+            
             builder.Services.AddMemoryCache();
 
             // Register CartRepositories

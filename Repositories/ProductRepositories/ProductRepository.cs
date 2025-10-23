@@ -234,5 +234,34 @@ namespace Repositories.ProductRepositories
         {
             return await _context.OrderItems.AnyAsync(oi => oi.ProductId == productId);
         }
+
+        public async Task<Product?> GetProductWithProviderByIdAsync(Guid id)
+        {
+            return await _context.Products
+                .Include(p => p.Provider)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
+        public async Task<bool> UpdateProductAvailabilityStatusAsync(Guid productId, AvailabilityStatus status)
+        {
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null) return false;
+
+            product.AvailabilityStatus = status;
+            product.UpdatedAt = DateTimeHelper.GetVietnamTime();
+            
+            _context.Products.Update(product);
+            await _context.SaveChangesAsync();
+            
+            return true;
+        }
+
+        public async Task<Product?> GetProductWithImagesAndProviderAsync(Guid id)
+        {
+            return await _context.Products
+                .Include(p => p.Images)
+                .Include(p => p.Provider)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
     }
 }

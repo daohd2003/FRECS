@@ -11,6 +11,7 @@ namespace BusinessObject.Mappings
         {
             CreateMap<Product, ProductDTO>()
                 .ForMember(dest => dest.ProviderName, opt => opt.MapFrom(src => src.Provider.Profile.FullName))
+                .ForMember(dest => dest.ProviderEmail, opt => opt.MapFrom(src => src.Provider.Email))
                 .ForMember(dest => dest.AvailabilityStatus, opt => opt.MapFrom(src => src.AvailabilityStatus.ToString()))
                 .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender.ToString()))
                 .ForMember(dest => dest.RentalStatus, opt => opt.MapFrom(src => src.RentalStatus.ToString()))
