@@ -24,6 +24,11 @@ namespace Repositories.WithdrawalRepositories
         Task<IEnumerable<WithdrawalRequest>> GetPendingRequestsAsync();
 
         /// <summary>
+        /// Get all withdrawal requests (for admin - pending, completed, rejected)
+        /// </summary>
+        Task<IEnumerable<WithdrawalRequest>> GetAllRequestsAsync();
+
+        /// <summary>
         /// Get total amount of pending withdrawals for a provider
         /// </summary>
         Task<decimal> GetTotalPendingAmountAsync(Guid providerId);

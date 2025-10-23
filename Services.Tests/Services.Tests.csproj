@@ -61,7 +61,23 @@
               * Get Feedbacks By Product tests: 3 core + 1 additional
               * Total: 4 unit tests
             
-            Overall: 89 unit tests
+            - Controllers/CreateDiscountCodeControllerTests.cs: Create Discount Code functionality tests (Controller Layer)
+              * 7 core test cases (UTCID-01 to UTCID-07) + 1 additional test
+              * Total: 8 unit tests
+            
+            - Controllers/UpdateDiscountCodeControllerTests.cs: Update Discount Code functionality tests (Controller Layer)
+              * 6 core test cases (UTCID-01 to UTCID-06)
+              * Total: 6 unit tests
+            
+            - DiscountCode/CreateDiscountCodeServiceTests.cs: Create Discount Code functionality tests (Service Layer)
+              * 3 core test cases (UTCID-01, UTCID-02, UTCID-05) + 5 additional tests
+              * Total: 8 unit tests
+            
+            - DiscountCode/UpdateDiscountCodeServiceTests.cs: Update Discount Code functionality tests (Service Layer)
+              * 3 core test cases (UTCID-01, UTCID-02, UTCID-03) + 2 additional tests
+              * Total: 5 unit tests
+            
+            Overall: 116 unit tests
     
     Run tests: dotnet test
   -->
