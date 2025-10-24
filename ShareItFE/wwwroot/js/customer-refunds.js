@@ -362,7 +362,7 @@ function showRefundModal(refund) {
         document.getElementById('noBankInfo').classList.add('d-none');
         document.getElementById('modalBankName').textContent = refund.bankInfo.bankName;
         document.getElementById('modalAccountHolder').textContent = refund.bankInfo.accountHolderName;
-        document.getElementById('modalAccountNumber').textContent = maskAccountNumber(refund.bankInfo.accountNumber);
+        document.getElementById('modalAccountNumber').textContent = refund.bankInfo.accountNumber;
         document.getElementById('modalRoutingNumber').textContent = refund.bankInfo.routingNumber || '-';
     } else {
         document.getElementById('bankDetailsSection').style.display = 'none';
@@ -445,7 +445,7 @@ function showApproveModal() {
     
     let bankInfo = '-';
     if (currentRefund.customerBankName && currentRefund.customerAccountNumber) {
-        bankInfo = `${currentRefund.customerBankName} - ${maskAccountNumber(currentRefund.customerAccountNumber)}`;
+        bankInfo = `${currentRefund.customerBankName} - ${currentRefund.customerAccountNumber}`;
     }
     document.getElementById('approveBankInfo').textContent = bankInfo;
 
