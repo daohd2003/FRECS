@@ -2083,7 +2083,7 @@
         try {
             console.log('Sending product data:', productData); // Debug log
             
-            // ✅ USE ADMIN ENDPOINT to preserve ProviderId
+            // USE ADMIN ENDPOINT to preserve ProviderId
             const response = await fetch(`${API_BASE_URL}/products/admin/${productId}`, {
                 method: 'PUT',
                 headers: {
@@ -2106,7 +2106,7 @@
                 throw new Error(errorMessage);
             }
             
-            showToast('✅ Product updated successfully', 'success');
+            showToast('Product updated successfully', 'success');
             closeEditModal();
             
             // Reload current tab data
@@ -2224,10 +2224,10 @@
             const data = result.data;
             
             if (data.isAppropriate) {
-                // ✅ PASSED - Show success toast
-                showToast('✅ PASSED: Product content is appropriate', 'success');
+                // PASSED - Show success toast
+                showToast('PASSED: Product content is appropriate', 'success');
             } else {
-                // ❌ VIOLATED - Show ERROR POPUP (instead of toast)
+                // VIOLATED - Show ERROR POPUP (instead of toast)
                 showViolationErrorModal(data.reason, data.violatedTerms);
             }
             

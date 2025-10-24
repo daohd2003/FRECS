@@ -138,7 +138,7 @@ namespace ShareItAPI.Controllers
                 {
                     // Product was flagged by AI
                     return StatusCode(201, new ApiResponse<ProductDTO>(
-                        "⚠️ Product created but flagged for review. " +
+                        "Product created but flagged for review. " +
                         "Your product contains content that may violate our guidelines and has been set to PENDING. " +
                         "Please check your email for details and make necessary corrections. " +
                         "The product will NOT be visible to customers until approved by staff.",
@@ -150,7 +150,7 @@ namespace ShareItAPI.Controllers
                     // Product passed AI check
                     return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, 
                         new ApiResponse<ProductDTO>(
-                            "✅ Product created successfully and is now AVAILABLE to customers. " +
+                            "Product created successfully and is now AVAILABLE to customers. " +
                             "Your product passed our automated content moderation check.",
                             createdProduct
                         ));
@@ -230,7 +230,7 @@ namespace ShareItAPI.Controllers
                 var productDto = new ProductDTO
                 {
                     Id = id,
-                    ProviderId = existingProduct.ProviderId, // ✅ Preserve original provider
+                    ProviderId = existingProduct.ProviderId, // Preserve original provider
                     Name = dto.Name,
                     Description = dto.Description,
                     CategoryId = dto.CategoryId,
@@ -694,7 +694,7 @@ namespace ShareItAPI.Controllers
                 if (!updateResult)
                     return BadRequest("Failed to update product status.");
 
-                // ✅ Send CHAT notification to provider (instead of email)
+                // Send CHAT notification to provider (instead of email)
                 if (product.ProviderId != Guid.Empty)
                 {
                     try
@@ -797,7 +797,7 @@ namespace ShareItAPI.Controllers
                 // Update product status based on result
                 if (moderationResult.IsAppropriate)
                 {
-                    // ✅ Passed - set to available if currently pending
+                    // Passed - set to available if currently pending
                     if (product.AvailabilityStatus.ToLower() == "pending")
                     {
                         product.AvailabilityStatus = "available";
@@ -814,11 +814,11 @@ namespace ShareItAPI.Controllers
                 }
                 else
                 {
-                    // ❌ Failed - set to pending and send chat notification
+                    // Failed - set to pending and send chat notification
                     product.AvailabilityStatus = "pending";
                     await _service.UpdateAsync(product);
 
-                    // ✅ Send CHAT notification to provider (instead of email)
+                    // Send CHAT notification to provider (instead of email)
                     if (product.ProviderId != Guid.Empty)
                     {
                         try
@@ -836,7 +836,7 @@ namespace ShareItAPI.Controllers
                                     violatedTerms: string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())
                                 );
                                 
-                                Console.WriteLine($"[RECHECK] ✅ Chat notification sent to Provider {product.ProviderId}");
+                                Console.WriteLine($"[RECHECK] Chat notification sent to Provider {product.ProviderId}");
                             }
                         }
                         catch (Exception chatEx)

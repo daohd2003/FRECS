@@ -85,19 +85,19 @@ namespace Services.ProductServices
                 // Bước 3: Set product status based on AI result
                 if (!moderationResult.IsAppropriate)
                 {
-                    // ❌ VIOLATED → Set to Pending (customers CANNOT see)
+                    // VIOLATED - Set to Pending (customers CANNOT see)
                     await _productRepository.UpdateProductAvailabilityStatusAsync(
                         newProduct.Id, 
                         AvailabilityStatus.pending
                     );
-                    Console.WriteLine($"[PRODUCT SERVICE] ❌ VIOLATED - Product set to PENDING");
+                    Console.WriteLine($"[PRODUCT SERVICE] VIOLATED - Product set to PENDING");
                     Console.WriteLine($"[PRODUCT SERVICE] Reason: {moderationResult.Reason}");
                     Console.WriteLine($"[PRODUCT SERVICE] Violated terms: {string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())}");
                 }
                 else
                 {
-                    // ✅ PASSED → Keep as Available (customers can see)
-                    Console.WriteLine($"[PRODUCT SERVICE] ✅ PASSED - Product remains AVAILABLE");
+                    // PASSED - Keep as Available (customers can see)
+                    Console.WriteLine($"[PRODUCT SERVICE] PASSED - Product remains AVAILABLE");
                 }
 
                 Console.WriteLine($"[PRODUCT SERVICE] Product {newProduct.Id} created with status: {newProduct.AvailabilityStatus}");
@@ -157,12 +157,12 @@ namespace Services.ProductServices
             Console.WriteLine($"[UPDATE] Old Name: '{existingProduct.Name}' → New Name: '{productDto.Name}'");
             Console.WriteLine($"[UPDATE] Old Description: '{existingProduct.Description}' → New Description: '{productDto.Description}'");
 
-            // ✅ UPDATE NGAY LẬP TỨC
+            // UPDATE NGAY LẬP TỨC
             var updated = await _productRepository.UpdateProductWithImagesAsync(productDto);
 
             if (updated)
             {
-                // ✅ LUÔN CHECK MODERATION (synchronous để catch errors)
+                // LUÔN CHECK MODERATION (synchronous để catch errors)
                 var productId = productDto.Id;
                 var productName = productDto.Name;
                 var productDescription = productDto.Description;
@@ -179,14 +179,14 @@ namespace Services.ProductServices
                                     productDescription
                                 );
 
-                    Console.WriteLine($"[UPDATE] ✅ AI Check completed!");
+                    Console.WriteLine($"[UPDATE] AI Check completed!");
                     Console.WriteLine($"[UPDATE] IsAppropriate: {moderationResult.IsAppropriate}");
                     Console.WriteLine($"[UPDATE] Reason: {moderationResult.Reason}");
                     Console.WriteLine($"[UPDATE] Violated terms: {string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())}");
 
                                     if (moderationResult.IsAppropriate)
                                     {
-                        Console.WriteLine($"[UPDATE] ✅ Product {productId} PASSED moderation");
+                        Console.WriteLine($"[UPDATE] Product {productId} PASSED moderation");
                         
                         // Nếu product đang PENDING → Set về AVAILABLE
                         if (existingProduct.AvailabilityStatus == AvailabilityStatus.pending)
@@ -198,10 +198,10 @@ namespace Services.ProductServices
                             );
                         }
                                     }
-                                    else
-                                    {
-                        // ❌ VI PHẠM - Set PENDING + Send notification
-                        Console.WriteLine($"[UPDATE] ❌ Product {productId} VIOLATED content policy!");
+                    else
+                    {
+                        // VI PHẠM - Set PENDING + Send notification
+                        Console.WriteLine($"[UPDATE] Product {productId} VIOLATED content policy!");
                         Console.WriteLine($"[UPDATE] Current status: {existingProduct.AvailabilityStatus} → Setting to PENDING");
                         
                         // Set to PENDING (kể cả khi đang AVAILABLE)
@@ -236,23 +236,23 @@ namespace Services.ProductServices
                                     violatedTerms: string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())
                                 );
                                 
-                                Console.WriteLine($"[UPDATE] ✅ Chat notification sent successfully to Provider {providerId}!");
+                                Console.WriteLine($"[UPDATE] Chat notification sent successfully to Provider {providerId}!");
                             }
                             catch (Exception chatEx)
                             {
-                                Console.WriteLine($"[UPDATE] ❌ ERROR sending chat notification: {chatEx.Message}");
+                                Console.WriteLine($"[UPDATE] ERROR sending chat notification: {chatEx.Message}");
                                 Console.WriteLine($"[UPDATE] Chat error stack trace: {chatEx.StackTrace}");
                             }
                         }
                         else
                         {
-                            Console.WriteLine($"[UPDATE] ⚠️ WARNING: No Staff account found in database! Cannot send notification.");
+                            Console.WriteLine($"[UPDATE] WARNING: No Staff account found in database! Cannot send notification.");
                         }
                     }
                 }
                 catch (Exception moderationEx)
                 {
-                    Console.WriteLine($"[UPDATE] ❌❌❌ MODERATION CHECK FAILED ❌❌❌");
+                    Console.WriteLine($"[UPDATE] MODERATION CHECK FAILED");
                     Console.WriteLine($"[UPDATE] Exception Type: {moderationEx.GetType().Name}");
                     Console.WriteLine($"[UPDATE] Error Message: {moderationEx.Message}");
                     Console.WriteLine($"[UPDATE] Stack Trace: {moderationEx.StackTrace}");
@@ -262,7 +262,7 @@ namespace Services.ProductServices
                         Console.WriteLine($"[UPDATE] Inner Exception: {moderationEx.InnerException.Message}");
                     }
                     
-                    // ⚠️ Fail-safe: Nếu AI service lỗi → Set PENDING để admin review thủ công
+                    // Fail-safe: Nếu AI service lỗi - Set PENDING để admin review thủ công
                     Console.WriteLine($"[UPDATE] Setting product to PENDING as fail-safe due to moderation service failure");
                     await _productRepository.UpdateProductAvailabilityStatusAsync(
                         productId,
@@ -270,7 +270,7 @@ namespace Services.ProductServices
                     );
                 }
 
-                return true; // ✅ Update successful
+                return true; // Update successful
             }
 
             return false;

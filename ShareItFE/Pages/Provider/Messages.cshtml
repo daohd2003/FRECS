@@ -238,11 +238,11 @@
 
             async function loadConversations() {
                 try {
-                    // ✅ Cache-busting: Force fresh data mỗi lần load
+                    // Cache-busting: Force fresh data mỗi lần load
                     const response = await fetch(`${apiUrl}/conversations?_=${Date.now()}`, {
                         headers: { 
                             'Authorization': 'Bearer ' + accessToken,
-                            'Cache-Control': 'no-cache' // ✅ Disable browser cache
+                            'Cache-Control': 'no-cache' // Disable browser cache
                         }
                     });
                     if (!response.ok) throw new Error("Failed to load conversations");
@@ -463,13 +463,13 @@
                             convoToUpdate.productContext = message.productContext;
                             if (!selectedConversation || message.conversationId !== selectedConversation.id) {
                                 convoToUpdate.unreadMessageCount = (convoToUpdate.unreadMessageCount || 0) + 1;
-                            }
-                            renderConversationList();
-                        } else {
-                            // ✅ NEW: Conversation mới (chưa có trong danh sách) → Reload
-                            console.log("[CHAT] New conversation detected - reloading conversation list");
-                            loadConversations(); // Reload để hiển thị conversation mới từ Staff/Admin
                         }
+                        renderConversationList();
+                    } else {
+                        // NEW: Conversation mới (chưa có trong danh sách) - Reload
+                        console.log("[CHAT] New conversation detected - reloading conversation list");
+                        loadConversations(); // Reload để hiển thị conversation mới từ Staff/Admin
+                    }
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {
                             const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
