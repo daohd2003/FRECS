@@ -11,7 +11,8 @@ namespace Services.DepositRefundServices
         Task<IEnumerable<DepositRefundDto>> GetAllRefundRequestsAsync(TransactionStatus? status = null);
         Task<DepositRefundDetailDto?> GetRefundDetailAsync(Guid refundId);
         Task<IEnumerable<DepositRefundDto>> GetCustomerRefundsAsync(Guid customerId);
-        Task<bool> ProcessRefundAsync(Guid refundId, Guid adminId, bool isApproved, Guid? bankAccountId, string? notes);
+        Task<bool> ProcessRefundAsync(Guid refundId, Guid adminId, bool isApproved, Guid? bankAccountId, string? notes, string? externalTransactionId = null);
+        Task<bool> ReopenRefundAsync(Guid refundId);
         Task<int> GetPendingRefundCountAsync();
     }
 }
