@@ -57,7 +57,6 @@ namespace Services.Tests.Product
                 _mockProductRepository.Object,
                 _mockMapper.Object,
                 _mockContentModerationService.Object,
-                _mockEmailService.Object,
                 _mockServiceProvider.Object,
                 _mockConversationService.Object
             );
