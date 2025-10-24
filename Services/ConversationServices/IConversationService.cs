@@ -16,5 +16,15 @@ namespace Services.ConversationServices
         Task<ConversationDto> FindConversationAsync(Guid user1Id, Guid user2Id);
         Task<Dictionary<Guid, int>> GetUnreadCountsAsync(Guid userId);
         Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId);
+
+        // New method for sending violation messages
+        Task<MessageDto?> SendViolationMessageToProviderAsync(
+            Guid? staffId,
+            Guid providerId,
+            Guid productId,
+            string productName,
+            string reason,
+            string violatedTerms
+        );
     }
 }

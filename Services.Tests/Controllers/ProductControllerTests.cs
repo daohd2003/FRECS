@@ -4,6 +4,8 @@ using BusinessObject.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Services.ProductServices;
+using Services.ContentModeration;
+using Services.ConversationServices;
 using ShareItAPI.Controllers;
 
 namespace Services.Tests.Controllers
@@ -26,13 +28,22 @@ namespace Services.Tests.Controllers
     {
         private readonly Mock<IProductService> _mockProductService;
         private readonly Mock<IMapper> _mockMapper;
+        private readonly Mock<IContentModerationService> _mockContentModerationService;
+        private readonly Mock<IConversationService> _mockConversationService;
         private readonly ProductController _controller;
 
         public ProductControllerTests()
         {
             _mockProductService = new Mock<IProductService>();
             _mockMapper = new Mock<IMapper>();
-            _controller = new ProductController(_mockProductService.Object, _mockMapper.Object);
+            _mockContentModerationService = new Mock<IContentModerationService>();
+            _mockConversationService = new Mock<IConversationService>();
+            _controller = new ProductController(
+                _mockProductService.Object, 
+                _mockMapper.Object,
+                _mockContentModerationService.Object,
+                _mockConversationService.Object
+            );
         }
 
         #region GetById Tests

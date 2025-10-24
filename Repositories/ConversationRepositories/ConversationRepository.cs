@@ -124,5 +124,32 @@ namespace Repositories.ConversationRepositories
             return conversation;
             /*return await FindAsync(conversation.User1Id, conversation.User2Id);*/
         }
+
+        // New methods for violation message functionality
+        public async Task<Message> CreateMessageAsync(Message message)
+        {
+            _context.Messages.Add(message);
+            await _context.SaveChangesAsync();
+            return message;
+        }
+
+        public async Task UpdateConversationLastMessageAsync(Guid conversationId, Guid messageId)
+        {
+            var conversation = await _context.Conversations.FindAsync(conversationId);
+            if (conversation != null)
+            {
+                conversation.LastMessageId = messageId;
+                conversation.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<Message?> GetMessageByIdAsync(Guid messageId)
+        {
+            return await _context.Messages
+                .Include(m => m.Product)
+                    .ThenInclude(p => p.Images)
+                .FirstOrDefaultAsync(m => m.Id == messageId);
+        }
     }
 }

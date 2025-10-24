@@ -15,5 +15,10 @@ namespace Repositories.ConversationRepositories
         Task<Conversation> CreateAsync(Conversation conversation);
         Task<Dictionary<Guid, int>> GetUnreadCountsAsync(Guid userId);
         Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId);
+
+        // New methods for violation message functionality
+        Task<Message> CreateMessageAsync(Message message);
+        Task UpdateConversationLastMessageAsync(Guid conversationId, Guid messageId);
+        Task<Message?> GetMessageByIdAsync(Guid messageId);
     }
 }

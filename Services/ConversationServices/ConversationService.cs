@@ -7,16 +7,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Services.ConversationServices
 {
     public class ConversationService : IConversationService
     {
         private readonly IConversationRepository _conversationRepository;
+        private readonly IHubContext<ChatHub> _chatHub;
 
-        public ConversationService(IConversationRepository conversationRepository)
+        public ConversationService(
+            IConversationRepository conversationRepository,
+            IHubContext<ChatHub> chatHub)
         {
             _conversationRepository = conversationRepository;
+            _chatHub = chatHub;
         }
 
         public async Task<IEnumerable<ConversationDto>> GetConversationsForUserAsync(Guid userId)
@@ -195,6 +201,95 @@ namespace Services.ConversationServices
         public async Task<int> MarkMessagesAsReadAsync(Guid conversationId, Guid receiverId)
         {
             return await _conversationRepository.MarkMessagesAsReadAsync(conversationId, receiverId);
+        }
+
+        public async Task<MessageDto?> SendViolationMessageToProviderAsync(
+            Guid? staffId,
+            Guid providerId,
+            Guid productId,
+            string productName,
+            string reason,
+            string violatedTerms)
+        {
+            // Nếu không có staffId, return null
+            if (!staffId.HasValue)
+            {
+                Console.WriteLine("[CHAT] No staff logged in - cannot send chat notification");
+                return null;
+            }
+
+            try
+            {
+                // 1. Tạo/Tìm conversation
+                var conversation = await FindOrCreateConversationAsync(staffId.Value, providerId);
+
+                // 2. Build message content (max 1000 chars)
+                var messageContent = $@"⚠️ Content Violation Detected
+
+Product: {productName}
+Reason: {reason}
+Violated: {violatedTerms}
+Time: {DateTimeHelper.GetVietnamTime():dd/MM/yyyy HH:mm}
+
+Please update your product to comply with our guidelines.
+Reply here or contact support if you need help.
+
+🤖 Automated message from ShareIt Content Moderation";
+
+                if (messageContent.Length > 1000)
+                {
+                    messageContent = messageContent.Substring(0, 997) + "...";
+                }
+
+                // 3. Tạo message
+                var message = new Message
+                {
+                    Id = Guid.NewGuid(),
+                    ConversationId = conversation.Id,
+                    SenderId = staffId.Value,
+                    ReceiverId = providerId,
+                    ProductId = productId,
+                    Content = messageContent,
+                    SentAt = DateTimeHelper.GetVietnamTime(),
+                    IsRead = false
+                };
+
+                // 4. Lưu message
+                await _conversationRepository.CreateMessageAsync(message);
+
+                // 5. Update conversation
+                await _conversationRepository.UpdateConversationLastMessageAsync(conversation.Id, message.Id);
+
+                // 6. Load message với Product
+                var messageWithProduct = await _conversationRepository.GetMessageByIdAsync(message.Id);
+
+                // 7. Map sang DTO
+                var messageDto = new MessageDto
+                {
+                    Id = messageWithProduct.Id,
+                    ConversationId = messageWithProduct.ConversationId,
+                    SenderId = messageWithProduct.SenderId,
+                    Content = messageWithProduct.Content,
+                    SentAt = messageWithProduct.SentAt,
+                    ProductContext = messageWithProduct.Product == null ? null : new ProductContextDto
+                    {
+                        Id = messageWithProduct.Product.Id,
+                        Name = messageWithProduct.Product.Name,
+                        ImageUrl = messageWithProduct.Product.Images?.FirstOrDefault()?.ImageUrl
+                    }
+                };
+
+                // 8. Gửi real-time qua SignalR
+                await _chatHub.Clients.User(providerId.ToString()).SendAsync("ReceiveMessage", messageDto);
+
+                Console.WriteLine($"[CHAT] Violation message sent from Staff {staffId} to Provider {providerId}");
+                return messageDto;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to send violation chat: {ex.Message}");
+                return null;
+            }
         }
     }
 }

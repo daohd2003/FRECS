@@ -247,7 +247,8 @@ namespace ShareItFE.Pages.Products
 
                 if (productResponse.IsSuccessStatusCode)
                 {
-                    Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
+                    var apiResponse = await productResponse.Content.ReadFromJsonAsync<ApiResponse<ProductDTO>>(_jsonOptions);
+                    Product = apiResponse?.Data;
                     if (Product != null && Product.Images != null)
                     {
                         Product.Images = Product.Images
@@ -616,7 +617,8 @@ namespace ShareItFE.Pages.Products
 
                 if (productResponse.IsSuccessStatusCode)
                 {
-                    Product = await productResponse.Content.ReadFromJsonAsync<ProductDTO>(_jsonOptions);
+                    var apiResponse = await productResponse.Content.ReadFromJsonAsync<ApiResponse<ProductDTO>>(_jsonOptions);
+                    Product = apiResponse?.Data;
                     if (Product != null && Product.Images != null)
                     {
                         Product.Images = Product.Images

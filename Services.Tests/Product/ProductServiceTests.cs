@@ -5,6 +5,9 @@ using BusinessObject.Models;
 using Moq;
 using Repositories.ProductRepositories;
 using Services.ProductServices;
+using Services.ContentModeration;
+using Services.EmailServices;
+using Services.ConversationServices;
 
 namespace Services.Tests.Product
 {
@@ -35,16 +38,28 @@ namespace Services.Tests.Product
     {
         private readonly Mock<IProductRepository> _mockProductRepository;
         private readonly Mock<IMapper> _mockMapper;
+        private readonly Mock<IContentModerationService> _mockContentModerationService;
+        private readonly Mock<IEmailService> _mockEmailService;
+        private readonly Mock<IServiceProvider> _mockServiceProvider;
+        private readonly Mock<IConversationService> _mockConversationService;
         private readonly ProductService _productService;
 
         public ProductServiceTests()
         {
             _mockProductRepository = new Mock<IProductRepository>();
             _mockMapper = new Mock<IMapper>();
+            _mockContentModerationService = new Mock<IContentModerationService>();
+            _mockEmailService = new Mock<IEmailService>();
+            _mockServiceProvider = new Mock<IServiceProvider>();
+            _mockConversationService = new Mock<IConversationService>();
 
             _productService = new ProductService(
                 _mockProductRepository.Object,
-                _mockMapper.Object
+                _mockMapper.Object,
+                _mockContentModerationService.Object,
+                _mockEmailService.Object,
+                _mockServiceProvider.Object,
+                _mockConversationService.Object
             );
         }
 
