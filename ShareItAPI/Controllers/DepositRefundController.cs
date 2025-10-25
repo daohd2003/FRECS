@@ -127,7 +127,8 @@ namespace ShareItAPI.Controllers
                     adminId,
                     request.IsApproved,
                     request.BankAccountId,
-                    request.Notes
+                    request.Notes,
+                    request.ExternalTransactionId
                 );
 
                 if (success)
@@ -143,6 +144,31 @@ namespace ShareItAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<object>($"Error processing refund: {ex.Message}", null));
+            }
+        }
+
+        /// <summary>
+        /// Reopen a rejected refund request
+        /// </summary>
+        [HttpPost("reopen/{refundId}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> ReopenRefund(Guid refundId)
+        {
+            try
+            {
+                var success = await _refundService.ReopenRefundAsync(refundId);
+                if (success)
+                {
+                    return Ok(new ApiResponse<object>("Refund request reopened successfully", null));
+                }
+                else
+                {
+                    return BadRequest(new ApiResponse<object>("Failed to reopen refund request. Only rejected refunds can be reopened.", null));
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>($"Error reopening refund: {ex.Message}", null));
             }
         }
 
@@ -171,6 +197,7 @@ namespace ShareItAPI.Controllers
         public bool IsApproved { get; set; }
         public Guid? BankAccountId { get; set; } // BankAccount ID từ BankAccounts table
         public string? Notes { get; set; }
+        public string? ExternalTransactionId { get; set; } // Mã giao dịch từ ngân hàng bên ngoài
     }
 }
 

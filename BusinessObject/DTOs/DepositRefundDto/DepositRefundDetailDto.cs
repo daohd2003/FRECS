@@ -49,6 +49,9 @@ namespace BusinessObject.DTOs.DepositRefundDto
         
         // Notes
         public string? Notes { get; set; }
+        
+        // External Transaction Info
+        public string? ExternalTransactionId { get; set; }
     }
     
     public class ViolationSummary

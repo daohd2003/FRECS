@@ -82,6 +82,48 @@ namespace ShareItFE.Pages.Admin
             }
         }
 
+        public async Task<IActionResult> OnGetRefundByIdAsync(Guid id)
+        {
+            try
+            {
+                var token = Request.Cookies["AccessToken"];
+                if (string.IsNullOrEmpty(token))
+                {
+                    _logger.LogWarning("Unauthorized access - no access token");
+                    return new JsonResult(new { success = false, message = "Unauthorized" });
+                }
+
+                var client = _httpClientFactory.CreateClient("BackendApi");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var apiBaseUrl = _configuration["ApiSettings:BaseUrl"];
+                var response = await client.GetAsync($"{apiBaseUrl}/api/depositrefunds/{id}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    return new JsonResult(new { success = true, data = responseContent });
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to load refund {Id}. Status: {StatusCode}, Response: {Response}",
+                        id, response.StatusCode, errorContent);
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        message = $"Failed to load refund details",
+                        error = errorContent
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading refund {Id}", id);
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
         public async Task<IActionResult> OnPostProcessRefundAsync([FromBody] ProcessRefundRequest request)
         {
             try
@@ -109,7 +151,8 @@ namespace ShareItFE.Pages.Admin
                     refundId = request.RefundId,
                     isApproved = request.IsApproved,
                     bankAccountId = request.BankAccountId,
-                    notes = request.Notes
+                    notes = request.Notes,
+                    externalTransactionId = request.ExternalTransactionId
                 });
 
                 if (response.IsSuccessStatusCode)
@@ -133,6 +176,43 @@ namespace ShareItFE.Pages.Admin
                 return new JsonResult(new { success = false, message = "An error occurred. Please contact support." }) { StatusCode = 500 };
             }
         }
+
+        public async Task<IActionResult> OnPostReopenRefundAsync(Guid refundId)
+        {
+            try
+            {
+                var token = Request.Cookies["AccessToken"];
+                if (string.IsNullOrEmpty(token))
+                {
+                    _logger.LogWarning("Unauthorized access attempt to reopen refund - no access token");
+                    return new JsonResult(new { success = false, message = "Unauthorized" }) { StatusCode = 401 };
+                }
+
+                var client = _httpClientFactory.CreateClient("BackendApi");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                var apiBaseUrl = _configuration["ApiSettings:BaseUrl"];
+                var response = await client.PostAsync($"{apiBaseUrl}/api/depositrefunds/reopen/{refundId}", null);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Refund {RefundId} reopened successfully", refundId);
+                    return new JsonResult(new { success = true, message = "Refund request reopened successfully" });
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to reopen refund {RefundId}. Status: {StatusCode}, Response: {Response}", 
+                        refundId, response.StatusCode, errorContent);
+                    return new JsonResult(new { success = false, message = "Failed to reopen refund. Please try again." }) { StatusCode = (int)response.StatusCode };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reopening refund {RefundId}", refundId);
+                return new JsonResult(new { success = false, message = "An error occurred. Please contact support." }) { StatusCode = 500 };
+            }
+        }
     }
 
     public class ApiResponse<T>
@@ -147,6 +227,7 @@ namespace ShareItFE.Pages.Admin
         public bool IsApproved { get; set; }
         public Guid? BankAccountId { get; set; }
         public string? Notes { get; set; }
+        public string? ExternalTransactionId { get; set; }
     }
 }
 

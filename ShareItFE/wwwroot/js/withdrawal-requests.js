@@ -363,7 +363,7 @@ function showWithdrawalModal(withdrawal) {
     // Bank details
     document.getElementById('modalBankName').textContent = withdrawal.bankName;
     document.getElementById('modalAccountHolder').textContent = withdrawal.accountHolderName;
-    document.getElementById('modalAccountNumber').textContent = maskAccountNumber(withdrawal.accountNumber);
+    document.getElementById('modalAccountNumber').textContent = withdrawal.accountNumber;
     document.getElementById('modalRoutingNumber').textContent = withdrawal.routingNumber || '-';
 
     // Provider notes
@@ -436,7 +436,7 @@ function showApproveModal() {
 
     // Populate approve modal
     document.getElementById('approveAmount').textContent = formatCurrency(currentWithdrawal.amount);
-    document.getElementById('approveBankInfo').textContent = `${currentWithdrawal.bankName} - ${maskAccountNumber(currentWithdrawal.accountNumber)}`;
+    document.getElementById('approveBankInfo').textContent = `${currentWithdrawal.bankName} - ${currentWithdrawal.accountNumber}`;
 
     // Clear previous inputs
     document.getElementById('approveTransactionId').value = '';

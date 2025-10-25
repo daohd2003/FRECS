@@ -49,7 +49,8 @@ namespace Repositories.DepositRefundRepositories
                     RefundAmount = dr.RefundAmount,
                     RefundBankAccountId = dr.RefundBankAccountId,
                     Status = dr.Status,
-                    Notes = dr.Notes
+                    Notes = dr.Notes,
+                    ExternalTransactionId = dr.ExternalTransactionId
                 })
                 .ToListAsync();
 
@@ -107,7 +108,8 @@ namespace Repositories.DepositRefundRepositories
                 ProcessedByAdminId = refund.ProcessedByAdminId,
                 ProcessedByAdminName = refund.ProcessedByAdmin?.Profile?.FullName,
                 ProcessedAt = refund.ProcessedAt,
-                Notes = refund.Notes
+                Notes = refund.Notes,
+                ExternalTransactionId = refund.ExternalTransactionId
             };
 
             // Get violations for this order
@@ -176,6 +178,7 @@ namespace Repositories.DepositRefundRepositories
                 Notes = dr.Notes,
                 ProcessedByAdminId = dr.ProcessedByAdminId,
                 ProcessedAt = dr.ProcessedAt,
+                ExternalTransactionId = dr.ExternalTransactionId,
                 // Bank info from RefundBankAccount (if processed) or primary bank account
                 CustomerBankName = dr.RefundBankAccount != null ? dr.RefundBankAccount.BankName : null,
                 CustomerAccountNumber = dr.RefundBankAccount != null ? dr.RefundBankAccount.AccountNumber : null,
@@ -209,7 +212,7 @@ namespace Repositories.DepositRefundRepositories
             return refund;
         }
 
-        public async Task<bool> ApproveRefundAsync(Guid refundId, Guid adminId, Guid? bankAccountId, string? notes)
+        public async Task<bool> ApproveRefundAsync(Guid refundId, Guid adminId, Guid? bankAccountId, string? notes, string? externalTransactionId = null)
         {
             var refund = await _context.DepositRefunds.FindAsync(refundId);
             if (refund == null || refund.Status != TransactionStatus.initiated)
@@ -218,6 +221,7 @@ namespace Repositories.DepositRefundRepositories
             refund.Status = TransactionStatus.completed;
             refund.RefundBankAccountId = bankAccountId;
             refund.Notes = notes;
+            refund.ExternalTransactionId = externalTransactionId;
             refund.ProcessedByAdminId = adminId;
             refund.ProcessedAt = DateTime.UtcNow;
 
@@ -235,6 +239,23 @@ namespace Repositories.DepositRefundRepositories
             refund.Notes = notes;
             refund.ProcessedByAdminId = adminId;
             refund.ProcessedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ReopenRefundAsync(Guid refundId)
+        {
+            var refund = await _context.DepositRefunds.FindAsync(refundId);
+            if (refund == null || refund.Status != TransactionStatus.failed)
+                return false;
+
+            // Reset to initiated status so admin can process again
+            refund.Status = TransactionStatus.initiated;
+            refund.ProcessedByAdminId = null;
+            refund.ProcessedAt = null;
+            refund.ExternalTransactionId = null;
+            // Keep the Notes for reference (admin can see why it was rejected before)
 
             await _context.SaveChangesAsync();
             return true;

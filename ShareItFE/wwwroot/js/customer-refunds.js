@@ -1,577 +1,855 @@
-// Global variables
-let allRefunds = []; // Store all refunds for filtering
-let filteredRefunds = []; // Store filtered results
-let currentPage = 1;
-let pageSize = 10;
-let selectedRefund = null;
+// Customer Deposit Refunds Management
 
-// Initialize page
+let allRefunds = [];
+let filteredRefunds = [];
+let currentRefund = null;
+let currentPage = 1;
+let itemsPerPage = 8;
+let currentTab = 'pending'; // 'pending' or 'processed'
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
+    initializeEventListeners();
     loadRefunds();
-    initializeEventHandlers();
 });
 
-// Event handlers
-function initializeEventHandlers() {
-    // Search input handler
+// Event Listeners
+function initializeEventListeners() {
+    // Search
     const searchInput = document.getElementById('searchInput');
-    const clearSearchBtn = document.getElementById('clear-search');
+    const clearSearch = document.getElementById('clear-search');
 
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
             if (this.value) {
-                clearSearchBtn.classList.remove('hidden');
+            clearSearch.style.display = 'block';
             } else {
-                clearSearchBtn.classList.add('hidden');
+            clearSearch.style.display = 'none';
             }
             applyFilters();
         });
-    }
 
-    // Clear search button
-    if (clearSearchBtn) {
-        clearSearchBtn.addEventListener('click', () => {
+    clearSearch.addEventListener('click', function () {
             searchInput.value = '';
-            clearSearchBtn.classList.add('hidden');
+        this.style.display = 'none';
             applyFilters();
         });
-    }
 
-    // Filter change handler
-    const statusFilter = document.getElementById('statusSelect');
-    if (statusFilter) {
-        statusFilter.addEventListener('change', applyFilters);
-    }
+    // Filter toggle
+    document.getElementById('filterBtn').addEventListener('click', function () {
+        const filterPanel = document.getElementById('filterPanel');
+        if (filterPanel.style.display === 'none') {
+            filterPanel.style.display = 'block';
+        } else {
+            filterPanel.style.display = 'none';
+        }
+    });
 
-    // Reset filters button
-    const resetFiltersBtn = document.getElementById('reset-filters');
-    if (resetFiltersBtn) {
-        resetFiltersBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            statusFilter.value = '';
-            clearSearchBtn.classList.add('hidden');
+    // Reset filters
+    document.getElementById('reset-filters').addEventListener('click', function () {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusSelect').value = '';
+        document.getElementById('sortDateSelect').value = '';
+        document.getElementById('sortAmountSelect').value = '';
+        document.getElementById('clear-search').style.display = 'none';
             applyFilters();
         });
-    }
 
-    // Filter panel toggle
-    const filterBtn = document.getElementById('filterBtn');
-    const filterPanel = document.getElementById('filterPanel');
-    if (filterBtn) {
-        filterBtn.addEventListener('click', () => {
-            filterPanel.classList.toggle('hidden');
+    // Status filter
+    document.getElementById('statusSelect').addEventListener('change', applyFilters);
+    
+    // Sort filters - allow combining both
+    document.getElementById('sortDateSelect').addEventListener('change', applyFilters);
+    document.getElementById('sortAmountSelect').addEventListener('change', applyFilters);
+
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const targetTab = this.getAttribute('data-tab');
+            switchTab(targetTab);
         });
-    }
+    });
 }
 
-// Load all refunds
-function loadRefunds() {
-    const token = accessToken;
-    if (!token) {
-        showNotification('Not authenticated. Please login.', 'error');
-        return;
-    }
+// Switch tabs
+function switchTab(tab) {
+    currentTab = tab;
+    currentPage = 1; // Reset to first page when switching tabs
+    
+    // Update tab buttons
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(btn => {
+        if (btn.getAttribute('data-tab') === tab) {
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+        } else {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        }
+    });
 
-    fetch('/Admin/CustomerRefunds?handler=Refunds', {
-        headers: {
-            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+    // Update tab panes
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    tabPanes.forEach(pane => {
+        if (pane.id === tab + '-pane') {
+            pane.classList.add('active');
+            pane.style.display = 'block';
+        } else {
+            pane.classList.remove('active');
+            pane.style.display = 'none';
         }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to load refunds');
-        }
-        return response.json();
-    })
-    .then(result => {
+    });
+    
+    // Re-render tables with pagination
+    renderTables();
+}
+
+// Load refund requests from API
+async function loadRefunds() {
+    try {
+        const response = await fetch('/Admin/CustomerRefunds?handler=Refunds', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
         if (result.success) {
             const apiResponse = JSON.parse(result.data);
-            if (apiResponse.data && Array.isArray(apiResponse.data)) {
-                allRefunds = apiResponse.data;
+            allRefunds = apiResponse.data || [];
                 applyFilters();
-            } else {
-                showNotification('Invalid data format received', 'error');
-            }
         } else {
-            showNotification('Error: ' + (result.message || 'Unknown error'), 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error loading refunds:', error);
-        showNotification('Failed to load refund data', 'error');
-        displayEmptyState();
-    });
-}
-
-// Apply search and filters
-function applyFilters() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilterValue = document.getElementById('statusSelect').value;
-
-    let filtered = allRefunds;
-
-    // Search by order code, customer name, or email
-    if (searchTerm) {
-        filtered = filtered.filter(refund => 
-            (refund.orderCode && refund.orderCode.toLowerCase().includes(searchTerm)) ||
-            (refund.customerName && refund.customerName.toLowerCase().includes(searchTerm)) ||
-            (refund.customerEmail && refund.customerEmail.toLowerCase().includes(searchTerm)) ||
-            (refund.refundCode && refund.refundCode.toLowerCase().includes(searchTerm))
-        );
-    }
-
-    // Filter by status
-    if (statusFilterValue) {
-        filtered = filtered.filter(refund => {
-            const status = String(refund.status || '').toLowerCase();
-            return status === statusFilterValue.toLowerCase();
-        });
-    }
-
-    filteredRefunds = filtered;
-    currentPage = 1; // Reset to first page
-    updateResultsInfo();
-    displayCurrentPage();
-    renderPagination();
-}
-
-// Update results info
-function updateResultsInfo() {
-    const total = filteredRefunds.length;
-    document.getElementById('results-info').textContent = `Showing ${total} refund request${total !== 1 ? 's' : ''}`;
-}
-
-// Display current page
-function displayCurrentPage() {
-    const pendingRefunds = filteredRefunds.filter(r => String(r.status || '').toLowerCase() === 'initiated');
-    const processedRefunds = filteredRefunds.filter(r => String(r.status || '').toLowerCase() !== 'initiated');
-
-    displayPendingRefunds(pendingRefunds);
-    displayProcessedRefunds(processedRefunds);
-
-    // Update badges
-    document.getElementById('pending-count-badge').textContent = pendingRefunds.length;
-    document.getElementById('processed-count-badge').textContent = processedRefunds.length;
-    
-    // Update header pending badge
-    const headerPendingBadge = document.getElementById('header-pending-badge');
-    const headerPendingCount = document.getElementById('header-pending-count');
-    if (pendingRefunds.length > 0) {
-        headerPendingCount.textContent = pendingRefunds.length;
-        headerPendingBadge.style.display = 'inline-block';
-    } else {
-        headerPendingBadge.style.display = 'none';
-    }
-}
-
-// Display pending refunds
-function displayPendingRefunds(refunds) {
-    const tbody = document.getElementById('pending-tbody');
-    tbody.innerHTML = '';
-
-    if (refunds.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center py-12">
-                    <div class="empty-state">
-                        <i class="fas fa-inbox fa-3x text-gray-400 mb-3"></i>
-                        <h3>No Pending Refunds</h3>
-                        <p>All refund requests have been processed</p>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    refunds.forEach(refund => {
-        const row = createRefundRow(refund, true);
-        tbody.innerHTML += row;
-    });
-}
-
-// Display processed refunds
-function displayProcessedRefunds(refunds) {
-    const tbody = document.getElementById('processed-tbody');
-    tbody.innerHTML = '';
-
-    if (refunds.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="text-center py-12">
-                    <div class="empty-state">
-                        <i class="fas fa-history fa-3x text-gray-400 mb-3"></i>
-                        <h3>No Refund History</h3>
-                        <p>No refunds have been processed yet</p>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    refunds.forEach(refund => {
-        const row = createRefundRow(refund, false);
-        tbody.innerHTML += row;
-    });
-}
-
-// Create refund table row
-function createRefundRow(refund, isPending) {
-    const requestDate = new Date(refund.createdAt).toLocaleString('en-US', { 
-        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
-    });
-    
-    const statusBadge = getStatusBadge(refund.status);
-    const bankInfo = refund.customerBankName ? 
-        '<i class="fas fa-university text-primary"></i> <span>Bank Transfer</span>' : 
-        '<span class="text-muted">Not specified</span>';
-
-    if (isPending) {
-        return `
-            <tr>
-                <td><i class="far fa-calendar"></i> ${requestDate}</td>
-                <td>
-                    <div class="customer-info">
-                        <strong>${escapeHtml(refund.customerName)}</strong>
-                        <small>${escapeHtml(refund.customerEmail)}</small>
-                    </div>
-                </td>
-                <td><span class="order-code">${escapeHtml(refund.orderCode)}</span></td>
-                <td>
-                    <span class="amount">${formatCurrency(refund.refundAmount)}</span>
-                    ${refund.totalPenaltyAmount > 0 ? `
-                        <small class="text-muted d-block">
-                            (Original: ${formatCurrency(refund.originalDepositAmount)} - Penalty: ${formatCurrency(refund.totalPenaltyAmount)})
-                        </small>
-                    ` : ''}
-                </td>
-                <td>${bankInfo}</td>
-                <td>${statusBadge}</td>
-                <td>
-                    <button class="btn-action btn-view" onclick="viewRefundDetail('${refund.id}')" title="View Details">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
-                </td>
-            </tr>
-        `;
-    } else {
-        const processedDate = refund.processedAt ? 
-            new Date(refund.processedAt).toLocaleString('en-US', { 
-                month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' 
-            }) : 'N/A';
-
-        return `
-            <tr>
-                <td><i class="far fa-calendar"></i> ${requestDate}</td>
-                <td>
-                    <div class="customer-info">
-                        <strong>${escapeHtml(refund.customerName)}</strong>
-                        <small>${escapeHtml(refund.customerEmail)}</small>
-                    </div>
-                </td>
-                <td><span class="order-code">${escapeHtml(refund.orderCode)}</span></td>
-                <td><span class="amount">${formatCurrency(refund.refundAmount)}</span></td>
-                <td>${statusBadge}</td>
-                <td>${processedDate}</td>
-                <td>
-                    <button class="btn-action btn-view" onclick="viewRefundDetail('${refund.id}')" title="View Details">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-// Get status badge HTML
-function getStatusBadge(status) {
-    const statusLower = String(status || '').toLowerCase();
-    const statusMap = {
-        'initiated': '<span class="status-badge status-pending"><i class="fas fa-clock"></i> Initiated</span>',
-        'completed': '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completed</span>',
-        'failed': '<span class="status-badge status-failed"><i class="fas fa-times-circle"></i> Failed</span>'
-    };
-    return statusMap[statusLower] || `<span class="status-badge">${status}</span>`;
-}
-
-// Render pagination
-function renderPagination() {
-    const totalPages = Math.ceil(filteredRefunds.length / pageSize);
-    const paginationContainer = document.getElementById('pagination-container');
-    paginationContainer.innerHTML = '';
-
-    if (totalPages <= 1) {
-        return;
-    }
-
-    // Previous button
-    const prevDisabled = currentPage <= 1 ? 'disabled' : '';
-    paginationContainer.innerHTML += `
-        <button onclick="changePage(${currentPage - 1})" class="btn ${prevDisabled}">
-            <i class="fas fa-chevron-left"></i>
-        </button>
-    `;
-
-    // Page numbers
-    const paginationItems = getPaginationItems(currentPage, totalPages);
-    paginationItems.forEach(item => {
-        if (item === '...') {
-            paginationContainer.innerHTML += `<span class="btn disabled">...</span>`;
-        } else {
-            const isActive = item === currentPage;
-            paginationContainer.innerHTML += `
-                <button onclick="changePage(${item})" class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}">
-                    ${item}
-                </button>
-            `;
-        }
-    });
-
-    // Next button
-    const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
-    paginationContainer.innerHTML += `
-        <button onclick="changePage(${currentPage + 1})" class="btn ${nextDisabled}">
-            <i class="fas fa-chevron-right"></i>
-        </button>
-    `;
-}
-
-// Get pagination items
-function getPaginationItems(currentPage, totalPages) {
-    const items = [];
-    
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i++) {
-            items.push(i);
-        }
-    } else {
-        items.push(1);
-        
-        if (currentPage > 3) {
-            items.push('...');
-        }
-        
-        const start = Math.max(2, currentPage - 1);
-        const end = Math.min(totalPages - 1, currentPage + 1);
-        
-        for (let i = start; i <= end; i++) {
-            items.push(i);
-        }
-        
-        if (currentPage < totalPages - 2) {
-            items.push('...');
-        }
-        
-        items.push(totalPages);
-    }
-    
-    return items;
-}
-
-// Change page
-function changePage(page) {
-    const totalPages = Math.ceil(filteredRefunds.length / pageSize);
-    if (page < 1 || page > totalPages) return;
-    
-    currentPage = page;
-    displayCurrentPage();
-    updateResultsInfo();
-    renderPagination();
-}
-
-// Display empty state
-function displayEmptyState() {
-    const pendingTbody = document.getElementById('pending-tbody');
-    const processedTbody = document.getElementById('processed-tbody');
-    
-    const emptyHtml = `
-        <tr>
-            <td colspan="7" class="text-center py-12">
-                <div class="empty-state">
-                    <i class="fas fa-exclamation-circle fa-3x text-gray-400 mb-3"></i>
-                    <h3>Failed to Load Data</h3>
-                    <p>Please try refreshing the page</p>
-                </div>
-            </td>
-        </tr>
-    `;
-    
-    pendingTbody.innerHTML = emptyHtml;
-    processedTbody.innerHTML = emptyHtml;
-}
-
-// View refund detail
-window.viewRefundDetail = async function(refundId) {
-    const token = accessToken;
-    if (!token) {
-        showNotification('Not authenticated. Please login.', 'error');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${apiBaseUrl}/api/depositrefunds/${refundId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (response.ok) {
-            const apiResponse = await response.json();
-            if (apiResponse.data) {
-                selectedRefund = apiResponse.data;
-                populateRefundModal(selectedRefund);
-                const modal = new bootstrap.Modal(document.getElementById('refundDetailModal'));
-                modal.show();
-            } else {
-                showNotification('Failed to load refund details', 'error');
-            }
-        } else {
-            showNotification('Failed to load refund details', 'error');
+            showError('Failed to load refund requests: ' + result.message);
+            renderEmptyState('pending-tbody', true);
+            renderEmptyState('processed-tbody', false);
         }
     } catch (error) {
-        console.error('Error fetching refund details:', error);
-        showNotification('Failed to load refund details', 'error');
+        console.error('Error loading refunds:', error);
+        showError('An error occurred while loading refund requests');
+        renderEmptyState('pending-tbody', true);
+        renderEmptyState('processed-tbody', false);
     }
-};
+}
 
-// Populate refund modal
-function populateRefundModal(refund) {
-    document.getElementById('modalRefundCode').textContent = refund.refundCode || `RF-${refund.id.substring(0, 8).toUpperCase()}`;
-    document.getElementById('modalRequestDate').textContent = new Date(refund.createdAt).toLocaleDateString('en-US', { 
-        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+// Apply filters and render tables
+function applyFilters() {
+    const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusSelect').value;
+    const sortDate = document.getElementById('sortDateSelect').value;
+    const sortAmount = document.getElementById('sortAmountSelect').value;
+
+    // Filter
+    filteredRefunds = allRefunds.filter(r => {
+        const matchesSearch = !searchQuery ||
+            r.customerName.toLowerCase().includes(searchQuery) ||
+            r.customerEmail?.toLowerCase().includes(searchQuery) ||
+            r.orderCode?.toLowerCase().includes(searchQuery) ||
+            r.refundCode?.toLowerCase().includes(searchQuery);
+
+        const matchesStatus = !statusFilter || r.statusDisplay.toLowerCase() === statusFilter.toLowerCase();
+
+        return matchesSearch && matchesStatus;
     });
-    document.getElementById('modalCustomerName').textContent = refund.customerName;
-    document.getElementById('modalCustomerEmail').textContent = refund.customerEmail;
-    document.getElementById('modalOrderCode').textContent = refund.orderCode || `ORD-${refund.orderId.substring(0, 8).toUpperCase()}`;
+
+    // Sort - Can combine both date and amount
+    filteredRefunds.sort((a, b) => {
+        let result = 0;
+        
+        // Primary sort: by date if selected
+        if (sortDate) {
+            const dateA = new Date(a.createdAt);
+            const dateB = new Date(b.createdAt);
+            result = sortDate === 'asc' ? dateA - dateB : dateB - dateA;
+            
+            // If dates are equal and amount sort is selected, use amount as secondary sort
+            if (result === 0 && sortAmount) {
+                result = sortAmount === 'asc' ? a.refundAmount - b.refundAmount : b.refundAmount - a.refundAmount;
+            }
+        }
+        // If no date sort, but amount sort is selected
+        else if (sortAmount) {
+            result = sortAmount === 'asc' ? a.refundAmount - b.refundAmount : b.refundAmount - a.refundAmount;
+        }
+        // Default: newest first
+        else {
+            result = new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        
+        return result;
+    });
+
+    currentPage = 1; // Reset to first page when filtering
+    renderTables();
+    updateStats();
+}
+
+// Render tables
+function renderTables() {
+    const pending = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated');
+    const processed = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed');
+
+    // Get current tab data
+    const currentData = currentTab === 'pending' ? pending : processed;
     
+    // Calculate pagination
+    const totalPages = Math.ceil(currentData.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedData = currentData.slice(startIndex, endIndex);
+
+    // Render tables
+    if (currentTab === 'pending') {
+        renderTable('pending-tbody', paginatedData, true);
+    } else {
+        renderTable('processed-tbody', paginatedData, false);
+    }
+
+    updateResultsInfo();
+    updatePagination(currentData.length, totalPages);
+}
+
+// Render table
+function renderTable(tbodyId, data, showActions) {
+    const tbody = document.getElementById(tbodyId);
+
+    if (!data || data.length === 0) {
+        renderEmptyState(tbodyId, showActions);
+        return;
+    }
+
+    const rows = data.map(r => createTableRow(r, showActions)).join('');
+    tbody.innerHTML = rows;
+}
+
+// Create table row
+function createTableRow(refund, showActions) {
+    const statusClass = getStatusClass(refund.statusDisplay);
+    const statusIcon = getStatusIcon(refund.statusDisplay);
+    const statusText = getStatusText(refund.statusDisplay);
+
+    if (showActions) {
+        // Pending requests table
+        return `
+            <tr>
+                <td>
+                    <div class="date-display">
+                        <i class="fas fa-calendar"></i>
+                        <span>${formatDate(refund.createdAt)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="provider-info">
+                        <div class="provider-name">${escapeHtml(refund.customerName)}</div>
+                        <div class="provider-email">${escapeHtml(refund.customerEmail || '')}</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="fw-semibold">${escapeHtml(refund.orderCode)}</span>
+                </td>
+                <td>
+                    <span class="amount-value">${formatCurrency(refund.refundAmount)}</span>
+                </td>
+                <td>
+                    <span class="status-badge ${statusClass}">
+                        <i class="${statusIcon}"></i>
+                        <span>${statusText}</span>
+                    </span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="viewRefund('${refund.id}')" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-action btn-approve" onclick="quickApprove('${refund.id}')" title="Mark as Paid">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                        <button class="btn-action btn-reject" onclick="quickReject('${refund.id}')" title="Reject">
+                            <i class="fas fa-times-circle"></i>
+                    </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    } else {
+        // Processed requests table
+        return `
+            <tr>
+                <td>
+                    <div class="date-display">
+                        <i class="fas fa-calendar"></i>
+                        <span>${formatDate(refund.createdAt)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="provider-info">
+                        <div class="provider-name">${escapeHtml(refund.customerName)}</div>
+                        <div class="provider-email">${escapeHtml(refund.customerEmail || '')}</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="fw-semibold">${escapeHtml(refund.orderCode)}</span>
+                </td>
+                <td>
+                    <span class="amount-value">${formatCurrency(refund.refundAmount)}</span>
+                </td>
+                <td>
+                    <span class="status-badge ${statusClass}">
+                        <i class="${statusIcon}"></i>
+                        <span>${statusText}</span>
+                    </span>
+                </td>
+                <td>
+                    <div class="date-display">
+                        ${refund.processedAt ? `<i class="fas fa-check"></i><span>${formatDate(refund.processedAt)}</span>` : '-'}
+                    </div>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="viewRefund('${refund.id}')" title="View Details">
+                            <i class="fas fa-eye"></i>
+                    </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// View refund details
+async function viewRefund(id) {
+    try {
+        const response = await fetch(`/Admin/CustomerRefunds?handler=RefundById&id=${id}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const apiResponse = JSON.parse(result.data);
+            currentRefund = apiResponse.data;
+            showRefundModal(currentRefund);
+        } else {
+            showError('Failed to load refund details');
+        }
+    } catch (error) {
+        console.error('Error loading refund:', error);
+        showError('An error occurred while loading refund details');
+    }
+}
+
+// Show refund modal
+function showRefundModal(refund) {
+    // Populate modal fields
+    document.getElementById('modalRefundCode').textContent = refund.refundCode;
+    document.getElementById('modalRequestDate').textContent = formatDate(refund.createdAt);
+    document.getElementById('modalCustomerName').textContent = refund.customerName;
+    document.getElementById('modalCustomerEmail').textContent = refund.customerEmail || '-';
+    document.getElementById('modalOrderCode').textContent = refund.orderCode;
+    
+    // Amount details
     document.getElementById('modalOriginalDeposit').textContent = formatCurrency(refund.originalDepositAmount);
     document.getElementById('modalPenaltyAmount').textContent = formatCurrency(refund.totalPenaltyAmount);
     document.getElementById('modalRefundAmount').textContent = formatCurrency(refund.refundAmount);
 
     // Bank details
-    if (refund.bankInfo && refund.bankInfo.bankName) {
-        document.getElementById('bankDetailsSection').classList.remove('d-none');
+    if (refund.bankInfo) {
+        document.getElementById('bankDetailsSection').style.display = 'block';
         document.getElementById('noBankInfo').classList.add('d-none');
         document.getElementById('modalBankName').textContent = refund.bankInfo.bankName;
-        document.getElementById('modalAccountNumber').textContent = refund.bankInfo.accountNumber || 'N/A';
         document.getElementById('modalAccountHolder').textContent = refund.bankInfo.accountHolderName;
-        document.getElementById('modalRoutingNumber').textContent = refund.bankInfo.routingNumber || 'N/A';
+        document.getElementById('modalAccountNumber').textContent = refund.bankInfo.accountNumber;
+        document.getElementById('modalRoutingNumber').textContent = refund.bankInfo.routingNumber || '-';
     } else {
-        document.getElementById('bankDetailsSection').classList.add('d-none');
+        document.getElementById('bankDetailsSection').style.display = 'none';
         document.getElementById('noBankInfo').classList.remove('d-none');
     }
 
-    document.getElementById('modalNotes').textContent = refund.notes || 'No additional notes';
-
-    const statusBadge = document.getElementById('modalStatus');
-    statusBadge.textContent = refund.statusDisplay || refund.status;
-    statusBadge.className = `status-badge status-${String(refund.status || '').toLowerCase()}`;
-
-    // Show/hide action section
-    const actionSection = document.getElementById('adminActionSection');
-    const actionButtons = document.getElementById('modalActionButtons');
-    if (String(refund.status || '').toLowerCase() === 'initiated') {
-        actionSection.classList.remove('d-none');
-        actionButtons.classList.remove('d-none');
+    // Notes
+    if (refund.notes) {
+        document.getElementById('notesSection').style.display = 'block';
+        document.getElementById('modalNotes').textContent = refund.notes;
     } else {
-        actionSection.classList.add('d-none');
-        actionButtons.classList.add('d-none');
+        document.getElementById('notesSection').style.display = 'none';
+    }
+
+    // Status
+    const statusBadge = document.getElementById('modalStatus');
+    const statusClass = getStatusClass(refund.statusDisplay);
+    const statusIcon = getStatusIcon(refund.statusDisplay);
+    const statusText = getStatusText(refund.statusDisplay);
+    statusBadge.className = 'status-badge-large ' + statusClass;
+    statusBadge.innerHTML = `<i class="${statusIcon}"></i><span>${statusText}</span>`;
+
+    // Show/hide sections based on status
+    if (refund.statusDisplay.toLowerCase() === 'initiated') {
+        document.getElementById('processedSection').style.display = 'none';
+        document.getElementById('actionButtonsSection').style.display = 'flex';
+        document.getElementById('reopenButtonSection').style.display = 'none';
+    } else {
+        document.getElementById('processedSection').style.display = 'block';
+        document.getElementById('actionButtonsSection').style.display = 'none';
+
+        document.getElementById('modalProcessedDate').textContent = refund.processedAt ? formatDate(refund.processedAt) : '-';
+        document.getElementById('modalProcessedBy').textContent = refund.processedByAdminName || '-';
+
+        // Show reopen button only for rejected refunds
+        if (refund.statusDisplay.toLowerCase() === 'failed') {
+            document.getElementById('reopenButtonSection').style.display = 'block';
+        } else {
+            document.getElementById('reopenButtonSection').style.display = 'none';
+        }
+
+        // Show transaction ID if completed
+        if (refund.statusDisplay.toLowerCase() === 'completed' && refund.externalTransactionId) {
+            document.getElementById('transactionIdSection').style.display = 'block';
+            document.getElementById('modalTransactionId').textContent = refund.externalTransactionId;
+        } else {
+            document.getElementById('transactionIdSection').style.display = 'none';
+        }
+    }
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('refundDetailModal'));
+    modal.show();
+}
+
+// Quick approve
+function quickApprove(id) {
+    const refund = allRefunds.find(r => r.id === id);
+    if (refund) {
+        currentRefund = refund;
+        showApproveModal();
     }
 }
 
-// Approve refund
-window.approveRefund = async function() {
-    if (!selectedRefund) return;
+// Quick reject
+function quickReject(id) {
+    const refund = allRefunds.find(r => r.id === id);
+    if (refund) {
+        currentRefund = refund;
+        showRejectModal();
+    }
+}
 
-    const notes = document.getElementById('adminNotesInput').value.trim();
+// Show approve modal
+function showApproveModal() {
+    if (!currentRefund) return;
 
-    if (!selectedRefund.bankInfo || !selectedRefund.bankInfo.bankName) {
-        showNotification('Cannot process refund: Customer has not registered any bank account.', 'error');
-        return;
+    // Populate approve modal
+    document.getElementById('approveAmount').textContent = formatCurrency(currentRefund.refundAmount);
+    
+    let bankInfo = '-';
+    if (currentRefund.customerBankName && currentRefund.customerAccountNumber) {
+        bankInfo = `${currentRefund.customerBankName} - ${currentRefund.customerAccountNumber}`;
+    }
+    document.getElementById('approveBankInfo').textContent = bankInfo;
+
+    // Clear previous inputs
+    document.getElementById('approveTransactionId').value = '';
+    document.getElementById('approveNotes').value = '';
+
+    // Hide refund detail modal if open
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('refundDetailModal'));
+    if (detailModal) {
+        detailModal.hide();
     }
 
-    if (!confirm(`Confirm that you have transferred ${formatCurrency(selectedRefund.refundAmount)} to:\n\nBank: ${selectedRefund.bankInfo.bankName}\nAccount: ${selectedRefund.bankInfo.accountNumber}\nHolder: ${selectedRefund.bankInfo.accountHolderName}`)) {
-        return;
+    // Show approve modal
+    const modal = new bootstrap.Modal(document.getElementById('approveModal'));
+    modal.show();
+}
+
+// Show reject modal
+function showRejectModal() {
+    if (!currentRefund) return;
+
+    // Populate reject modal
+    document.getElementById('rejectCustomerName').textContent = currentRefund.customerName;
+    document.getElementById('rejectAmount').textContent = formatCurrency(currentRefund.refundAmount);
+
+    // Clear previous input
+    document.getElementById('rejectReason').value = '';
+
+    // Hide refund detail modal if open
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('refundDetailModal'));
+    if (detailModal) {
+        detailModal.hide();
     }
+
+    // Show reject modal
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+
+// Process approval
+async function processApproval() {
+    if (!currentRefund) return;
+
+    const transactionId = document.getElementById('approveTransactionId').value.trim();
+    const adminNotes = document.getElementById('approveNotes').value.trim();
 
     try {
-        const bankAccountId = selectedRefund.bankInfo.bankAccountId;
-        
-        const response = await fetch(`${apiBaseUrl}/api/depositrefunds/process`, {
+        const response = await fetch('/Admin/CustomerRefunds?handler=ProcessRefund', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
             },
             body: JSON.stringify({
-                refundId: selectedRefund.id,
+                refundId: currentRefund.id,
                 isApproved: true,
-                bankAccountId: bankAccountId,
-                notes: notes || `Refund processed to ${selectedRefund.bankInfo.accountHolderName} - ${selectedRefund.bankInfo.accountNumber}`
+                bankAccountId: currentRefund.refundBankAccountId,
+                notes: adminNotes || null,
+                externalTransactionId: transactionId || null
             })
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to approve refund');
-        }
+        const result = await response.json();
 
-        showNotification('Refund marked as paid successfully!', 'success');
-        setTimeout(() => location.reload(), 1500);
+        if (result.success) {
+            showSuccess('Refund request approved successfully');
+            
+            // Hide modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('approveModal'));
+            modal.hide();
+
+            // Reload data
+            await loadRefunds();
+        } else {
+            showError(result.message || 'Failed to approve refund');
+        }
     } catch (error) {
         console.error('Error approving refund:', error);
-        showNotification('Failed to approve refund', 'error');
+        showError('An error occurred while approving the refund');
     }
-};
+}
 
-// Reject refund
-window.rejectRefund = async function() {
-    if (!selectedRefund) return;
+// Process rejection
+async function processRejection() {
+    if (!currentRefund) return;
 
-    const notes = document.getElementById('adminNotesInput').value.trim();
+    const rejectionReason = document.getElementById('rejectReason').value.trim();
 
-    if (!notes) {
-        showNotification('Please provide a reason for rejection', 'error');
-        return;
-    }
-
-    if (!confirm(`Are you sure you want to reject this refund request for ${selectedRefund.customerName}?`)) {
+    if (!rejectionReason) {
+        showError('Please provide a rejection reason');
         return;
     }
 
     try {
-        const response = await fetch(`${apiBaseUrl}/api/depositrefunds/process`, {
+        const response = await fetch('/Admin/CustomerRefunds?handler=ProcessRefund', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
             },
             body: JSON.stringify({
-                refundId: selectedRefund.id,
+                refundId: currentRefund.id,
                 isApproved: false,
-                bankAccountId: null,
-                notes: notes
+                notes: rejectionReason
             })
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to reject refund');
-        }
+        const result = await response.json();
 
-        showNotification('Refund rejected successfully', 'success');
-        setTimeout(() => location.reload(), 1500);
+        if (result.success) {
+            showSuccess('Refund request rejected');
+            
+            // Hide modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
+            modal.hide();
+
+            // Reload data
+            await loadRefunds();
+        } else {
+            showError(result.message || 'Failed to reject refund');
+        }
     } catch (error) {
         console.error('Error rejecting refund:', error);
-        showNotification('Failed to reject refund', 'error');
+        showError('An error occurred while rejecting the refund');
     }
-};
+}
 
-// Helper functions
+// Reopen refund
+async function reopenRefund() {
+    if (!currentRefund) return;
+
+    if (!confirm('Are you sure you want to reopen this refund request? It will move back to pending status.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/Admin/CustomerRefunds?handler=ReopenRefund&refundId=${currentRefund.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('Refund request reopened successfully');
+            
+            // Hide modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('refundDetailModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            // Reload data
+            await loadRefunds();
+        } else {
+            showError(result.message || 'Failed to reopen refund');
+        }
+    } catch (error) {
+        console.error('Error reopening refund:', error);
+        showError('An error occurred while reopening the refund');
+    }
+}
+
+// Update stats
+function updateStats() {
+    const pendingCount = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated').length;
+    const processedCount = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed').length;
+
+    // Update header badge
+    const headerBadge = document.getElementById('header-pending-badge');
+    const headerCount = document.getElementById('header-pending-count');
+    if (pendingCount > 0) {
+        headerBadge.style.display = 'flex';
+        headerCount.textContent = pendingCount;
+    } else {
+        headerBadge.style.display = 'none';
+    }
+
+    // Update tab badges
+    document.getElementById('pending-count-badge').textContent = pendingCount;
+    document.getElementById('processed-count-badge').textContent = processedCount;
+}
+
+// Update results info
+function updateResultsInfo() {
+    const pending = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated');
+    const processed = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed');
+    const currentData = currentTab === 'pending' ? pending : processed;
+    const totalResults = currentData.length;
+    const resultsInfo = document.getElementById('results-info');
+    
+    if (totalResults === 0) {
+        resultsInfo.textContent = 'No refund requests found';
+    } else {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalResults);
+        resultsInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalResults} refund request${totalResults !== 1 ? 's' : ''}`;
+    }
+}
+
+// Update pagination
+function updatePagination(totalItems, totalPages) {
+    const paginationWrapper = document.getElementById('paginationWrapper');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const paginationPages = document.getElementById('paginationPages');
+    
+    // Show/hide pagination
+    if (totalItems <= itemsPerPage) {
+        paginationWrapper.style.display = 'none';
+        return;
+    }
+    paginationWrapper.style.display = 'flex';
+    
+    // Update showing info
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    document.getElementById('showingFrom').textContent = startIndex + 1;
+    document.getElementById('showingTo').textContent = endIndex;
+    document.getElementById('totalItems').textContent = totalItems;
+    
+    // Update prev/next buttons
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+    
+    // Render page numbers
+    renderPageNumbers(totalPages);
+}
+
+// Render page numbers
+function renderPageNumbers(totalPages) {
+    const paginationPages = document.getElementById('paginationPages');
+    paginationPages.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+    
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    // First page
+    if (startPage > 1) {
+        paginationPages.appendChild(createPageButton(1));
+        if (startPage > 2) {
+            paginationPages.appendChild(createEllipsis());
+        }
+    }
+    
+    // Page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        paginationPages.appendChild(createPageButton(i));
+    }
+    
+    // Last page
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationPages.appendChild(createEllipsis());
+        }
+        paginationPages.appendChild(createPageButton(totalPages));
+    }
+}
+
+// Create page button
+function createPageButton(pageNum) {
+    const button = document.createElement('div');
+    button.className = 'pagination-page' + (pageNum === currentPage ? ' active' : '');
+    button.textContent = pageNum;
+    button.onclick = () => goToPage(pageNum);
+    return button;
+}
+
+// Create ellipsis
+function createEllipsis() {
+    const ellipsis = document.createElement('div');
+    ellipsis.className = 'pagination-page ellipsis';
+    ellipsis.textContent = '...';
+    return ellipsis;
+}
+
+// Change page
+function changePage(delta) {
+    const pending = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated');
+    const processed = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed');
+    const currentData = currentTab === 'pending' ? pending : processed;
+    const totalPages = Math.ceil(currentData.length / itemsPerPage);
+    
+    const newPage = currentPage + delta;
+    if (newPage >= 1 && newPage <= totalPages) {
+        currentPage = newPage;
+        renderTables();
+    }
+}
+
+// Go to specific page
+function goToPage(pageNum) {
+    currentPage = pageNum;
+    renderTables();
+}
+
+// Change items per page
+function changeItemsPerPage() {
+    const select = document.getElementById('itemsPerPage');
+    itemsPerPage = parseInt(select.value);
+    currentPage = 1; // Reset to first page
+    renderTables();
+}
+
+// Render empty state
+function renderEmptyState(tbodyId, isPending) {
+    const tbody = document.getElementById(tbodyId);
+    const colSpan = isPending ? 6 : 7;
+    
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="${colSpan}">
+                <div class="empty-state">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <h3>No Refund Requests</h3>
+                    <p>${isPending ? 'No pending refund requests at this time' : 'No processed refund requests found'}</p>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Utility Functions
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(amount) + ' ₫';
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+    }).format(amount);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(date);
+}
+
+function formatId(id) {
+    if (!id) return '-';
+    return id.substring(0, 8).toUpperCase();
+}
+
+function maskAccountNumber(accountNumber) {
+    if (!accountNumber || accountNumber.length < 4) return accountNumber;
+    return '****' + accountNumber.substring(accountNumber.length - 4);
+}
+
+function getStatusClass(status) {
+    switch (status.toLowerCase()) {
+        case 'initiated':
+            return 'status-pending';
+        case 'completed':
+            return 'status-completed';
+        case 'failed':
+            return 'status-rejected';
+        default:
+            return '';
+    }
+}
+
+function getStatusIcon(status) {
+    switch (status.toLowerCase()) {
+        case 'initiated':
+            return 'fas fa-clock';
+        case 'completed':
+            return 'fas fa-check-circle';
+        case 'failed':
+            return 'fas fa-times-circle';
+        default:
+            return 'fas fa-question-circle';
+    }
+}
+
+function getStatusText(status) {
+    switch (status.toLowerCase()) {
+        case 'initiated':
+            return 'Initiated';
+        case 'completed':
+            return 'Completed';
+        case 'failed':
+            return 'Failed';
+        default:
+            return status;
+    }
 }
 
 function escapeHtml(text) {
+    if (!text) return '';
     const map = {
         '&': '&amp;',
         '<': '&lt;',
@@ -579,37 +857,27 @@ function escapeHtml(text) {
         '"': '&quot;',
         "'": '&#039;'
     };
-    return String(text || '').replace(/[&<>"']/g, m => map[m]);
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-function showNotification(message, type = 'info') {
-    const colors = {
-        success: 'bg-green-100 text-green-800 border-green-300',
-        error: 'bg-red-100 text-red-800 border-red-300',
-        info: 'bg-blue-100 text-blue-800 border-blue-300'
-    };
+function showSuccess(message) {
+    // Using toastManager if available
+    if (window.toastManager) {
+        window.toastManager.success(message);
+    } else if (window.showSuccessToast) {
+        window.showSuccessToast(message);
+    } else {
+        alert(message);
+    }
+}
 
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        info: 'fa-info-circle'
-    };
-
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 z-50 max-w-sm w-full p-4 rounded-lg border ${colors[type] || colors.info} shadow-lg transition-all`;
-    notification.innerHTML = `
-        <div class="flex items-start gap-3">
-            <i class="fas ${icons[type] || icons.info} text-lg mt-0.5"></i>
-            <p class="text-sm font-medium flex-1">${message}</p>
-            <button onclick="this.closest('div').parentElement.remove()" class="text-gray-600 hover:text-gray-800">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        notification.remove();
-    }, 4000);
+function showError(message) {
+    // Using toastManager if available
+    if (window.toastManager) {
+        window.toastManager.error(message);
+    } else if (window.showErrorToast) {
+        window.showErrorToast(message);
+    } else {
+        alert('Error: ' + message);
+    }
 }

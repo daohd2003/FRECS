@@ -45,6 +45,9 @@ namespace BusinessObject.DTOs.DepositRefundDto
         public Guid? ProcessedByAdminId { get; set; }
         public string? ProcessedByAdminName { get; set; }
         public DateTime? ProcessedAt { get; set; }
+        
+        // External Transaction Info
+        public string? ExternalTransactionId { get; set; }
     }
 }
 
