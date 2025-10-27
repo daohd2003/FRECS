@@ -53,8 +53,8 @@
               * Total: 13 unit tests
             
             - Controllers/ProductControllerTests.cs: View Product functionality tests (Controller Layer)
-              * Get By ID tests: 2 core + 1 additional
-              * Get All tests: 2 tests
+              * Get By ID tests: 2 core + 1 additional (uses ApiResponse wrapper)
+              * Get All tests: 2 tests (no wrapper)
               * Total: 5 unit tests
             
             - Controllers/FeedbackControllerTests.cs: View Feedback functionality tests (Controller Layer)
@@ -118,7 +118,6 @@
               * 4 additional tests
               * Total: 7 unit tests
             
-            Overall: 167 unit tests
             - Controllers/CreateDiscountCodeControllerTests.cs: Create Discount Code functionality tests (Controller Layer)
               * 7 core test cases (UTCID-01 to UTCID-07) + 1 additional test
               * Total: 8 unit tests
@@ -135,7 +134,9 @@
               * 3 core test cases (UTCID-01, UTCID-02, UTCID-03) + 2 additional tests
               * Total: 5 unit tests
             
-            Overall: 116 unit tests
+            ================================================================================
+            OVERALL TOTAL: 191 unit tests
+            ================================================================================
     
     Run tests: dotnet test
   -->
