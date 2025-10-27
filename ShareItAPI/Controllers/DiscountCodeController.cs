@@ -66,7 +66,7 @@ namespace ShareItAPI.Controllers
         /// Get discount code by ID
         /// </summary>
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin")]
+        [Authorize] // Allow all authenticated users (for order discount restoration)
         public async Task<IActionResult> GetDiscountCodeById(Guid id)
         {
             try

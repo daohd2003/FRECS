@@ -166,7 +166,19 @@ namespace ShareItFE.Pages.Products
                 {
                     // API returned an error status code
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    TempData["ErrorMessage"] = $"Error sending feedback: {response.StatusCode} - {errorContent}";
+                    
+                    // Try to parse ApiResponse to get clean error message
+                    try
+                    {
+                        var apiErrorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        TempData["ErrorMessage"] = apiErrorResponse?.Message ?? $"Error: {response.StatusCode}";
+                    }
+                    catch (JsonException)
+                    {
+                        // If parsing fails, show status code only
+                        TempData["ErrorMessage"] = $"Error: {response.StatusCode}";
+                    }
+                    
                     // Log the detailed errorContent for debugging
                     Console.WriteLine($"Feedback API Error: {response.StatusCode} - {errorContent}");
                     // Reload page data to maintain state if an error occurs

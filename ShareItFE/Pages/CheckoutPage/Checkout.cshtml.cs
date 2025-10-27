@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
+using BusinessObject.DTOs.DiscountCodeDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.ProfileDtos;
 using Microsoft.AspNetCore.Mvc;
@@ -122,17 +123,8 @@ namespace ShareItFE.Pages.CheckoutPage
 
         public async Task<IActionResult> OnGetAsync()
         {
-            // If user comes from "Pay Now" button on a pending order, save that OrderId to Session
-            // so it can be deleted when user goes back to cart and creates a new order
-            if (OrderId.HasValue && OrderId.Value != Guid.Empty)
-            {
-                PendingOrderId = OrderId.Value;
-                
-                // Save this pending order ID to Session so it can be deleted later
-                var orderIdsList = new List<Guid> { OrderId.Value };
-                var orderIdsJson = JsonSerializer.Serialize(orderIdsList);
-                SetPendingCartOrderIds(orderIdsJson);
-            }
+            // Note: We'll save OrderId to session AFTER validating it's a pending order
+            // to prevent accidentally storing completed/returned orders
             
             // Only clear TempData if this is a fresh GET request (not after POST with QR code)
             // Check TempData to see if we just created a transaction
@@ -184,10 +176,33 @@ namespace ShareItFE.Pages.CheckoutPage
                             return RedirectToPage("/Profile", new { tab = "orders" });
                         }
 
+                        // ✅ NOW save to session AFTER validating order is pending
+                        // This prevents storing completed/returned orders that shouldn't be cancelled
+                        PendingOrderId = OrderId.Value;
+                        var orderIdsList = new List<Guid> { OrderId.Value };
+                        var orderIdsJson = JsonSerializer.Serialize(orderIdsList);
+                        SetPendingCartOrderIds(orderIdsJson);
+
                         // Get totals from the single order (đã được tính đúng trong database)
                         Subtotal = SingleOrder.Subtotal; // Chỉ giá thuê/mua
                         TotalDeposit = SingleOrder.TotalDepositAmount; // Chỉ tiền cọc
-                        Total = SingleOrder.TotalAmount; // Tổng = subtotal + deposit
+                        DiscountAmount = SingleOrder.DiscountAmount; // Số tiền giảm giá từ order
+                        Total = SingleOrder.TotalAmount; // Tổng = subtotal + deposit - discount
+                        
+                        // Calculate separate subtotals for rental and purchase items (needed for discount display)
+                        RentalSubtotal = SingleOrder.Items
+                            .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                            .Sum(item => item.PricePerDay * (item.RentalDays ?? 0) * item.Quantity);
+                        
+                        PurchaseSubtotal = SingleOrder.Items
+                            .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                            .Sum(item => item.PricePerDay * item.Quantity);
+                        
+                        // If order has discount code, fetch details and restore to session
+                        if (SingleOrder.DiscountCodeId.HasValue && SingleOrder.DiscountCodeId.Value != Guid.Empty)
+                        {
+                            await RestoreDiscountFromOrder(SingleOrder.DiscountCodeId.Value, client);
+                        }
                         
                         // Populate Input fields with existing shipping address from the order
                         if (SingleOrder.ShippingAddress != null)
@@ -561,24 +576,49 @@ namespace ShareItFE.Pages.CheckoutPage
                                 {
                                     try
                                     {
-                                        // Step 1: Cancel pending order (must cancel before delete)
-                                        var cancelResponse = await client.PutAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}/cancel", null);
+                                        // Safety check: Verify order status before cancelling
+                                        var orderCheckResponse = await client.GetAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}/details");
                                         
-                                        if (cancelResponse.IsSuccessStatusCode)
+                                        if (orderCheckResponse.IsSuccessStatusCode)
                                         {
-                                            // Step 2: Delete the cancelled order permanently
-                                            var deleteResponse = await client.DeleteAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}");
+                                            var orderCheckContent = await orderCheckResponse.Content.ReadAsStringAsync();
+                                            var orderCheckApiResponse = JsonSerializer.Deserialize<ApiResponse<OrderDetailsDto>>(
+                                                orderCheckContent, 
+                                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                                             
-                                            if (!deleteResponse.IsSuccessStatusCode)
+                                            var orderToCheck = orderCheckApiResponse?.Data;
+                                            
+                                            // Only cancel if order is truly pending
+                                            if (orderToCheck != null && orderToCheck.Status == BusinessObject.Enums.OrderStatus.pending)
                                             {
-                                                var deleteError = await deleteResponse.Content.ReadAsStringAsync();
-                                                Console.WriteLine($"[WARNING] Could not delete order {pendingOrderId}: {deleteError}");
+                                                // Step 1: Cancel pending order (must cancel before delete)
+                                                var cancelResponse = await client.PutAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}/cancel", null);
+                                                
+                                                if (cancelResponse.IsSuccessStatusCode)
+                                                {
+                                                    // Step 2: Delete the cancelled order permanently
+                                                    var deleteResponse = await client.DeleteAsync($"{backendBaseUrl}/api/orders/{pendingOrderId}");
+                                                    
+                                                    if (!deleteResponse.IsSuccessStatusCode)
+                                                    {
+                                                        var deleteError = await deleteResponse.Content.ReadAsStringAsync();
+                                                        Console.WriteLine($"[WARNING] Could not delete order {pendingOrderId}: {deleteError}");
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    var errorContent = await cancelResponse.Content.ReadAsStringAsync();
+                                                    Console.WriteLine($"[WARNING] Could not cancel pending order {pendingOrderId}: {errorContent}");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine($"[INFO] Skipping order {pendingOrderId} - not pending status (status: {orderToCheck?.Status})");
                                             }
                                         }
                                         else
                                         {
-                                            var errorContent = await cancelResponse.Content.ReadAsStringAsync();
-                                            Console.WriteLine($"[WARNING] Could not cancel pending order {pendingOrderId}: {errorContent}");
+                                            Console.WriteLine($"[WARNING] Could not fetch order {pendingOrderId} for status check");
                                         }
                                     }
                                     catch (Exception ex)
@@ -824,6 +864,53 @@ namespace ShareItFE.Pages.CheckoutPage
             {
                 DiscountAmount = 0;
                 SelectedDiscountCode = null;
+            }
+        }
+
+        /// <summary>
+        /// Restore discount code from order into session (for Pay Now flow)
+        /// </summary>
+        private async Task RestoreDiscountFromOrder(Guid discountCodeId, HttpClient client)
+        {
+            try
+            {
+                // Fetch discount code details from API
+                var discountResponse = await client.GetAsync($"{backendBaseUrl}/api/discountcode/{discountCodeId}");
+                
+                if (discountResponse.IsSuccessStatusCode)
+                {
+                    var discountContent = await discountResponse.Content.ReadAsStringAsync();
+                    var discountApiResponse = JsonSerializer.Deserialize<ApiResponse<DiscountCodeDto>>(
+                        discountContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    
+                    var discountCode = discountApiResponse?.Data;
+                    
+                    if (discountCode != null)
+                    {
+                        // Create session info object
+                        var sessionInfo = new DiscountCodeSessionInfo
+                        {
+                            Id = discountCode.Id.ToString(),
+                            Code = discountCode.Code,
+                            DiscountType = discountCode.DiscountType.ToString(),
+                            Value = discountCode.Value,
+                            UsageType = discountCode.UsageType.ToString()
+                        };
+                        
+                        // Save to session
+                        var sessionJson = JsonSerializer.Serialize(sessionInfo);
+                        HttpContext.Session.SetString("SelectedDiscountCode", sessionJson);
+                        
+                        // Set for display
+                        SelectedDiscountCode = sessionInfo;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error restoring discount from order: {ex.Message}");
+                // Continue without discount if fetch fails
             }
         }
     }
