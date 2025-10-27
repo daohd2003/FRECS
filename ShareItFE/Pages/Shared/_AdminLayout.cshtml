@@ -105,6 +105,11 @@
                             <span>Customer Refunds</span>
                         </a>
 
+                        <a asp-page="/Admin/WithdrawalRequests" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/WithdrawalRequests" ? "active" : "")">
+                            <i class="bi bi-wallet2"></i>
+                            <span>Withdrawal Requests</span>
+                        </a>
+
                         <a asp-page="/Admin/StaffManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/StaffManagement" ? "active" : "")">
                             <i class="bi bi-people-fill"></i>
                             <span>Staff Management</span>

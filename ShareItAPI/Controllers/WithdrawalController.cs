@@ -119,6 +119,24 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Admin gets all withdrawal requests (pending, completed, rejected)
+        /// </summary>
+        [HttpGet("all")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetAllRequests()
+        {
+            try
+            {
+                var requests = await _withdrawalService.GetAllRequestsAsync();
+                return Ok(new ApiResponse<IEnumerable<WithdrawalResponseDto>>("Success", requests));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error: {ex.Message}", null));
+            }
+        }
+
+        /// <summary>
         /// Admin processes (approve/reject) a withdrawal request
         /// </summary>
         [HttpPost("process")]

@@ -1,8 +1,8 @@
-// Customer Deposit Refunds Management
+// Provider Withdrawal Requests Management
 
-let allRefunds = [];
-let filteredRefunds = [];
-let currentRefund = null;
+let allWithdrawals = [];
+let filteredWithdrawals = [];
+let currentWithdrawal = null;
 let currentPage = 1;
 let itemsPerPage = 8;
 let currentTab = 'pending'; // 'pending' or 'processed'
@@ -10,7 +10,7 @@ let currentTab = 'pending'; // 'pending' or 'processed'
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
     initializeEventListeners();
-    loadRefunds();
+    loadWithdrawals();
 });
 
 // Event Listeners
@@ -20,19 +20,19 @@ function initializeEventListeners() {
     const clearSearch = document.getElementById('clear-search');
 
     searchInput.addEventListener('input', function () {
-            if (this.value) {
+        if (this.value) {
             clearSearch.style.display = 'block';
-            } else {
+        } else {
             clearSearch.style.display = 'none';
-            }
-            applyFilters();
-        });
+        }
+        applyFilters();
+    });
 
     clearSearch.addEventListener('click', function () {
-            searchInput.value = '';
+        searchInput.value = '';
         this.style.display = 'none';
-            applyFilters();
-        });
+        applyFilters();
+    });
 
     // Filter toggle
     document.getElementById('filterBtn').addEventListener('click', function () {
@@ -48,14 +48,18 @@ function initializeEventListeners() {
     document.getElementById('reset-filters').addEventListener('click', function () {
         document.getElementById('searchInput').value = '';
         document.getElementById('statusSelect').value = '';
+        document.getElementById('paymentMethodSelect').value = '';
         document.getElementById('sortDateSelect').value = '';
         document.getElementById('sortAmountSelect').value = '';
         document.getElementById('clear-search').style.display = 'none';
-            applyFilters();
-        });
+        applyFilters();
+    });
 
     // Status filter
     document.getElementById('statusSelect').addEventListener('change', applyFilters);
+    
+    // Payment method filter
+    document.getElementById('paymentMethodSelect').addEventListener('change', applyFilters);
     
     // Sort filters - allow combining both
     document.getElementById('sortDateSelect').addEventListener('change', applyFilters);
@@ -104,10 +108,10 @@ function switchTab(tab) {
     renderTables();
 }
 
-// Load refund requests from API
-async function loadRefunds() {
+// Load withdrawal requests from API
+async function loadWithdrawals() {
     try {
-        const response = await fetch('/Admin/CustomerRefunds?handler=Refunds', {
+        const response = await fetch('/Admin/WithdrawalRequests?handler=Withdrawals', {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -118,16 +122,16 @@ async function loadRefunds() {
 
         if (result.success) {
             const apiResponse = JSON.parse(result.data);
-            allRefunds = apiResponse.data || [];
-                applyFilters();
+            allWithdrawals = apiResponse.data || [];
+            applyFilters();
         } else {
-            showError('Failed to load refund requests: ' + result.message);
+            showError('Failed to load withdrawal requests: ' + result.message);
             renderEmptyState('pending-tbody', true);
             renderEmptyState('processed-tbody', false);
         }
     } catch (error) {
-        console.error('Error loading refunds:', error);
-        showError('An error occurred while loading refund requests');
+        console.error('Error loading withdrawals:', error);
+        showError('An error occurred while loading withdrawal requests');
         renderEmptyState('pending-tbody', true);
         renderEmptyState('processed-tbody', false);
     }
@@ -137,44 +141,49 @@ async function loadRefunds() {
 function applyFilters() {
     const searchQuery = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusSelect').value;
+    const paymentMethodFilter = document.getElementById('paymentMethodSelect').value;
     const sortDate = document.getElementById('sortDateSelect').value;
     const sortAmount = document.getElementById('sortAmountSelect').value;
 
     // Filter
-    filteredRefunds = allRefunds.filter(r => {
+    filteredWithdrawals = allWithdrawals.filter(w => {
         const matchesSearch = !searchQuery ||
-            r.customerName.toLowerCase().includes(searchQuery) ||
-            r.customerEmail?.toLowerCase().includes(searchQuery) ||
-            r.orderCode?.toLowerCase().includes(searchQuery) ||
-            r.refundCode?.toLowerCase().includes(searchQuery);
+            w.providerName.toLowerCase().includes(searchQuery) ||
+            w.providerEmail?.toLowerCase().includes(searchQuery) ||
+            w.id.toLowerCase().includes(searchQuery);
 
-        const matchesStatus = !statusFilter || r.statusDisplay.toLowerCase() === statusFilter.toLowerCase();
+        const matchesStatus = !statusFilter || w.status === statusFilter;
+        
+        // For now, all withdrawals use bank transfer
+        // This can be extended when payment method is added to the API response
+        const matchesPaymentMethod = !paymentMethodFilter || 
+            (paymentMethodFilter === 'bank_transfer'); // Default to bank transfer
 
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesPaymentMethod;
     });
 
     // Sort - Can combine both date and amount
-    filteredRefunds.sort((a, b) => {
+    filteredWithdrawals.sort((a, b) => {
         let result = 0;
         
         // Primary sort: by date if selected
         if (sortDate) {
-            const dateA = new Date(a.createdAt);
-            const dateB = new Date(b.createdAt);
+            const dateA = new Date(a.requestDate);
+            const dateB = new Date(b.requestDate);
             result = sortDate === 'asc' ? dateA - dateB : dateB - dateA;
             
             // If dates are equal and amount sort is selected, use amount as secondary sort
             if (result === 0 && sortAmount) {
-                result = sortAmount === 'asc' ? a.refundAmount - b.refundAmount : b.refundAmount - a.refundAmount;
+                result = sortAmount === 'asc' ? a.amount - b.amount : b.amount - a.amount;
             }
         }
         // If no date sort, but amount sort is selected
         else if (sortAmount) {
-            result = sortAmount === 'asc' ? a.refundAmount - b.refundAmount : b.refundAmount - a.refundAmount;
+            result = sortAmount === 'asc' ? a.amount - b.amount : b.amount - a.amount;
         }
         // Default: newest first
         else {
-            result = new Date(b.createdAt) - new Date(a.createdAt);
+            result = new Date(b.requestDate) - new Date(a.requestDate);
         }
         
         return result;
@@ -187,8 +196,8 @@ function applyFilters() {
 
 // Render tables
 function renderTables() {
-    const pending = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated');
-    const processed = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed');
+    const pending = filteredWithdrawals.filter(w => w.status === 'Initiated');
+    const processed = filteredWithdrawals.filter(w => w.status === 'Completed' || w.status === 'Rejected');
 
     // Get current tab data
     const currentData = currentTab === 'pending' ? pending : processed;
@@ -219,15 +228,15 @@ function renderTable(tbodyId, data, showActions) {
         return;
     }
 
-    const rows = data.map(r => createTableRow(r, showActions)).join('');
+    const rows = data.map(w => createTableRow(w, showActions)).join('');
     tbody.innerHTML = rows;
 }
 
 // Create table row
-function createTableRow(refund, showActions) {
-    const statusClass = getStatusClass(refund.statusDisplay);
-    const statusIcon = getStatusIcon(refund.statusDisplay);
-    const statusText = getStatusText(refund.statusDisplay);
+function createTableRow(withdrawal, showActions) {
+    const statusClass = getStatusClass(withdrawal.status);
+    const statusIcon = getStatusIcon(withdrawal.status);
+    const statusText = getStatusText(withdrawal.status);
 
     if (showActions) {
         // Pending requests table
@@ -236,20 +245,23 @@ function createTableRow(refund, showActions) {
                 <td>
                     <div class="date-display">
                         <i class="fas fa-calendar"></i>
-                        <span>${formatDate(refund.createdAt)}</span>
+                        <span>${formatDate(withdrawal.requestDate)}</span>
                     </div>
                 </td>
                 <td>
                     <div class="provider-info">
-                        <div class="provider-name">${escapeHtml(refund.customerName)}</div>
-                        <div class="provider-email">${escapeHtml(refund.customerEmail || '')}</div>
+                        <div class="provider-name">${escapeHtml(withdrawal.providerName)}</div>
+                        <div class="provider-email">${escapeHtml(withdrawal.providerEmail || '')}</div>
                     </div>
                 </td>
                 <td>
-                    <span class="fw-semibold">${escapeHtml(refund.orderCode)}</span>
+                    <span class="amount-value">${formatCurrency(withdrawal.amount)}</span>
                 </td>
                 <td>
-                    <span class="amount-value">${formatCurrency(refund.refundAmount)}</span>
+                    <div class="payment-method">
+                        <i class="fas fa-university"></i>
+                        <span>Bank Transfer</span>
+                    </div>
                 </td>
                 <td>
                     <span class="status-badge ${statusClass}">
@@ -259,15 +271,15 @@ function createTableRow(refund, showActions) {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-action btn-view" onclick="viewRefund('${refund.id}')" title="View Details">
+                        <button class="btn-action btn-view" onclick="viewWithdrawal('${withdrawal.id}')" title="View Details">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn-action btn-approve" onclick="quickApprove('${refund.id}')" title="Mark as Paid">
+                        <button class="btn-action btn-approve" onclick="quickApprove('${withdrawal.id}')" title="Mark as Paid">
                             <i class="fas fa-check-circle"></i>
                         </button>
-                        <button class="btn-action btn-reject" onclick="quickReject('${refund.id}')" title="Reject">
+                        <button class="btn-action btn-reject" onclick="quickReject('${withdrawal.id}')" title="Reject">
                             <i class="fas fa-times-circle"></i>
-                    </button>
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -279,20 +291,17 @@ function createTableRow(refund, showActions) {
                 <td>
                     <div class="date-display">
                         <i class="fas fa-calendar"></i>
-                        <span>${formatDate(refund.createdAt)}</span>
+                        <span>${formatDate(withdrawal.requestDate)}</span>
                     </div>
                 </td>
                 <td>
                     <div class="provider-info">
-                        <div class="provider-name">${escapeHtml(refund.customerName)}</div>
-                        <div class="provider-email">${escapeHtml(refund.customerEmail || '')}</div>
+                        <div class="provider-name">${escapeHtml(withdrawal.providerName)}</div>
+                        <div class="provider-email">${escapeHtml(withdrawal.providerEmail || '')}</div>
                     </div>
                 </td>
                 <td>
-                    <span class="fw-semibold">${escapeHtml(refund.orderCode)}</span>
-                </td>
-                <td>
-                    <span class="amount-value">${formatCurrency(refund.refundAmount)}</span>
+                    <span class="amount-value">${formatCurrency(withdrawal.amount)}</span>
                 </td>
                 <td>
                     <span class="status-badge ${statusClass}">
@@ -302,14 +311,14 @@ function createTableRow(refund, showActions) {
                 </td>
                 <td>
                     <div class="date-display">
-                        ${refund.processedAt ? `<i class="fas fa-check"></i><span>${formatDate(refund.processedAt)}</span>` : '-'}
+                        ${withdrawal.processedAt ? `<i class="fas fa-check"></i><span>${formatDate(withdrawal.processedAt)}</span>` : '-'}
                     </div>
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-action btn-view" onclick="viewRefund('${refund.id}')" title="View Details">
+                        <button class="btn-action btn-view" onclick="viewWithdrawal('${withdrawal.id}')" title="View Details">
                             <i class="fas fa-eye"></i>
-                    </button>
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -317,10 +326,10 @@ function createTableRow(refund, showActions) {
     }
 }
 
-// View refund details
-async function viewRefund(id) {
+// View withdrawal details
+async function viewWithdrawal(id) {
     try {
-        const response = await fetch(`/Admin/CustomerRefunds?handler=RefundById&id=${id}`, {
+        const response = await fetch(`/Admin/WithdrawalRequests?handler=WithdrawalById&id=${id}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
@@ -331,130 +340,110 @@ async function viewRefund(id) {
 
         if (result.success) {
             const apiResponse = JSON.parse(result.data);
-            currentRefund = apiResponse.data;
-            showRefundModal(currentRefund);
+            currentWithdrawal = apiResponse.data;
+            showWithdrawalModal(currentWithdrawal);
         } else {
-            showError('Failed to load refund details');
+            showError('Failed to load withdrawal details');
         }
     } catch (error) {
-        console.error('Error loading refund:', error);
-        showError('An error occurred while loading refund details');
+        console.error('Error loading withdrawal:', error);
+        showError('An error occurred while loading withdrawal details');
     }
 }
 
-// Show refund modal
-function showRefundModal(refund) {
+// Show withdrawal modal
+function showWithdrawalModal(withdrawal) {
     // Populate modal fields
-    document.getElementById('modalRefundCode').textContent = refund.refundCode;
-    document.getElementById('modalRequestDate').textContent = formatDate(refund.createdAt);
-    document.getElementById('modalCustomerName').textContent = refund.customerName;
-    document.getElementById('modalCustomerEmail').textContent = refund.customerEmail || '-';
-    document.getElementById('modalOrderCode').textContent = refund.orderCode;
-    
-    // Amount details
-    document.getElementById('modalOriginalDeposit').textContent = formatCurrency(refund.originalDepositAmount);
-    document.getElementById('modalPenaltyAmount').textContent = formatCurrency(refund.totalPenaltyAmount);
-    document.getElementById('modalRefundAmount').textContent = formatCurrency(refund.refundAmount);
+    document.getElementById('modalRequestId').textContent = formatId(withdrawal.id);
+    document.getElementById('modalRequestDate').textContent = formatDate(withdrawal.requestDate);
+    document.getElementById('modalProviderName').textContent = withdrawal.providerName;
+    document.getElementById('modalProviderEmail').textContent = withdrawal.providerEmail || '-';
+    document.getElementById('modalAmount').textContent = formatCurrency(withdrawal.amount);
 
     // Bank details
-    if (refund.bankInfo) {
-        document.getElementById('bankDetailsSection').style.display = 'block';
-        document.getElementById('noBankInfo').classList.add('d-none');
-        document.getElementById('modalBankName').textContent = refund.bankInfo.bankName;
-        document.getElementById('modalAccountHolder').textContent = refund.bankInfo.accountHolderName;
-        document.getElementById('modalAccountNumber').textContent = refund.bankInfo.accountNumber;
-        document.getElementById('modalRoutingNumber').textContent = refund.bankInfo.routingNumber || '-';
-    } else {
-        document.getElementById('bankDetailsSection').style.display = 'none';
-        document.getElementById('noBankInfo').classList.remove('d-none');
-    }
+    document.getElementById('modalBankName').textContent = withdrawal.bankName;
+    document.getElementById('modalAccountHolder').textContent = withdrawal.accountHolderName;
+    document.getElementById('modalAccountNumber').textContent = withdrawal.accountNumber;
+    document.getElementById('modalRoutingNumber').textContent = withdrawal.routingNumber || '-';
 
-    // Notes
-    if (refund.notes) {
-        document.getElementById('notesSection').style.display = 'block';
-        document.getElementById('modalNotes').textContent = refund.notes;
+    // Provider notes
+    if (withdrawal.notes) {
+        document.getElementById('providerNotesSection').style.display = 'block';
+        document.getElementById('modalProviderNotes').textContent = withdrawal.notes;
     } else {
-        document.getElementById('notesSection').style.display = 'none';
+        document.getElementById('providerNotesSection').style.display = 'none';
     }
 
     // Status
     const statusBadge = document.getElementById('modalStatus');
-    const statusClass = getStatusClass(refund.statusDisplay);
-    const statusIcon = getStatusIcon(refund.statusDisplay);
-    const statusText = getStatusText(refund.statusDisplay);
+    const statusClass = getStatusClass(withdrawal.status);
+    const statusIcon = getStatusIcon(withdrawal.status);
+    const statusText = getStatusText(withdrawal.status);
     statusBadge.className = 'status-badge-large ' + statusClass;
     statusBadge.innerHTML = `<i class="${statusIcon}"></i><span>${statusText}</span>`;
 
     // Show/hide sections based on status
-    if (refund.statusDisplay.toLowerCase() === 'initiated') {
+    if (withdrawal.status === 'Initiated') {
         document.getElementById('processedSection').style.display = 'none';
         document.getElementById('actionButtonsSection').style.display = 'flex';
-        document.getElementById('reopenButtonSection').style.display = 'none';
     } else {
         document.getElementById('processedSection').style.display = 'block';
         document.getElementById('actionButtonsSection').style.display = 'none';
 
-        document.getElementById('modalProcessedDate').textContent = refund.processedAt ? formatDate(refund.processedAt) : '-';
-        document.getElementById('modalProcessedBy').textContent = refund.processedByAdminName || '-';
+        document.getElementById('modalProcessedDate').textContent = withdrawal.processedAt ? formatDate(withdrawal.processedAt) : '-';
+        document.getElementById('modalProcessedBy').textContent = withdrawal.processedByAdminName || '-';
 
-        // Show reopen button only for rejected refunds
-        if (refund.statusDisplay.toLowerCase() === 'failed') {
-            document.getElementById('reopenButtonSection').style.display = 'block';
-        } else {
-            document.getElementById('reopenButtonSection').style.display = 'none';
-        }
-
-        // Show transaction ID if completed
-        if (refund.statusDisplay.toLowerCase() === 'completed' && refund.externalTransactionId) {
-            document.getElementById('transactionIdSection').style.display = 'block';
-            document.getElementById('modalTransactionId').textContent = refund.externalTransactionId;
-        } else {
+        if (withdrawal.status === 'Completed') {
+            document.getElementById('adminNotesSection').style.display = withdrawal.adminNotes ? 'block' : 'none';
+            document.getElementById('modalAdminNotes').textContent = withdrawal.adminNotes || '';
+            document.getElementById('transactionIdSection').style.display = withdrawal.externalTransactionId ? 'block' : 'none';
+            document.getElementById('modalTransactionId').textContent = withdrawal.externalTransactionId || '';
+            document.getElementById('rejectionSection').style.display = 'none';
+        } else if (withdrawal.status === 'Rejected') {
+            document.getElementById('rejectionSection').style.display = 'block';
+            document.getElementById('modalRejectionReason').textContent = withdrawal.rejectionReason || '';
+            document.getElementById('adminNotesSection').style.display = 'none';
             document.getElementById('transactionIdSection').style.display = 'none';
         }
     }
 
     // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('refundDetailModal'));
+    const modal = new bootstrap.Modal(document.getElementById('withdrawalDetailModal'));
     modal.show();
 }
 
 // Quick approve
 function quickApprove(id) {
-    const refund = allRefunds.find(r => r.id === id);
-    if (refund) {
-        currentRefund = refund;
+    const withdrawal = allWithdrawals.find(w => w.id === id);
+    if (withdrawal) {
+        currentWithdrawal = withdrawal;
         showApproveModal();
     }
 }
 
 // Quick reject
 function quickReject(id) {
-    const refund = allRefunds.find(r => r.id === id);
-    if (refund) {
-        currentRefund = refund;
+    const withdrawal = allWithdrawals.find(w => w.id === id);
+    if (withdrawal) {
+        currentWithdrawal = withdrawal;
         showRejectModal();
     }
 }
 
 // Show approve modal
 function showApproveModal() {
-    if (!currentRefund) return;
+    if (!currentWithdrawal) return;
 
     // Populate approve modal
-    document.getElementById('approveAmount').textContent = formatCurrency(currentRefund.refundAmount);
-    
-    let bankInfo = '-';
-    if (currentRefund.customerBankName && currentRefund.customerAccountNumber) {
-        bankInfo = `${currentRefund.customerBankName} - ${currentRefund.customerAccountNumber}`;
-    }
-    document.getElementById('approveBankInfo').textContent = bankInfo;
+    document.getElementById('approveAmount').textContent = formatCurrency(currentWithdrawal.amount);
+    document.getElementById('approveBankInfo').textContent = `${currentWithdrawal.bankName} - ${currentWithdrawal.accountNumber}`;
 
     // Clear previous inputs
     document.getElementById('approveTransactionId').value = '';
     document.getElementById('approveNotes').value = '';
 
-    // Hide refund detail modal if open
-    const detailModal = bootstrap.Modal.getInstance(document.getElementById('refundDetailModal'));
+    // Hide withdrawal detail modal if open
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('withdrawalDetailModal'));
     if (detailModal) {
         detailModal.hide();
     }
@@ -466,17 +455,17 @@ function showApproveModal() {
 
 // Show reject modal
 function showRejectModal() {
-    if (!currentRefund) return;
+    if (!currentWithdrawal) return;
 
     // Populate reject modal
-    document.getElementById('rejectCustomerName').textContent = currentRefund.customerName;
-    document.getElementById('rejectAmount').textContent = formatCurrency(currentRefund.refundAmount);
+    document.getElementById('rejectProviderName').textContent = currentWithdrawal.providerName;
+    document.getElementById('rejectAmount').textContent = formatCurrency(currentWithdrawal.amount);
 
     // Clear previous input
     document.getElementById('rejectReason').value = '';
 
-    // Hide refund detail modal if open
-    const detailModal = bootstrap.Modal.getInstance(document.getElementById('refundDetailModal'));
+    // Hide withdrawal detail modal if open
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('withdrawalDetailModal'));
     if (detailModal) {
         detailModal.hide();
     }
@@ -488,50 +477,49 @@ function showRejectModal() {
 
 // Process approval
 async function processApproval() {
-    if (!currentRefund) return;
+    if (!currentWithdrawal) return;
 
     const transactionId = document.getElementById('approveTransactionId').value.trim();
     const adminNotes = document.getElementById('approveNotes').value.trim();
 
     try {
-        const response = await fetch('/Admin/CustomerRefunds?handler=ProcessRefund', {
+        const response = await fetch('/Admin/WithdrawalRequests?handler=ProcessWithdrawal', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
             },
             body: JSON.stringify({
-                refundId: currentRefund.id,
-                isApproved: true,
-                bankAccountId: currentRefund.refundBankAccountId,
-                notes: adminNotes || null,
-                externalTransactionId: transactionId || null
+                withdrawalRequestId: currentWithdrawal.id,
+                status: 'Completed',
+                externalTransactionId: transactionId || null,
+                adminNotes: adminNotes || null
             })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            showSuccess('Refund request approved successfully');
+            showSuccess('Withdrawal request approved successfully');
             
             // Hide modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('approveModal'));
             modal.hide();
 
             // Reload data
-            await loadRefunds();
+            await loadWithdrawals();
         } else {
-            showError(result.message || 'Failed to approve refund');
+            showError(result.message || 'Failed to approve withdrawal');
         }
     } catch (error) {
-        console.error('Error approving refund:', error);
-        showError('An error occurred while approving the refund');
+        console.error('Error approving withdrawal:', error);
+        showError('An error occurred while approving the withdrawal');
     }
 }
 
 // Process rejection
 async function processRejection() {
-    if (!currentRefund) return;
+    if (!currentWithdrawal) return;
 
     const rejectionReason = document.getElementById('rejectReason').value.trim();
 
@@ -541,82 +529,43 @@ async function processRejection() {
     }
 
     try {
-        const response = await fetch('/Admin/CustomerRefunds?handler=ProcessRefund', {
+        const response = await fetch('/Admin/WithdrawalRequests?handler=ProcessWithdrawal', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
             },
             body: JSON.stringify({
-                refundId: currentRefund.id,
-                isApproved: false,
-                notes: rejectionReason
+                withdrawalRequestId: currentWithdrawal.id,
+                status: 'Rejected',
+                rejectionReason: rejectionReason
             })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            showSuccess('Refund request rejected');
+            showSuccess('Withdrawal request rejected');
             
             // Hide modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
             modal.hide();
 
             // Reload data
-            await loadRefunds();
+            await loadWithdrawals();
         } else {
-            showError(result.message || 'Failed to reject refund');
+            showError(result.message || 'Failed to reject withdrawal');
         }
     } catch (error) {
-        console.error('Error rejecting refund:', error);
-        showError('An error occurred while rejecting the refund');
-    }
-}
-
-// Reopen refund
-async function reopenRefund() {
-    if (!currentRefund) return;
-
-    if (!confirm('Are you sure you want to reopen this refund request? It will move back to pending status.')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/Admin/CustomerRefunds?handler=ReopenRefund&refundId=${currentRefund.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-            }
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showSuccess('Refund request reopened successfully');
-            
-            // Hide modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('refundDetailModal'));
-            if (modal) {
-                modal.hide();
-            }
-
-            // Reload data
-            await loadRefunds();
-        } else {
-            showError(result.message || 'Failed to reopen refund');
-        }
-    } catch (error) {
-        console.error('Error reopening refund:', error);
-        showError('An error occurred while reopening the refund');
+        console.error('Error rejecting withdrawal:', error);
+        showError('An error occurred while rejecting the withdrawal');
     }
 }
 
 // Update stats
 function updateStats() {
-    const pendingCount = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated').length;
-    const processedCount = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed').length;
+    const pendingCount = filteredWithdrawals.filter(w => w.status === 'Initiated').length;
+    const processedCount = filteredWithdrawals.filter(w => w.status === 'Completed' || w.status === 'Rejected').length;
 
     // Update header badge
     const headerBadge = document.getElementById('header-pending-badge');
@@ -635,18 +584,18 @@ function updateStats() {
 
 // Update results info
 function updateResultsInfo() {
-    const pending = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated');
-    const processed = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed');
+    const pending = filteredWithdrawals.filter(w => w.status === 'Initiated');
+    const processed = filteredWithdrawals.filter(w => w.status === 'Completed' || w.status === 'Rejected');
     const currentData = currentTab === 'pending' ? pending : processed;
     const totalResults = currentData.length;
     const resultsInfo = document.getElementById('results-info');
     
     if (totalResults === 0) {
-        resultsInfo.textContent = 'No refund requests found';
+        resultsInfo.textContent = 'No withdrawal requests found';
     } else {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = Math.min(startIndex + itemsPerPage, totalResults);
-        resultsInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalResults} refund request${totalResults !== 1 ? 's' : ''}`;
+        resultsInfo.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalResults} withdrawal request${totalResults !== 1 ? 's' : ''}`;
     }
 }
 
@@ -735,8 +684,8 @@ function createEllipsis() {
 
 // Change page
 function changePage(delta) {
-    const pending = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'initiated');
-    const processed = filteredRefunds.filter(r => r.statusDisplay.toLowerCase() === 'completed' || r.statusDisplay.toLowerCase() === 'failed');
+    const pending = filteredWithdrawals.filter(w => w.status === 'Initiated');
+    const processed = filteredWithdrawals.filter(w => w.status === 'Completed' || w.status === 'Rejected');
     const currentData = currentTab === 'pending' ? pending : processed;
     const totalPages = Math.ceil(currentData.length / itemsPerPage);
     
@@ -764,15 +713,15 @@ function changeItemsPerPage() {
 // Render empty state
 function renderEmptyState(tbodyId, isPending) {
     const tbody = document.getElementById(tbodyId);
-    const colSpan = isPending ? 6 : 7;
+    const colSpan = isPending ? 6 : 6;
     
     tbody.innerHTML = `
         <tr>
             <td colspan="${colSpan}">
                 <div class="empty-state">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <h3>No Refund Requests</h3>
-                    <p>${isPending ? 'No pending refund requests at this time' : 'No processed refund requests found'}</p>
+                    <i class="fas fa-wallet"></i>
+                    <h3>No Withdrawal Requests</h3>
+                    <p>${isPending ? 'No pending withdrawal requests at this time' : 'No processed withdrawal requests found'}</p>
                 </div>
             </td>
         </tr>
@@ -810,12 +759,12 @@ function maskAccountNumber(accountNumber) {
 }
 
 function getStatusClass(status) {
-    switch (status.toLowerCase()) {
-        case 'initiated':
+    switch (status) {
+        case 'Initiated':
             return 'status-pending';
-        case 'completed':
+        case 'Completed':
             return 'status-completed';
-        case 'failed':
+        case 'Rejected':
             return 'status-rejected';
         default:
             return '';
@@ -823,12 +772,12 @@ function getStatusClass(status) {
 }
 
 function getStatusIcon(status) {
-    switch (status.toLowerCase()) {
-        case 'initiated':
+    switch (status) {
+        case 'Initiated':
             return 'fas fa-clock';
-        case 'completed':
+        case 'Completed':
             return 'fas fa-check-circle';
-        case 'failed':
+        case 'Rejected':
             return 'fas fa-times-circle';
         default:
             return 'fas fa-question-circle';
@@ -836,13 +785,13 @@ function getStatusIcon(status) {
 }
 
 function getStatusText(status) {
-    switch (status.toLowerCase()) {
-        case 'initiated':
+    switch (status) {
+        case 'Initiated':
             return 'Initiated';
-        case 'completed':
-            return 'Completed';
-        case 'failed':
-            return 'Failed';
+        case 'Completed':
+            return 'Processed';
+        case 'Rejected':
+            return 'Rejected';
         default:
             return status;
     }

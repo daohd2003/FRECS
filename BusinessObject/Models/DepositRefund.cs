@@ -75,6 +75,12 @@ namespace BusinessObject.Models
         public string? Notes { get; set; }
 
         /// <summary>
+        /// Mã giao dịch từ ngân hàng bên ngoài khi admin chuyển tiền
+        /// </summary>
+        [MaxLength(255)]
+        public string? ExternalTransactionId { get; set; }
+
+        /// <summary>
         /// Admin nào xử lý hoàn tiền
         /// </summary>
         public Guid? ProcessedByAdminId { get; set; }

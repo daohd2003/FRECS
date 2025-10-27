@@ -1,12 +1,12 @@
-/* Customer Deposit Refunds Styles */
-.refunds-container {
+/* Provider Withdrawal Requests Styles */
+.withdrawal-container {
     padding: 0;
     background-color: #f8f9fa;
     min-height: calc(100vh - 80px);
 }
 
 /* Header */
-.refunds-header {
+.withdrawal-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 0;
     padding: 2.5rem 2rem;
@@ -40,7 +40,7 @@
     color: white;
 }
 
-.refunds-title {
+.withdrawal-title {
     color: white;
     font-size: 2rem;
     font-weight: 700;
@@ -48,12 +48,12 @@
     line-height: 1.2;
 }
 
-.refunds-title .highlight {
+.withdrawal-title .highlight {
     color: #ffd700;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.refunds-subtitle {
+.withdrawal-subtitle {
     color: rgba(255, 255, 255, 0.9);
     font-size: 1rem;
     margin: 0.5rem 0 0 0;
@@ -239,13 +239,13 @@
 }
 
 /* Tabs */
-.refunds-tabs-wrapper {
+.withdrawal-tabs-wrapper {
     background: white;
     padding: 0 2rem;
     border-top: 1px solid #f3f4f6;
 }
 
-.refunds-tabs {
+.withdrawal-tabs {
     display: flex;
     gap: 0.5rem;
     border-bottom: 2px solid #e5e7eb;
@@ -300,7 +300,7 @@
 }
 
 /* Tab Content */
-.refunds-tab-content {
+.withdrawal-tab-content {
     background: #f8f9fa;
     padding: 2rem;
 }
@@ -333,18 +333,18 @@
     min-height: 700px; /* Ensure minimum height for 8 rows + header */
 }
 
-.refunds-table {
+.withdrawal-table {
     width: 100%;
     border-collapse: collapse;
     margin: 0;
 }
 
-.refunds-table thead {
+.withdrawal-table thead {
     background: linear-gradient(to bottom, #f9fafb, #f3f4f6);
     border-bottom: 2px solid #e5e7eb;
 }
 
-.refunds-table thead th {
+.withdrawal-table thead th {
     padding: 1.25rem 1.5rem;
     text-align: left;
     font-size: 0.75rem;
@@ -354,20 +354,20 @@
     letter-spacing: 0.5px;
 }
 
-.refunds-table tbody tr {
+.withdrawal-table tbody tr {
     border-bottom: 1px solid #f3f4f6;
     transition: all 0.2s ease;
 }
 
-.refunds-table tbody tr:hover {
+.withdrawal-table tbody tr:hover {
     background: #f9fafb;
 }
 
-.refunds-table tbody tr:last-child {
+.withdrawal-table tbody tr:last-child {
     border-bottom: none;
 }
 
-.refunds-table tbody td {
+.withdrawal-table tbody td {
     padding: 1.25rem 1.5rem;
     vertical-align: middle;
     color: #374151;
@@ -751,7 +751,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .refunds-header {
+    .withdrawal-header {
         padding: 2rem 1.5rem;
     }
 
@@ -767,11 +767,11 @@
         font-size: 1.5rem;
     }
 
-    .refunds-title {
+    .withdrawal-title {
         font-size: 1.5rem;
     }
 
-    .refunds-subtitle {
+    .withdrawal-subtitle {
         font-size: 0.875rem;
     }
 
@@ -797,11 +797,11 @@
         display: none;
     }
 
-    .refunds-tab-content {
+    .withdrawal-tab-content {
         padding: 1rem;
     }
 
-    .refunds-tabs-wrapper {
+    .withdrawal-tabs-wrapper {
         padding: 0 1.5rem;
     }
 
@@ -814,12 +814,12 @@
         display: none;
     }
 
-    .refunds-table {
+    .withdrawal-table {
         font-size: 0.875rem;
     }
 
-    .refunds-table thead th,
-    .refunds-table tbody td {
+    .withdrawal-table thead th,
+    .withdrawal-table tbody td {
         padding: 1rem 0.75rem;
     }
 

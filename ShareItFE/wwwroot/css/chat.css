@@ -11,6 +11,7 @@
 /* --- Cột trái: Danh sách hội thoại --- */
 .conversation-list {
     flex-basis: 33.333333%;
+    max-width: 33.333333%; /* ✅ Fix tràn */
     flex-shrink: 0;
     border-right: 1px solid #e5e7eb;
     background-color: #ffffff;
@@ -19,6 +20,7 @@
     min-height: 100vh;
     position: relative;
     z-index: 11;
+    overflow-x: hidden; /* ✅ Chặn tràn ngang */
 }
 
 .conversation-list-header {
@@ -43,7 +45,10 @@
     padding: 1rem;
     border-bottom: 1px solid #e5e7eb;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.3s ease;
+    will-change: transform;
+    width: 100%; /* ✅ Full width trong container */
+    box-sizing: border-box; /* ✅ Padding không làm tràn */
 }
 
     .conversation-item:hover {
@@ -73,6 +78,7 @@
     .conversation-item .details {
         flex-grow: 1;
         overflow: hidden;
+        min-width: 0; /* ✅ Cho phép text truncate đúng cách */
     }
 
         .conversation-item .details .header {
@@ -120,6 +126,7 @@
 /* --- Cột phải: Cửa sổ chat --- */
 .chat-view {
     flex-basis: 66.666667%;
+    max-width: 66.666667%; /* ✅ Fix tràn */
     display: flex;
     flex-direction: column;
     flex-grow: 1;
@@ -184,8 +191,9 @@
     overflow-y: auto;
     overflow-x: hidden;
     padding: 1rem;
-    min-height: 500px;
-    max-height: calc(100vh - 200px); /* Trừ đi space cho header và form */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .message-row {
@@ -204,7 +212,7 @@
 .message-bubble {
     padding: 0.5rem 1rem;
     border-radius: 1rem;
-    max-width: 120% !important;
+    max-width: 100%;
     word-wrap: break-word;
     cursor: pointer;
     transition: background-color 0.1s ease;
@@ -365,7 +373,7 @@
 .message-bubble-container {
     display: flex;
     flex-direction: column;
-    max-width: 85% !important;
+    max-width: 70%;
     word-wrap: break-word;
 }
 

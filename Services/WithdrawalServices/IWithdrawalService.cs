@@ -28,6 +28,11 @@ namespace Services.WithdrawalServices
         Task<IEnumerable<WithdrawalResponseDto>> GetPendingRequestsAsync();
 
         /// <summary>
+        /// Admin gets all withdrawal requests (pending, completed, rejected)
+        /// </summary>
+        Task<IEnumerable<WithdrawalResponseDto>> GetAllRequestsAsync();
+
+        /// <summary>
         /// Admin processes (approve/reject) a withdrawal request
         /// </summary>
         Task<WithdrawalResponseDto> ProcessWithdrawalAsync(Guid adminId, ProcessWithdrawalRequestDto dto);

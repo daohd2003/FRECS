@@ -10,10 +10,12 @@ namespace BusinessObject.DTOs.WithdrawalDto
         public Guid Id { get; set; }
         public Guid ProviderId { get; set; }
         public string ProviderName { get; set; }
+        public string? ProviderEmail { get; set; }
         public Guid BankAccountId { get; set; }
         public string BankName { get; set; }
         public string AccountNumber { get; set; }
         public string AccountHolderName { get; set; }
+        public string? RoutingNumber { get; set; }
         public decimal Amount { get; set; }
         public string Status { get; set; }
         public DateTime RequestDate { get; set; }

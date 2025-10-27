@@ -31,16 +31,21 @@ namespace Services.DepositRefundServices
             return await _repository.GetCustomerRefundsAsync(customerId);
         }
 
-        public async Task<bool> ProcessRefundAsync(Guid refundId, Guid adminId, bool isApproved, Guid? bankAccountId, string? notes)
+        public async Task<bool> ProcessRefundAsync(Guid refundId, Guid adminId, bool isApproved, Guid? bankAccountId, string? notes, string? externalTransactionId = null)
         {
             if (isApproved)
             {
-                return await _repository.ApproveRefundAsync(refundId, adminId, bankAccountId, notes);
+                return await _repository.ApproveRefundAsync(refundId, adminId, bankAccountId, notes, externalTransactionId);
             }
             else
             {
                 return await _repository.RejectRefundAsync(refundId, adminId, notes);
             }
+        }
+
+        public async Task<bool> ReopenRefundAsync(Guid refundId)
+        {
+            return await _repository.ReopenRefundAsync(refundId);
         }
 
         public async Task<int> GetPendingRefundCountAsync()

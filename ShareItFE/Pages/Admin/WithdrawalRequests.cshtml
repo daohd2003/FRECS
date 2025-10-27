@@ -1,11 +1,11 @@
 @page
-@model ShareItFE.Pages.Admin.CustomerRefundsModel
+@model ShareItFE.Pages.Admin.WithdrawalRequestsModel
 @{
-    ViewData["Title"] = "Customer Refunds";
+    ViewData["Title"] = "Provider Withdrawal Requests";
     Layout = "~/Pages/Shared/_AdminLayout.cshtml";
 }
 
-<link rel="stylesheet" href="~/css/customer-refunds.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/withdrawal-requests.css" asp-append-version="true" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
 <!-- CSRF Token -->
@@ -13,18 +13,18 @@
     @Html.AntiForgeryToken()
 </form>
 
-<div class="refunds-container">
+<div class="withdrawal-container">
     <!-- Header -->
-    <div class="refunds-header">
+    <div class="withdrawal-header">
         <div class="header-left">
             <div class="header-icon-wrapper">
-                <i class="fas fa-hand-holding-usd header-icon"></i>
+                <i class="fas fa-wallet header-icon"></i>
             </div>
             <div>
-                <h1 class="refunds-title">
-                    Customer <span class="highlight">Deposit Refunds</span>
+                <h1 class="withdrawal-title">
+                    Provider <span class="highlight">Withdrawal Requests</span>
                 </h1>
-                <p class="refunds-subtitle">Manage and process customer deposit refund requests</p>
+                <p class="withdrawal-subtitle">Manage and process provider payout requests</p>
             </div>
         </div>
         <span class="pending-badge" id="header-pending-badge" style="display: none;">
@@ -44,7 +44,7 @@
                 <input 
                     type="text" 
                     id="searchInput" 
-                    placeholder="Search by Order Code, Customer Name, Email..." 
+                    placeholder="Search by Provider Name, Email..." 
                     class="search-input" />
                 <button type="button" id="clear-search" class="clear-search-btn" style="display: none;">
                     <i class="fas fa-times"></i>
@@ -74,9 +74,21 @@
                     </label>
                     <select id="statusSelect" class="filter-select">
                         <option value="">All Statuses</option>
-                        <option value="initiated">Initiated</option>
-                        <option value="completed">Completed</option>
-                        <option value="failed">Failed</option>
+                        <option value="Initiated">Initiated</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="paymentMethodSelect" class="filter-label">
+                        <i class="fas fa-university"></i>
+                        Payment Method
+                    </label>
+                    <select id="paymentMethodSelect" class="filter-select">
+                        <option value="">All Methods</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="qr_code">QR Code</option>
                     </select>
                 </div>
                 
@@ -116,8 +128,8 @@
     </div>
 
     <!-- Tabs -->
-    <div class="refunds-tabs-wrapper">
-        <div class="refunds-tabs" role="tablist">
+    <div class="withdrawal-tabs-wrapper">
+        <div class="withdrawal-tabs" role="tablist">
             <button 
                 class="tab-button active" 
                 id="pending-tab" 
@@ -142,18 +154,18 @@
     </div>
 
     <!-- Tab Content -->
-    <div class="refunds-tab-content">
+    <div class="withdrawal-tab-content">
         <!-- Pending Tab -->
         <div class="tab-pane active" id="pending-pane" role="tabpanel">
             <div class="table-card">
                 <div class="table-responsive">
-                    <table class="refunds-table">
+                    <table class="withdrawal-table">
                         <thead>
                             <tr>
                                 <th>REQUEST DATE</th>
-                                <th>CUSTOMER NAME</th>
-                                <th>ORDER CODE</th>
-                                <th>REFUND AMOUNT</th>
+                                <th>PROVIDER NAME</th>
+                                <th>AMOUNT</th>
+                                <th>PAYMENT METHOD</th>
                                 <th>STATUS</th>
                                 <th>ACTIONS</th>
                             </tr>
@@ -163,7 +175,7 @@
                                 <td colspan="6">
                                     <div class="loading-state">
                                         <i class="fas fa-spinner fa-spin loading-icon"></i>
-                                        <p>Loading refund requests...</p>
+                                        <p>Loading withdrawal requests...</p>
                                     </div>
                                 </td>
                             </tr>
@@ -177,13 +189,12 @@
         <div class="tab-pane" id="processed-pane" role="tabpanel" style="display: none;">
             <div class="table-card">
                 <div class="table-responsive">
-                    <table class="refunds-table">
+                    <table class="withdrawal-table">
                         <thead>
                             <tr>
                                 <th>REQUEST DATE</th>
-                                <th>CUSTOMER NAME</th>
-                                <th>ORDER CODE</th>
-                                <th>REFUND AMOUNT</th>
+                                <th>PROVIDER NAME</th>
+                                <th>AMOUNT</th>
                                 <th>STATUS</th>
                                 <th>PROCESSED DATE</th>
                                 <th>ACTIONS</th>
@@ -191,10 +202,10 @@
                         </thead>
                         <tbody id="processed-tbody">
                             <tr>
-                                <td colspan="7">
+                                <td colspan="6">
                                     <div class="loading-state">
                                         <i class="fas fa-spinner fa-spin loading-icon"></i>
-                                        <p>Loading refund history...</p>
+                                        <p>Loading withdrawal history...</p>
                                     </div>
                                 </td>
                             </tr>
@@ -235,13 +246,13 @@
     </div>
 </div>
 
-<!-- Refund Detail Modal -->
-<div class="modal fade" id="refundDetailModal" tabindex="-1" aria-labelledby="refundDetailModalLabel" aria-hidden="true">
+<!-- Withdrawal Detail Modal -->
+<div class="modal fade" id="withdrawalDetailModal" tabindex="-1" aria-labelledby="withdrawalDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="refundDetailModalLabel">
-                    <i class="fas fa-receipt"></i> Deposit Refund Details
+                <h5 class="modal-title" id="withdrawalDetailModalLabel">
+                    <i class="fas fa-wallet"></i> Withdrawal Request Details
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -249,45 +260,21 @@
                 <!-- Request Information -->
                 <div class="info-grid mb-4">
                     <div class="info-item">
-                        <label class="info-label">Refund Code</label>
-                        <p class="info-value fw-bold" id="modalRefundCode">-</p>
+                        <label class="info-label">Request ID</label>
+                        <p class="info-value fw-bold" id="modalRequestId">-</p>
                     </div>
                     <div class="info-item">
                         <label class="info-label">Request Date</label>
                         <p class="info-value" id="modalRequestDate">-</p>
                     </div>
                     <div class="info-item">
-                        <label class="info-label">Customer Name</label>
-                        <p class="info-value fw-semibold" id="modalCustomerName">-</p>
-                        <p class="info-sub-value" id="modalCustomerEmail">-</p>
+                        <label class="info-label">Provider Name</label>
+                        <p class="info-value fw-semibold" id="modalProviderName">-</p>
+                        <p class="info-sub-value" id="modalProviderEmail">-</p>
                     </div>
                     <div class="info-item">
-                        <label class="info-label">Order Code</label>
-                        <p class="info-value fw-bold" id="modalOrderCode">-</p>
-                    </div>
-                </div>
-
-                <!-- Amount Details -->
-                <div class="details-card mb-4">
-                    <div class="details-card-header">
-                        <i class="fas fa-money-bill-wave text-success"></i>
-                        <h6 class="mb-0">Amount Breakdown</h6>
-                    </div>
-                    <div class="details-card-body">
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <label class="info-label">Original Deposit</label>
-                                <p class="info-value amount-display text-primary" id="modalOriginalDeposit">0 ₫</p>
-                            </div>
-                            <div class="info-item">
-                                <label class="info-label">Total Penalty</label>
-                                <p class="info-value amount-display text-danger" id="modalPenaltyAmount">0 ₫</p>
-                            </div>
-                            <div class="info-item">
-                                <label class="info-label">Refund Amount</label>
-                                <p class="info-value amount-display text-success fw-bold fs-5" id="modalRefundAmount">0 ₫</p>
-                            </div>
-                        </div>
+                        <label class="info-label">Amount</label>
+                        <p class="info-value amount-display" id="modalAmount">0 ₫</p>
                     </div>
                 </div>
 
@@ -298,41 +285,33 @@
                         <h6 class="mb-0">Bank Transfer Information</h6>
                     </div>
                     <div class="details-card-body">
-                        <div id="bankDetailsSection">
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <label class="info-label">Bank Name</label>
-                                    <p class="info-value" id="modalBankName">-</p>
-                                </div>
-                                <div class="info-item">
-                                    <label class="info-label">Account Holder</label>
-                                    <p class="info-value" id="modalAccountHolder">-</p>
-                                </div>
-                                <div class="info-item">
-                                    <label class="info-label">Account Number</label>
-                                    <p class="info-value font-monospace" id="modalAccountNumber">-</p>
-                                </div>
-                                <div class="info-item">
-                                    <label class="info-label">Routing Number</label>
-                                    <p class="info-value font-monospace" id="modalRoutingNumber">-</p>
-                                </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label class="info-label">Bank Name</label>
+                                <p class="info-value" id="modalBankName">-</p>
                             </div>
-                        </div>
-                        <div id="noBankInfo" class="d-none">
-                            <div class="alert alert-warning mb-0 d-flex align-items-start">
-                                <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
-                                <small>Customer has not registered any bank account. Please contact the customer to provide bank account information before processing this refund.</small>
+                            <div class="info-item">
+                                <label class="info-label">Account Holder</label>
+                                <p class="info-value" id="modalAccountHolder">-</p>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Account Number</label>
+                                <p class="info-value font-monospace" id="modalAccountNumber">-</p>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Routing Number</label>
+                                <p class="info-value font-monospace" id="modalRoutingNumber">-</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Notes -->
-                <div class="notes-section mb-4" id="notesSection" style="display: none;">
-                    <label class="info-label">Notes</label>
+                <!-- Provider Notes -->
+                <div class="notes-section mb-4" id="providerNotesSection" style="display: none;">
+                    <label class="info-label">Provider Notes</label>
                     <div class="notes-box notes-info">
                         <i class="fas fa-sticky-note"></i>
-                        <p class="mb-0" id="modalNotes">-</p>
+                        <p class="mb-0" id="modalProviderNotes">-</p>
                     </div>
                 </div>
 
@@ -357,6 +336,24 @@
                         </div>
                     </div>
 
+                    <!-- Admin Notes -->
+                    <div class="notes-section mb-4" id="adminNotesSection" style="display: none;">
+                        <label class="info-label">Admin Notes</label>
+                        <div class="notes-box notes-success">
+                            <i class="fas fa-check-circle"></i>
+                            <p class="mb-0" id="modalAdminNotes">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Rejection Reason -->
+                    <div class="notes-section mb-4" id="rejectionSection" style="display: none;">
+                        <label class="info-label">Rejection Reason</label>
+                        <div class="notes-box notes-danger">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p class="mb-0" id="modalRejectionReason">-</p>
+                        </div>
+                    </div>
+
                     <!-- Transaction ID -->
                     <div class="mb-4" id="transactionIdSection" style="display: none;">
                         <label class="info-label">Transaction ID</label>
@@ -371,13 +368,6 @@
                     </button>
                     <button type="button" class="btn btn-success btn-lg flex-fill" onclick="showApproveModal()">
                         <i class="fas fa-check-circle"></i> Mark as Paid
-                    </button>
-                </div>
-
-                <!-- Reopen Button (for rejected refunds in history) -->
-                <div id="reopenButtonSection" class="mt-3" style="display: none;">
-                    <button type="button" class="btn btn-primary btn-lg w-100" onclick="reopenRefund()">
-                        <i class="fas fa-redo"></i> Reopen Refund Request
                     </button>
                 </div>
             </div>
@@ -435,27 +425,27 @@
         <div class="modal-content">
             <div class="modal-header modal-header-danger">
                 <h5 class="modal-title text-white" id="rejectModalLabel">
-                    <i class="fas fa-times-circle"></i> Reject Refund Request
+                    <i class="fas fa-times-circle"></i> Reject Withdrawal Request
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-warning d-flex align-items-center">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <span>Please provide a clear reason for rejecting this refund request.</span>
+                    <span>Please provide a clear reason for rejecting this withdrawal request.</span>
                 </div>
 
                 <div class="mb-3">
                     <label for="rejectReason" class="form-label fw-semibold">Rejection Reason <span class="text-danger">*</span></label>
                     <textarea class="form-control" id="rejectReason" rows="4" placeholder="Explain why this request is being rejected..." required></textarea>
-                    <small class="text-muted">This will be sent to the customer</small>
+                    <small class="text-muted">This will be sent to the provider</small>
                 </div>
 
                 <div class="payment-summary-box">
                     <h6 class="fw-bold mb-3"><i class="fas fa-info-circle text-danger"></i> Request Details</h6>
                     <div class="summary-row">
-                        <span>Customer:</span>
-                        <span class="fw-semibold" id="rejectCustomerName">-</span>
+                        <span>Provider:</span>
+                        <span class="fw-semibold" id="rejectProviderName">-</span>
                     </div>
                     <div class="summary-row">
                         <span>Amount:</span>
@@ -474,7 +464,7 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/customer-refunds.js" asp-append-version="true"></script>
+    <script src="~/js/withdrawal-requests.js" asp-append-version="true"></script>
     <script>
         const apiBaseUrl = '@Model.ApiBaseUrl';
     </script>

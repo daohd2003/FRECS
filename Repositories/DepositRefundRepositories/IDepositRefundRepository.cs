@@ -32,12 +32,17 @@ namespace Repositories.DepositRefundRepositories
         /// <summary>
         /// Admin approve refund
         /// </summary>
-        Task<bool> ApproveRefundAsync(Guid refundId, Guid adminId, Guid? bankAccountId, string? notes);
+        Task<bool> ApproveRefundAsync(Guid refundId, Guid adminId, Guid? bankAccountId, string? notes, string? externalTransactionId = null);
         
         /// <summary>
         /// Admin reject refund
         /// </summary>
         Task<bool> RejectRefundAsync(Guid refundId, Guid adminId, string? notes);
+        
+        /// <summary>
+        /// Reopen a rejected refund request
+        /// </summary>
+        Task<bool> ReopenRefundAsync(Guid refundId);
         
         /// <summary>
         /// Đếm số lượng pending refunds

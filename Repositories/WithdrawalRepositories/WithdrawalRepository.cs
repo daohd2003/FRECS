@@ -48,6 +48,18 @@ namespace Repositories.WithdrawalRepositories
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<WithdrawalRequest>> GetAllRequestsAsync()
+        {
+            return await _context.WithdrawalRequests
+                .Include(w => w.Provider)
+                    .ThenInclude(p => p.Profile)
+                .Include(w => w.BankAccount)
+                .Include(w => w.ProcessedByAdmin)
+                    .ThenInclude(a => a.Profile)
+                .OrderByDescending(w => w.RequestDate)
+                .ToListAsync();
+        }
+
         public async Task<decimal> GetTotalPendingAmountAsync(Guid providerId)
         {
             return await _context.WithdrawalRequests
