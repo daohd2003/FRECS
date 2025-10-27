@@ -1,8 +1,4 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using BusinessObject.DTOs.FavoriteDtos;
-using BusinessObject.DTOs.ProductDto;
-using BusinessObject.Models;
+﻿using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
@@ -16,10 +12,8 @@ namespace Repositories.FavoriteRepositories
 {
     public class FavoriteRepository : Repository<Favorite>, IFavoriteRepository
     {
-        private readonly IMapper _mapper;
-        public FavoriteRepository(ShareItDbContext context, IMapper mapper) : base(context)
+        public FavoriteRepository(ShareItDbContext context) : base(context)
         {
-            _mapper = mapper;
         }
 
         public async Task<List<Favorite>> GetFavoritesByUserIdAsync(Guid userId)
@@ -30,25 +24,16 @@ namespace Repositories.FavoriteRepositories
                 .ToListAsync();
         }
 
-        public async Task<List<FavoriteWithProductDto>> GetFavoritesWithProductDetailsAsync(Guid userId)
+        public async Task<List<Favorite>> GetFavoritesWithProductDetailsAsync(Guid userId)
         {
-            // Query favorites với product details và map sang DTO
-            var favorites = await _context.Favorites
+            // Query favorites with product details
+            return await _context.Favorites
                 .AsNoTracking()
                 .Where(f => f.UserId == userId)
                 .Include(f => f.Product)
                     .ThenInclude(p => p.Images.Where(img => img.IsPrimary))
                 .Include(f => f.Product.Category)
                 .ToListAsync();
-
-            // Map sang DTO
-            return favorites.Select(f => new FavoriteWithProductDto
-            {
-                UserId = f.UserId,
-                ProductId = f.ProductId,
-                CreatedAt = f.CreatedAt,
-                Product = _mapper.Map<ProductDTO>(f.Product)
-            }).ToList();
         }
 
         public async Task<bool> IsFavoriteAsync(Guid userId, Guid productId)
