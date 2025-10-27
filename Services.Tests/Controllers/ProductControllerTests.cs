@@ -1,4 +1,5 @@
 using AutoMapper;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -18,8 +19,8 @@ namespace Services.Tests.Controllers
     /// - Get Product By ID (GET /api/products/{id})
     /// - Get All Products (GET /api/products)
     /// 
-    /// Note: ProductController does NOT use ApiResponse wrapper for GetById/GetAll
-    ///       It returns ProductDTO or IQueryable<ProductDTO> directly
+    /// Note: ProductController USES ApiResponse wrapper for GetById
+    ///       GetAll returns IQueryable<ProductDTO> directly (no wrapper)
     /// 
     /// How to run these tests:
     /// dotnet test --filter "FullyQualifiedName~ProductControllerTests"
@@ -50,8 +51,8 @@ namespace Services.Tests.Controllers
 
         /// <summary>
         /// Get Product By ID - Valid existing product
-        /// Expected: 200 OK with ProductDTO
-        /// Note: No ApiResponse wrapper, returns ProductDTO directly
+        /// Expected: 200 OK with ApiResponse<ProductDTO>
+        /// Note: Uses ApiResponse wrapper
         /// </summary>
         [Fact]
         public async Task GetById_ValidProductId_ShouldReturn200WithProduct()
@@ -82,7 +83,12 @@ namespace Services.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(200, okResult.StatusCode);
 
-            var returnedProduct = Assert.IsType<ProductDTO>(okResult.Value);
+            // Unwrap ApiResponse
+            var apiResponse = Assert.IsType<ApiResponse<ProductDTO>>(okResult.Value);
+            Assert.Equal("Product retrieved successfully", apiResponse.Message);
+            Assert.NotNull(apiResponse.Data);
+            
+            var returnedProduct = apiResponse.Data;
             Assert.Equal(productId, returnedProduct.Id);
             Assert.Equal("Test Product", returnedProduct.Name);
             Assert.Equal("BOTH", returnedProduct.ProductType);
@@ -92,7 +98,7 @@ namespace Services.Tests.Controllers
 
         /// <summary>
         /// Get Product By ID - Non-existent product
-        /// Expected: 404 NotFound (no message)
+        /// Expected: 404 NotFoundObjectResult with ApiResponse
         /// </summary>
         [Fact]
         public async Task GetById_NonExistentProductId_ShouldReturn404()
@@ -106,9 +112,14 @@ namespace Services.Tests.Controllers
             // Act
             var result = await _controller.GetById(productId);
 
-            // Assert
-            var notFoundResult = Assert.IsType<NotFoundResult>(result);
+            // Assert - Expect NotFoundObjectResult (not NotFoundResult)
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             Assert.Equal(404, notFoundResult.StatusCode);
+
+            // Verify ApiResponse wrapper
+            var apiResponse = Assert.IsType<ApiResponse<string>>(notFoundResult.Value);
+            Assert.Equal("Product not found", apiResponse.Message);
+            Assert.Null(apiResponse.Data);
 
             _mockProductService.Verify(x => x.GetByIdAsync(productId), Times.Once);
         }
@@ -139,7 +150,12 @@ namespace Services.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedProduct = Assert.IsType<ProductDTO>(okResult.Value);
+            
+            // Unwrap ApiResponse
+            var apiResponse = Assert.IsType<ApiResponse<ProductDTO>>(okResult.Value);
+            Assert.NotNull(apiResponse.Data);
+            
+            var returnedProduct = apiResponse.Data;
             Assert.Equal("RENTAL", returnedProduct.ProductType);
         }
 

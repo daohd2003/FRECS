@@ -53,13 +53,70 @@
               * Total: 13 unit tests
             
             - Controllers/ProductControllerTests.cs: View Product functionality tests (Controller Layer)
-              * Get By ID tests: 2 core + 1 additional
-              * Get All tests: 2 tests
+              * Get By ID tests: 2 core + 1 additional (uses ApiResponse wrapper)
+              * Get All tests: 2 tests (no wrapper)
               * Total: 5 unit tests
             
             - Controllers/FeedbackControllerTests.cs: View Feedback functionality tests (Controller Layer)
               * Get Feedbacks By Product tests: 3 core + 1 additional
               * Total: 4 unit tests
+            
+            - Notification/NotificationServiceTests.cs: View Notifications functionality tests (Service Layer)
+              * 2 core test cases (UTCID01-UTCID02)
+              * 2 additional tests
+              * Total: 4 unit tests
+            
+            - Controllers/NotificationControllerTests.cs: View Notifications functionality tests (Controller Layer)
+              * 2 core test cases (UTCID01-UTCID02)
+              * 2 additional tests
+              * Total: 4 unit tests
+            
+            - BankAccount/CustomerBankServiceTests.cs: View Bank Account Information functionality tests (Service Layer)
+              * 3 core test cases (UTCID01-UTCID03)
+              * 1 additional test
+              * Total: 4 unit tests
+            
+            - BankAccount/CustomerBankServiceTests_AddBankAccount.cs: Add Bank Account functionality tests (Service Layer)
+              * 2 core test cases (UTCID01-UTCID02)
+              * 2 additional tests
+              * Total: 4 unit tests
+            
+            - BankAccount/CustomerBankServiceTests_UpdateBankAccount.cs: Edit/Update Bank Account functionality tests (Service Layer)
+              * 2 core test cases (UTCID01-UTCID02)
+              * 3 additional tests
+              * Total: 5 unit tests
+            
+            - BankAccount/CustomerBankServiceTests_DeleteBankAccount.cs: Remove/Delete Bank Account functionality tests (Service Layer)
+              * 1 core test case (UTCID01)
+              * 4 additional tests
+              * Total: 5 unit tests
+            
+            - ProviderApplication/ProviderApplicationServiceTests.cs: Register to become provider functionality tests (Service Layer)
+              * 2 core test cases (UTCID01, UTCID05)
+              * 4 additional tests
+              * Total: 6 unit tests
+            
+            - Controllers/CustomerBankControllerTests.cs: View, Add, Update & Delete Bank Account Information functionality tests (Controller Layer)
+              * View Bank Account: 3 core test cases (UTCID01-UTCID03) + 2 additional tests
+              * Add Bank Account: 2 core test cases (UTCID01-UTCID02) + 3 additional tests
+              * Update Bank Account: 2 core test cases (UTCID01-UTCID02) + 4 additional tests
+              * Delete Bank Account: 1 core test case (UTCID01) + 5 additional tests
+              * Total: 22 unit tests
+            
+            - Controllers/ProviderApplicationsControllerTests.cs: Register to become provider functionality tests (Controller Layer)
+              * 2 core test cases (UTCID01, UTCID05)
+              * 5 additional tests
+              * Total: 7 unit tests
+            
+            - Controllers/CartControllerTests.cs: Rent or Purchase clothes (Checkout) functionality tests (Controller Layer)
+              * 2 core test cases (UTCID01, UTCID04)
+              * 5 additional tests
+              * Total: 7 unit tests
+            
+            - Controllers/VNPayControllerTests.cs: Make payments functionality tests (Controller Layer)
+              * 3 core test cases (UTCID01-UTCID03)
+              * 4 additional tests
+              * Total: 7 unit tests
             
             - Controllers/CreateDiscountCodeControllerTests.cs: Create Discount Code functionality tests (Controller Layer)
               * 7 core test cases (UTCID-01 to UTCID-07) + 1 additional test
@@ -77,7 +134,9 @@
               * 3 core test cases (UTCID-01, UTCID-02, UTCID-03) + 2 additional tests
               * Total: 5 unit tests
             
-            Overall: 116 unit tests
+            ================================================================================
+            OVERALL TOTAL: 191 unit tests
+            ================================================================================
     
     Run tests: dotnet test
   -->
