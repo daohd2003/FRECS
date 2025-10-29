@@ -25,7 +25,8 @@ namespace BusinessObject.DTOs.ProductDto
 		[MaxLength(255)]
 		public string? Description { get; set; }
 
-		public string? ImageUrl { get; set; }
+		[Required(ErrorMessage = "Category image is required")]
+		public string ImageUrl { get; set; }
 		
 		public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }

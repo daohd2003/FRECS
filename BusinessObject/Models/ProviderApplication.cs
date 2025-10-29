@@ -28,6 +28,12 @@ namespace BusinessObject.Models
         [MaxLength(500)]
         public string? Notes { get; set; }
 
+        [MaxLength(500)]
+        public string? IdCardFrontImageUrl { get; set; }
+
+        [MaxLength(500)]
+        public string? IdCardBackImageUrl { get; set; }
+
         [Required]
         public ProviderApplicationStatus Status { get; set; } = ProviderApplicationStatus.pending;
 

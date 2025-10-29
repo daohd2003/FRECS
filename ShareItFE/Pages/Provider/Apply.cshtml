@@ -39,7 +39,7 @@
             }
     </style>
 
-    <form method="post" class="card p-4">
+    <form method="post" class="card p-4" enctype="multipart/form-data" data-api-root="@Model.ApiBaseUrl" id="applyForm">
         <div class="mb-3">
             <label asp-for="Input.BusinessName" class="form-label"></label>
             <span class="help-icon" data-bs-toggle="tooltip" title="Store/brand name visible to customers. e.g., 'Chic Dress Rental'.">?</span>
@@ -48,9 +48,47 @@
         </div>
         <div class="mb-3">
             <label asp-for="Input.TaxId" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (or personal ID) for payouts/reconciliation. Optional.">?</span>
-            <input asp-for="Input.TaxId" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" />
+            <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (10 digits for businesses) or Personal ID (12 digits for individuals). If you're an individual, enter 12 digits.">?</span>
+            <input asp-for="Input.TaxId" id="taxIdInput" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" />
+            <small id="taxIdError" class="text-danger" style="display:none;">Tax ID must be exactly 10 or 12 digits.</small>
         </div>
+
+        <div id="individual-verification" style="display: none;" class="alert alert-info mb-3">
+            <p class="mb-2 fw-bold">Individual Identity Verification</p>
+            <p class="text-muted small mb-3">You entered a 12-digit Personal ID. Please upload clear photos of both sides of your ID card.</p>
+            <div class="mb-3">
+                <label for="idCardFront" class="form-label fw-bold">Front side <span class="text-danger">*</span></label>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="file" id="idCardFront" name="Input.IdCardFrontImage" class="visually-hidden" accept="image/*" />
+                    <button type="button" id="btnFrontPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
+                    <span id="frontFileName" class="text-muted small">No file chosen</span>
+                </div>
+                <div class="mt-2">
+                    <img id="idCardFrontPreview" alt="Front preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
+                </div>
+                <small class="text-muted d-block mt-1">JPG/PNG only</small>
+            </div>
+            <div class="mb-3">
+                <label for="idCardBack" class="form-label fw-bold">Back side <span class="text-danger">*</span></label>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="file" id="idCardBack" name="Input.IdCardBackImage" class="visually-hidden" accept="image/*" />
+                    <button type="button" id="btnBackPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
+                    <span id="backFileName" class="text-muted small">No file chosen</span>
+                </div>
+                <div class="mt-2">
+                    <img id="idCardBackPreview" alt="Back preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
+                </div>
+                <small class="text-muted d-block mt-1">JPG/PNG only</small>
+            </div>
+        </div>
+
+        <div id="imagePreviewModal" class="modal" tabindex="-1" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,.7); align-items: center; justify-content: center;">
+            <div style="position: relative; max-width: 90%; max-height: 90%;">
+                <img id="previewLargeImage" src="" alt="Preview" style="width: 100%; height: auto; max-height: 85vh; object-fit: contain; border-radius: 4px;" />
+                <button type="button" id="closePreviewModal" class="btn btn-light" style="position: absolute; top: -12px; right: -12px;">&times;</button>
+            </div>
+        </div>
+
         <div class="mb-3">
             <label asp-for="Input.ContactPhone" class="form-label"></label>
             <span class="help-icon" data-bs-toggle="tooltip" title="Contact phone number for orders/support. Use an active mobile number.">?</span>
@@ -63,13 +101,274 @@
         </div>
         <button type="submit" class="btn btn-primary">Submit Application</button>
     </form>
+
+    <div id="toast-mini" style="position: fixed; top: 16px; right: 16px; z-index: 10500; display: flex; flex-direction: column; gap: 8px;"></div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        // Đợi DOM load xong trước khi chạy
+        function initializeVerification() {
+            console.log('=== Initializing verification script ===');
+            
+            // Thử tìm element với multiple selectors
+            let taxIdInput = document.getElementById('taxIdInput');
+            if (!taxIdInput) {
+                taxIdInput = document.querySelector('input[name="Input.TaxId"]');
+            }
+            if (!taxIdInput) {
+                taxIdInput = document.querySelector('input[name="TaxId"]');
+            }
+            
+            let verificationDiv = document.getElementById('individual-verification');
+            let idCardFront = document.getElementById('idCardFront');
+            let idCardBack = document.getElementById('idCardBack');
+            let idCardFrontPreview = document.getElementById('idCardFrontPreview');
+            let idCardBackPreview = document.getElementById('idCardBackPreview');
+            const btnFrontPick = document.getElementById('btnFrontPick');
+            const btnBackPick = document.getElementById('btnBackPick');
+            const frontFileName = document.getElementById('frontFileName');
+            const backFileName = document.getElementById('backFileName');
+            const taxIdError = document.getElementById('taxIdError');
+            const submitBtn = document.querySelector('#applyForm button[type="submit"]');
+            const previewModal = document.getElementById('imagePreviewModal');
+            const previewLargeImage = document.getElementById('previewLargeImage');
+            const closePreviewModal = document.getElementById('closePreviewModal');
+
+            console.log('✓ Elements found:');
+            console.log('  - taxIdInput:', !!taxIdInput, taxIdInput?.id);
+            console.log('  - verificationDiv:', !!verificationDiv);
+            console.log('  - idCardFront:', !!idCardFront);
+            console.log('  - idCardBack:', !!idCardBack);
+            console.log('  - idCardFrontPreview:', !!idCardFrontPreview);
+            console.log('  - idCardBackPreview:', !!idCardBackPreview);
+            console.log('  - btnFrontPick:', !!btnFrontPick);
+            console.log('  - btnBackPick:', !!btnBackPick);
+            console.log('  - frontFileName:', !!frontFileName);
+            console.log('  - backFileName:', !!backFileName);
+            console.log('  - taxIdError:', !!taxIdError);
+            console.log('  - submitBtn:', !!submitBtn);
+            console.log('  - previewModal:', !!previewModal);
+            console.log('  - previewLargeImage:', !!previewLargeImage);
+            console.log('  - closePreviewModal:', !!closePreviewModal);
+
+            if (!taxIdInput) {
+                console.error('❌ TaxId input not found!');
+                return;
+            }
+
+            // Nếu không tìm thấy khối xác minh, tạo động và chèn ngay sau nhóm TaxId
+            if (!verificationDiv) {
+                console.warn('⚠️ verificationDiv not found. Creating dynamically...');
+                const taxGroup = taxIdInput.closest('.mb-3') || taxIdInput.parentElement;
+                const container = document.createElement('div');
+                container.id = 'individual-verification';
+                container.className = 'alert alert-info mb-3';
+                container.style.display = 'none';
+                container.innerHTML = `
+                    <p class="mb-2 fw-bold">Individual Identity Verification</p>
+                    <p class="text-muted small mb-3">You entered a 12-digit Personal ID. Please upload clear photos of both sides of your ID card.</p>
+                    <div class="mb-3">
+                        <label for="idCardFront" class="form-label fw-bold">Front side <span class="text-danger">*</span></label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="file" id="idCardFront" name="Input.IdCardFrontImage" class="visually-hidden" accept="image/*" />
+                            <button type="button" id="btnFrontPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
+                            <span id="frontFileName" class="text-muted small">No file chosen</span>
+                        </div>
+                        <div class="mt-2">
+                            <img id="idCardFrontPreview" alt="Front preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
+                        </div>
+                        <small class="text-muted d-block mt-1">JPG/PNG only</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="idCardBack" class="form-label fw-bold">Back side <span class="text-danger">*</span></label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="file" id="idCardBack" name="Input.IdCardBackImage" class="visually-hidden" accept="image/*" />
+                            <button type="button" id="btnBackPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
+                            <span id="backFileName" class="text-muted small">No file chosen</span>
+                        </div>
+                        <div class="mt-2">
+                            <img id="idCardBackPreview" alt="Back preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
+                        </div>
+                        <small class="text-muted d-block mt-1">JPG/PNG only</small>
+                    </div>
+                `;
+                if (taxGroup && taxGroup.parentNode) {
+                    taxGroup.parentNode.insertBefore(container, taxGroup.nextSibling);
+                    console.log('✓ verificationDiv created and inserted');
+                    verificationDiv = container;
+                    idCardFront = container.querySelector('#idCardFront');
+                    idCardBack = container.querySelector('#idCardBack');
+                    idCardFrontPreview = container.querySelector('#idCardFrontPreview');
+                    idCardBackPreview = container.querySelector('#idCardBackPreview');
+                    // also rebind buttons and file name labels
+                    window.setTimeout(() => {
+                        const _btnF = container.querySelector('#btnFrontPick');
+                        const _btnB = container.querySelector('#btnBackPick');
+                        const _labF = container.querySelector('#frontFileName');
+                        const _labB = container.querySelector('#backFileName');
+                        if (_btnF && idCardFront) _btnF.addEventListener('click', () => idCardFront.click());
+                        if (_btnB && idCardBack) _btnB.addEventListener('click', () => idCardBack.click());
+                        if (idCardFront) idCardFront.addEventListener('change', () => { _labF.textContent = idCardFront.files?.[0]?.name || 'No file chosen'; });
+                        if (idCardBack) idCardBack.addEventListener('change', () => { _labB.textContent = idCardBack.files?.[0]?.name || 'No file chosen'; });
+                    }, 0);
+                } else {
+                    console.error('❌ Unable to insert verification container');
+                }
+            }
+
+            // Hàm để cập nhật visibility
+            function updateVerificationVisibility() {
+                const taxIdValue = taxIdInput.value || '';
+                const taxIdClean = taxIdValue.replace(/\D/g, '');
+
+                const validLen = taxIdClean.length === 0 || taxIdClean.length === 10 || taxIdClean.length === 12;
+                if (taxIdError) {
+                    taxIdError.style.display = validLen ? 'none' : 'block';
+                }
+                if (submitBtn) submitBtn.disabled = !validLen;
+                
+                console.log('Input triggered:');
+                console.log('  - Raw value:', '"' + taxIdValue + '"');
+                console.log('  - Cleaned:', '"' + taxIdClean + '"');
+                console.log('  - Length:', taxIdClean.length);
+                console.log('  - Tax ID valid:', validLen);
+                
+                if (verificationDiv) {
+                    if (taxIdClean.length === 12) {
+                        console.log('✓ SHOW verification div');
+                        verificationDiv.style.display = 'block';
+                    } else {
+                        console.log('✗ HIDE verification div');
+                        verificationDiv.style.display = 'none';
+                        if (idCardFront) idCardFront.value = '';
+                        if (idCardBack) idCardBack.value = '';
+                        const _lf = document.getElementById('frontFileName');
+                        const _lb = document.getElementById('backFileName');
+                        if (_lf) _lf.textContent = 'No file chosen';
+                        if (_lb) _lb.textContent = 'No file chosen';
+                    }
+                }
+            }
+
+            // Gán nhiều listener để chắc chắn bắt được thay đổi
+            taxIdInput.addEventListener('input', function(e) {
+                console.log('EVENT: input');
+                updateVerificationVisibility();
+            });
+            taxIdInput.addEventListener('change', function(e) {
+                console.log('EVENT: change');
+                updateVerificationVisibility();
+            });
+            taxIdInput.addEventListener('keyup', function(e) {
+                console.log('EVENT: keyup (code:', e.code, ')');
+                updateVerificationVisibility();
+            });
+
+            console.log('✓ All event listeners attached');
+            console.log('Triggering initial check...');
+            updateVerificationVisibility();
+
+            // Initialize tooltips
             if (window.bootstrap) {
                 var triggers = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
                 triggers.forEach(function (el) { new bootstrap.Tooltip(el); });
             }
-        });
+
+            function bindPreview(inputEl, previewEl) {
+                if (!inputEl || !previewEl) return;
+                inputEl.addEventListener('change', function () {
+                    const file = this.files && this.files[0];
+                    if (file) {
+                        const url = URL.createObjectURL(file);
+                        previewEl.src = url;
+                        previewEl.style.display = 'inline-block';
+                    } else {
+                        previewEl.src = '';
+                        previewEl.style.display = 'none';
+                    }
+                });
+                previewEl.addEventListener('click', function () {
+                    if (!previewEl.src) return;
+                    previewLargeImage.src = previewEl.src;
+                    previewModal.style.display = 'flex';
+                });
+            }
+
+            bindPreview(idCardFront, idCardFrontPreview);
+            bindPreview(idCardBack, idCardBackPreview);
+
+            // file pickers (static)
+            if (btnFrontPick && idCardFront) btnFrontPick.addEventListener('click', () => idCardFront.click());
+            if (btnBackPick && idCardBack) btnBackPick.addEventListener('click', () => idCardBack.click());
+            if (idCardFront && frontFileName) idCardFront.addEventListener('change', () => { frontFileName.textContent = idCardFront.files?.[0]?.name || 'No file chosen'; });
+            if (idCardBack && backFileName) idCardBack.addEventListener('change', () => { backFileName.textContent = idCardBack.files?.[0]?.name || 'No file chosen'; });
+
+            if (closePreviewModal) {
+                closePreviewModal.addEventListener('click', function () {
+                    previewModal.style.display = 'none';
+                    previewLargeImage.src = '';
+                });
+            }
+
+            previewModal?.addEventListener('click', function (e) {
+                if (e.target === previewModal) {
+                    previewModal.style.display = 'none';
+                    previewLargeImage.src = '';
+                }
+            });
+
+            // Compact toast helpers
+            function showToastMini(type, message) {
+                const container = document.getElementById('toast-mini');
+                const el = document.createElement('div');
+                el.style.cssText = 'min-width:260px; max-width:420px; padding:10px 12px; border-radius:6px; color:#fff; font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,.2); opacity:0; transform: translateY(-6px); transition: all .2s;';
+                el.style.background = type === 'success' ? '#2e7d32' : (type === 'warning' ? '#ed6c02' : '#c62828');
+                el.textContent = message;
+                container.appendChild(el);
+                requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+                setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-6px)'; setTimeout(() => el.remove(), 200); }, 3500);
+            }
+
+            // AJAX submit to keep previews/files without page refresh
+            const form = document.getElementById('applyForm');
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                try {
+                    const fd = new FormData(form); // includes antiforgery token if present and all inputs/files
+
+                    // Validate Tax ID 10 or 12 digits before sending
+                    const taxValRaw = (document.querySelector('#taxIdInput')?.value || '').trim();
+                    const taxValClean = taxValRaw.replace(/\D/g, '');
+                    if (taxValClean.length > 0 && taxValClean.length !== 10 && taxValClean.length !== 12) {
+                        showToastMini('error', 'Tax ID must be 10 or 12 digits.');
+                        return;
+                    }
+
+                    const res = await fetch(window.location.pathname + '?handler=Ajax', {
+                        method: 'POST',
+                        body: fd
+                    });
+
+                    if (!res.ok) {
+                        const text = await res.text();
+                        showToastMini('error', `Submit failed: ${text.substring(0, 180)}`);
+                        return;
+                    }
+
+                    showToastMini('success', 'Application submitted. We will notify you after review.');
+                } catch (err) {
+                    showToastMini('error', `Error: ${err?.message || err}`);
+                }
+            });
+        }
+
+        // Chạy khi DOM ready
+        if (document.readyState === 'loading') {
+            console.log('DOM still loading, waiting...');
+            document.addEventListener('DOMContentLoaded', initializeVerification);
+        } else {
+            console.log('DOM already loaded, running immediately');
+            initializeVerification();
+        }
     </script>
 </section>
 

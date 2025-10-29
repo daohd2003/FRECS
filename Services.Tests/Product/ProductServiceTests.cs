@@ -39,7 +39,6 @@ namespace Services.Tests.Product
         private readonly Mock<IProductRepository> _mockProductRepository;
         private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<IContentModerationService> _mockContentModerationService;
-        private readonly Mock<IEmailService> _mockEmailService;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<IConversationService> _mockConversationService;
         private readonly ProductService _productService;
@@ -49,7 +48,6 @@ namespace Services.Tests.Product
             _mockProductRepository = new Mock<IProductRepository>();
             _mockMapper = new Mock<IMapper>();
             _mockContentModerationService = new Mock<IContentModerationService>();
-            _mockEmailService = new Mock<IEmailService>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockConversationService = new Mock<IConversationService>();
 
