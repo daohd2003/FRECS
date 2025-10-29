@@ -379,16 +379,20 @@ namespace ShareItFE.Pages.CheckoutPage
         {
             // Clear pending cart order IDs from session when payment is successful
             SetPendingCartOrderIds(null);
+            // Clear discount code from session after successful payment
+            HttpContext.Session.Remove("SelectedDiscountCode");
             return new JsonResult(new { success = true });
         }
 
         /// <summary>
-        /// Clear PendingCartOrderIds session - used when starting a new flow like "Rent Again"
+        /// Clear PendingCartOrderIds and SelectedDiscountCode session - used when starting a new flow like "Rent Again"
         /// </summary>
         [HttpPost]
         public IActionResult OnPostClearPendingSession()
         {
             SetPendingCartOrderIds(null);
+            // Clear discount code from session to prevent reusing already-used discount codes
+            HttpContext.Session.Remove("SelectedDiscountCode");
             return new JsonResult(new { success = true });
         }
 
@@ -403,6 +407,9 @@ namespace ShareItFE.Pages.CheckoutPage
             SuccessMessage = null;
             ErrorMessage = null;
             QrCodeUrl = null;
+            
+            // Clear discount code from session when closing QR modal (payment completed)
+            HttpContext.Session.Remove("SelectedDiscountCode");
             
             // Restore preserved data after clearing TempData
             if (preservedPendingOrderId.HasValue)

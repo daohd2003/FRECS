@@ -8,7 +8,7 @@
     // Initialize SignalR connection
     async function initializeActiveUsersHub() {
         try {
-            const apiBaseUrl = 'https://localhost:7256'; // Update this based on environment
+            const apiBaseUrl = window.adminChatConfig?.signalRRootUrl || window.apiSettings?.rootUrl || 'https://localhost:7256';
             const accessToken = window.adminChatConfig?.accessToken || getCookie('AccessToken');
             
             if (!accessToken) {
