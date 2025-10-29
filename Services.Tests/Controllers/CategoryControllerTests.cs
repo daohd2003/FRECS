@@ -61,7 +61,7 @@ namespace Services.Tests.Controllers
                 .ReturnsAsync(createdDto);
 
             // Act
-            var result = await _controller.Create(categoryName, description, true, mockImageFile);
+            var result = await _controller.Create(categoryName, mockImageFile, description, true);
 
             // Assert
             var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result);
@@ -85,7 +85,7 @@ namespace Services.Tests.Controllers
                 .ReturnsAsync(createdDto);
 
             // Act
-            var result = await _controller.Create(categoryName, "description", true, null);
+            var result = await _controller.Create(categoryName, null, "description", true);
 
             // Assert
             var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result);
@@ -110,7 +110,7 @@ namespace Services.Tests.Controllers
             // No setup needed as it should fail before service calls
 
             // Act
-            var result = await _controller.Create(invalidName, "description", true, null);
+            var result = await _controller.Create(invalidName, null, "description", true);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -134,7 +134,7 @@ namespace Services.Tests.Controllers
             };
 
             // Act
-            var result = await controllerWithInvalidUser.Create("Test Category", "desc", true, null);
+            var result = await controllerWithInvalidUser.Create("Test Category", null, "desc", true);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -157,7 +157,7 @@ namespace Services.Tests.Controllers
                 .ThrowsAsync(new ArgumentException(validationErrorMessage));
 
             // Act
-            var result = await _controller.Create("Test Category", "desc", true, mockImageFile);
+            var result = await _controller.Create("Test Category", mockImageFile, "desc", true);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -181,7 +181,7 @@ namespace Services.Tests.Controllers
                 .ThrowsAsync(new Exception(uploadErrorMessage));
 
             // Act
-            var result = await _controller.Create("Test Category", "desc", true, mockImageFile);
+            var result = await _controller.Create("Test Category", mockImageFile, "desc", true);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -204,7 +204,7 @@ namespace Services.Tests.Controllers
                 .ThrowsAsync(new Exception(errorMessage));
 
             // Act
-            var result = await _controller.Create("Test Category", "desc", true, null);
+            var result = await _controller.Create("Test Category", null, "desc", true);
             
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);

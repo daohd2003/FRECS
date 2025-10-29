@@ -15,5 +15,6 @@ namespace Services.EmailServices
         Task SendContactFormEmailAsync(ContactFormRequestDto formData);
         Task SendProviderApplicationApprovedEmailAsync(string toEmail, string businessName);
         Task SendProviderApplicationRejectedEmailAsync(string toEmail, string businessName, string rejectionReason);
+        Task SendProductModerationReviewEmailAsync(string toEmail, string productName, string reason, List<string> violatedTerms);
     }
 }

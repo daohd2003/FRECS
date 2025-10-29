@@ -8,6 +8,7 @@ class ProviderApplicationManagement {
         this.itemsPerPage = 10;
         this.searchQuery = '';
         this.statusFilter = 'pending';
+        this.providerTypeFilter = 'all';
         this.sortBy = 'created-desc';
         this.selectedApplication = null;
 
@@ -43,6 +44,14 @@ class ProviderApplicationManagement {
         if (sortFilter) {
             sortFilter.addEventListener('change', (e) => {
                 this.sortBy = e.target.value;
+                this.filterAndRenderApplications();
+            });
+        }
+
+        const providerTypeFilter = document.getElementById('providerTypeFilter');
+        if (providerTypeFilter) {
+            providerTypeFilter.addEventListener('change', (e) => {
+                this.providerTypeFilter = e.target.value;
                 this.filterAndRenderApplications();
             });
         }
@@ -121,6 +130,14 @@ class ProviderApplicationManagement {
                    taxId.includes(this.searchQuery);
         });
 
+        // Filter by provider type (derived)
+        if (this.providerTypeFilter !== 'all') {
+            this.filteredApplications = this.filteredApplications.filter(app => {
+                const type = this.deriveProviderType(app);
+                return type === this.providerTypeFilter;
+            });
+        }
+
         // Sort
         this.sortApplications();
 
@@ -129,6 +146,14 @@ class ProviderApplicationManagement {
         this.renderTable();
         this.renderPagination();
         this.updateShowingCount();
+    }
+
+    deriveProviderType(app) {
+        const taxId = (app.taxId || '').replace(/\D/g, '');
+        const hasIdCards = !!(app.idCardFrontImageUrl && app.idCardBackImageUrl);
+        if (taxId.length === 12 || hasIdCards) return 'individual';
+        if (taxId.length === 10) return 'business';
+        return 'unknown';
     }
 
     sortApplications() {
@@ -199,7 +224,18 @@ class ProviderApplicationManagement {
         const applicantName = app.user?.profile?.fullName || 'N/A';
         const applicantEmail = app.user?.email || 'N/A';
 
+        const type = this.deriveProviderType(app);
+        const taxHtml = app.taxId
+            ? `${this.escapeHtml(app.taxId)}${type === 'business' ? ` <a href="https://tracuunnt.gdt.gov.vn/" target="_blank" rel="noopener" class="tax-check-link">Check</a>` : ''}`
+            : '<span class="text-muted">N/A</span>';
+
         const actions = app.status === 'pending' ? `
+            <button class="action-btn view-btn" onclick="viewApplicationDetails('${app.id}')" title="View Details">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </button>
             <button class="action-btn approve-btn" onclick="providerAppMgmt.showApproveModal('${app.id}')" title="Approve">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -213,7 +249,14 @@ class ProviderApplicationManagement {
                     <line x1="9" y1="9" x2="15" y2="15"></line>
                 </svg>
             </button>
-        ` : `<span class="text-muted">No actions</span>`;
+        ` : `
+            <button class="action-btn view-btn" onclick="viewApplicationDetails('${app.id}')" title="View Details">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </button>
+        `;
 
         return `
             <tr>
@@ -229,7 +272,7 @@ class ProviderApplicationManagement {
                         <div class="applicant-email">${this.escapeHtml(applicantEmail)}</div>
                     </div>
                 </td>
-                <td>${app.taxId ? this.escapeHtml(app.taxId) : '<span class="text-muted">N/A</span>'}</td>
+                <td>${taxHtml}</td>
                 <td>${app.contactPhone ? this.escapeHtml(app.contactPhone) : '<span class="text-muted">N/A</span>'}</td>
                 <td>
                     <span class="status-badge status-${statusClass}">${statusText}</span>
@@ -508,6 +551,103 @@ class ProviderApplicationManagement {
         div.textContent = text;
         return div.innerHTML;
     }
+}
+
+// Global functions for modals
+function closeApproveModal() {
+    document.getElementById('approveModal').style.display = 'none';
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+
+function closeDetailModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+function closeImageEnlargeModal() {
+    document.getElementById('imageEnlargeModal').style.display = 'none';
+}
+
+function viewApplicationDetails(applicationId) {
+    if (!providerAppMgmt) return;
+    
+    const app = providerAppMgmt.applications.find(a => a.id === applicationId);
+    if (!app) {
+        console.error('Application not found:', applicationId);
+        return;
+    }
+
+    // Populate detail modal
+    document.getElementById('detailBusinessName').textContent = app.businessName || 'N/A';
+    document.getElementById('detailApplicantName').textContent = app.user?.fullName || 'N/A';
+    document.getElementById('detailApplicantEmail').textContent = app.user?.email || 'N/A';
+    document.getElementById('detailTaxId').textContent = app.taxId || 'N/A';
+    document.getElementById('detailContactPhone').textContent = app.contactPhone || 'N/A';
+    document.getElementById('detailBusinessNameFull').textContent = app.businessName || 'N/A';
+    document.getElementById('detailNotes').textContent = app.notes || 'No notes';
+
+    // Show ID Card section if images exist
+    const idCardSection = document.getElementById('idCardSection');
+    if (app.idCardFrontImageUrl && app.idCardBackImageUrl) {
+        idCardSection.style.display = 'block';
+        document.getElementById('idCardFrontImage').src = app.idCardFrontImageUrl;
+        document.getElementById('idCardBackImage').src = app.idCardBackImageUrl;
+    } else {
+        idCardSection.style.display = 'none';
+    }
+
+    document.getElementById('detailModal').style.display = 'flex';
+}
+
+function enlargeImage(imgElement) {
+    openPAImageLightbox(imgElement.src);
+}
+
+// Product Administration-like lightbox for PA
+let paScale = 1, paX = 0, paY = 0, paDrag = false, paStartX = 0, paStartY = 0;
+
+function openPAImageLightbox(src) {
+    const overlay = document.getElementById('paImageLightbox');
+    const img = document.getElementById('paLightboxImage');
+    img.src = src;
+    img.style.transform = 'translate(0, 0) scale(1)';
+    img.style.cursor = 'zoom-in';
+    paScale = 1; paX = 0; paY = 0;
+    overlay.style.display = 'flex';
+
+    // Wheel zoom
+    img.onwheel = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        paScale = Math.min(Math.max(0.5, paScale + delta), 6);
+        if (paScale <= 1) { paX = 0; paY = 0; img.style.cursor = 'zoom-in'; paDrag = false; }
+        img.style.transform = `translate(${paX}px, ${paY}px) scale(${paScale})`;
+    };
+
+    // Drag to pan (when zoomed)
+    img.onmousedown = (e) => {
+        if (paScale > 1) { paDrag = true; paStartX = e.clientX - paX; paStartY = e.clientY - paY; img.style.cursor = 'grabbing'; }
+    };
+    document.onmousemove = (e) => {
+        if (!paDrag) return; paX = e.clientX - paStartX; paY = e.clientY - paStartY; img.style.transform = `translate(${paX}px, ${paY}px) scale(${paScale})`;
+    };
+    document.onmouseup = () => { if (paDrag) { paDrag = false; img.style.cursor = paScale > 1 ? 'grab' : 'zoom-in'; } };
+}
+
+function togglePAZoom(e) {
+    e.stopPropagation();
+    const img = e.target;
+    if (paScale === 1) { paScale = 2; img.style.cursor = 'grab'; }
+    else { paScale = 1; paX = 0; paY = 0; img.style.cursor = 'zoom-in'; }
+    img.style.transform = `translate(${paX}px, ${paY}px) scale(${paScale})`;
+}
+
+function closePAImageLightbox() {
+    const overlay = document.getElementById('paImageLightbox');
+    overlay.style.display = 'none';
+    paScale = 1; paX = 0; paY = 0; paDrag = false;
 }
 
 // Initialize when DOM is ready

@@ -21,7 +21,7 @@ namespace ShareItAPI.Controllers
 
         [HttpPost]
         [Authorize(Roles = "customer")] // only customers can apply
-        public async Task<IActionResult> Apply([FromBody] ProviderApplicationCreateDto dto)
+        public async Task<IActionResult> Apply([FromForm] ProviderApplicationCreateDto dto)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();

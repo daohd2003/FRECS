@@ -4,6 +4,7 @@ using BusinessObject.Models;
 using BusinessObject.Utilities;
 using Repositories.ProviderApplicationRepositories;
 using Repositories.UserRepositories;
+using Services.CloudServices;
 using Services.EmailServices;
 
 namespace Services.ProviderApplicationServices
@@ -13,15 +14,18 @@ namespace Services.ProviderApplicationServices
         private readonly IProviderApplicationRepository _applicationRepository;
         private readonly IUserRepository _userRepository;
         private readonly IEmailService _emailService;
+        private readonly ICloudinaryService _cloudinaryService;
 
         public ProviderApplicationService(
             IProviderApplicationRepository applicationRepository, 
             IUserRepository userRepository,
-            IEmailService emailService)
+            IEmailService emailService,
+            ICloudinaryService cloudinaryService)
         {
             _applicationRepository = applicationRepository;
             _userRepository = userRepository;
             _emailService = emailService;
+            _cloudinaryService = cloudinaryService;
         }
 
         public async Task<ProviderApplication> ApplyAsync(Guid userId, ProviderApplicationCreateDto dto)
@@ -50,6 +54,53 @@ namespace Services.ProviderApplicationServices
                 Status = ProviderApplicationStatus.pending,
                 CreatedAt = DateTimeHelper.GetVietnamTime()
             };
+
+            // Logic để xử lý ID card images cho cá nhân kinh doanh (12 số)
+            var taxId = dto.TaxId?.Trim();
+            if (taxId != null && taxId.Length == 12 && taxId.All(char.IsDigit))
+            {
+                // Đây là cá nhân - yêu cầu cả 2 ảnh
+                if (dto.IdCardFrontImage == null || dto.IdCardBackImage == null)
+                {
+                    throw new InvalidOperationException("Vui lòng cung cấp đủ ảnh CCCD mặt trước và mặt sau.");
+                }
+
+                // Upload ảnh mặt trước
+                BusinessObject.DTOs.ProductDto.ImageUploadResult? frontImageResult = null;
+                BusinessObject.DTOs.ProductDto.ImageUploadResult? backImageResult = null;
+
+                try
+                {
+                    frontImageResult = await _cloudinaryService.UploadSingleImageAsync(
+                        dto.IdCardFrontImage, 
+                        userId, 
+                        "ShareIt", 
+                        "provider-verification");
+
+                    // Upload ảnh mặt sau
+                    backImageResult = await _cloudinaryService.UploadSingleImageAsync(
+                        dto.IdCardBackImage, 
+                        userId, 
+                        "ShareIt", 
+                        "provider-verification");
+
+                    app.IdCardFrontImageUrl = frontImageResult.ImageUrl;
+                    app.IdCardBackImageUrl = backImageResult.ImageUrl;
+                }
+                catch (Exception ex)
+                {
+                    // Clean up uploaded images if any error occurred
+                    if (frontImageResult != null)
+                    {
+                        await _cloudinaryService.DeleteImageAsync(frontImageResult.PublicId);
+                    }
+                    if (backImageResult != null)
+                    {
+                        await _cloudinaryService.DeleteImageAsync(backImageResult.PublicId);
+                    }
+                    throw new InvalidOperationException($"Có lỗi xảy ra trong quá trình tải ảnh lên. Vui lòng thử lại. Chi tiết: {ex.Message}");
+                }
+            }
 
             await _applicationRepository.AddAsync(app);
             return app;
