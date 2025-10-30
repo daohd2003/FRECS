@@ -17,6 +17,12 @@ class UserManagement {
         this.sortColumn = null;
         this.sortDirection = 'asc';
         
+        // More filters
+        this.moreFilters = {
+            minOrders: null,
+            maxOrders: null
+        };
+        
         this.init();
     }
 
@@ -74,6 +80,24 @@ class UserManagement {
                 this.roleFilter = e.target.value;
                 this.filterUsers();
             });
+        }
+
+        // More Filters modal events
+        const openMoreFiltersBtn = document.getElementById('openMoreFiltersBtn');
+        if (openMoreFiltersBtn) {
+            openMoreFiltersBtn.addEventListener('click', () => this.showMoreFiltersModal());
+        }
+        const closeMoreFiltersModal = document.getElementById('closeMoreFiltersModal');
+        if (closeMoreFiltersModal) {
+            closeMoreFiltersModal.addEventListener('click', () => this.hideMoreFiltersModal());
+        }
+        const applyMoreFiltersBtn = document.getElementById('applyMoreFiltersBtn');
+        if (applyMoreFiltersBtn) {
+            applyMoreFiltersBtn.addEventListener('click', () => this.applyMoreFilters());
+        }
+        const resetMoreFiltersBtn = document.getElementById('resetMoreFiltersBtn');
+        if (resetMoreFiltersBtn) {
+            resetMoreFiltersBtn.addEventListener('click', () => this.resetMoreFilters());
         }
 
         // Add user modal
@@ -259,8 +283,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
     updateStatsClientSide() {
         let usersToCount = this.users;
         
-        // For staff users, only count customers and providers
-        if (this.config.currentUserRole === 'staff') {
+        // For staff and admin users, only count customers and providers
+        if (this.config.currentUserRole === 'staff' || this.config.currentUserRole === 'admin') {
             usersToCount = this.users.filter(u => u.role === 'customer' || u.role === 'provider');
         }
         
@@ -304,8 +328,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
             if (this.currentTab === 'active' && !isActive) return false;
             if (this.currentTab === 'inactive' && isActive) return false;
             
-            // For staff users, only show customers and providers
-            if (this.config.currentUserRole === 'staff') {
+        // For staff and admin users, only show customers and providers
+        if (this.config.currentUserRole === 'staff' || this.config.currentUserRole === 'admin') {
                 if (user.role !== 'customer' && user.role !== 'provider') {
                     return false;
                 }
@@ -324,6 +348,11 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 return false;
             }
             
+            // More filters: min/max total orders
+            const totalOrders = user.totalOrders || 0;
+            if (this.moreFilters.minOrders !== null && totalOrders < this.moreFilters.minOrders) return false;
+            if (this.moreFilters.maxOrders !== null && totalOrders > this.moreFilters.maxOrders) return false;
+            
             return true;
         });
 
@@ -336,8 +365,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
     updateTabCounts() {
         let usersToCount = this.users;
         
-        // For staff users, only count customers and providers
-        if (this.config.currentUserRole === 'staff') {
+        // For staff and admin users, only count customers and providers
+        if (this.config.currentUserRole === 'staff' || this.config.currentUserRole === 'admin') {
             usersToCount = this.users.filter(u => u.role === 'customer' || u.role === 'provider');
         }
         
@@ -408,6 +437,10 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 case 'lastLogin':
                     aValue = a.lastLogin ? new Date(a.lastLogin) : new Date(0);
                     bValue = b.lastLogin ? new Date(b.lastLogin) : new Date(0);
+                    break;
+                case 'orders':
+                    aValue = typeof a.totalOrders === 'number' ? a.totalOrders : (parseInt(a.totalOrders, 10) || 0);
+                    bValue = typeof b.totalOrders === 'number' ? b.totalOrders : (parseInt(b.totalOrders, 10) || 0);
                     break;
                 default:
                     return 0;
@@ -649,14 +682,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 </td>
                 <td>
                     <div class="actions">
-                        ${this.config.currentUserRole === 'admin' ? `
-                            <button class="action-btn action-btn-edit" onclick="userManagement.editUser('${user.id}')" title="Edit User">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                            </button>
-                        ` : ''}
+                        
                         
                         ${this.currentTab === 'active' ? `
                             <button class="action-btn action-btn-lock" 
@@ -1011,6 +1037,45 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
     hideAllModals() {
         this.hideAddUserModal();
         this.hideUserDetailModal();
+    }
+
+    // More Filters modal helpers
+    showMoreFiltersModal() {
+        const modal = document.getElementById('moreFiltersModal');
+        if (modal) modal.style.display = 'flex';
+        // Pre-fill inputs with current values
+        const minOrdersInput = document.getElementById('minOrdersInput');
+        const maxOrdersInput = document.getElementById('maxOrdersInput');
+        if (minOrdersInput) minOrdersInput.value = this.moreFilters.minOrders ?? '';
+        if (maxOrdersInput) maxOrdersInput.value = this.moreFilters.maxOrders ?? '';
+    }
+
+    hideMoreFiltersModal() {
+        const modal = document.getElementById('moreFiltersModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    applyMoreFilters() {
+        const minOrdersInput = document.getElementById('minOrdersInput');
+        const maxOrdersInput = document.getElementById('maxOrdersInput');
+        const minVal = minOrdersInput && minOrdersInput.value !== '' ? parseInt(minOrdersInput.value, 10) : null;
+        const maxVal = maxOrdersInput && maxOrdersInput.value !== '' ? parseInt(maxOrdersInput.value, 10) : null;
+        this.moreFilters.minOrders = Number.isFinite(minVal) ? minVal : null;
+        this.moreFilters.maxOrders = Number.isFinite(maxVal) ? maxVal : null;
+        this.hideMoreFiltersModal();
+        this.filterUsers();
+        this.showInfo('Filters applied');
+    }
+
+    resetMoreFilters() {
+        this.moreFilters = { minOrders: null, maxOrders: null };
+        const minOrdersInput = document.getElementById('minOrdersInput');
+        const maxOrdersInput = document.getElementById('maxOrdersInput');
+        if (minOrdersInput) minOrdersInput.value = '';
+        if (maxOrdersInput) maxOrdersInput.value = '';
+        this.hideMoreFiltersModal();
+        this.filterUsers();
+        this.showInfo('Filters cleared');
     }
 
     async handleAddUser() {
