@@ -7,6 +7,7 @@ using Repositories.UserRepositories;
 using Services.CloudServices;
 using Services.EmailServices;
 using Services.ProviderApplicationServices;
+using Services.CloudServices;
 
 namespace Services.Tests.ProviderApplicationTests
 {
