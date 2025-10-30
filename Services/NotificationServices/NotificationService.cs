@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.NotificationDto;
+using BusinessObject.DTOs.PagingDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using Hubs;
@@ -239,6 +240,41 @@ namespace Services.NotificationServices
                     await NotifyTransactionFailed(order.Id, userId);
                 }
             }
+        }
+
+        public async Task<PagedResult<NotificationResponse>> GetPagedNotifications(
+            Guid userId,
+            int page,
+            int pageSize,
+            string? searchTerm = null,
+            NotificationType? filterType = null,
+            bool? isRead = null)
+        {
+            var (items, totalCount) = await _notificationRepository.GetPagedNotificationsAsync(
+                userId, page, pageSize, searchTerm, filterType, isRead);
+
+            var notificationResponses = items.Select(n => new NotificationResponse
+            {
+                Id = n.Id,
+                Message = n.Message,
+                IsRead = n.IsRead,
+                CreatedAt = n.CreatedAt,
+                Type = n.Type,
+                OrderId = n.OrderId
+            }).ToList();
+
+            return new PagedResult<NotificationResponse>
+            {
+                Items = notificationResponses,
+                TotalCount = totalCount,
+                PageSize = pageSize,
+                CurrentPage = page
+            };
+        }
+
+        public async Task DeleteNotification(Guid notificationId)
+        {
+            await _notificationRepository.DeleteNotificationAsync(notificationId);
         }
 
         /*/// <summary>

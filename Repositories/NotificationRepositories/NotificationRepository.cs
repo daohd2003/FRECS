@@ -82,5 +82,54 @@ namespace Repositories.NotificationRepositories
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<(IEnumerable<Notification> items, int totalCount)> GetPagedNotificationsAsync(
+            Guid userId,
+            int page,
+            int pageSize,
+            string? searchTerm = null,
+            NotificationType? filterType = null,
+            bool? isRead = null)
+        {
+            var query = _context.Notifications.Where(n => n.UserId == userId);
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(n => n.Message.Contains(searchTerm));
+            }
+
+            // Apply type filter
+            if (filterType.HasValue)
+            {
+                query = query.Where(n => n.Type == filterType.Value);
+            }
+
+            // Apply read/unread filter
+            if (isRead.HasValue)
+            {
+                query = query.Where(n => n.IsRead == isRead.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(n => n.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+        public async Task DeleteNotificationAsync(Guid notificationId)
+        {
+            var notification = await _context.Notifications.FindAsync(notificationId);
+            if (notification != null)
+            {
+                _context.Notifications.Remove(notification);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

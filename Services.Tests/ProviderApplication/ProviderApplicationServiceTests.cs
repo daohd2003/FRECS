@@ -4,6 +4,7 @@ using BusinessObject.Models;
 using Moq;
 using Repositories.ProviderApplicationRepositories;
 using Repositories.UserRepositories;
+using Services.CloudServices;
 using Services.EmailServices;
 using Services.ProviderApplicationServices;
 
@@ -26,6 +27,7 @@ namespace Services.Tests.ProviderApplicationTests
         private readonly Mock<IProviderApplicationRepository> _mockApplicationRepository;
         private readonly Mock<IUserRepository> _mockUserRepository;
         private readonly Mock<IEmailService> _mockEmailService;
+        private readonly Mock<ICloudinaryService> _mockCloudinaryService;
         private readonly ProviderApplicationService _service;
 
         public ProviderApplicationServiceTests()
@@ -33,10 +35,12 @@ namespace Services.Tests.ProviderApplicationTests
             _mockApplicationRepository = new Mock<IProviderApplicationRepository>();
             _mockUserRepository = new Mock<IUserRepository>();
             _mockEmailService = new Mock<IEmailService>();
+            _mockCloudinaryService = new Mock<ICloudinaryService>();
             _service = new ProviderApplicationService(
                 _mockApplicationRepository.Object,
                 _mockUserRepository.Object,
-                _mockEmailService.Object
+                _mockEmailService.Object,
+                _mockCloudinaryService.Object
             );
         }
 

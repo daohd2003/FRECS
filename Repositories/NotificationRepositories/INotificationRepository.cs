@@ -18,5 +18,13 @@ namespace Repositories.NotificationRepositories
         Task<IEnumerable<Notification>> GetByTypeAndUserIdAsync(Guid userId, NotificationType type);
         Task<IEnumerable<Notification>> GetRecentNotificationsAsync(Guid userId, int count);
         Task DeleteByOrderIdAsync(Guid orderId);
+        Task<(IEnumerable<Notification> items, int totalCount)> GetPagedNotificationsAsync(
+            Guid userId, 
+            int page, 
+            int pageSize, 
+            string? searchTerm = null, 
+            NotificationType? filterType = null,
+            bool? isRead = null);
+        Task DeleteNotificationAsync(Guid notificationId);
     }
 }
