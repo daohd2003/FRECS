@@ -196,10 +196,63 @@
                 <div class="@(Model.ViewMode == "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-6")" id="productList">
                     @foreach (var product in Model.Products)
                     {
-                        <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
-                            <div class="relative">
-                                <a href="/products/detail/@product.Id">
-                                    <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" alt="@product.Name" class="object-cover w-full h-80 hover:scale-105 transition-transform duration-300" />
+                        @if (Model.ViewMode == "list")
+                        {
+                            <!-- List View -->
+                            <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col sm:flex-row">
+                                <div class="relative sm:w-64 flex-shrink-0">
+                                    <a href="/products/detail/@product.Id" class="block h-full">
+                                        <div class="bg-gray-100 flex items-center justify-center" style="min-height: 300px; max-height: 400px;">
+                                            <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" 
+                                                 alt="@product.Name" 
+                                                 class="object-contain w-full h-full max-h-96 hover:scale-105 transition-transform duration-300" />
+                                        </div>
+                                    </a>
+                                    <form method="post" action="/products?handler=AddFavorite" class="favorite-form" data-product-id="@product.Id">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="productId" value="@product.Id" />
+                                        <button type="submit" class="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors favorite-btn" data-product-id="@product.Id">
+                                            <i data-lucide="heart" class="h-5 w-5 text-gray-600 hover:text-red-500 favorite-icon" data-initial-color="gray-600"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="p-4 flex flex-col flex-grow">
+                                    <a href="/products/detail/@product.Id" class="flex-grow">
+                                        <h3 class="text-lg font-semibold text-gray-900 mb-2 hover:text-purple-600 transition-colors">
+                                            @product.Name
+                                        </h3>
+                                    </a>
+                                    <div class="flex items-center justify-between mb-3 mt-auto">
+                                        <span class="text-xl font-bold text-purple-600">@product.GetPrimaryPriceDisplay()</span>
+                                        <div class="flex items-center gap-1">
+                                            <i data-lucide="star" class="h-4 w-4 text-yellow-400 fill-yellow-400"></i>
+                                            <span class="font-medium text-gray-700">@product.AverageRating.ToString("F1")</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="capitalize text-gray-500">@product.Category</span>
+                                        @if(!string.IsNullOrEmpty(product.GetDepositDisplay()))
+                                        {
+                                            <span class="text-gray-600 font-semibold">@product.GetDepositDisplay()</span>
+                                        }
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm text-gray-500">
+                                        <span>@product.GetStatsDisplay()</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Grid View -->
+                            <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col">
+                            <div class="relative product-grid-image-container">
+                                <a href="/products/detail/@product.Id" class="block h-full">
+                                    <div class="product-grid-image-wrapper">
+                                        <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" 
+                                             alt="@product.Name" 
+                                             class="product-grid-image" />
+                                    </div>
                                 </a>
                                 <form method="post" action="/products?handler=AddFavorite" class="favorite-form" data-product-id="@product.Id">
                                     @Html.AntiForgeryToken()
@@ -229,12 +282,13 @@
                                         <span class="text-gray-600 font-semibold">@product.GetDepositDisplay()</span>
                                     }
                                 </div>
-                                <div class="flex items-center justify-between text-sm text-gray-500">
-                                    <span>@product.GetStatsDisplay()</span>
-                                    <span></span>
+                                    <div class="flex items-center justify-between text-sm text-gray-500">
+                                        <span>@product.GetStatsDisplay()</span>
+                                        <span></span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        }
                     }
                 </div>
 

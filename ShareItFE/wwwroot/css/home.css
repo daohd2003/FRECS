@@ -195,6 +195,8 @@ body {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms; /* transition-colors */
     text-decoration: none; /* Ensure no underline for links */
+    text-align: center; /* Center text */
+    display: inline-block;
 }
 
     .btn-primary-hero:hover {
@@ -212,6 +214,9 @@ body {
     transition-property: background-color, color;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms; /* transition-colors */
+    text-decoration: none;
+    text-align: center; /* Center text */
+    display: inline-block;
 }
 
     .btn-secondary-hero:hover {
@@ -302,19 +307,24 @@ body {
 
 .categories-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* grid-cols-2 */
+    /* Auto-fit columns based on available space and number of categories */
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1.5rem; /* gap-6 */
 }
 
-@media (min-width: 768px) { /* md:grid-cols-3 */
+/* Responsive adjustments */
+@media (max-width: 640px) {
     .categories-grid {
-        grid-template-columns: repeat(3, 1fr);
+        /* Minimum 2 columns on mobile */
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 }
 
-@media (min-width: 1024px) { /* lg:grid-cols-6 */
+@media (min-width: 1024px) {
     .categories-grid {
-        grid-template-columns: repeat(6, 1fr);
+        /* Maximum 6 columns on large screens */
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        max-width: 100%;
     }
 }
 
@@ -326,9 +336,13 @@ body {
     position: relative;
     overflow: hidden;
     border-radius: 0.75rem; /* rounded-xl */
-    background-color: #ffffff; /* bg-white */
+    background-color: #f8f9fa; /* Light background for padding */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06); /* shadow-lg */
     transition: box-shadow 300ms ease-in-out; /* transition-shadow duration-300 */
+    aspect-ratio: 3/4; /* Maintain consistent aspect ratio */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
     .category-card:hover {
@@ -336,14 +350,15 @@ body {
     }
 
 .category-image {
-    width: 100%; /* w-full */
-    height: 12rem; /* h-48 */
-    object-fit: cover;
-    transition: transform 300ms ease-in-out; /* transition-transform duration-300 */
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Show full image without cropping */
+    object-position: center;
+    transition: transform 300ms ease-in-out;
 }
 
 .category-item:hover .category-image {
-    transform: scale(1.1); /* group-hover:scale-110 */
+    transform: scale(1.05); /* Subtle zoom on hover */
 }
 
 .category-overlay {
@@ -417,17 +432,31 @@ body {
 
 .rental-image-wrapper {
     position: relative;
+    overflow: hidden;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20rem;
 }
 
 .rental-image {
     width: 100%;
-    height: 20rem;
-    object-fit: cover;
+    height: 100%;
+    object-fit: contain; /* Mobile: show full image */
+    object-position: center;
     transition: transform 300ms ease-in-out;
 }
 
 .rental-item-card:hover .rental-image {
     transform: scale(1.05);
+}
+
+/* Desktop: Use object-cover for better card appearance */
+@media (min-width: 768px) {
+    .rental-image {
+        object-fit: cover;
+    }
 }
 
 .fav-button {
