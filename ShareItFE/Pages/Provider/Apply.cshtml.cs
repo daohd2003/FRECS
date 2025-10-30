@@ -52,6 +52,10 @@ namespace ShareItFE.Pages.Provider
         public void OnGet()
         {
             ApiBaseUrl = _configuration.GetApiRootUrl(_environment);
+            
+            // Clear ModelState và reset Input để tránh browser autofill từ cache
+            ModelState.Clear();
+            Input = new InputModel();
         }
 
         public async Task<IActionResult> OnPostAsync()

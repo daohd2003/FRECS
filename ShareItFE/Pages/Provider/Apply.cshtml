@@ -37,27 +37,40 @@
                 background: #42a5f5;
                 transform: scale(1.1);
             }
+
+        /* Đảm bảo verification div luôn ẩn khi mới load trang */
+        .verification-hidden {
+            display: none !important;
+        }
+
+        /* Compact form layout */
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @@media (min-width: 768px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+        .panel-soft {
+            padding: 12px; border: 1px dashed #90caf9; border-radius: 8px;
+            background: #eaf4ff;
+        }
     </style>
 
-    <form method="post" class="card p-4" enctype="multipart/form-data" data-api-root="@Model.ApiBaseUrl" id="applyForm">
-        <div class="mb-3">
-            <label asp-for="Input.BusinessName" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Store/brand name visible to customers. e.g., 'Chic Dress Rental'.">?</span>
-            <input asp-for="Input.BusinessName" class="form-control" placeholder="e.g., Chic Dress Rental" />
-            <span asp-validation-for="Input.BusinessName" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="Input.TaxId" class="form-label"></label>
-            <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (10 digits for businesses) or Personal ID (12 digits for individuals). If you're an individual, enter 12 digits.">?</span>
-            <input asp-for="Input.TaxId" id="taxIdInput" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" />
-            <small id="taxIdError" class="text-danger" style="display:none;">Tax ID must be exactly 10 or 12 digits.</small>
+    <form method="post" class="card p-4" enctype="multipart/form-data" data-api-root="@Model.ApiBaseUrl" id="applyForm" autocomplete="off">
+        <div class="form-grid mb-3">
+            <div>
+                <label asp-for="Input.BusinessName" class="form-label"></label>
+                <span class="help-icon" data-bs-toggle="tooltip" title="Store/brand name visible to customers. e.g., 'Chic Dress Rental'.">?</span>
+                <input asp-for="Input.BusinessName" class="form-control" placeholder="e.g., Chic Dress Rental" />
+                <span asp-validation-for="Input.BusinessName" class="text-danger"></span>
+            </div>
+            <div>
+                <label asp-for="Input.TaxId" class="form-label"></label>
+                <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (10 digits for businesses) or Personal ID (12 digits for individuals). If you're an individual, enter 12 digits.">?</span>
+                <input asp-for="Input.TaxId" id="taxIdInput" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" value="" />
+                <small id="taxIdError" class="text-danger" style="display:none;">Tax ID must be exactly 10 or 12 digits.</small>
+            </div>
         </div>
 
-        <div id="individual-verification" style="display: none;" class="alert alert-info mb-3">
-            <p class="mb-2 fw-bold">Individual Identity Verification</p>
-            <p class="text-muted small mb-3">You entered a 12-digit Personal ID. Please upload clear photos of both sides of your ID card.</p>
+        <div id="individual-verification" class="mb-3 verification-hidden panel-soft">
             <div class="mb-3">
-                <label for="idCardFront" class="form-label fw-bold">Front side <span class="text-danger">*</span></label>
+                <label for="idCardFront" class="form-label fw-bold">Front side CCCD <span class="text-danger">*</span></label>
                 <div class="d-flex align-items-center gap-2">
                     <input type="file" id="idCardFront" name="Input.IdCardFrontImage" class="visually-hidden" accept="image/*" />
                     <button type="button" id="btnFrontPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
@@ -67,9 +80,9 @@
                     <img id="idCardFrontPreview" alt="Front preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
                 </div>
                 <small class="text-muted d-block mt-1">JPG/PNG only</small>
-            </div>
+        </div>
             <div class="mb-3">
-                <label for="idCardBack" class="form-label fw-bold">Back side <span class="text-danger">*</span></label>
+                <label for="idCardBack" class="form-label fw-bold">Back side CCCD <span class="text-danger">*</span></label>
                 <div class="d-flex align-items-center gap-2">
                     <input type="file" id="idCardBack" name="Input.IdCardBackImage" class="visually-hidden" accept="image/*" />
                     <button type="button" id="btnBackPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
@@ -107,8 +120,6 @@
     <script>
         // Đợi DOM load xong trước khi chạy
         function initializeVerification() {
-            console.log('=== Initializing verification script ===');
-            
             // Thử tìm element với multiple selectors
             let taxIdInput = document.getElementById('taxIdInput');
             if (!taxIdInput) {
@@ -133,23 +144,6 @@
             const previewLargeImage = document.getElementById('previewLargeImage');
             const closePreviewModal = document.getElementById('closePreviewModal');
 
-            console.log('✓ Elements found:');
-            console.log('  - taxIdInput:', !!taxIdInput, taxIdInput?.id);
-            console.log('  - verificationDiv:', !!verificationDiv);
-            console.log('  - idCardFront:', !!idCardFront);
-            console.log('  - idCardBack:', !!idCardBack);
-            console.log('  - idCardFrontPreview:', !!idCardFrontPreview);
-            console.log('  - idCardBackPreview:', !!idCardBackPreview);
-            console.log('  - btnFrontPick:', !!btnFrontPick);
-            console.log('  - btnBackPick:', !!btnBackPick);
-            console.log('  - frontFileName:', !!frontFileName);
-            console.log('  - backFileName:', !!backFileName);
-            console.log('  - taxIdError:', !!taxIdError);
-            console.log('  - submitBtn:', !!submitBtn);
-            console.log('  - previewModal:', !!previewModal);
-            console.log('  - previewLargeImage:', !!previewLargeImage);
-            console.log('  - closePreviewModal:', !!closePreviewModal);
-
             if (!taxIdInput) {
                 console.error('❌ TaxId input not found!');
                 return;
@@ -157,17 +151,13 @@
 
             // Nếu không tìm thấy khối xác minh, tạo động và chèn ngay sau nhóm TaxId
             if (!verificationDiv) {
-                console.warn('⚠️ verificationDiv not found. Creating dynamically...');
                 const taxGroup = taxIdInput.closest('.mb-3') || taxIdInput.parentElement;
                 const container = document.createElement('div');
                 container.id = 'individual-verification';
-                container.className = 'alert alert-info mb-3';
-                container.style.display = 'none';
+                container.className = 'mb-3 verification-hidden panel-soft';
                 container.innerHTML = `
-                    <p class="mb-2 fw-bold">Individual Identity Verification</p>
-                    <p class="text-muted small mb-3">You entered a 12-digit Personal ID. Please upload clear photos of both sides of your ID card.</p>
                     <div class="mb-3">
-                        <label for="idCardFront" class="form-label fw-bold">Front side <span class="text-danger">*</span></label>
+                        <label for="idCardFront" class="form-label fw-bold">Front side CCCD <span class="text-danger">*</span></label>
                         <div class="d-flex align-items-center gap-2">
                             <input type="file" id="idCardFront" name="Input.IdCardFrontImage" class="visually-hidden" accept="image/*" />
                             <button type="button" id="btnFrontPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
@@ -179,7 +169,7 @@
                         <small class="text-muted d-block mt-1">JPG/PNG only</small>
                     </div>
                     <div class="mb-3">
-                        <label for="idCardBack" class="form-label fw-bold">Back side <span class="text-danger">*</span></label>
+                        <label for="idCardBack" class="form-label fw-bold">Back side CCCD <span class="text-danger">*</span></label>
                         <div class="d-flex align-items-center gap-2">
                             <input type="file" id="idCardBack" name="Input.IdCardBackImage" class="visually-hidden" accept="image/*" />
                             <button type="button" id="btnBackPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
@@ -193,7 +183,6 @@
                 `;
                 if (taxGroup && taxGroup.parentNode) {
                     taxGroup.parentNode.insertBefore(container, taxGroup.nextSibling);
-                    console.log('✓ verificationDiv created and inserted');
                     verificationDiv = container;
                     idCardFront = container.querySelector('#idCardFront');
                     idCardBack = container.querySelector('#idCardBack');
@@ -215,29 +204,90 @@
                 }
             }
 
+            // Biến để theo dõi xem user đã tương tác chưa
+            let userHasInteracted = false;
+
+            // XÓA CỨNG giá trị Tax ID khi trang load để tránh autofill
+            taxIdInput.value = '';
+            
+            // Đảm bảo ẩn thông báo và error message khi trang load
+            if (verificationDiv) {
+                verificationDiv.classList.add('verification-hidden');
+                verificationDiv.style.display = 'none';
+            }
+            if (taxIdError) {
+                taxIdError.style.display = 'none';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+            
+            // Xóa nhiều lần để chắc chắn chống autofill (browser có thể autofill sau một chút)
+            const clearAutofill = () => {
+                if (!userHasInteracted && taxIdInput.value) {
+                    taxIdInput.value = '';
+                    if (verificationDiv) {
+                        verificationDiv.classList.add('verification-hidden');
+                        verificationDiv.style.display = 'none';
+                    }
+                    if (taxIdError) {
+                        taxIdError.style.display = 'none';
+                    }
+                }
+            };
+            
+            setTimeout(clearAutofill, 50);
+            setTimeout(clearAutofill, 100);
+            setTimeout(clearAutofill, 200);
+            setTimeout(clearAutofill, 500);
+
             // Hàm để cập nhật visibility
-            function updateVerificationVisibility() {
+            function updateVerificationVisibility(isUserInteraction = false) {
+                if (isUserInteraction) {
+                    userHasInteracted = true;
+                }
+
+                // Chỉ hiển thị nếu user đã thực sự tương tác
+                if (!userHasInteracted) {
+                    // Luôn ẩn tất cả thông báo cho đến khi user tương tác
+                    if (verificationDiv) {
+                        verificationDiv.classList.add('verification-hidden');
+                        verificationDiv.style.display = 'none';
+                    }
+                    if (taxIdError) {
+                        taxIdError.style.display = 'none';
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                    }
+                    return;
+                }
+
                 const taxIdValue = taxIdInput.value || '';
                 const taxIdClean = taxIdValue.replace(/\D/g, '');
 
-                const validLen = taxIdClean.length === 0 || taxIdClean.length === 10 || taxIdClean.length === 12;
-                if (taxIdError) {
-                    taxIdError.style.display = validLen ? 'none' : 'block';
-                }
-                if (submitBtn) submitBtn.disabled = !validLen;
+                // Chỉ hiển thị error message khi:
+                // 1. Có giá trị (không rỗng)
+                // 2. Giá trị không phải 10 hoặc 12 số
+                const isEmpty = taxIdClean.length === 0;
+                const isValid = taxIdClean.length === 10 || taxIdClean.length === 12;
+                const shouldShowError = !isEmpty && !isValid;
                 
-                console.log('Input triggered:');
-                console.log('  - Raw value:', '"' + taxIdValue + '"');
-                console.log('  - Cleaned:', '"' + taxIdClean + '"');
-                console.log('  - Length:', taxIdClean.length);
-                console.log('  - Tax ID valid:', validLen);
+                if (taxIdError) {
+                    taxIdError.style.display = shouldShowError ? 'block' : 'none';
+                }
+                
+                // Chỉ disable submit button khi có giá trị SAI (không disable khi rỗng)
+                if (submitBtn) {
+                    submitBtn.disabled = shouldShowError;
+                }
                 
                 if (verificationDiv) {
                     if (taxIdClean.length === 12) {
-                        console.log('✓ SHOW verification div');
+                        verificationDiv.classList.remove('verification-hidden');
                         verificationDiv.style.display = 'block';
                     } else {
-                        console.log('✗ HIDE verification div');
+                        verificationDiv.classList.add('verification-hidden');
                         verificationDiv.style.display = 'none';
                         if (idCardFront) idCardFront.value = '';
                         if (idCardBack) idCardBack.value = '';
@@ -249,23 +299,26 @@
                 }
             }
 
-            // Gán nhiều listener để chắc chắn bắt được thay đổi
-            taxIdInput.addEventListener('input', function(e) {
-                console.log('EVENT: input');
-                updateVerificationVisibility();
-            });
-            taxIdInput.addEventListener('change', function(e) {
-                console.log('EVENT: change');
-                updateVerificationVisibility();
-            });
-            taxIdInput.addEventListener('keyup', function(e) {
-                console.log('EVENT: keyup (code:', e.code, ')');
-                updateVerificationVisibility();
+            // Đánh dấu user interaction khi họ focus vào field
+            taxIdInput.addEventListener('focus', function() {
+                userHasInteracted = true;
             });
 
-            console.log('✓ All event listeners attached');
-            console.log('Triggering initial check...');
-            updateVerificationVisibility();
+            // Đánh dấu user interaction khi họ gõ phím
+            taxIdInput.addEventListener('keydown', function() {
+                userHasInteracted = true;
+            });
+
+            // Gán nhiều listener để chắc chắn bắt được thay đổi
+            taxIdInput.addEventListener('input', function(e) {
+                updateVerificationVisibility(userHasInteracted);
+            });
+            taxIdInput.addEventListener('change', function(e) {
+                updateVerificationVisibility(userHasInteracted);
+            });
+            taxIdInput.addEventListener('keyup', function(e) {
+                updateVerificationVisibility(true); // keyup luôn là user interaction
+            });
 
             // Initialize tooltips
             if (window.bootstrap) {
@@ -335,11 +388,39 @@
                 try {
                     const fd = new FormData(form); // includes antiforgery token if present and all inputs/files
 
-                    // Validate Tax ID 10 or 12 digits before sending
+                    // Gather values
+                    const businessName = (document.querySelector('input[name="Input.BusinessName"]')?.value || '').trim();
                     const taxValRaw = (document.querySelector('#taxIdInput')?.value || '').trim();
                     const taxValClean = taxValRaw.replace(/\D/g, '');
-                    if (taxValClean.length > 0 && taxValClean.length !== 10 && taxValClean.length !== 12) {
-                        showToastMini('error', 'Tax ID must be 10 or 12 digits.');
+                    const contactPhone = (document.querySelector('input[name="Input.ContactPhone"]')?.value || '').trim();
+                    const contactPhoneClean = contactPhone.replace(/\D/g, '');
+                    const frontFile = idCardFront?.files?.[0];
+                    const backFile = idCardBack?.files?.[0];
+
+                    // Client-side validation rules
+                    const errors = [];
+                    if (!businessName) errors.push('Business name is required.');
+                    if (!taxValClean) errors.push('Tax ID is required.');
+                    if (taxValClean && taxValClean.length !== 10 && taxValClean.length !== 12) errors.push('Tax ID must be 10 or 12 digits.');
+                    if (!contactPhone) errors.push('Contact phone is required.');
+                    else if (contactPhoneClean.length !== 10) errors.push('Contact phone must be 10 digits.');
+                    if (taxValClean.length === 12) {
+                        if (!frontFile) errors.push('Front ID image is required for 12-digit Personal ID.');
+                        if (!backFile) errors.push('Back ID image is required for 12-digit Personal ID.');
+                    }
+
+                    if (errors.length > 0) {
+                        // Show first error prominently; the rest as additional toasts
+                        showToastMini('error', errors[0]);
+                        for (let i = 1; i < Math.min(errors.length, 3); i++) {
+                            setTimeout(() => showToastMini('error', errors[i]), 250 * i);
+                        }
+                        // Focus first invalid field
+                        if (!businessName) document.querySelector('input[name="Input.BusinessName"]').focus();
+                        else if (!taxValClean || (taxValClean.length !== 10 && taxValClean.length !== 12)) document.querySelector('#taxIdInput').focus();
+                        else if (!contactPhone) document.querySelector('input[name="Input.ContactPhone"]').focus();
+                        else if (taxValClean.length === 12 && !frontFile) document.querySelector('#btnFrontPick')?.focus();
+                        else if (taxValClean.length === 12 && !backFile) document.querySelector('#btnBackPick')?.focus();
                         return;
                     }
 
@@ -354,7 +435,7 @@
                         return;
                     }
 
-                    showToastMini('success', 'Application submitted. We will notify you after review.');
+                    showToastMini('success', 'Application submitted. Please check your email regularly for updates on your provider application.');
                 } catch (err) {
                     showToastMini('error', `Error: ${err?.message || err}`);
                 }
@@ -363,10 +444,8 @@
 
         // Chạy khi DOM ready
         if (document.readyState === 'loading') {
-            console.log('DOM still loading, waiting...');
             document.addEventListener('DOMContentLoaded', initializeVerification);
         } else {
-            console.log('DOM already loaded, running immediately');
             initializeVerification();
         }
     </script>
