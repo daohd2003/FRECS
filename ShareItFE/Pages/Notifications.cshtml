@@ -1,0 +1,504 @@
+@page
+@model ShareItFE.Pages.NotificationsModel
+@{
+    ViewData["Title"] = "Notifications";
+    Layout = "~/Pages/Shared/_Layout.cshtml";
+}
+
+<style>
+    /* Main Notifications Container */
+    .notifications-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        min-height: calc(100vh - 200px);
+    }
+
+    /* Header Section */
+    .notifications-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .notifications-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .btn-mark-all {
+        padding: 0.5rem 1rem;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-mark-all:hover {
+        background: #45a049;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+
+    /* Search and Filter Section */
+    .notifications-controls {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+    }
+
+    .search-bar {
+        position: relative;
+        margin-bottom: 1rem;
+    }
+
+    .search-bar input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .search-bar input:focus {
+        outline: none;
+        border-color: #2196F3;
+        box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #757575;
+        pointer-events: none;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-item {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-item label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 0.4rem;
+    }
+
+    .filter-item select {
+        width: 100%;
+        padding: 0.6rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .filter-item select:focus {
+        outline: none;
+        border-color: #2196F3;
+    }
+
+    /* Notifications List */
+    .notifications-list {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .notification-item-page {
+        padding: 1.25rem;
+        border-bottom: 1px solid #f0f0f0;
+        transition: all 0.2s ease;
+        position: relative;
+        display: flex;
+        gap: 1rem;
+        cursor: pointer;
+    }
+
+    .notification-item-page:last-child {
+        border-bottom: none;
+    }
+
+    .notification-item-page:hover {
+        background: #f8f9fa;
+    }
+
+    .notification-item-page.unread {
+        background: #e3f2fd;
+        border-left: 4px solid #2196F3;
+    }
+
+    .notification-icon {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .notification-icon.order {
+        background: #e3f2fd;
+        color: #2196F3;
+    }
+
+    .notification-icon.payment {
+        background: #fff3e0;
+        color: #ff9800;
+    }
+
+    .notification-icon.system {
+        background: #f3e5f5;
+        color: #9c27b0;
+    }
+
+    .notification-icon.message {
+        background: #e8f5e9;
+        color: #4caf50;
+    }
+
+    .notification-content-wrapper {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notification-message {
+        font-size: 0.95rem;
+        color: #333;
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+    }
+
+    .notification-item-page.unread .notification-message {
+        font-weight: 600;
+    }
+
+    .notification-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .notification-time {
+        font-size: 0.8rem;
+        color: #757575;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .notification-type-badge {
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .notification-type-badge.order {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .notification-type-badge.payment {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+
+    .notification-type-badge.system {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .notification-type-badge.message {
+        background: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .notification-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    .btn-notification-action {
+        padding: 0.4rem 0.6rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+        background: transparent;
+        color: #757575;
+    }
+
+    .btn-notification-action:hover {
+        background: #f0f0f0;
+    }
+
+    .btn-delete {
+        color: #f44336;
+    }
+
+    .btn-delete:hover {
+        background: #ffebee;
+        color: #d32f2f;
+    }
+
+    /* Pagination */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem 1rem;
+        gap: 0.5rem;
+    }
+
+    .pagination-btn {
+        padding: 0.5rem 1rem;
+        border: 2px solid #e0e0e0;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        border-color: #2196F3;
+        color: #2196F3;
+        background: #e3f2fd;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+        background: #2196F3;
+        color: white;
+        border-color: #2196F3;
+    }
+
+    .pagination-info {
+        font-size: 0.9rem;
+        color: #757575;
+        margin: 0 1rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .empty-state h3 {
+        font-size: 1.3rem;
+        color: #757575;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: #9e9e9e;
+        font-size: 0.95rem;
+    }
+
+    /* Loading State */
+    .loading-container {
+        text-align: center;
+        padding: 3rem;
+    }
+
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #2196F3;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 768px) {
+        .notifications-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .notifications-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .filter-group {
+            flex-direction: column;
+        }
+
+        .filter-item {
+            min-width: 100%;
+        }
+
+        .notification-item-page {
+            flex-direction: column;
+        }
+
+        .notification-meta {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .notification-actions {
+            margin-left: 0;
+            margin-top: 0.5rem;
+        }
+    }
+
+    /* Toast Notification Styles */
+    .toast-notification {
+        position: fixed;
+        top: 2rem;
+        right: 2rem;
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        z-index: 10000;
+        animation: slideInFromRight 0.3s ease;
+    }
+
+    @@keyframes slideInFromRight {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .toast-notification.success {
+        border-left: 4px solid #4CAF50;
+    }
+
+    .toast-notification.error {
+        border-left: 4px solid #f44336;
+    }
+</style>
+
+<div class="notifications-page">
+    <!-- Header -->
+    <div class="notifications-header">
+        <h1>Notifications</h1>
+        <div class="header-actions">
+            <button id="markAllReadBtnPage" class="btn-mark-all">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Mark all as read
+            </button>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="notifications-controls">
+        <div class="search-bar">
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search notifications...">
+        </div>
+        <div class="filter-group">
+            <div class="filter-item">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus">
+                    <option value="">All</option>
+                    <option value="unread">Unread</option>
+                    <option value="read">Read</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div id="notificationsContainer" class="notifications-list">
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <p>Loading notifications...</p>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="paginationContainer" class="pagination-container" style="display: none;">
+        <!-- Pagination will be rendered here by JavaScript -->
+    </div>
+</div>
+
+<!-- Pass data to JavaScript -->
+<script>
+    window.notificationPageConfig = {
+        userId: '@Model.UserId',
+        userRole: '@Model.UserRole',
+        apiBaseUrl: '@Model.ApiBaseUrl',
+        accessToken: '@Model.AccessToken'
+    };
+</script>
+
+<script src="~/js/notifications-page.js" asp-append-version="true"></script>
+
