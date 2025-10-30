@@ -26,15 +26,7 @@
         }
     };
 
-    var categories = new List<dynamic>
-{
-        new { Name = "Women's", Image = "https://images.pexels.com/photos/1036622/pexels-photo-1036622.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "500+" },
-        new { Name = "Men's", Image = "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "300+" },
-        new { Name = "Kids", Image = "https://images.pexels.com/photos/1620760/pexels-photo-1620760.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "200+" },
-        new { Name = "Traditional", Image = "https://images.pexels.com/photos/1239288/pexels-photo-1239288.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "150+" },
-        new { Name = "Formal", Image = "https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "400+" },
-        new { Name = "Casual", Image = "https://images.pexels.com/photos/1055691/pexels-photo-1055691.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop", Count = "350+" }
-    };
+    // Categories loaded from database via Model.Categories
 
     var benefits = new List<dynamic>
 {
@@ -120,19 +112,34 @@
                     <p class="section-subtitle">Find the perfect outfit for any occasion</p>
                 </div>
                 <div class="categories-grid">
-                    @foreach (var category in categories)
+                    @if (Model.Categories != null && Model.Categories.Any())
                     {
-                        <div class="category-item">
-                            <a href="/products?Category=@category.Name" class="category-card" style="text-decoration: none; color: inherit; display: block;">
-                                <img src="@category.Image"
-                                     alt="@category.Name"
-                                     class="category-image" />
-                                <div class="category-overlay"></div>
-                                <div class="category-info">
-                                    <h3 class="category-title">@category.Name</h3>
-                                    <p class="category-count">@category.Count items</p>
-                                </div>
-                            </a>
+                        @foreach (var category in Model.Categories)
+                        {
+                            var productCount = category.Products?.Count ?? 0;
+                            var imageUrl = !string.IsNullOrEmpty(category.ImageUrl) 
+                                ? category.ImageUrl 
+                                : "https://images.pexels.com/photos/1036622/pexels-photo-1036622.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop";
+                            
+                            <div class="category-item">
+                                <a href="/products?IsFilterOpen=true&CurrentPage=1&PageSize=8&ViewMode=grid&SortBy=popular&CategoryFilter=@Uri.EscapeDataString(category.Name)" class="category-card" style="text-decoration: none; color: inherit; display: block;">
+                                    <img src="@imageUrl"
+                                         alt="@category.Name"
+                                         class="category-image" 
+                                         onerror="this.src='https://images.pexels.com/photos/1036622/pexels-photo-1036622.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop'" />
+                                    <div class="category-overlay"></div>
+                                    <div class="category-info">
+                                        <h3 class="category-title">@category.Name</h3>
+                                        <p class="category-count">@productCount @(productCount == 1 ? "item" : "items")</p>
+                                    </div>
+                                </a>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                            <p style="color: #666; font-size: 1.1rem;">No categories available at the moment.</p>
                         </div>
                     }
                 </div>

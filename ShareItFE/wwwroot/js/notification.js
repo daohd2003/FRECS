@@ -27,7 +27,6 @@
         
         // Load fresh notifications when opening dropdown
         if (!isVisible && userId) {
-            console.log('Loading fresh notifications on dropdown open...');
             loadNotifications(userId);
         }
     });

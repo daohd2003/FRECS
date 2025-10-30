@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.ApiResponses;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -28,11 +29,54 @@ namespace ShareItFE.Pages
 
         // Changed back to List<ProductDTO> for proper method support
         public List<ProductDTO> TopRentals { get; set; } = new List<ProductDTO>();
+        
+        // Categories loaded from database
+        public List<CategoryDto> Categories { get; set; } = new List<CategoryDto>();
 
         public async Task OnGetAsync()
         {
             var client = _httpClientFactory.CreateClient("BackendApi");
 
+            // Load categories and products in parallel
+            var categoriesTask = LoadCategoriesAsync(client);
+            var productsTask = LoadProductsAsync(client);
+
+            await Task.WhenAll(categoriesTask, productsTask);
+        }
+
+        private async Task LoadCategoriesAsync(HttpClient client)
+        {
+            try
+            {
+                var response = await client.GetAsync("api/categories");
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new JsonStringEnumConverter() }
+                    };
+
+                    // API returns List<CategoryDto> directly without ApiResponse wrapper for GetAll
+                    Categories = await response.Content.ReadFromJsonAsync<List<CategoryDto>>(jsonOptions)
+                                 ?? new List<CategoryDto>();
+                    
+                    // Filter only active categories and sort by product count
+                    Categories = Categories
+                        .Where(c => c.IsActive)
+                        .OrderByDescending(c => c.Products?.Count ?? 0)
+                        .ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading categories from API");
+                Categories = new List<CategoryDto>();
+            }
+        }
+
+        private async Task LoadProductsAsync(HttpClient client)
+        {
             // 1. Truy vấn sản phẩm ưu tiên
             var topTierUrl = "odata/products" +
                              "?$filter=IsPromoted eq true and AverageRating gt 4.0" +
