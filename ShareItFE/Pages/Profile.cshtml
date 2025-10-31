@@ -492,7 +492,7 @@
                                     </div>
 
                                     <!-- Form đổi mật khẩu - ẩn ban đầu -->
-                                    <div id="change-password-form" class="mt-3 @(ViewData.ModelState.IsValid ? "d-none" : "")">
+                                    <div id="change-password-form" class="mt-3 @(Model.ShowChangePasswordForm ? "" : "d-none")">
                                         <form method="post" asp-page-handler="ChangePassword">
                                             @Html.AntiForgeryToken()
 
