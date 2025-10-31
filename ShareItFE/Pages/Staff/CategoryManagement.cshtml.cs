@@ -152,7 +152,25 @@ namespace ShareItFE.Pages.Staff
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    return new JsonResult(new { success = false, message = $"Failed to update status: {errorContent}" });
+                    
+                    // Try to parse ApiResponse JSON to extract only the message
+                    try
+                    {
+                        var apiResponse = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<string>>(
+                            errorContent, 
+                            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        
+                        if (apiResponse != null && !string.IsNullOrEmpty(apiResponse.Message))
+                        {
+                            return new JsonResult(new { success = false, message = apiResponse.Message });
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, use raw error content
+                    }
+                    
+                    return new JsonResult(new { success = false, message = errorContent });
                 }
             }
             catch (Exception ex)
@@ -176,6 +194,11 @@ namespace ShareItFE.Pages.Staff
                     return new JsonResult(new { success = false, message = "Category name is required" });
                 }
 
+                if (string.IsNullOrEmpty(categoryDescription))
+                {
+                    return new JsonResult(new { success = false, message = "Category description is required" });
+                }
+
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
 
                 // Create multipart/form-data content
@@ -183,11 +206,7 @@ namespace ShareItFE.Pages.Staff
                 
                 // Add form fields
                 formContent.Add(new StringContent(categoryName), "name");
-                
-                if (!string.IsNullOrEmpty(categoryDescription))
-                {
-                    formContent.Add(new StringContent(categoryDescription), "description");
-                }
+                formContent.Add(new StringContent(categoryDescription), "description");
                 
                 formContent.Add(new StringContent(isActive.ToString().ToLower()), "isActive");
                 
@@ -209,7 +228,25 @@ namespace ShareItFE.Pages.Staff
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    return new JsonResult(new { success = false, message = $"Failed to create category: {errorContent}" });
+                    
+                    // Try to parse ApiResponse JSON to extract only the message
+                    try
+                    {
+                        var apiResponse = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<string>>(
+                            errorContent, 
+                            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        
+                        if (apiResponse != null && !string.IsNullOrEmpty(apiResponse.Message))
+                        {
+                            return new JsonResult(new { success = false, message = apiResponse.Message });
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, use raw error content
+                    }
+                    
+                    return new JsonResult(new { success = false, message = errorContent });
                 }
             }
             catch (Exception ex)
@@ -234,17 +271,18 @@ namespace ShareItFE.Pages.Staff
                     return new JsonResult(new { success = false, message = "Category ID and name are required" });
                 }
 
+                if (string.IsNullOrEmpty(categoryDescription))
+                {
+                    return new JsonResult(new { success = false, message = "Category description is required" });
+                }
+
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
 
                 // Create multipart/form-data for update (with image if provided)
                 using var formContent = new MultipartFormDataContent();
                 
                 formContent.Add(new StringContent(categoryName), "name");
-                
-                if (!string.IsNullOrEmpty(categoryDescription))
-                {
-                    formContent.Add(new StringContent(categoryDescription), "description");
-                }
+                formContent.Add(new StringContent(categoryDescription), "description");
                 
                 formContent.Add(new StringContent(isActive.ToString().ToLower()), "isActive");
                 
@@ -266,7 +304,25 @@ namespace ShareItFE.Pages.Staff
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    return new JsonResult(new { success = false, message = $"Failed to update category: {errorContent}" });
+                    
+                    // Try to parse ApiResponse JSON to extract only the message
+                    try
+                    {
+                        var apiResponse = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<string>>(
+                            errorContent, 
+                            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        
+                        if (apiResponse != null && !string.IsNullOrEmpty(apiResponse.Message))
+                        {
+                            return new JsonResult(new { success = false, message = apiResponse.Message });
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, use raw error content
+                    }
+                    
+                    return new JsonResult(new { success = false, message = errorContent });
                 }
             }
             catch (Exception ex)

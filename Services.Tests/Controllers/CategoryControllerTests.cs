@@ -48,7 +48,13 @@ namespace Services.Tests.Controllers
             // Arrange
             var categoryName = "New Category";
             var description = "A great new category";
-            var mockImageFile = new FormFile(new MemoryStream(), 0, 0, "ImageFile", "test.jpg");
+            // Use non-empty file so controller passes the image validation
+            var imgStream = new MemoryStream();
+            var imgWriter = new StreamWriter(imgStream);
+            imgWriter.Write("image bytes");
+            imgWriter.Flush();
+            imgStream.Position = 0;
+            var mockImageFile = new FormFile(imgStream, 0, imgStream.Length, "ImageFile", "test.jpg");
             var mockUploadResult = new ImageUploadResult { ImageUrl = "http://example.com/image.jpg" };
             var createdDto = new CategoryDto { Id = Guid.NewGuid(), Name = categoryName };
 
@@ -74,26 +80,18 @@ namespace Services.Tests.Controllers
         [Fact]
         [Trait("Feature", "Category")]
         [Trait("Action", "Create")]
-        public async Task Create_WithValidDataWithoutImage_ReturnsCreatedAtActionResult()
+        public async Task Create_WithValidDataWithoutImage_ReturnsBadRequest()
         {
             // Arrange
             var categoryName = "New Category No Image";
-            var createdDto = new CategoryDto { Id = Guid.NewGuid(), Name = categoryName };
-
-            _mockCategoryService
-                .Setup(s => s.CreateAsync(It.Is<CategoryCreateUpdateDto>(d => d.Name == categoryName && d.ImageUrl == null), _mockUserId))
-                .ReturnsAsync(createdDto);
 
             // Act
             var result = await _controller.Create(categoryName, null, "description", true);
 
             // Assert
-            var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result);
-            Assert.Equal(201, createdAtActionResult.StatusCode);
-            var apiResponse = Assert.IsType<ApiResponse<CategoryDto>>(createdAtActionResult.Value);
-            Assert.Equal("Category created successfully", apiResponse.Message);
-            
-            // Verify that upload was not called
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var apiResponse = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
+            Assert.Equal("Image is required", apiResponse.Message);
             _mockCloudinaryService.Verify(s => s.UploadCategoryImageAsync(It.IsAny<IFormFile>(), It.IsAny<Guid>()), Times.Never);
         }
 
@@ -133,8 +131,16 @@ namespace Services.Tests.Controllers
                 HttpContext = new DefaultHttpContext { User = userPrincipal }
             };
 
+            // Provide a non-empty image so validation passes and hits user id check
+            var imgStream = new MemoryStream();
+            var imgWriter = new StreamWriter(imgStream);
+            imgWriter.Write("image content");
+            imgWriter.Flush();
+            imgStream.Position = 0;
+            var mockImage = new FormFile(imgStream, 0, imgStream.Length, "ImageFile", "any.jpg");
+
             // Act
-            var result = await controllerWithInvalidUser.Create("Test Category", null, "desc", true);
+            var result = await controllerWithInvalidUser.Create("Test Category", mockImage, "desc", true);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -149,7 +155,13 @@ namespace Services.Tests.Controllers
         public async Task Create_WhenImageUploadThrowsArgumentException_ReturnsBadRequest()
         {
             // Arrange
-            var mockImageFile = new FormFile(new MemoryStream(), 0, 0, "ImageFile", "invalid.txt");
+            // Use non-empty file to reach upload branch
+            var imgStream = new MemoryStream();
+            var imgWriter = new StreamWriter(imgStream);
+            imgWriter.Write("bad image content");
+            imgWriter.Flush();
+            imgStream.Position = 0;
+            var mockImageFile = new FormFile(imgStream, 0, imgStream.Length, "ImageFile", "invalid.txt");
             var validationErrorMessage = "File type not supported.";
 
             _mockCloudinaryService
@@ -162,18 +174,22 @@ namespace Services.Tests.Controllers
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             var apiResponse = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
-            // FIX 2: The controller has a bug causing a NullReferenceException when the service throws.
-            // The test is updated to assert the actual NRE message.
-            Assert.Equal("Failed to create category: Object reference not set to an instance of an object.", apiResponse.Message);
+            Assert.Equal($"Image upload validation failed: {validationErrorMessage}", apiResponse.Message);
         }
         
         [Fact]
         [Trait("Feature", "Category")]
         [Trait("Action", "Create")]
-        public async Task Create_WhenImageUploadThrowsGeneralException_ReturnsBadRequest_DueToControllerError()
+        public async Task Create_WhenImageUploadThrowsGeneralException_ReturnsInternalServerError()
         {
             // Arrange
-            var mockImageFile = new FormFile(new MemoryStream(), 0, 0, "ImageFile", "test.jpg");
+            // Use non-empty file to reach upload branch
+            var imgStream = new MemoryStream();
+            var imgWriter = new StreamWriter(imgStream);
+            imgWriter.Write("image content");
+            imgWriter.Flush();
+            imgStream.Position = 0;
+            var mockImageFile = new FormFile(imgStream, 0, imgStream.Length, "ImageFile", "test.jpg");
             var uploadErrorMessage = "Cloudinary service is down.";
 
             _mockCloudinaryService
@@ -184,12 +200,10 @@ namespace Services.Tests.Controllers
             var result = await _controller.Create("Test Category", mockImageFile, "desc", true);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal(400, badRequestResult.StatusCode);
-            var apiResponse = Assert.IsType<ApiResponse<string>>(badRequestResult.Value);
-            // FIX 2: The controller has a bug causing a NullReferenceException when the service throws.
-            // The test is updated to assert the actual NRE message.
-            Assert.Equal("Failed to create category: Object reference not set to an instance of an object.", apiResponse.Message);
+            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, statusCodeResult.StatusCode);
+            var apiResponse = Assert.IsType<ApiResponse<string>>(statusCodeResult.Value);
+            Assert.Equal($"Image upload failed: {uploadErrorMessage}", apiResponse.Message);
         }
 
         [Fact]
@@ -199,12 +213,23 @@ namespace Services.Tests.Controllers
         {
             // Arrange
             var errorMessage = "Database error occurred.";
+            // Non-empty image to pass validation and proceed to upload
+            var imgStream = new MemoryStream();
+            var imgWriter = new StreamWriter(imgStream);
+            imgWriter.Write("image content");
+            imgWriter.Flush();
+            imgStream.Position = 0;
+            var mockImage = new FormFile(imgStream, 0, imgStream.Length, "ImageFile", "ok.jpg");
+            // Upload succeeds and returns a URL
+            _mockCloudinaryService
+                .Setup(s => s.UploadCategoryImageAsync(mockImage, _mockUserId))
+                .ReturnsAsync(new ImageUploadResult { ImageUrl = "http://example.com/ok.jpg" });
             _mockCategoryService
                 .Setup(s => s.CreateAsync(It.IsAny<CategoryCreateUpdateDto>(), _mockUserId))
                 .ThrowsAsync(new Exception(errorMessage));
 
             // Act
-            var result = await _controller.Create("Test Category", null, "desc", true);
+            var result = await _controller.Create("Test Category", mockImage, "desc", true);
             
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -470,7 +495,13 @@ namespace Services.Tests.Controllers
             // Arrange
             var categoryId = Guid.NewGuid();
             var existingCategory = new CategoryDto { Id = categoryId, Name = "Old Name" };
-            var newImageFile = new FormFile(new MemoryStream(), 0, 0, "ImageFile", "invalid.txt");
+            // Non-empty image file to enter upload branch
+            var stream = new MemoryStream();
+            var writer = new StreamWriter(stream);
+            writer.Write("dummy image content");
+            writer.Flush();
+            stream.Position = 0;
+            var newImageFile = new FormFile(stream, 0, stream.Length, "ImageFile", "invalid.txt");
             var uploadErrorMessage = "Invalid file type";
 
             _mockCategoryService.Setup(s => s.GetByIdAsync(categoryId)).ReturnsAsync(existingCategory);
@@ -482,10 +513,10 @@ namespace Services.Tests.Controllers
             var result = await _controller.Update(categoryId, "New Name", "desc", true, newImageFile);
 
             // Assert
-            // FIX: The controller has a bug where it doesn't catch the image upload exception correctly.
-            // It continues execution, and because UpdateAsync isn't mocked for this path, Moq returns false,
-            // leading to a NotFoundResult. This test now asserts this incorrect behavior.
-            Assert.IsType<NotFoundResult>(result);
+            // Align with controller: this should be BadRequest with validation message
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            var api = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+            Assert.Equal($"Image upload validation failed: {uploadErrorMessage}", api.Message);
         }
 
         [Fact]
