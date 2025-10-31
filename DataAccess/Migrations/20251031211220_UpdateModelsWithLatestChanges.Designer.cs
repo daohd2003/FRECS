@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    [Migration("20251031191329_UpdateOrderDepositRefundToOneToOne")]
-    partial class UpdateOrderDepositRefundToOneToOne
+    [Migration("20251031211220_UpdateModelsWithLatestChanges")]
+    partial class UpdateModelsWithLatestChanges
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -150,6 +150,7 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
