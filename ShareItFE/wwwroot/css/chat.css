@@ -1,11 +1,13 @@
 ﻿/* --- Cấu trúc Layout chính --- */
 .chat-container {
     display: flex;
-    min-height: 100vh; /* Chiều cao tối thiểu bằng viewport */
+    height: 100vh; /* Chiều cao cố định bằng viewport */
+    max-height: 100vh; /* Không cho vượt quá viewport */
     font-family: sans-serif;
     background-color: #f9fafb;
     position: relative;
     z-index: 10; /* Đảm bảo nằm trên footer */
+    overflow: hidden; /* Chặn scroll của container chính */
 }
 
 /* --- Cột trái: Danh sách hội thoại --- */
@@ -17,15 +19,17 @@
     background-color: #ffffff;
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100vh; /* Chiều cao cố định */
+    max-height: 100vh;
     position: relative;
     z-index: 11;
-    overflow-x: hidden; /* ✅ Chặn tràn ngang */
+    overflow: hidden; /* ✅ Chặn tràn, scroll chỉ ở conversation-list-body */
 }
 
 .conversation-list-header {
     padding: 1rem;
     border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0; /* Không co lại khi scroll */
 }
 
     .conversation-list-header h2 {
@@ -35,8 +39,29 @@
     }
 
 .conversation-list-body {
-    overflow-y: auto;
+    overflow-y: auto; /* Scroll độc lập cho danh sách conversation */
+    overflow-x: hidden;
     flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0; /* Quan trọng: cho phép flex item co lại và scroll */
+}
+
+/* Scrollbar styling cho conversation list */
+.conversation-list-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.conversation-list-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.conversation-list-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.conversation-list-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 .conversation-item {
@@ -130,8 +155,9 @@
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: hidden;
-    min-height: 100vh;
+    height: 100vh; /* Chiều cao cố định */
+    max-height: 100vh;
+    overflow: hidden; /* Chặn scroll, scroll chỉ ở messages-container */
     position: relative;
     z-index: 11;
 }
@@ -149,9 +175,11 @@
     display: flex;
     flex-direction: column;
     background-color: #ffffff;
-    min-height: 100vh;
+    height: 100%; /* Chiều cao 100% của parent */
+    max-height: 93%;
     position: relative;
-    z-index: 11; /* Cao hơn container để đảm bảo che footer */
+    z-index: 11;
+    overflow: hidden; /* Chặn scroll ở chat-window level */
 }
 
 .chat-header {
@@ -159,6 +187,7 @@
     border-bottom: 1px solid #e5e7eb;
     display: flex;
     align-items: center;
+    flex-shrink: 0; /* Không co lại khi scroll */
 }
 
     .chat-header .name {
@@ -172,6 +201,7 @@
     padding: 0.75rem;
     border-bottom: 1px solid #e5e7eb;
     background-color: #f9fafb;
+    flex-shrink: 0; /* Không co lại khi scroll */
 }
 
     .product-context-banner img {
@@ -188,12 +218,31 @@
 
 .messages-container {
     flex-grow: 1;
-    overflow-y: auto;
+    flex-shrink: 1;
+    min-height: 0; /* Quan trọng: cho phép flex item co lại và scroll */
+    overflow-y: auto; /* Scroll độc lập cho tin nhắn */
     overflow-x: hidden;
     padding: 1rem;
-    height: 100%;
     display: flex;
     flex-direction: column;
+}
+
+/* Scrollbar styling cho messages container */
+.messages-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 .message-row {
@@ -214,6 +263,8 @@
     border-radius: 1rem;
     max-width: 100%;
     word-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
     cursor: pointer;
     transition: background-color 0.1s ease;
 }
@@ -252,6 +303,7 @@
     background-color: #f9fafb;
     display: flex;
     align-items: center;
+    flex-shrink: 0; /* Không co lại, luôn ở dưới cùng */
 }
 
     .message-form input {
@@ -377,10 +429,12 @@
     word-wrap: break-word;
 }
 
-.message-bubble-container.me {
-    align-items: flex-end;
-}
+    .message-bubble-container.me {
+        align-items: flex-end;
+        width: -webkit-fill-available;
+    }
 
-.message-bubble-container.them {
-    align-items: flex-start;
-}
+    .message-bubble-container.them {
+        align-items: flex-start;
+        width: -webkit-fill-available;
+    }
