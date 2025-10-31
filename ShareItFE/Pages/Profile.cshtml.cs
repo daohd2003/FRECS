@@ -52,6 +52,9 @@ namespace ShareItFE.Pages
         [BindProperty]
         public ChangePasswordRequest ChangePassword { get; set; }
 
+        [TempData]
+        public bool ShowChangePasswordForm { get; set; }
+
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
         public string AccessToken { get; set; }
 
@@ -247,6 +250,7 @@ namespace ShareItFE.Pages
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
                 ErrorMessage = string.Join(" ", errors);
+                ShowChangePasswordForm = true;
                 return RedirectToPage(new { tab = "settings" });
             }
 
@@ -270,6 +274,7 @@ namespace ShareItFE.Pages
             {
                 var errorResponse = await response.Content.ReadFromJsonAsync<ApiResponse<string>>();
                 ErrorMessage = errorResponse?.Message ?? "An error occurred while changing the password.";
+                ShowChangePasswordForm = true;
             }
 
             return RedirectToPage(new { tab = "settings" });
