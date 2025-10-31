@@ -69,5 +69,10 @@ namespace BusinessObject.Models
         /// </summary>
         [Column(TypeName = "decimal(10,2)")]
         public decimal DiscountAmount { get; set; } = 0m;
+
+        /// <summary>
+        /// Deposit refund for this order (1-1 relationship)
+        /// </summary>
+        public DepositRefund? DepositRefund { get; set; }
     }
 }

@@ -2,6 +2,7 @@
 @model ShareItFE.Pages.Admin.UserManagementModel
 @{
     ViewData["Title"] = "User Management";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 }
 
 @section Styles {

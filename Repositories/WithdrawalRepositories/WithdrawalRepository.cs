@@ -23,6 +23,7 @@ namespace Repositories.WithdrawalRepositories
                 .Include(w => w.ProcessedByAdmin)
                 .Where(w => w.ProviderId == providerId)
                 .OrderByDescending(w => w.RequestDate)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -45,6 +46,7 @@ namespace Repositories.WithdrawalRepositories
                 .Include(w => w.BankAccount)
                 .Where(w => w.Status == WithdrawalStatus.Initiated)
                 .OrderBy(w => w.RequestDate)
+                .AsNoTracking()
                 .ToListAsync();
         }
 
@@ -57,6 +59,7 @@ namespace Repositories.WithdrawalRepositories
                 .Include(w => w.ProcessedByAdmin)
                     .ThenInclude(a => a.Profile)
                 .OrderByDescending(w => w.RequestDate)
+                .AsNoTracking() // ✅ Optimize: Disable change tracking for read-only queries
                 .ToListAsync();
         }
 

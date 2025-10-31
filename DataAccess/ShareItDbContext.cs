@@ -398,15 +398,15 @@ namespace DataAccess
                 .HasForeignKey(rvi => rvi.ViolationId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // DepositRefund configuration
+            // DepositRefund configuration - 1-1 relationship with Order
             modelBuilder.Entity<DepositRefund>()
                 .Property(dr => dr.Status)
                 .HasConversion<string>();
 
             modelBuilder.Entity<DepositRefund>()
                 .HasOne(dr => dr.Order)
-                .WithMany()
-                .HasForeignKey(dr => dr.OrderId)
+                .WithOne(o => o.DepositRefund)
+                .HasForeignKey<DepositRefund>(dr => dr.OrderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<DepositRefund>()
