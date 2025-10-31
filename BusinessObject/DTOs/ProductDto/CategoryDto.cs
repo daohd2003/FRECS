@@ -22,8 +22,9 @@ namespace BusinessObject.DTOs.ProductDto
 		[MaxLength(150)]
 		public string Name { get; set; }
 
+		[Required]
 		[MaxLength(255)]
-		public string? Description { get; set; }
+		public string Description { get; set; }
 
 		[Required(ErrorMessage = "Category image is required")]
 		public string ImageUrl { get; set; }

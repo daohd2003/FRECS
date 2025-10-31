@@ -110,8 +110,8 @@ namespace ShareItAPI.Controllers
 	[HttpPost]
 	public async Task<IActionResult> Create(
 		[FromForm] string name, 
-		[FromForm] IFormFile ImageFile,
-		[FromForm] string? description, 
+		[FromForm] IFormFile? ImageFile,
+		[FromForm] string description, 
 		[FromForm] bool isActive = true)
 	{
 		try
@@ -122,10 +122,16 @@ namespace ShareItAPI.Controllers
 				return BadRequest(new ApiResponse<string>("Category name is required", null));
 			}
 
+			// Validate description is provided
+			if (string.IsNullOrWhiteSpace(description))
+			{
+				return BadRequest(new ApiResponse<string>("Category description is required", null));
+			}
+
 			// Validate image is provided
 			if (ImageFile == null || ImageFile.Length == 0)
 			{
-				return BadRequest(new ApiResponse<string>("Category image is required", null));
+				return BadRequest(new ApiResponse<string>("Image is required", null));
 			}
 
 			// Get user ID from JWT token
@@ -208,7 +214,7 @@ namespace ShareItAPI.Controllers
 	public async Task<IActionResult> Update(
 		Guid id,
 		[FromForm] string name,
-		[FromForm] string? description,
+		[FromForm] string description,
 		[FromForm] bool isActive = true,
 		[FromForm] IFormFile? ImageFile = null)
 	{
@@ -218,6 +224,12 @@ namespace ShareItAPI.Controllers
 			if (string.IsNullOrWhiteSpace(name))
 			{
 				return BadRequest(new ApiResponse<string>("Category name is required", null));
+			}
+
+			// Validate description is provided
+			if (string.IsNullOrWhiteSpace(description))
+			{
+				return BadRequest(new ApiResponse<string>("Category description is required", null));
 			}
 
 			// Get user ID from JWT token
