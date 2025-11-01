@@ -144,12 +144,6 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostUpdateProfileAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                await OnGetAsync();
-                return Page();
-            }
-
             var profileUpdateDto = new BusinessObject.DTOs.ProfileDtos.ProfileUpdateDto
             {
                 FullName = Profile.FullName,
@@ -246,6 +240,13 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostChangePasswordAsync()
         {
+            // Remove Profile validation errors from ModelState
+            ModelState.Remove("Profile.FullName");
+            ModelState.Remove("Profile.Phone");
+            ModelState.Remove("Profile.Address");
+            ModelState.Remove("Profile.Email");
+            ModelState.Remove("Profile.Avatar");
+
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
