@@ -45,7 +45,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-layout.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/floating-chat.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/floating-chat.css?v=@DateTime.Now.Ticks" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -78,6 +78,26 @@
                 <div class="nav-section">
                     <span class="nav-section-title">Management</span>
                     
+                    <a asp-page="/Admin/UserManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/UserManagement" ? "active" : "")">
+                        <i class="bi bi-people"></i>
+                        <span>User Management</span>
+                    </a>
+
+                    <a asp-page="/Staff/CategoryManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Staff/CategoryManagement" ? "active" : "")">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                        <span>Category Management</span>
+                    </a>
+
+                    <a asp-page="/Staff/ProviderApplicationManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Staff/ProviderApplicationManagement" ? "active" : "")">
+                        <i class="bi bi-person-check"></i>
+                        <span>Provider Applications</span>
+                    </a>
+
+                    <a asp-page="/Staff/ProductAdministration" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Staff/ProductAdministration" ? "active" : "")">
+                        <i class="bi bi-box-seam"></i>
+                        <span>Product Administration</span>
+                    </a>
+
                     <a asp-page="/Admin/Discounts/DiscountCodes" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("DiscountCodes") == true ? "active" : "")">
                         <i class="bi bi-ticket-perforated"></i>
                         <span>Discount Codes</span>
@@ -88,14 +108,19 @@
                         <span>Reports</span>
                     </a>
 
-                    <a asp-page="/ProductVerification" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/ProductVerification" ? "active" : "")">
-                        <i class="bi bi-shield-check"></i>
-                        <span>Product Verification</span>
-                    </a>
-
                     <a asp-page="/Admin/Messages" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/Messages" ? "active" : "")">
                         <i class="bi bi-chat-dots-fill"></i>
                         <span>Messages</span>
+                    </a>
+
+                    <a href="#" class="nav-item disabled" style="opacity: 0.6; cursor: not-allowed;">
+                        <i class="bi bi-cart-check"></i>
+                        <span>Order Administration</span>
+                    </a>
+
+                    <a href="#" class="nav-item disabled" style="opacity: 0.6; cursor: not-allowed;">
+                        <i class="bi bi-star"></i>
+                        <span>Product Feedback</span>
                     </a>
                     
                     @if (userRole == "admin")
@@ -115,14 +140,6 @@
                             <span>Staff Management</span>
                         </a>
                     }
-                </div>
-
-                <div class="nav-section">
-                    <span class="nav-section-title">System</span>
-                    <a asp-page="/Index" class="nav-item">
-                        <i class="bi bi-house-door-fill"></i>
-                        <span>Back to Site</span>
-                    </a>
                 </div>
             </nav>
 
@@ -170,7 +187,7 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/toast-manager.js" asp-append-version="true"></script>
     <script src="~/js/dist/browser/signalr.js"></script>
-    <script src="~/js/floating-chat-manager.js" asp-append-version="true"></script>
+    <script src="~/js/floating-chat-manager.js?v=@DateTime.Now.Ticks"></script>
     @await RenderSectionAsync("Scripts", required: false)
 
     <script>

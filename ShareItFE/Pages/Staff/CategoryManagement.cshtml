@@ -2,6 +2,7 @@
 @model ShareItFE.Pages.Staff.CategoryManagementModel
 @{
     ViewData["Title"] = "Category Management";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 }
 
 @section Styles {

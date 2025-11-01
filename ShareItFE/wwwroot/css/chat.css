@@ -264,7 +264,6 @@
     max-width: 100%;
     word-wrap: break-word;
     word-break: break-word;
-    white-space: pre-wrap;
     cursor: pointer;
     transition: background-color 0.1s ease;
 }

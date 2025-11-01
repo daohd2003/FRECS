@@ -2,6 +2,7 @@
 @model ShareItFE.Pages.ReportManagementModel
 @{
     ViewData["Title"] = "Report Management";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 
     string GetPriorityClass(BusinessObject.Enums.ReportPriority priority)
     {

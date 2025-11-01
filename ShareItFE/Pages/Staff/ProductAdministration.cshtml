@@ -2,6 +2,7 @@
 @model ShareItFE.Pages.Staff.ProductAdministrationModel
 @{
     ViewData["Title"] = "Product Administrator";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 }
 
 @section Styles {

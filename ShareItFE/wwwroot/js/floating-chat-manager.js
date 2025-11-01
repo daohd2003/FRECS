@@ -64,30 +64,40 @@ class FloatingChatManager {
     }
 
     createContainer() {
-        if (document.getElementById('floating-chats-container')) {
-            this.container = document.getElementById('floating-chats-container');
-            this.expandedContainer = document.getElementById('floating-chats-expanded');
-            this.minimizedContainer = document.getElementById('floating-chats-minimized');
-            return;
-        }
+        // Wait for DOM to be ready before creating container
+        const createContainerElements = () => {
+            if (document.getElementById('floating-chats-container')) {
+                this.container = document.getElementById('floating-chats-container');
+                this.expandedContainer = document.getElementById('floating-chats-expanded');
+                this.minimizedContainer = document.getElementById('floating-chats-minimized');
+                return;
+            }
 
-        this.container = document.createElement('div');
-        this.container.id = 'floating-chats-container';
-        this.container.className = 'floating-chats-container';
-        
-        // Create expanded container (horizontal)
-        this.expandedContainer = document.createElement('div');
-        this.expandedContainer.id = 'floating-chats-expanded';
-        this.expandedContainer.className = 'floating-chats-expanded';
-        
-        // Create minimized container (vertical)
-        this.minimizedContainer = document.createElement('div');
-        this.minimizedContainer.id = 'floating-chats-minimized';
-        this.minimizedContainer.className = 'floating-chats-minimized';
-        
-        this.container.appendChild(this.expandedContainer);
-        this.container.appendChild(this.minimizedContainer);
-        document.body.appendChild(this.container);
+            this.container = document.createElement('div');
+            this.container.id = 'floating-chats-container';
+            this.container.className = 'floating-chats-container';
+            
+            // Create expanded container (horizontal)
+            this.expandedContainer = document.createElement('div');
+            this.expandedContainer.id = 'floating-chats-expanded';
+            this.expandedContainer.className = 'floating-chats-expanded';
+            
+            // Create minimized container (vertical)
+            this.minimizedContainer = document.createElement('div');
+            this.minimizedContainer.id = 'floating-chats-minimized';
+            this.minimizedContainer.className = 'floating-chats-minimized';
+            
+            this.container.appendChild(this.expandedContainer);
+            this.container.appendChild(this.minimizedContainer);
+            document.body.appendChild(this.container);
+        };
+
+        // If DOM is ready, create immediately, otherwise wait
+        if (document.body) {
+            createContainerElements();
+        } else {
+            document.addEventListener('DOMContentLoaded', createContainerElements);
+        }
     }
 
     loadSavedChats() {
@@ -453,14 +463,14 @@ class FloatingChatManager {
             messageEl.innerHTML = `
                 <div class="message-avatar">${this.escapeHtml(chat.avatar)}</div>
                 <div class="message-bubble">
-                    <div>${this.escapeHtml(message.content)}</div>
+                    <span>${this.escapeHtml(message.content)}</span>
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
         } else {
             messageEl.innerHTML = `
                 <div class="message-bubble">
-                    <div>${this.escapeHtml(message.content)}</div>
+                    <span>${this.escapeHtml(message.content)}</span>
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
@@ -585,16 +595,11 @@ class FloatingChatManager {
     }
 }
 
-// Initialize on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        window.floatingChatManager = new FloatingChatManager();
-    });
-} else {
-    window.floatingChatManager = new FloatingChatManager();
-}
+// Initialize immediately - no waiting for DOM
+// This ensures the manager is available when other scripts call it
+window.floatingChatManager = new FloatingChatManager();
 
-// Global helper function
+// Global helper function - simple and direct since manager initializes immediately
 window.openFloatingChat = (userId, userName, avatar) => {
     if (window.floatingChatManager) {
         window.floatingChatManager.openChat(userId, userName, avatar);
@@ -602,4 +607,5 @@ window.openFloatingChat = (userId, userName, avatar) => {
         console.error('FloatingChatManager not initialized');
     }
 };
+
 
