@@ -134,8 +134,52 @@
               * 3 core test cases (UTCID-01, UTCID-02, UTCID-03) + 2 additional tests
               * Total: 5 unit tests
             
+            - CustomerDashboard/CustomerDashboardServiceTests.cs: Track Spending functionality tests (Service Layer)
+              * 6 core test cases (UTCID01-UTCID06) + 2 additional tests
+              * Total: 8 unit tests
+            
+            - Deposit/DepositServiceTests.cs: View Deposit History functionality tests (Service Layer)
+              * 4 core test cases (UTCID01-UTCID04) + 3 additional tests
+              * Total: 7 unit tests
+            
+            - Order/OrderServiceTests.cs: View Order History, Details, and Status functionality tests (Service Layer)
+              * 7 core test cases (UTCID01-UTCID07) + 3 additional tests
+              * Total: 10 unit tests
+            
+            - Conversation/ConversationServiceTests.cs: Chat with Provider and Staff functionality tests (Service Layer)
+              * 6 core test cases (UTCID01-UTCID06) + 3 additional tests
+              * Total: 9 unit tests
+            
+            - Report/ReportServiceTests.cs: Report Issues to Staff functionality tests (Service Layer)
+              * 7 core test cases (UTCID01-UTCID07) + 2 additional tests
+              * Total: 9 unit tests
+            
+            - Favorite/FavoriteServiceTests.cs: View, Add, and Remove Favorites functionality tests (Service Layer)
+              * 7 core test cases (UTCID01-UTCID07) + 4 additional tests
+              * Total: 11 unit tests
+            
+            - Controllers/CustomerDashboardControllerTests.cs: Track Spending functionality tests (Controller Layer)
+              * 3 core tests + 1 additional test
+              * Total: 4 unit tests
+            
+            - Controllers/DepositControllerTests.cs: View Deposit History functionality tests (Controller Layer)
+              * 3 core tests + 1 additional test
+              * Total: 4 unit tests
+            
+            - Controllers/OrderControllerTests.cs: View Order History, Details, and Status functionality tests (Controller Layer)
+              * 9 core tests covering order history, details, status, and updates
+              * Total: 9 unit tests
+            
+            - Controllers/FavoritesControllerTests.cs: View, Add, and Remove Favorites functionality tests (Controller Layer)
+              * 7 core tests covering view, add, remove, and check favorites
+              * Total: 7 unit tests
+            
+            - Controllers/ReportControllerTests.cs: Report Issues to Staff functionality tests (Controller Layer)
+              * 8 core tests covering create, view, take, respond, and update reports
+              * Total: 8 unit tests
+            
             ================================================================================
-            OVERALL TOTAL: 191 unit tests
+            OVERALL TOTAL: 268 unit tests
             ================================================================================
     
     Run tests: dotnet test
@@ -152,6 +196,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="xunit" Version="2.5.3" />
