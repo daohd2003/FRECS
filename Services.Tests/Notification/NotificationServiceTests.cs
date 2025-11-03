@@ -29,14 +29,14 @@ namespace Services.Tests.Notification
     public class NotificationServiceTests
     {
         private readonly Mock<INotificationRepository> _mockNotificationRepository;
-        private readonly Mock<Repositories.RepositoryBase.IRepository<Order>> _mockOrderRepository;
+        private readonly Mock<Repositories.RepositoryBase.IRepository<BusinessObject.Models.Order>> _mockOrderRepository;
         private readonly Mock<Microsoft.AspNetCore.SignalR.IHubContext<Hubs.NotificationHub>> _mockHubContext;
         private readonly NotificationService _notificationService;
 
         public NotificationServiceTests()
         {
             _mockNotificationRepository = new Mock<INotificationRepository>();
-            _mockOrderRepository = new Mock<Repositories.RepositoryBase.IRepository<Order>>();
+            _mockOrderRepository = new Mock<Repositories.RepositoryBase.IRepository<BusinessObject.Models.Order>>();
             _mockHubContext = new Mock<Microsoft.AspNetCore.SignalR.IHubContext<Hubs.NotificationHub>>();
 
             // Pass null for DbContext as it's not used in GetUserNotifications method
