@@ -414,7 +414,7 @@
                 <i data-lucide="x" class="h-6 w-6"></i>
             </button>
         </div>
-        <form method="post" asp-page-handler="AddFeedback" asp-route-id="@Model.Product.Id" class="mt-4 space-y-4">
+        <form method="post" id="feedbackForm" asp-page-handler="AddFeedback" asp-route-id="@Model.Product.Id" class="mt-4 space-y-4">
             @Html.AntiForgeryToken()
             <input type="hidden" name="productId" value="@Model.Product.Id" />
             <div>
@@ -428,7 +428,7 @@
                     }
                 </div>
                 <input type="hidden" id="feedbackRatingInput" asp-for="FeedbackInput.Rating" value="0" />
-                <span asp-validation-for="FeedbackInput.Rating" class="text-red-500 text-sm"></span>
+                <div id="ratingError" class="text-red-500 text-sm mt-2 hidden">The Rating field is required.</div>
             </div>
 
             <div>
@@ -436,7 +436,7 @@
                 <textarea id="feedbackComment" asp-for="FeedbackInput.Comment" rows="4"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                           placeholder="Share your thoughts about this product..."></textarea>
-                <span asp-validation-for="FeedbackInput.Comment" class="text-red-500 text-sm"></span>
+                <div id="commentError" class="text-red-500 text-sm mt-2 hidden">The field Comment must be a string with a maximum length of 1000.</div>
             </div>
 
             <div class="flex justify-end space-x-3">
@@ -982,9 +982,58 @@
             const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
             const cancelFeedbackBtn = document.getElementById('cancelFeedbackBtn');
             const feedbackModal = document.getElementById('feedbackModal');
+            const feedbackForm = document.getElementById('feedbackForm');
             const starRatingContainer = document.getElementById('starRatingContainer');
             const feedbackRatingInput = document.getElementById('feedbackRatingInput');
             const feedbackCommentInput = document.getElementById('feedbackComment'); // Corrected ID
+            const ratingError = document.getElementById('ratingError');
+            const commentError = document.getElementById('commentError');
+
+            // Validate feedback form before submission
+            if (feedbackForm) {
+                feedbackForm.addEventListener('submit', function(e) {
+                    let hasError = false;
+                    const rating = parseInt(feedbackRatingInput.value, 10);
+                    const comment = feedbackCommentInput.value;
+                    
+                    // Validate rating
+                    if (!rating || rating < 1 || rating > 5) {
+                        hasError = true;
+                        if (ratingError) {
+                            ratingError.classList.remove('hidden');
+                        }
+                    } else {
+                        if (ratingError) {
+                            ratingError.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Validate comment length
+                    if (comment && comment.length > 1000) {
+                        hasError = true;
+                        if (commentError) {
+                            commentError.classList.remove('hidden');
+                        }
+                    } else {
+                        if (commentError) {
+                            commentError.classList.add('hidden');
+                        }
+                    }
+                    
+                    // Prevent submission if there are errors
+                    if (hasError) {
+                        e.preventDefault();
+                        
+                        // Scroll to first error
+                        const firstError = document.querySelector('#ratingError:not(.hidden), #commentError:not(.hidden)');
+                        if (firstError) {
+                            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        
+                        return false;
+                    }
+                });
+            }
 
             if (openFeedbackBtn) {
                 openFeedbackBtn.addEventListener('click', (e) => {
@@ -1003,6 +1052,14 @@
                     feedbackRatingInput.value = '0';
                     feedbackCommentInput.value = '';
                     updateStarRating(0); // Set initial stars to none
+                    
+                    // Hide error messages when opening modal
+                    if (ratingError) {
+                        ratingError.classList.add('hidden');
+                    }
+                    if (commentError) {
+                        commentError.classList.add('hidden');
+                    }
                 });
             }
 
@@ -1070,8 +1127,27 @@
                     if (clickedButton) {
                         const rating = parseInt(clickedButton.dataset.rating, 10);
                     updateStarRating(rating);
+                    // Hide error when user selects a rating
+                    const ratingError = document.getElementById('ratingError');
+                    if (ratingError) {
+                        ratingError.classList.add('hidden');
+                    }
                 }
             });
+
+            // Hide comment error when user types
+            if (feedbackCommentInput) {
+                feedbackCommentInput.addEventListener('input', function() {
+                    const comment = this.value;
+                    if (commentError) {
+                        if (comment && comment.length > 1000) {
+                            commentError.classList.remove('hidden');
+                        } else {
+                            commentError.classList.add('hidden');
+                        }
+                    }
+                });
+            }
 
                 // Chỉ thực thi JavaScript nếu Model.Product tồn tại
         @if (Model.Product != null)
