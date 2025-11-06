@@ -35,5 +35,12 @@ namespace BusinessObject.DTOs.NotificationDto
         public NotificationType Type { get; set; }
 
         public Guid? OrderId { get; set; }
+
+        /// <summary>
+        /// Xác định xem user nhận notification có phải là provider của order này không.
+        /// True nếu user là provider (seller), False nếu user là customer (buyer).
+        /// Null nếu notification không liên quan đến order.
+        /// </summary>
+        public bool? IsUserProvider { get; set; }
     }
 }

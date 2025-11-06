@@ -91,10 +91,22 @@
             const unreadDot = isUnread ? '<div class="unread-dot"></div>' : '';
             
             if (notification.orderId && notification.orderId !== '00000000-0000-0000-0000-000000000000') {
-                // Notification with order link - route based on user role
-                const orderDetailUrl = (userRole && userRole.toLowerCase() === 'provider') 
-                    ? `/provider/order/${notification.orderId}` 
-                    : `/Order/Details/${notification.orderId}`;
+                // Notification with order link - route based on IsUserProvider
+                // isUserProvider === true: user là provider của order này -> đi đến provider order detail
+                // isUserProvider === false: user là customer của order này -> đi đến customer order detail
+                // isUserProvider === null: không xác định được (fallback theo role)
+                let orderDetailUrl;
+                if (notification.isUserProvider === true) {
+                    orderDetailUrl = `/provider/order/${notification.orderId}`;
+                } else if (notification.isUserProvider === false) {
+                    orderDetailUrl = `/Order/Details/${notification.orderId}`;
+                } else {
+                    // Fallback: dựa vào userRole nếu không xác định được
+                    orderDetailUrl = (userRole && userRole.toLowerCase() === 'provider') 
+                        ? `/provider/order/${notification.orderId}` 
+                        : `/Order/Details/${notification.orderId}`;
+                }
+                
                 html += `
                     <a href="${orderDetailUrl}" 
                        class="notification-item ${unreadClass}" 
