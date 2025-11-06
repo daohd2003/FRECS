@@ -46,17 +46,43 @@ namespace Services.NotificationServices
             }
 
             // 2. Chuyển đổi (Map) từ Notification sang NotificationResponse
-            var notificationResponses = notifications.Select(n => new NotificationResponse
+            var notificationResponses = new List<NotificationResponse>();
+            
+            foreach (var n in notifications)
             {
-                Id = n.Id,
-                Message = n.Message,
-                IsRead = n.IsRead,
-                CreatedAt = n.CreatedAt,
-                Type = n.Type,
-                OrderId = n.OrderId
-                // Tạo link URL động dựa trên loại thông báo và OrderId
-                /*LinkUrl = GenerateNotificationLink(n.Type, n.OrderId)*/
-            });
+                bool? isUserProvider = null;
+                
+                // Nếu notification có OrderId, kiểm tra user có phải là provider không
+                if (n.OrderId.HasValue && n.OrderId.Value != Guid.Empty)
+                {
+                    var order = await _context.Orders
+                        .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                        .FirstOrDefaultAsync(o => o.Id == n.OrderId.Value);
+                    
+                    if (order != null)
+                    {
+                        // Check nếu user là provider của bất kỳ item nào trong order
+                        // (tất cả items trong cùng 1 order thường cùng 1 provider)
+                        var firstItem = order.Items.FirstOrDefault();
+                        if (firstItem?.Product != null)
+                        {
+                            isUserProvider = (firstItem.Product.ProviderId == userId);
+                        }
+                    }
+                }
+                
+                notificationResponses.Add(new NotificationResponse
+                {
+                    Id = n.Id,
+                    Message = n.Message,
+                    IsRead = n.IsRead,
+                    CreatedAt = n.CreatedAt,
+                    Type = n.Type,
+                    OrderId = n.OrderId,
+                    IsUserProvider = isUserProvider
+                });
+            }
 
             return notificationResponses;
         }

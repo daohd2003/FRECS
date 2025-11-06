@@ -4,6 +4,9 @@ using BusinessObject.Models;
 using Moq;
 using Repositories.NotificationRepositories;
 using Services.NotificationServices;
+using DataAccess;
+using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace Services.Tests.Notification
 {
@@ -26,11 +29,12 @@ namespace Services.Tests.Notification
     /// How to run these tests:
     /// dotnet test --filter "FullyQualifiedName~NotificationServiceTests"
     /// </summary>
-    public class NotificationServiceTests
+    public class NotificationServiceTests : IDisposable
     {
         private readonly Mock<INotificationRepository> _mockNotificationRepository;
         private readonly Mock<Repositories.RepositoryBase.IRepository<BusinessObject.Models.Order>> _mockOrderRepository;
         private readonly Mock<Microsoft.AspNetCore.SignalR.IHubContext<Hubs.NotificationHub>> _mockHubContext;
+        private readonly ShareItDbContext _dbContext;
         private readonly NotificationService _notificationService;
 
         public NotificationServiceTests()
@@ -39,13 +43,23 @@ namespace Services.Tests.Notification
             _mockOrderRepository = new Mock<Repositories.RepositoryBase.IRepository<BusinessObject.Models.Order>>();
             _mockHubContext = new Mock<Microsoft.AspNetCore.SignalR.IHubContext<Hubs.NotificationHub>>();
 
-            // Pass null for DbContext as it's not used in GetUserNotifications method
+            // Setup InMemory DbContext for testing
+            var options = new DbContextOptionsBuilder<ShareItDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique DB per test
+                .Options;
+            _dbContext = new ShareItDbContext(options);
+
             _notificationService = new NotificationService(
                 _mockNotificationRepository.Object,
                 _mockOrderRepository.Object,
                 _mockHubContext.Object,
-                null! // DbContext not needed for GetUserNotifications tests
+                _dbContext
             );
+        }
+
+        public void Dispose()
+        {
+            _dbContext?.Dispose();
         }
 
         /// <summary>
@@ -59,7 +73,62 @@ namespace Services.Tests.Notification
         {
             // Arrange
             var userId = Guid.NewGuid();
+            var providerId = Guid.NewGuid();
+            var customerId = userId; // User is customer in this test
             var orderId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+
+            // Setup test data in DbContext
+            var categoryId = Guid.NewGuid();
+            var category = new BusinessObject.Models.Category
+            {
+                Id = categoryId,
+                Name = "Clothing",
+                Description = "Clothing items",
+                IsActive = true
+            };
+
+            var product = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                Name = "Test Product",
+                ProviderId = providerId,
+                Description = "Test",
+                CategoryId = categoryId,
+                Category = category,
+                Color = "Red",
+                Size = "M",
+                PricePerDay = 100,
+                SecurityDeposit = 500,
+                AvailabilityStatus = AvailabilityStatus.available,
+                Gender = Gender.Unisex
+            };
+
+            var order = new BusinessObject.Models.Order
+            {
+                Id = orderId,
+                CustomerId = customerId,
+                TotalAmount = 100,
+                Status = OrderStatus.pending,
+                CreatedAt = DateTime.UtcNow,
+                Items = new List<OrderItem>
+                {
+                    new OrderItem
+                    {
+                        Id = Guid.NewGuid(),
+                        OrderId = orderId,
+                        ProductId = productId,
+                        Product = product,
+                        Quantity = 1,
+                        DailyRate = 100
+                    }
+                }
+            };
+
+            _dbContext.Categories.Add(category);
+            _dbContext.Products.Add(product);
+            _dbContext.Orders.Add(order);
+            await _dbContext.SaveChangesAsync();
 
             var notifications = new List<BusinessObject.Models.Notification>
             {
@@ -109,6 +178,13 @@ namespace Services.Tests.Notification
             Assert.Contains(notificationList, n => n.Message == "Order created successfully" && !n.IsRead);
             Assert.Contains(notificationList, n => n.Message == "Order status updated" && n.IsRead);
             Assert.Contains(notificationList, n => n.Message == "Payment completed" && !n.IsRead && n.Type == NotificationType.system);
+
+            // Verify IsUserProvider field
+            var orderNotification = notificationList.First(n => n.Message == "Order created successfully");
+            Assert.False(orderNotification.IsUserProvider); // User is customer (not provider) in this order
+            
+            var systemNotification = notificationList.First(n => n.Message == "Payment completed");
+            Assert.Null(systemNotification.IsUserProvider); // No OrderId, so IsUserProvider should be null
 
             _mockNotificationRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Once);
             
