@@ -562,11 +562,22 @@ async function loadModalContent(type, filter, body) {
         // Add search functionality
         setupModalSearch(type, filter);
     } catch (error) {
-        console.error('Error loading modal content:', error);
-        body.innerHTML = `<div class="modal-error">
-            <p>Error loading data: ${error.message}</p>
-            <p>Please try again or contact support.</p>
-        </div>`;
+        const errorMessage = error.message || 'An unexpected error occurred.';
+        body.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; text-align: center;">
+                <svg style="width: 4rem; height: 4rem; margin-bottom: 1rem; color: #ef4444;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <p style="font-weight: 600; font-size: 1.125rem; color: #1f2937; margin-bottom: 0.5rem;">Unable to Load Data</p>
+                <p style="font-size: 0.875rem; color: #6b7280; max-width: 400px;">${errorMessage}</p>
+                <button onclick="loadModalContent('${type}', '${filter}', document.getElementById('modalBody'))" 
+                        style="margin-top: 1.5rem; padding: 0.625rem 1.5rem; background: #7c3aed; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                    Try Again
+                </button>
+            </div>
+        `;
     }
 }
 
@@ -576,10 +587,12 @@ async function fetchProductsData(filter) {
     const endDate = document.getElementById('endDate')?.value;
     const url = `${window.apiSettings.baseUrl}/dashboard/details/products?filter=${filter}&startDate=${startDate}&endDate=${endDate}`;
     
-    console.log('[fetchProductsData] Request URL:', url);
-    console.log('[fetchProductsData] Filter:', filter, 'StartDate:', startDate, 'EndDate:', endDate);
-    
     const token = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+    
+    if (!token) {
+        throw new Error('Authentication required. Please login again.');
+    }
+    
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`
@@ -587,13 +600,15 @@ async function fetchProductsData(filter) {
     });
     
     if (!response.ok) {
-        console.error('[fetchProductsData] Response not OK:', response.status, response.statusText);
-        throw new Error('Failed to fetch products');
+        if (response.status === 401) {
+            throw new Error('Authentication expired. Please refresh the page.');
+        } else if (response.status === 403) {
+            throw new Error('Access denied.');
+        }
+        throw new Error('Failed to load products data.');
     }
     
     const result = await response.json();
-    console.log('[fetchProductsData] API Response:', result);
-    console.log('[fetchProductsData] Data:', result.data);
     return result.data;
 }
 
@@ -603,13 +618,24 @@ async function fetchOrdersData(filter) {
     const url = `${window.apiSettings.baseUrl}/dashboard/details/orders?filter=${filter}&startDate=${startDate}&endDate=${endDate}`;
     
     const token = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+    
+    if (!token) {
+        throw new Error('Authentication required. Please login again.');
+    }
+    
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
     
-    if (!response.ok) throw new Error('Failed to fetch orders');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Authentication expired. Please refresh the page.');
+        }
+        throw new Error('Failed to load orders data.');
+    }
+    
     const result = await response.json();
     return result.data;
 }
@@ -620,13 +646,24 @@ async function fetchReportsData(filter) {
     const url = `${window.apiSettings.baseUrl}/dashboard/details/reports?filter=${filter}&startDate=${startDate}&endDate=${endDate}`;
     
     const token = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+    
+    if (!token) {
+        throw new Error('Authentication required. Please login again.');
+    }
+    
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
     
-    if (!response.ok) throw new Error('Failed to fetch reports');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Authentication expired. Please refresh the page.');
+        }
+        throw new Error('Failed to load reports data.');
+    }
+    
     const result = await response.json();
     return result.data;
 }
@@ -637,13 +674,24 @@ async function fetchViolationsData(filter) {
     const url = `${window.apiSettings.baseUrl}/dashboard/details/violations?filter=${filter}&startDate=${startDate}&endDate=${endDate}`;
     
     const token = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+    
+    if (!token) {
+        throw new Error('Authentication required. Please login again.');
+    }
+    
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
     
-    if (!response.ok) throw new Error('Failed to fetch violations');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Authentication expired. Please refresh the page.');
+        }
+        throw new Error('Failed to load violations data.');
+    }
+    
     const result = await response.json();
     return result.data;
 }
@@ -654,13 +702,24 @@ async function fetchUsersData(filter) {
     const url = `${window.apiSettings.baseUrl}/dashboard/details/users?filter=${filter}&startDate=${startDate}&endDate=${endDate}`;
     
     const token = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+    
+    if (!token) {
+        throw new Error('Authentication required. Please login again.');
+    }
+    
     const response = await fetch(url, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
     
-    if (!response.ok) throw new Error('Failed to fetch users');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Authentication expired. Please refresh the page.');
+        }
+        throw new Error('Failed to load users data.');
+    }
+    
     const result = await response.json();
     return result.data;
 }
@@ -686,52 +745,57 @@ function paginateData(data, page = 1, itemsPerPage = 20) {
     };
 }
 
-// Generate pagination HTML
+// Generate pagination HTML - Always visible for consistent layout
 function generatePaginationHTML(paginationInfo, type, filter) {
     const { currentPage, totalPages, totalItems, itemsPerPage } = paginationInfo;
     
-    if (totalPages <= 1) return '';
+    const startItem = totalItems > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
     
     let paginationHTML = '<div class="modal-pagination">';
-    paginationHTML += `<div class="pagination-info">Showing ${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, totalItems)} of ${totalItems}</div>`;
+    paginationHTML += `<div class="pagination-info">Showing ${startItem}-${endItem} of ${totalItems} items</div>`;
     paginationHTML += '<div class="pagination-buttons">';
     
     // Previous button
-    if (currentPage > 1) {
-        paginationHTML += `<button class="pagination-btn" onclick="changePage('${type}', '${filter}', ${currentPage - 1})">‹ Previous</button>`;
-    }
+    paginationHTML += `<button class="pagination-btn" 
+                        onclick="changeDetailModalPage('${type}', '${filter}', ${currentPage - 1})" 
+                        ${currentPage <= 1 ? 'disabled' : ''}>‹ Previous</button>`;
     
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage < maxVisiblePages - 1) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    if (startPage > 1) {
-        paginationHTML += `<button class="pagination-btn" onclick="changePage('${type}', '${filter}', 1)">1</button>`;
-        if (startPage > 2) {
-            paginationHTML += '<span class="pagination-ellipsis">...</span>';
+    // Page numbers (only if more than 1 page)
+    if (totalPages > 1) {
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        paginationHTML += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage('${type}', '${filter}', ${i})">${i}</button>`;
-    }
-    
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            paginationHTML += '<span class="pagination-ellipsis">...</span>';
+        
+        if (startPage > 1) {
+            paginationHTML += `<button class="pagination-btn" onclick="changeDetailModalPage('${type}', '${filter}', 1)">1</button>`;
+            if (startPage > 2) {
+                paginationHTML += '<span class="pagination-ellipsis">...</span>';
+            }
         }
-        paginationHTML += `<button class="pagination-btn" onclick="changePage('${type}', '${filter}', ${totalPages})">${totalPages}</button>`;
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHTML += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changeDetailModalPage('${type}', '${filter}', ${i})">${i}</button>`;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHTML += '<span class="pagination-ellipsis">...</span>';
+            }
+            paginationHTML += `<button class="pagination-btn" onclick="changeDetailModalPage('${type}', '${filter}', ${totalPages})">${totalPages}</button>`;
+        }
+    } else {
+        paginationHTML += `<span class="pagination-info">Page 1 of ${totalPages || 1}</span>`;
     }
     
     // Next button
-    if (currentPage < totalPages) {
-        paginationHTML += `<button class="pagination-btn" onclick="changePage('${type}', '${filter}', ${currentPage + 1})">Next ›</button>`;
-    }
+    paginationHTML += `<button class="pagination-btn" 
+                        onclick="changeDetailModalPage('${type}', '${filter}', ${currentPage + 1})" 
+                        ${currentPage >= totalPages || totalPages === 0 ? 'disabled' : ''}>Next ›</button>`;
     
     paginationHTML += '</div></div>';
     return paginationHTML;
@@ -745,8 +809,8 @@ window.modalData = {
     currentPage: 1
 };
 
-// Change page function
-function changePage(type, filter, page) {
+// Change page function for detail modal
+function changeDetailModalPage(type, filter, page) {
     window.modalData.currentPage = page;
     renderModalWithPagination(type, filter);
 }
@@ -779,198 +843,6 @@ function renderModalWithPagination(type, filter) {
     
     modalBody.innerHTML = content;
     setupModalSearch(type, filter);
-}
-
-// Render functions
-function renderProductsTable(data, filter) {
-    if (!data || data.length === 0) {
-        return '<div class="modal-empty">No products found for the selected period.</div>';
-    }
-    
-    return `
-        <div class="modal-data-table">
-            <table class="detail-table">
-                <thead>
-                    <tr>
-                        <th>Image</th>
-                        <th>Product Name</th>
-                        <th>Provider</th>
-                        <th>Price/Day</th>
-                        <th>Status</th>
-                        <th>Created Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(item => `
-                        <tr class="table-row-clickable" onclick="window.location.href='/products/detail/${item.id}'">
-                            <td>
-                                <img src="${item.imageUrl || '/images/placeholder.png'}" alt="${item.name}" class="table-img" />
-                            </td>
-                            <td><strong>${item.name}</strong></td>
-                            <td>${item.providerName}</td>
-                            <td>${item.pricePerDay.toLocaleString('vi-VN')}₫</td>
-                            <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="table-footer">
-                <p>Showing ${data.length} products. Click on any row to view details.</p>
-            </div>
-        </div>
-    `;
-}
-
-function renderOrdersTable(data, filter) {
-    if (!data || data.length === 0) {
-        return '<div class="modal-empty">No orders found for the selected period.</div>';
-    }
-    
-    return `
-        <div class="modal-data-table">
-            <table class="detail-table">
-                <thead>
-                    <tr>
-                        <th>Order #</th>
-                        <th>Customer</th>
-                        <th>Provider</th>
-                        <th>Total Amount</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(item => `
-                        <tr class="table-row-clickable" onclick="window.location.href='/order/details/${item.id}'">
-                            <td><strong>${item.orderNumber}</strong></td>
-                            <td>${item.customerName}</td>
-                            <td>${item.providerName}</td>
-                            <td>${item.totalAmount.toLocaleString('vi-VN')}₫</td>
-                            <td><span class="status-badge status-${item.status.toLowerCase().replace('_', '-')}">${item.status.replace('_', ' ')}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="table-footer">
-                <p>Showing ${data.length} orders. Click on any row to view details.</p>
-            </div>
-        </div>
-    `;
-}
-
-function renderReportsTable(data) {
-    if (!data || data.length === 0) {
-        return '<div class="modal-empty">No reports found for the selected period.</div>';
-    }
-    
-    return `
-        <div class="modal-data-table">
-            <table class="detail-table">
-                <thead>
-                    <tr>
-                        <th>Subject</th>
-                        <th>Reporter</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(item => `
-                        <tr class="table-row-clickable" onclick="window.location.href='/reportmanagement?reportId=${item.id}'">
-                            <td><strong>${item.subject}</strong></td>
-                            <td>${item.reporterName}</td>
-                            <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="table-footer">
-                <p>Showing ${data.length} reports. Click on any row to view details.</p>
-            </div>
-        </div>
-    `;
-}
-
-function renderViolationsTable(data) {
-    if (!data || data.length === 0) {
-        return '<div class="modal-empty">No violations found for the selected period.</div>';
-    }
-    
-    return `
-        <div class="modal-data-table">
-            <table class="detail-table">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Customer</th>
-                        <th>Fine Amount</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(item => `
-                        <tr class="table-row-clickable" onclick="window.location.href='/provider/createviolation?violationId=${item.id}'">
-                            <td><strong>${item.description}</strong></td>
-                            <td>${item.customerName}</td>
-                            <td>${item.fineAmount ? item.fineAmount.toLocaleString('vi-VN') + '₫' : 'N/A'}</td>
-                            <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="table-footer">
-                <p>Showing ${data.length} violations. Click on any row to view details.</p>
-            </div>
-        </div>
-    `;
-}
-
-function renderUsersTable(data) {
-    if (!data || data.length === 0) {
-        return '<div class="modal-empty">No users found for the selected period.</div>';
-    }
-    
-    return `
-        <div class="modal-data-table">
-            <table class="detail-table">
-                <thead>
-                    <tr>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Joined Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(item => {
-                        // Determine navigation URL based on role
-                        const navUrl = item.role.toLowerCase() === 'staff' 
-                            ? '/admin/staffmanagement' 
-                            : '/admin/usermanagement?userId=' + item.id;
-                        
-                        return `
-                        <tr class="table-row-clickable" onclick="window.location.href='${navUrl}'">
-                            <td><strong>${item.fullName}</strong></td>
-                            <td>${item.email}</td>
-                            <td><span class="role-badge">${item.role}</span></td>
-                            <td><span class="status-badge ${item.isActive ? 'status-active' : 'status-banned'}">${item.isActive ? 'Active' : 'Banned'}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                        </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-            <div class="table-footer">
-                <p>Showing ${data.length} users. Click on any row to view details.</p>
-            </div>
-        </div>
-    `;
 }
 
 // Paginated render functions
@@ -1233,10 +1105,8 @@ function toggleAutoRefresh() {
         autoRefreshInterval = setInterval(() => {
             location.reload();
         }, 5 * 60 * 1000); // 5 minutes
-        console.log('Auto-refresh enabled: Dashboard will refresh every 5 minutes');
     } else {
         clearInterval(autoRefreshInterval);
-        console.log('Auto-refresh disabled');
     }
 }
 
@@ -1323,5 +1193,69 @@ function initTooltips() {
 // Initialize tooltips if needed
 // initTooltips();
 
-console.log('Admin Dashboard loaded successfully');
 
+
+// Providers Tab Functions
+
+function filterProviders() {
+    const searchInput = document.getElementById('providerSearchInput');
+    const filter = searchInput.value.toLowerCase();
+    const table = document.getElementById('providersTable');
+    const rows = table.getElementsByTagName('tr');
+
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const providerName = row.getAttribute('data-provider-name');
+        if (providerName && providerName.includes(filter)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+}
+
+function sortProvidersTable(columnIndex) {
+    const table = document.getElementById('providersTable');
+    if (!table) return;
+    
+    const tbody = table.getElementsByTagName('tbody')[0];
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    const th = table.getElementsByTagName('th')[columnIndex];
+    
+    // Toggle sort direction
+    const isAsc = th.classList.contains('sort-asc');
+    
+    // Remove all sort classes
+    table.querySelectorAll('th').forEach(header => {
+        header.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    // Add appropriate sort class
+    th.classList.add(isAsc ? 'sort-desc' : 'sort-asc');
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        let aValue, bValue;
+        
+        if (columnIndex === 0) {
+            // Provider name
+            aValue = a.getAttribute('data-provider-name');
+            bValue = b.getAttribute('data-provider-name');
+        } else {
+            // Numeric columns
+            const aCells = a.getElementsByTagName('td');
+            const bCells = b.getElementsByTagName('td');
+            aValue = parseFloat(aCells[columnIndex].getAttribute('data-value') || aCells[columnIndex].textContent.replace(/[^0-9.]/g, ''));
+            bValue = parseFloat(bCells[columnIndex].getAttribute('data-value') || bCells[columnIndex].textContent.replace(/[^0-9.]/g, ''));
+        }
+        
+        if (isAsc) {
+            return aValue > bValue ? -1 : 1;
+        } else {
+            return aValue < bValue ? -1 : 1;
+        }
+    });
+    
+    // Re-append sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+}
