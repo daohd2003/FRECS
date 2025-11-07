@@ -202,10 +202,10 @@
                             <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col sm:flex-row">
                                 <div class="relative sm:w-64 flex-shrink-0">
                                     <a href="/products/detail/@product.Id" class="block h-full">
-                                        <div class="bg-gray-100 flex items-center justify-center" style="min-height: 300px; max-height: 400px;">
+                                        <div class="bg-gray-100 flex items-center justify-center" style="min-height: 350px; max-height: 450px;">
                                             <img src="@(product.PrimaryImagesUrl ?? "https://via.placeholder.com/400x600.png?text=No+Image")" 
                                                  alt="@product.Name" 
-                                                 class="object-contain w-full h-full max-h-96 hover:scale-105 transition-transform duration-300" />
+                                                 class="object-contain w-full h-full hover:scale-105 transition-transform duration-300" />
                                         </div>
                                     </a>
                                     <form method="post" action="/products?handler=AddFavorite" class="favorite-form" data-product-id="@product.Id">
