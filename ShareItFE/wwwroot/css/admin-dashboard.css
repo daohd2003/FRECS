@@ -1580,3 +1580,123 @@
     margin: 0;
     font-size: 0.95rem;
 }
+
+/* Additional Provider Styles */
+.table-container {
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.provider-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #9f7aea, #805ad5);
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.provider-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.provider-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.provider-name {
+    font-weight: 500;
+    color: #1a202c;
+}
+
+.provider-email {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.view-details-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    color: #7c3aed;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-details-btn:hover {
+    background: #f9fafb;
+    border-color: #7c3aed;
+}
+
+.view-details-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Provider & Product Cell Styles */
+.provider-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.provider-avatar-small {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.provider-avatar-placeholder {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #9f7aea, #805ad5);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.provider-name-small {
+    font-weight: 500;
+    color: #1a202c;
+}
+
+.product-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.product-info-small {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.product-name-small {
+    font-weight: 500;
+    color: #1a202c;
+    font-size: 0.875rem;
+}
+
+.product-price-small {
+    font-size: 0.75rem;
+    color: #718096;
+}

@@ -41,6 +41,25 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Admin endpoint: Get revenue stats for any provider
+        /// </summary>
+        [HttpGet("provider/{providerId}/stats")]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult<RevenueStatsDto>> GetProviderRevenueStats(Guid providerId, [FromQuery] string period = "month", [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var stats = await _revenueService.GetRevenueStatsAsync(providerId, period, startDate, endDate);
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting revenue stats for provider {ProviderId}", providerId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
         [HttpGet("payout-summary")]
         public async Task<ActionResult<PayoutSummaryDto>> GetPayoutSummary()
         {
