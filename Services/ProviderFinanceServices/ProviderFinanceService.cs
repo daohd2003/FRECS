@@ -41,9 +41,9 @@ namespace Services.ProviderFinanceServices
             return await _transactionRepo.GetAllProviderPaymentsSummaryAsync();
         }
 
-        public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync()
+        public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
-            return await _transactionRepo.GetAllProviderPaymentsAsync();
+            return await _transactionRepo.GetAllProviderPaymentsAsync(startDate, endDate);
         }
     }
 }

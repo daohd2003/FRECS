@@ -324,6 +324,13 @@
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s;
+    background: white;
+    color: #1f2937; /* Dark gray text for good contrast */
+}
+
+.chat-input::placeholder {
+    color: #9ca3af; /* Light gray for placeholder */
+    opacity: 1;
 }
 
 .chat-input:focus {

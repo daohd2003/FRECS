@@ -77,12 +77,13 @@ namespace ShareItAPI.Controllers
         /// <summary>
         /// Get detailed list of all provider payments with full information - Admin only
         /// Returns complete provider details including bank accounts
+        /// Supports optional date filtering
         /// </summary>
         [HttpGet("all/payments")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> GetAllProviderPayments()
+        public async Task<IActionResult> GetAllProviderPayments([FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
-            var payments = await _financeService.GetAllProviderPaymentsAsync();
+            var payments = await _financeService.GetAllProviderPaymentsAsync(startDate, endDate);
             return Ok(new ApiResponse<object>("All provider payments with details fetched successfully.", payments));
         }
     }
