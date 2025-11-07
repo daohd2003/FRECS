@@ -48,14 +48,16 @@ namespace Services.AI
             var products = await GetCachedProductsAsync();
             var contextString = BuildProductContext(products);
             
-            // Get user history if logged in
+            // Get user history and favorites if logged in
             string? userHistoryContext = null;
+            string? userFavoritesContext = null;
             if (userId.HasValue)
             {
                 userHistoryContext = await BuildUserHistoryContext(userId.Value);
+                userFavoritesContext = await BuildUserFavoritesContext(userId.Value);
             }
 
-            var prompt = BuildPrompt(contextString, question, products.Any(), userHistoryContext);
+            var prompt = BuildPrompt(contextString, question, products.Any(), userHistoryContext, userFavoritesContext);
 
             var responseText = await SendRequestToGeminiAsync(prompt);
 
@@ -84,7 +86,9 @@ namespace Services.AI
                     p.RentalQuantity,
                     p.PurchaseQuantity,
                     Category = p.Category.Name,
-                    p.Color
+                    p.Color,
+                    p.Description,
+                    p.Gender
                 })
                 .Take(50)
                 .ToListAsync();
@@ -122,7 +126,20 @@ namespace Services.AI
                 
                 var priceString = pricingInfo.Any() ? string.Join(" | ", pricingInfo) : "Contact for pricing";
                 
-                return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color}\n  {priceString}\n  [Xem chi tiết]({link})";
+                // Add description if available (truncate to 150 characters to avoid overly long context)
+                var description = "";
+                if (!string.IsNullOrEmpty(p.Description))
+                {
+                    var desc = p.Description.Length > 150 
+                        ? p.Description.Substring(0, 150) + "..." 
+                        : p.Description;
+                    description = $"\n  Description: {desc}";
+                }
+                
+                // Add gender
+                var gender = p.Gender.ToString();
+                
+                return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color} | Gender: {gender}\n  {priceString}{description}\n  [Xem chi tiết]({link})";
             });
 
             return string.Join("\n", lines);
@@ -132,13 +149,19 @@ namespace Services.AI
         {
             try
             {
+                // Lấy các đơn hàng thành công (đã hoàn tất):
+                // - returned: đơn hàng đã hoàn tất (đồ thuê đã trả, đồ mua đã nhận)
+                // - in_use: đơn hàng đang sử dụng (đã nhận hàng, đang dùng)
+                // - returned_with_issue: đơn hàng đã trả nhưng có vấn đề (vẫn tính là đã dùng)
+                var successfulStatuses = new[] { OrderStatus.returned, OrderStatus.in_use, OrderStatus.returned_with_issue };
+                
                 var recentOrders = await _context.Orders
                     .Include(o => o.Items)
                         .ThenInclude(oi => oi.Product)
                             .ThenInclude(p => p.Category)
-                    .Where(o => o.CustomerId == userId)
+                    .Where(o => o.CustomerId == userId && successfulStatuses.Contains(o.Status))
                     .OrderByDescending(o => o.CreatedAt)
-                    .Take(5) // Last 5 orders
+                    .Take(10) // Last 10 successful orders để có đủ items
                     .ToListAsync();
 
                 if (!recentOrders.Any())
@@ -158,7 +181,7 @@ namespace Services.AI
                     }
                 }
 
-                return string.Join("\n", historyLines.Distinct().Take(10)); // Max 10 unique items
+                return historyLines.Any() ? string.Join("\n", historyLines.Distinct().Take(15)) : null; // Max 15 unique items
             }
             catch (Exception ex)
             {
@@ -167,7 +190,35 @@ namespace Services.AI
             }
         }
 
-        private string BuildPrompt(string context, string question, bool hasProducts, string? userHistoryContext = null)
+        private async Task<string?> BuildUserFavoritesContext(Guid userId)
+        {
+            try
+            {
+                var favorites = await _context.Favorites
+                    .Include(f => f.Product)
+                        .ThenInclude(p => p.Category)
+                    .Where(f => f.UserId == userId)
+                    .OrderByDescending(f => f.CreatedAt)
+                    .Take(20) // Max 20 favorite items
+                    .ToListAsync();
+
+                if (!favorites.Any())
+                    return null;
+
+                var favoriteLines = favorites.Select(f =>
+                    $"- {f.Product.Name} | Category: {f.Product.Category.Name} | Color: {f.Product.Color} | Size: {f.Product.Size} | Gender: {f.Product.Gender}"
+                ).ToList();
+
+                return string.Join("\n", favoriteLines);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to build user favorites context for user {UserId}", userId);
+                return null;
+            }
+        }
+
+        private string BuildPrompt(string context, string question, bool hasProducts, string? userHistoryContext = null, string? userFavoritesContext = null)
         {
             if (!hasProducts)
             {
@@ -183,10 +234,19 @@ User's Purchase/Rental History:
 
 Use this history to provide personalized recommendations when relevant.";
 
+            var favoritesSection = string.IsNullOrEmpty(userFavoritesContext)
+                ? ""
+                : $@"
+
+User's Favorite Products:
+{userFavoritesContext}
+
+Use the user's favorites to understand their preferences and provide personalized recommendations. You can suggest similar items or products they might like based on their favorite items' categories, colors, sizes, or gender preferences.";
+
             return $@"You are a helpful assistant for the FRECS clothing rental & sales store. Only respond using the provided product list.
 
 Products (each product already has a clickable detail link):
-{context}{historySection}
+{context}{historySection}{favoritesSection}
 
 User's question: {question}
 
@@ -203,14 +263,18 @@ CRITICAL INSTRUCTIONS - MUST FOLLOW:
    - Rental price format: number VND/day for rental options
    - Purchase price format: number VND for purchase options
    - Show both if available
-6. If no matching products are found, politely inform the user in English.
-7. Keep responses concise, helpful, and friendly.
-8. If user history is provided, use it to offer personalized suggestions (e.g., 'Based on your previous rentals, you might also like...').
+6. Products now include Description and Gender information. Use these fields to provide better recommendations:
+   - Description helps understand the product style and features
+   - Gender helps filter products appropriate for the user
+7. If no matching products are found, politely inform the user in English.
+8. Keep responses concise, helpful, and friendly.
+9. If user history or favorites are provided, use them to offer personalized suggestions (e.g., 'Based on your previous rentals, you might also like...' or 'Since you favorited X, you might be interested in...').
 
 Example response format:
 Here are the matching products:
-- White Shirt | Size: M | Category: Shirt | Color: White
+- White Shirt | Size: M | Category: Shirt | Color: White | Gender: Male
   Rental: 50,000 VND/day | Purchase: 500,000 VND
+  Description: Classic white dress shirt perfect for formal occasions
   [View Details](link)
 
 Answer in English:";
