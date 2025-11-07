@@ -103,7 +103,8 @@ if (params.has('GarmentImageUrls')) {
 // Event listeners
 personInput.addEventListener('change', handlePersonImageUpload)
 
-garmentInput.addEventListener('change', handleGarmentImageUpload)
+// REMOVED: garmentInput upload - only allow selection from products
+// garmentInput.addEventListener('change', handleGarmentImageUpload)
 
 generateButton.addEventListener('click', (event) => {
   event.preventDefault()
@@ -122,9 +123,36 @@ regenerateFeedbackButton.addEventListener('click', async () => {
     await regenerateFashionFeedback(tryOnResultId)
 })
 
-// Add drag and drop functionality
+// Clear person image button
+const clearPersonBtn = document.getElementById('clearPersonBtn')
+if (clearPersonBtn) {
+    clearPersonBtn.addEventListener('click', () => {
+        // Clear person image
+        personImage = null
+        personFile = null
+        localStorage.removeItem('personImageUrl')
+        
+        // Reset dropzone
+        personDropzone.classList.remove('has-image')
+        personDropzone.querySelectorAll('.uploaded-image, .badge').forEach((el) => el.remove())
+        
+        // Remove selected state from example images
+        document.querySelectorAll('.example-image').forEach(img => img.classList.remove('selected'))
+        
+        // Hide clear button
+        clearPersonBtn.style.display = 'none'
+        
+        // Update generate button
+        checkEnableGenerate()
+        
+        showToast('Person image cleared', 'info')
+    })
+}
+
+// Add drag and drop functionality ONLY for person image
 setupDragAndDrop(personDropzone, personInput)
-setupDragAndDrop(garmentDropzone, garmentInput)
+// REMOVED: Garment dropzone drag & drop - only allow selection from products
+// setupDragAndDrop(garmentDropzone, garmentInput)
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -142,22 +170,36 @@ function checkFiles() {
 
 function displayUploadedImage(dropzone, inputElement, imageUrl) {
   dropzone.classList.add('has-image')
+  
+  // If this is garment dropzone, enable pointer events to show the image
+  if (dropzone.id === 'garmentDropzone') {
+    dropzone.style.pointerEvents = 'auto'
+    dropzone.style.cursor = 'default'
+  }
+  
   // Clear only the previous image and badge
   dropzone
     .querySelectorAll('.uploaded-image, .badge')
     .forEach((el) => el.remove())
 
-  // Create image element and allow clicking it to re-upload
+  // Create image element
   const img = document.createElement('img')
   img.src = imageUrl
   img.className = 'uploaded-image'
-  img.addEventListener('click', () => inputElement.click())
+  
+  // Only allow re-upload for person image (not garment)
+  if (dropzone.id === 'personDropzone' && inputElement) {
+    img.style.cursor = 'pointer'
+    img.addEventListener('click', () => inputElement.click())
+  } else {
+    img.style.cursor = 'default'
+  }
+  
   dropzone.appendChild(img)
 
   // Add checkmark badge
   const badge = document.createElement('div')
   badge.className = 'badge'
-  // ... (badge styling can remain the same)
   badge.style.position = 'absolute'
   badge.style.top = '10px'
   badge.style.right = '10px'
@@ -247,6 +289,16 @@ async function handlePersonImageUpload(e) {
     personImage = imageUrl
 
     displayUploadedImage(personDropzone, personInput, imageUrl)
+    
+    // Remove selected state from example images when uploading from computer
+    document.querySelectorAll('.example-image').forEach(img => img.classList.remove('selected'))
+    
+    // Show clear button for person image
+    const clearPersonBtn = document.getElementById('clearPersonBtn')
+    if (clearPersonBtn) {
+        clearPersonBtn.style.display = 'block'
+    }
+    
     checkEnableGenerate()
   }
 }
@@ -682,24 +734,26 @@ if (!document.getElementById('toast-styles')) {
 }
 
 window.addEventListener('load', () => {
-    const savedPerson = localStorage.getItem('personImageUrl')
+    // CLEAR old person image when entering the page (as requested)
+    localStorage.removeItem('personImageUrl')
+    personImage = null
+    personFile = null
+    
     const savedGarment = localStorage.getItem('garmentImageUrl')
     const savedGenerated = localStorage.getItem('generatedImageUrl')
     const savedResultId = localStorage.getItem('lastTryOnResultId')
 
-    if (savedPerson) {
-        personImage = savedPerson
-        // We don't have the File object on reload, so disable generation until new files are selected
-        personFile = null
-        displayUploadedImage(personDropzone, personInput, savedPerson)
-    }
-
+    // Person image is NOT restored from localStorage anymore (cleared on page load)
+    // User must upload new person image each time they visit the page
+    
+    // Keep garment image if it exists (from product page)
     if (savedGarment) {
         garmentImage = savedGarment
         garmentFile = null
         displayUploadedImage(garmentDropzone, garmentInput, savedGarment)
     }
 
+    // Keep generated image if exists
     if (savedGenerated) {
         const img = document.createElement('img')
         img.src = savedGenerated
@@ -723,4 +777,51 @@ window.addEventListener('load', () => {
 
     // Update button state on load
     checkEnableGenerate()
+    
+    // Handle example image selection (setup after DOM is loaded)
+    const exampleImages = document.querySelectorAll('.example-image')
+    exampleImages.forEach(img => {
+        img.addEventListener('click', async function() {
+            const imageUrl = this.src
+            
+            // Remove selected class from all examples
+            exampleImages.forEach(ex => ex.classList.remove('selected'))
+            // Add selected class to clicked image
+            this.classList.add('selected')
+            
+            // Fetch the image and convert to File object
+            try {
+                const response = await fetch(imageUrl, { mode: 'cors' })
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+                
+                const blob = await response.blob()
+                const fileName = `example-${this.dataset.example}.jpg`
+                const file = new File([blob], fileName, { type: blob.type })
+                
+                // Set as person file and image
+                personFile = file
+                personImage = imageUrl
+                
+                // Save to localStorage
+                localStorage.setItem('personImageUrl', imageUrl)
+                
+                // Display the image
+                displayUploadedImage(personDropzone, personInput, imageUrl)
+                
+                // Show clear button
+                const clearPersonBtn = document.getElementById('clearPersonBtn')
+                if (clearPersonBtn) {
+                    clearPersonBtn.style.display = 'block'
+                }
+                
+                // Update generate button
+                checkEnableGenerate()
+                
+                showToast('Example image selected', 'success')
+            } catch (error) {
+                console.error('Error loading example image:', error)
+                showToast('Failed to load example image: ' + error.message, 'error')
+            }
+        })
+    })
 })
