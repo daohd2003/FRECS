@@ -1,6 +1,7 @@
 ﻿using BusinessObject.DTOs.ProductDto;
 // CategoryDto is in ProductDto namespace
 // using BusinessObject.DTOs.CategoryDto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net.Http.Headers;
@@ -10,11 +11,13 @@ using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Provider
 {
+    [Authorize(Roles = "provider")]
     public class PostItemModel : PageModel
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly JsonSerializerOptions _jsonOptions;
+        private bool AuthorizationFailed { get; set; } = false;
 
         public PostItemModel(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor)
         {
@@ -124,6 +127,11 @@ namespace ShareItFE.Pages.Provider
                 {
                     IsEditMode = true;
                     await LoadProductForEditAsync(productId);
+
+                    if (AuthorizationFailed)
+                    {
+                        return RedirectToPage("/Provider/Products");
+                    }
                 }
                 else
                 {
@@ -699,6 +707,14 @@ namespace ShareItFE.Pages.Provider
                     if (existingProduct != null)
                     {
 
+                        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                        if (string.IsNullOrEmpty(currentUserId) || existingProduct.ProviderId.ToString() != currentUserId)
+                        {
+                            // Security check: Product does not belong to the current user
+                            TempData["ErrorMessage"] = "You are not authorized to edit this product.";
+                            AuthorizationFailed = true;
+                            return;
+                        }
                         // Load product data into form
                         Product.Id = existingProduct.Id;
                         Product.Name = existingProduct.Name;
