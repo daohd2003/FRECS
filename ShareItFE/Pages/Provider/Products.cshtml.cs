@@ -1,4 +1,5 @@
 using BusinessObject.DTOs.ProductDto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -9,6 +10,7 @@ using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Provider
 {
+    [Authorize]
     public class ProductsModel : PageModel
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -90,6 +92,15 @@ namespace ShareItFE.Pages.Provider
                 return RedirectToPage("/Auth");
             }
 
+            // Check if user has provider role
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (string.IsNullOrEmpty(userRole) || !userRole.Equals("provider", StringComparison.OrdinalIgnoreCase))
+            {
+                // User is authenticated but not a provider, redirect to home page
+                TempData["ErrorMessage"] = "You don't have permission to access this page.";
+                return RedirectToPage("/Index");
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
@@ -107,7 +118,7 @@ namespace ShareItFE.Pages.Provider
                 // Load provider's products (with pagination)
                 await LoadProviderProductsAsync(client, userId);
 
-                // Calculate stats from ALL products (not just current page)
+                // Calculate stats from FILTERED products (not just current page, but respecting filters)
                 await CalculateStatsAsync(client, userId);
             }
             catch (Exception ex)
@@ -142,9 +153,9 @@ namespace ShareItFE.Pages.Provider
             }
         }
 
-        private async Task LoadProviderProductsAsync(HttpClient client, string userId)
+        // Helper method to build OData filters based on current filter settings
+        private List<string> BuildFilters(string userId)
         {
-            var queryOptions = new List<string> { "$count=true" };
             var filters = new List<string>();
 
             // Filter by provider
@@ -153,7 +164,9 @@ namespace ShareItFE.Pages.Provider
             // Apply search filter
             if (!string.IsNullOrEmpty(SearchQuery))
             {
-                filters.Add($"(contains(tolower(Name), '{SearchQuery.ToLower()}') or contains(tolower(Description), '{SearchQuery.ToLower()}'))");
+                // Escape single quotes in search query to prevent OData syntax errors
+                var escapedSearchQuery = SearchQuery.Replace("'", "''").ToLower();
+                filters.Add($"(contains(tolower(Name), '{escapedSearchQuery}') or contains(tolower(Description), '{escapedSearchQuery}'))");
             }
 
             // Apply status filter
@@ -179,7 +192,9 @@ namespace ShareItFE.Pages.Provider
             // Apply category filter
             if (!string.IsNullOrEmpty(CategoryFilter) && CategoryFilter != "All Categories")
             {
-                filters.Add($"Category eq '{CategoryFilter}'");
+                // Escape single quotes in category filter to prevent OData syntax errors
+                var escapedCategoryFilter = CategoryFilter.Replace("'", "''");
+                filters.Add($"Category eq '{escapedCategoryFilter}'");
             }
 
             // Apply type filter (rental/purchase)
@@ -198,6 +213,14 @@ namespace ShareItFE.Pages.Provider
                         break;
                 }
             }
+
+            return filters;
+        }
+
+        private async Task LoadProviderProductsAsync(HttpClient client, string userId)
+        {
+            var queryOptions = new List<string> { "$count=true" };
+            var filters = BuildFilters(userId);
 
             if (filters.Any())
             {
@@ -236,12 +259,19 @@ namespace ShareItFE.Pages.Provider
         {
             try
             {
-                // Fetch ALL products for this provider (no pagination, no filters except providerId)
+                // Build filters using the SAME logic as LoadProviderProductsAsync
+                var filters = BuildFilters(userId);
+
+                // Fetch ALL FILTERED products (no pagination to get accurate stats)
                 var queryOptions = new List<string>
                 {
-                    "$count=true",
-                    $"$filter=ProviderId eq {userId}"
+                    "$count=true"
                 };
+
+                if (filters.Any())
+                {
+                    queryOptions.Add($"$filter={string.Join(" and ", filters)}");
+                }
 
                 string queryString = string.Join("&", queryOptions);
                 var requestUri = $"odata/products?{queryString}";
@@ -253,13 +283,13 @@ namespace ShareItFE.Pages.Provider
                     var odataResponse = await response.Content.ReadFromJsonAsync<ODataApiResponse>();
                     if (odataResponse?.Value != null)
                     {
-                        var allProducts = odataResponse.Value;
-                        
-                        // Calculate stats from ALL products
+                        var filteredProducts = odataResponse.Value;
+
+                        // Calculate stats from FILTERED products
                         Stats.TotalItems = odataResponse.Count;
-                        Stats.ActiveItems = allProducts.Count(p => p.AvailabilityStatus == "available");
-                        Stats.TotalBookings = allProducts.Sum(p => p.RentCount);
-                        Stats.TotalSales = allProducts.Sum(p => p.BuyCount);
+                        Stats.ActiveItems = filteredProducts.Count(p => p.AvailabilityStatus == "available");
+                        Stats.TotalBookings = filteredProducts.Sum(p => p.RentCount);
+                        Stats.TotalSales = filteredProducts.Sum(p => p.BuyCount);
                     }
                 }
             }
@@ -331,11 +361,11 @@ namespace ShareItFE.Pages.Provider
                 {
                     // Parse response để lấy message từ API
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    
+
                     try
                     {
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<string>>(responseContent);
-                        
+
                         // Hiển thị message từ API (đã bao gồm lý do nếu có)
                         TempData["SuccessMessage"] = apiResponse?.Message ?? "Product has been archived successfully.";
                     }
@@ -376,7 +406,7 @@ namespace ShareItFE.Pages.Provider
             try
             {
                 var client = await GetAuthenticatedClientAsync();
-                
+
                 // Use dedicated restore endpoint
                 var response = await client.PutAsync($"api/products/restore/{productId}", null);
 
@@ -392,6 +422,10 @@ namespace ShareItFE.Pages.Provider
                     {
                         TempData["SuccessMessage"] = "Product has been restored to active status.";
                     }
+
+                    // After restoring, redirect to "All Status" or "Active" view so user can see the restored product
+                    // Otherwise, if they're viewing "Archived" filter, the restored product will disappear
+                    return RedirectToPage(new { StatusFilter = "Active" });
                 }
                 else
                 {
