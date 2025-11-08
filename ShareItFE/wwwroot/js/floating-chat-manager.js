@@ -140,6 +140,10 @@ class FloatingChatManager {
                 .withAutomaticReconnect()
                 .build();
 
+            // IMPORTANT: Remove all old handlers first to prevent duplicates
+            this.signalRConnection.off("ReceiveMessage");
+            
+            // Then register the new handler
             this.signalRConnection.on("ReceiveMessage", (message) => {
                 this.handleIncomingMessage(message);
             });
@@ -235,6 +239,7 @@ class FloatingChatManager {
             avatar: avatar || this.getInitials(userName),
             conversationId: null,
             messages: [],
+            messagesLoaded: false, // Track if messages have been loaded
             isMinimized: minimized,
             unreadCount: 0,
             element: null
@@ -360,7 +365,7 @@ class FloatingChatManager {
             this.updateUnreadBadge(chat);
             
             // Load conversation if not loaded
-            if (!chat.conversationId) {
+            if (!chat.conversationId || !chat.messagesLoaded) {
                 this.loadConversation(chat);
             } else {
                 this.scrollToBottom(chat);
@@ -410,6 +415,11 @@ class FloatingChatManager {
     }
 
     async loadMessages(chat) {
+        // Prevent loading messages multiple times
+        if (chat.messagesLoaded) {
+            return;
+        }
+
         try {
             const response = await fetch(
                 `${this.apiUrl}/conversations/${chat.conversationId}/messages?page=1&pageSize=50`,
@@ -421,7 +431,28 @@ class FloatingChatManager {
             if (!response.ok) throw new Error('Failed to load messages');
 
             const messages = await response.json();
-            chat.messages = messages.reverse();
+            
+            // Clear existing messages and load fresh
+            chat.messages = [];
+            
+            // Check message order from API by comparing timestamps
+            // If API returns newest first (most common), reverse it
+            if (messages.length > 1) {
+                const first = new Date(messages[0].sentAt || messages[0].createdAt);
+                const last = new Date(messages[messages.length - 1].sentAt || messages[messages.length - 1].createdAt);
+                
+                // If first message is newer than last, API returns newest first → reverse
+                if (first > last) {
+                    chat.messages = messages.reverse();
+                } else {
+                    // Already oldest first
+                    chat.messages = messages;
+                }
+            } else {
+                chat.messages = messages;
+            }
+            
+            chat.messagesLoaded = true; // Mark as loaded
 
             this.renderMessages(chat);
         } catch (error) {
@@ -443,20 +474,37 @@ class FloatingChatManager {
             return;
         }
 
+        // Clear and render all messages
         messagesArea.innerHTML = '';
-        chat.messages.forEach(msg => {
+        
+        // Messages are sorted oldest first
+        // Append them in order: oldest at top, newest at bottom
+        chat.messages.forEach((msg, index) => {
             this.addMessageToChat(chat, msg, true);
         });
 
+        // Scroll to show newest messages (at bottom)
         this.scrollToBottom(chat);
     }
 
     addMessageToChat(chat, message, isHistory = false) {
+        // Prevent duplicate messages by checking if message already exists
+        const messageId = message.id || `${message.senderId}_${message.sentAt || message.createdAt}_${message.content}`;
+        const isDuplicate = chat.messages.some(msg => {
+            const existingId = msg.id || `${msg.senderId}_${msg.sentAt || msg.createdAt}_${msg.content}`;
+            return existingId === messageId;
+        });
+
+        if (isDuplicate && !isHistory) {
+            return; // Skip adding duplicate message
+        }
+
         const messagesArea = chat.element.querySelector('.chat-messages-area');
         const isMe = message.senderId === this.currentUserId;
 
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${isMe ? 'me' : 'them'}`;
+        messageEl.dataset.messageId = messageId; // Track message ID in DOM
         
         // Add avatar for messages from others
         if (!isMe) {
