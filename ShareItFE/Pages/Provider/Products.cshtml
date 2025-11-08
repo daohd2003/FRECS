@@ -26,7 +26,7 @@
         </div>
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -86,8 +86,8 @@
 
         <!-- Filters -->
         <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
-            <form method="get" class="space-y-4">
-                <input type="hidden" name="CurrentPage" value="1" />
+            <form method="get" id="filterForm" class="space-y-4">
+                <input type="hidden" name="CurrentPage" id="currentPageInput" value="1" />
                 <input type="hidden" name="PageSize" value="@Model.PageSize" />
                 
                 <div class="flex flex-col md:flex-row gap-4">
@@ -97,14 +97,15 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i data-lucide="search" class="h-5 w-5 text-gray-400"></i>
                             </div>
-                            <input type="text" name="SearchQuery" value="@Model.SearchQuery" placeholder="Search products..."
-                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                            <input type="text" name="SearchQuery" id="searchInput" value="@Model.SearchQuery" placeholder="Search products..."
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" 
+                                   autocomplete="off" />
                         </div>
                     </div>
 
                     <!-- Status Filter -->
                     <div class="w-full md:w-48">
-                        <select name="StatusFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                        <select name="StatusFilter" id="statusFilter" class="filter-select w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
                             @foreach (var option in Model.StatusOptions)
                             {
                                 <option value="@option.Value" selected="@(Model.StatusFilter == option.Value)">@option.Text</option>
@@ -114,7 +115,7 @@
 
                     <!-- Category Filter -->
                     <div class="w-full md:w-48">
-                        <select name="CategoryFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                        <select name="CategoryFilter" id="categoryFilter" class="filter-select w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
                             @foreach (var option in Model.CategoryOptions)
                             {
                                 <option value="@option.Value" selected="@(Model.CategoryFilter == option.Value)">@option.Text</option>
@@ -124,24 +125,19 @@
 
                     <!-- Type Filter (Rental/Purchase) -->
                     <div class="w-full md:w-48">
-                        <select name="TypeFilter" class="w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
+                        <select name="TypeFilter" id="typeFilter" class="filter-select w-full rounded-lg border-gray-300 focus:ring-purple-500 focus:border-purple-500">
                             @foreach (var option in Model.TypeOptions)
                             {
                                 <option value="@option.Value" selected="@(Model.TypeFilter == option.Value)">@option.Text</option>
                             }
                         </select>
                     </div>
-
-                    <!-- Search Button -->
-                    <button type="submit" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                        Search
-                    </button>
                 </div>
             </form>
         </div>
 
         <!-- Products Table -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div id="productsContainer" class="bg-white rounded-xl shadow-sm overflow-hidden">
             @if (Model.Products != null && Model.Products.Any())
             {
                 <div class="overflow-hidden">
@@ -314,15 +310,8 @@
                     
                     @if (Model.TotalPages > 1)
                     {
-                        <div>
-                            <form method="get" id="paginationForm" class="flex items-center gap-2">
-                                <input type="hidden" name="SearchQuery" value="@Model.SearchQuery" />
-                                <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
-                                <input type="hidden" name="CategoryFilter" value="@Model.CategoryFilter" />
-                                <input type="hidden" name="PageSize" value="@Model.PageSize" />
-                                <input type="hidden" name="CurrentPage" id="paginationPageInput" value="@Model.CurrentPage" />
-
-                                <button type="submit" onclick="setPage(@(Model.CurrentPage - 1))"
+                        <div class="flex items-center gap-2">
+                                <button type="button" onclick="setPage(@(Model.CurrentPage - 1))"
                                         class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled="@(Model.CurrentPage <= 1)">
                                     Previous
@@ -340,19 +329,18 @@
                                     else
                                     {
                                         var pageNum = (int)item;
-                                        <button type="submit" onclick="setPage(@pageNum)"
+                                        <button type="button" onclick="setPage(@pageNum)"
                                                 class="px-4 py-2 rounded-lg @(pageNum == Model.CurrentPage ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700")">
                                             @pageNum
                                         </button>
                                     }
                                 }
 
-                                <button type="submit" onclick="setPage(@(Model.CurrentPage + 1))"
+                                <button type="button" onclick="setPage(@(Model.CurrentPage + 1))"
                                         class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled="@(Model.CurrentPage >= Model.TotalPages)">
                                     Next
                                 </button>
-                            </form>
                         </div>
                     }
                 </div>
@@ -380,12 +368,99 @@
     <script>
         lucide.createIcons();
 
-        // Auto-submit form on filter change
-        document.querySelectorAll('select[name="StatusFilter"], select[name="CategoryFilter"], select[name="TypeFilter"]').forEach(select => {
-            select.addEventListener('change', function() {
-                this.form.submit();
+        let isLoading = false;
+        let searchTimeout;
+
+        // Auto-search with debounce (500ms delay)
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                document.getElementById('currentPageInput').value = '1';
+                loadProducts();
+            }, 500); // 500ms debounce - wait for user to stop typing
+        });
+
+        // Auto-load on filter change
+        document.querySelectorAll('.filter-select').forEach(select => {
+            select.addEventListener('change', () => {
+                document.getElementById('currentPageInput').value = '1';
+                loadProducts();
             });
         });
+
+        // AJAX load products function
+        async function loadProducts() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            showLoadingState();
+            
+            try {
+                const form = document.getElementById('filterForm');
+                const formData = new FormData(form);
+                const searchParams = new URLSearchParams();
+                
+                // Add all form data to search params
+                for (let [key, value] of formData.entries()) {
+                    searchParams.append(key, value);
+                }
+                
+                const response = await fetch(`/provider/products?${searchParams.toString()}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Update stats cards
+                    const newStatsContainer = doc.querySelector('#statsContainer');
+                    const currentStatsContainer = document.querySelector('#statsContainer');
+                    if (newStatsContainer && currentStatsContainer) {
+                        currentStatsContainer.innerHTML = newStatsContainer.innerHTML;
+                        lucide.createIcons(); // Re-initialize icons
+                    }
+                    
+                    // Update products table
+                    const newProductsContainer = doc.querySelector('#productsContainer');
+                    const currentProductsContainer = document.querySelector('#productsContainer');
+                    if (newProductsContainer && currentProductsContainer) {
+                        currentProductsContainer.innerHTML = newProductsContainer.innerHTML;
+                        lucide.createIcons(); // Re-initialize icons
+                    }
+                    
+                    // Update URL without reload
+                    const newUrl = `/provider/products?${searchParams.toString()}`;
+                    history.pushState(null, '', newUrl);
+                } else {
+                    console.error('Failed to load products');
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+            } finally {
+                isLoading = false;
+                hideLoadingState();
+            }
+        }
+
+        function showLoadingState() {
+            const container = document.querySelector('#productsContainer');
+            if (container) {
+                container.style.opacity = '0.5';
+                container.style.pointerEvents = 'none';
+            }
+        }
+
+        function hideLoadingState() {
+            const container = document.querySelector('#productsContainer');
+            if (container) {
+                container.style.opacity = '1';
+                container.style.pointerEvents = 'auto';
+            }
+        }
 
         // Restore product function
         function restoreProduct(productId, productName) {
@@ -463,10 +538,10 @@
             </text>
         }
 
-        // Pagination function
+        // Pagination function - use AJAX instead of form submit
         function setPage(page) {
-            document.getElementById('paginationPageInput').value = page;
-            document.getElementById('paginationForm').submit();
+            document.getElementById('currentPageInput').value = page;
+            loadProducts();
         }
     </script>
 }

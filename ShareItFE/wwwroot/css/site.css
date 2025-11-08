@@ -634,7 +634,7 @@ body {
             text-decoration: underline;
         }
 
-/* Product Grid Image Styles - Responsive */
+/* Product Grid Image Styles - Show full product without cropping */
 .product-grid-image-container {
     position: relative;
     overflow: hidden;
@@ -642,7 +642,7 @@ body {
 
 .product-grid-image-wrapper {
     width: 100%;
-    height: 320px; /* h-80 equivalent */
+    height: 380px; /* Increased height to show full product */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -653,7 +653,7 @@ body {
 .product-grid-image {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Mobile: show full image */
+    object-fit: contain; /* Always show full image without cropping */
     object-position: center;
     transition: transform 300ms ease-in-out;
 }
@@ -662,9 +662,9 @@ body {
     transform: scale(1.05);
 }
 
-/* Desktop: Use object-cover for better card appearance */
+/* Desktop: Increase height for better proportions */
 @media (min-width: 768px) {
-    .product-grid-image {
-        object-fit: cover;
+    .product-grid-image-wrapper {
+        height: 420px; /* Taller on desktop to accommodate full-body fashion images */
     }
 }
