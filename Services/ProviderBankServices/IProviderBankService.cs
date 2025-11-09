@@ -14,5 +14,6 @@ namespace Services.ProviderBankServices
         Task<BankAccount?> GetBankAccountById(Guid id);
         Task AddBankAccount(Guid providerId, BankAccountCreateDto dto);
         Task<bool> UpdateBankAccount(Guid providerId, BankAccountUpdateDto dto);
+        Task<bool> DeleteBankAccount(Guid providerId, Guid bankAccountId);
     }
 }

@@ -62,5 +62,16 @@ namespace ShareItAPI.Controllers
 
             return Ok(new ApiResponse<object>("Bank account updated", null));
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var providerId = _userHelper.GetCurrentUserId();
+            var success = await _service.DeleteBankAccount(providerId, id);
+            if (!success)
+                return NotFound(new ApiResponse<object>("Bank account not found or you don't have permission to delete it", null));
+
+            return Ok(new ApiResponse<object>("Bank account has been deleted.", null));
+        }
     }
 }

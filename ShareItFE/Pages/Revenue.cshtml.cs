@@ -87,12 +87,14 @@ namespace ShareItFE.Pages
                     PayoutSummary = JsonSerializer.Deserialize<PayoutSummaryDto>(payoutJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new PayoutSummaryDto();
                 }
 
-                // Get bank accounts
+                // Get bank accounts and sort by primary first
                 var bankResponse = await client.GetAsync("api/revenue/bank-accounts");
                 if (bankResponse.IsSuccessStatusCode)
                 {
                     var bankJson = await bankResponse.Content.ReadAsStringAsync();
-                    BankAccounts = JsonSerializer.Deserialize<List<BankAccountDto>>(bankJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<BankAccountDto>();
+                    var accounts = JsonSerializer.Deserialize<List<BankAccountDto>>(bankJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<BankAccountDto>();
+                    // Sort: Primary accounts first, then by creation date
+                    BankAccounts = accounts.OrderByDescending(a => a.IsPrimary).ToList();
                 }
 
                 // Get withdrawal history (New system using WithdrawalRequests table)

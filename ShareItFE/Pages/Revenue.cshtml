@@ -9,13 +9,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    /* Đảm bảo container không bị overflow */
     .revenue-dashboard {
         overflow-x: hidden;
         width: 100%;
     }
     
-    /* Đảm bảo charts responsive đúng cách */
     .chart-container {
         position: relative;
         height: 320px;
@@ -51,8 +49,6 @@
 
         <!-- Toast Container -->
         <div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
-
-        <!-- Alert Messages (will convert to toast) -->
         @if (!string.IsNullOrEmpty(Model.SuccessMessage))
         {
             <script>
@@ -101,7 +97,6 @@
 
         @if (Model.Tab == "overview")
         {
-            <!-- Revenue/Purchase Statistics Tab -->
             
             <!-- Period Selector -->
             <div class="mb-6 flex justify-between items-center">
@@ -328,7 +323,6 @@
         }
         else if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
         {
-            <!-- Payout Management Tab -->
             
             <!-- Payout Summary -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -381,29 +375,24 @@
                     </button>
                 </div>
 
-                <!-- Bank Accounts Grid -->
-                    @if (Model.BankAccounts.Any())
-                    {
+                @if (Model.BankAccounts.Any())
+                {
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         @foreach (var account in Model.BankAccounts)
                         {
                             <div class="relative border @(account.IsPrimary ? "border-purple-500 bg-purple-50" : "border-gray-200 bg-white") rounded-xl p-6 hover:shadow-lg transition-shadow">
-                                <!-- Primary Badge (top right corner) -->
-                                    @if (account.IsPrimary)
-                                    {
+                                @if (account.IsPrimary)
+                                {
                                     <div class="absolute top-4 right-4">
                                         <span class="bg-purple-600 text-white text-xs font-medium px-3 py-1 rounded-full">Primary</span>
                                     </div>
                                 }
-                                
-                                <!-- Bank Icon & Name -->
                                 <div class="flex items-start mb-4">
                                     <div class="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                         <i data-lucide="building-2" class="h-6 w-6 text-gray-600"></i>
                                     </div>
                                 </div>
 
-                                <!-- Bank Info -->
                                 <div class="mb-4 space-y-2">
                                     <h4 class="text-lg font-semibold text-gray-900">@account.BankName</h4>
                                     <p class="text-sm text-gray-600">Account: ****@account.Last4Digits</p>
@@ -414,7 +403,6 @@
                                     <p class="text-sm text-gray-600">Holder: @account.AccountHolderName</p>
                                 </div>
 
-                                <!-- Actions -->
                                 <div class="flex items-center space-x-3 pt-4 border-t border-gray-200">
                                     @if (!account.IsPrimary)
                                     {
@@ -436,11 +424,11 @@
                                     </form>
                                 </div>
                             </div>
-                        }
+                            }
                     </div>
-                    }
-                    else
-                    {
+                }
+                else
+                {
                     <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
                         <i data-lucide="building-2" class="h-16 w-16 mx-auto text-gray-300 mb-4"></i>
                         <p class="text-gray-500 font-medium">No bank accounts added yet</p>
@@ -449,11 +437,11 @@
                             <i data-lucide="plus" class="h-4 w-4 mr-2"></i>
                             Add Your First Account
                         </button>
-                        </div>
-                    }
+                    </div>
+                }
                 </div>
 
-            <!-- Add/Edit Bank Account Modal -->
+            <!-- Bank Account Modal -->
             <div id="bankAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
                 <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
                     <div class="p-6">
@@ -468,21 +456,134 @@
                             <input type="hidden" asp-for="Tab" />
                             <input type="hidden" asp-for="Period" />
                             <div class="space-y-4">
-                            <div>
+                                <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
-                                    <input type="text" id="bankNameField" asp-for="NewBankAccount.BankName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. Chase Bank" />
-                            </div>
-                            <div>
+                                <div class="relative">
+                                    <input type="text" 
+                                           id="bankNameField" 
+                                           asp-for="NewBankAccount.BankName" 
+                                           list="vietnamBanksList"
+                                           required 
+                                           class="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                           placeholder="Type to search Vietnamese banks..." 
+                                           autocomplete="off" />
+                                    <button type="button" 
+                                            id="changeBankBtn" 
+                                            class="hidden absolute right-2 top-1/2 transform -translate-y-1/2 px-2 py-1 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+                                            onclick="unlockBankName()">
+                                        Change
+                                    </button>
+                                    <div id="bankNameLocked" class="hidden absolute right-2 top-1/2 transform -translate-y-1/2">
+                                        <i data-lucide="lock" class="h-4 w-4 text-green-600" title="Bank name locked after selection"></i>
+                                    </div>
+                                </div>
+                                <div id="bankNameWarning" class="hidden mt-1 text-xs text-amber-600 flex items-center">
+                                    <i data-lucide="alert-triangle" class="h-3 w-3 mr-1"></i>
+                                    <span>Bank name doesn't match our list. Please select from the dropdown to ensure accuracy.</span>
+                                </div>
+                                <datalist id="vietnamBanksList">
+                                    <!-- Top Vietnamese Banks -->
+                                    <option value="Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)">Vietcombank</option>
+                                    <option value="Ngân hàng TMCP Đầu tư và Phát triển Việt Nam (BIDV)">BIDV</option>
+                                    <option value="Ngân hàng TMCP Công thương Việt Nam (VietinBank)">VietinBank</option>
+                                    <option value="Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam (Agribank)">Agribank</option>
+                                    <option value="Ngân hàng TMCP Kỹ thương Việt Nam (Techcombank)">Techcombank</option>
+                                    
+                                    <!-- Commercial Banks -->
+                                    <option value="Ngân hàng TMCP Á Châu (ACB)">ACB</option>
+                                    <option value="Ngân hàng TMCP Quân đội (MB Bank)">MB Bank</option>
+                                    <option value="Ngân hàng TMCP Việt Nam Thịnh Vượng (VPBank)">VPBank</option>
+                                    <option value="Ngân hàng TMCP Tiên Phong (TPBank)">TPBank</option>
+                                    <option value="Ngân hàng TMCP Sài Gòn Thương Tín (Sacombank)">Sacombank</option>
+                                    <option value="Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh (HDBank)">HDBank</option>
+                                    <option value="Ngân hàng TMCP Sài Gòn - Hà Nội (SHB)">SHB</option>
+                                    <option value="Ngân hàng TMCP Quốc tế Việt Nam (VIB)">VIB</option>
+                                    <option value="Ngân hàng TMCP Bưu điện Liên Việt (LienVietPostBank)">LienVietPostBank</option>
+                                    <option value="Ngân hàng TMCP Phương Đông (OCB)">OCB</option>
+                                    <option value="Ngân hàng TMCP Hàng Hải Việt Nam (MSB)">MSB</option>
+                                    <option value="Ngân hàng TMCP Xuất Nhập khẩu Việt Nam (Eximbank)">Eximbank</option>
+                                    <option value="Ngân hàng TMCP Đông Nam Á (SeABank)">SeABank</option>
+                                    <option value="Ngân hàng TMCP Đại Chúng Việt Nam (PVcomBank)">PVcomBank</option>
+                                    <option value="Ngân hàng TMCP Bắc Á (BacABank)">BacABank</option>
+                                    
+                                    <!-- Other Banks -->
+                                    <option value="Ngân hàng TMCP Việt Nam Thương Tín (VietBank)">VietBank</option>
+                                    <option value="Ngân hàng TMCP Nam Á (NamABank)">NamABank</option>
+                                    <option value="Ngân hàng TMCP Xăng dầu Petrolimex (PGBank)">PGBank</option>
+                                    <option value="Ngân hàng TMCP Bản Việt (VietCapitalBank)">VietCapitalBank</option>
+                                    <option value="Ngân hàng TMCP Sài Gòn (SCB)">SCB</option>
+                                    <option value="Ngân hàng TMCP An Bình (ABBank)">ABBank</option>
+                                    <option value="Ngân hàng TMCP Quốc Dân (NCB)">NCB</option>
+                                    <option value="Ngân hàng TMCP Bảo Việt (BaoVietBank)">BaoVietBank</option>
+                                    <option value="Ngân hàng TMCP Kiên Long (KienLongBank)">KienLongBank</option>
+                                    <option value="Ngân hàng TMCP Đông Á (DongABank)">DongABank</option>
+                                    <option value="Ngân hàng TMCP Việt Á (VietABank)">VietABank</option>
+                                    <option value="Ngân hàng TMCP Bưu Điện Việt Nam (LPBank)">LPBank</option>
+                                    <option value="Ngân hàng TMCP Đại Dương (OceanBank)">OceanBank</option>
+                                    <option value="Ngân hàng TMCP Quốc tế (VIB)">VIB</option>
+                                    
+                                    <!-- Foreign Banks in Vietnam -->
+                                    <option value="HSBC Vietnam">HSBC</option>
+                                    <option value="Standard Chartered Bank Vietnam">Standard Chartered</option>
+                                    <option value="Citibank Vietnam">Citibank</option>
+                                    <option value="Shinhan Bank Vietnam">Shinhan Bank</option>
+                                    <option value="ANZ Vietnam">ANZ</option>
+                                    <option value="Hong Leong Bank Vietnam">Hong Leong Bank</option>
+                                    <option value="Public Bank Vietnam">Public Bank</option>
+                                    <option value="CIMB Bank Vietnam">CIMB Bank</option>
+                                    <option value="UOB Vietnam">UOB</option>
+                                    <option value="Woori Bank Vietnam">Woori Bank</option>
+                                </datalist>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i data-lucide="info" class="h-3 w-3 inline"></i>
+                                    Type to search from 40+ Vietnamese banks
+                                </p>
+                                </div>
+                                <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Account Holder Name</label>
-                                    <input type="text" id="accountHolderNameField" asp-for="NewBankAccount.AccountHolderName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. John Doe" />
+                                <input type="text" 
+                                       id="accountHolderNameField" 
+                                       asp-for="NewBankAccount.AccountHolderName" 
+                                       required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                       placeholder="e.g. John Doe" 
+                                       autocomplete="off" />
+                                <div id="accountHolderNameError" class="hidden mt-1 text-xs text-red-600 flex items-center">
+                                    <i data-lucide="alert-circle" class="h-3 w-3 mr-1"></i>
+                                    <span id="accountHolderNameErrorText"></span>
+                                </div>
                             </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
-                                    <input type="text" id="accountNumberField" asp-for="NewBankAccount.AccountNumber" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. 1234567890" />
+                                    <input type="text" 
+                                           id="accountNumberField" 
+                                           asp-for="NewBankAccount.AccountNumber" 
+                                           required 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                           placeholder="e.g. 1234567890" 
+                                           autocomplete="off"
+                                           maxlength="17" />
+                                    <div id="accountNumberError" class="hidden mt-1 text-xs text-red-600 flex items-center">
+                                        <i data-lucide="alert-circle" class="h-3 w-3 mr-1"></i>
+                                        <span id="accountNumberErrorText"></span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Must be 8-17 digits
+                                    </p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Routing Number (Optional)</label>
-                                    <input type="text" id="routingNumberField" asp-for="NewBankAccount.RoutingNumber" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g. 021000021" />
+                                    <input type="text" 
+                                           id="routingNumberField" 
+                                           asp-for="NewBankAccount.RoutingNumber" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                           placeholder="e.g. 021000021" 
+                                           autocomplete="off"
+                                           maxlength="50" />
+                                    <div id="routingNumberError" class="hidden mt-1 text-xs text-red-600 flex items-center">
+                                        <i data-lucide="alert-circle" class="h-3 w-3 mr-1"></i>
+                                        <span id="routingNumberErrorText"></span>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="flex items-center">
@@ -490,16 +591,16 @@
                                         <span class="ml-2 text-sm text-gray-700">Set as primary account</span>
                                     </label>
                                 </div>
-                        </div>
+                            </div>
                             <div class="flex space-x-3 mt-6">
                                 <button type="submit" class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium">
                                     Save Account
-                            </button>
+                                </button>
                                 <button type="button" onclick="closeBankAccountModal()" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium">
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -527,10 +628,12 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Bank Account *</label>
                                     <select asp-for="WithdrawalRequest.BankAccountId" id="withdrawalBankAccount" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                        <option value="">Select a bank account</option>
                                         @foreach (var account in Model.BankAccounts)
                                         {
-                                            <option value="@account.Id" data-bank-name="@account.BankName" data-last4="@account.Last4Digits">@account.BankName - ****@account.Last4Digits @(account.IsPrimary ? "(Primary)" : "")</option>
+                                            var isPrimary = account.IsPrimary ? "true" : "false";
+                                            var selected = account.IsPrimary ? "selected" : "";
+                                           // <option value="@account.Id" data-bank-name="@account.BankName" data-last4="@account.Last4Digits" data-is-primary="@isPrimary" @selected>@account.BankName - ****@account.Last4Digits @(account.IsPrimary ? "(Primary)" : "")</option>
+                                            <option value="@account.Id" data-bank-name="@account.BankName" data-last4="@account.Last4Digits" data-is-primary="@isPrimary" selected="@isPrimary">@account.BankName - ****@account.Last4Digits @(account.IsPrimary ? "(Primary)" : "")</option>
                                         }
                                     </select>
                                     @if (!Model.BankAccounts.Any())
@@ -554,8 +657,6 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
                                     <textarea asp-for="WithdrawalRequest.Notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Add any notes about this withdrawal..."></textarea>
                                 </div>
-                                
-
                             </div>
                             <div class="flex space-x-3 mt-6">
                                 <button type="submit" id="submitWithdrawalBtn" class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium disabled:bg-gray-300 disabled:cursor-not-allowed transition-all" disabled>
@@ -784,9 +885,504 @@
             document.getElementById('routingNumberField').value = '';
             document.getElementById('setAsPrimaryField').checked = false;
             
+            // Clear all error messages
+            clearAllFieldErrors();
+            
             // Show modal
             modal.classList.remove('hidden');
             lucide.createIcons();
+            
+            // Initialize bank name autocomplete helper
+            initBankNameAutocomplete();
+            
+            // Initialize field validations
+            initFieldValidations();
+            
+            // Add form submit validation
+            setupBankAccountFormValidation();
+        }
+        
+        let formValidationHandler = null;
+        
+        function setupBankAccountFormValidation() {
+            const form = document.getElementById('bankAccountForm');
+            if (!form) return;
+            
+            // Remove existing handler if any
+            if (formValidationHandler) {
+                form.removeEventListener('submit', formValidationHandler, true);
+            }
+            
+            // Create new validation handler
+            formValidationHandler = function(e) {
+                let hasErrors = false;
+                let firstErrorField = null;
+                
+                // 1. Validate Bank Name
+                const bankNameInput = document.getElementById('bankNameField');
+                if (bankNameInput) {
+                    const value = bankNameInput.value.trim();
+                    if (value.length === 0) {
+                        // HTML5 required will handle this
+                        hasErrors = true;
+                        if (!firstErrorField) firstErrorField = bankNameInput;
+                    } else {
+                        // Check if bank name matches datalist
+                        const datalist = document.getElementById('vietnamBanksList');
+                        if (datalist) {
+                            const options = datalist.querySelectorAll('option');
+                            let exactMatch = false;
+                            options.forEach(option => {
+                                if (option.value.toLowerCase() === value.toLowerCase()) {
+                                    exactMatch = true;
+                                }
+                            });
+                            
+                            // If not locked and doesn't match, show warning and confirmation
+                            if (!bankNameLocked && !exactMatch) {
+                                showBankNameWarning();
+                                if (!firstErrorField) firstErrorField = bankNameInput;
+                                hasErrors = true;
+                            }
+                        }
+                    }
+                }
+                
+                // 2-4. Validate all form fields
+                const fieldOrder = ['accountHolderName', 'accountNumber', 'routingNumber'];
+                fieldOrder.forEach(fieldName => {
+                    if (!FieldValidator.validate(fieldName)) {
+                        hasErrors = true;
+                        if (!firstErrorField) {
+                            const config = FieldValidator.fields[fieldName];
+                            firstErrorField = document.getElementById(config.inputId);
+                        }
+                    }
+                });
+                
+                // If there are errors, prevent submission
+                if (hasErrors) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Scroll to first error field
+                    if (firstErrorField) {
+                        firstErrorField.focus();
+                        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    
+                    // If only bank name warning (not locked), show confirmation
+                    const bankNameValue = bankNameInput ? bankNameInput.value.trim() : '';
+                    if (bankNameValue.length > 0 && !bankNameLocked) {
+                        const datalist = document.getElementById('vietnamBanksList');
+                        if (datalist) {
+                            const options = datalist.querySelectorAll('option');
+                            let exactMatch = false;
+                            options.forEach(option => {
+                                if (option.value.toLowerCase() === bankNameValue.toLowerCase()) {
+                                    exactMatch = true;
+                                }
+                            });
+                            
+                            if (!exactMatch) {
+                                const proceed = confirm('⚠️ Warning: The bank name you entered is not in our list.\n\nThis may cause issues with bank account verification.\n\nDo you want to continue anyway?\n\n• Click OK to proceed with custom bank name\n• Click Cancel to select from the dropdown');
+                                
+                                if (proceed) {
+                                    // User confirmed - remove validation and submit
+                                    hideBankNameWarning();
+                                    form.removeEventListener('submit', formValidationHandler, true);
+                                    formValidationHandler = null;
+                                    // Re-validate all fields before submitting
+                                    if (FieldValidator.validateAll()) {
+                                        form.submit();
+                                    } else {
+                                        // Other fields still have errors, show them
+                                        setupBankAccountFormValidation();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    return false;
+                }
+            };
+            
+            // Add submit validation
+            form.addEventListener('submit', formValidationHandler, true);
+        }
+        
+        // Bank Name Autocomplete Helper
+        let bankNameLocked = false;
+        let lastLockedValue = '';
+        
+        function initBankNameAutocomplete() {
+            const bankNameInput = document.getElementById('bankNameField');
+            if (!bankNameInput) return;
+            
+            // Reset lock state when modal opens
+            bankNameLocked = false;
+            lastLockedValue = '';
+            unlockBankName();
+            
+            // Add icon to indicate searchable
+            bankNameInput.addEventListener('focus', function() {
+                if (!bankNameLocked) {
+                    this.placeholder = 'Type: Vietcombank, BIDV, Techcombank...';
+                }
+            });
+            
+            bankNameInput.addEventListener('blur', function() {
+                if (!bankNameLocked) {
+                    this.placeholder = 'Type to search Vietnamese banks...';
+                    validateBankName();
+                }
+            });
+            
+            // Detect when user selects from datalist or types
+            bankNameInput.addEventListener('input', function() {
+                const value = this.value.trim();
+                const datalist = document.getElementById('vietnamBanksList');
+                const options = datalist.querySelectorAll('option');
+                
+                // Check if current value exactly matches any option
+                let exactMatch = false;
+                options.forEach(option => {
+                    if (option.value.toLowerCase() === value.toLowerCase()) {
+                        exactMatch = true;
+                    }
+                });
+                
+                // If locked and user tries to edit
+                if (bankNameLocked && value !== lastLockedValue) {
+                    // User is editing locked value - unlock and show warning
+                    unlockBankName();
+                    if (value.length > 0 && !exactMatch) {
+                        showBankNameWarning();
+                    } else {
+                        hideBankNameWarning();
+                    }
+                }
+                
+                // Visual feedback
+                if (value.length > 0) {
+                    if (exactMatch) {
+                        this.style.borderColor = '#10b981'; // Green border for exact match
+                        hideBankNameWarning();
+                    } else {
+                        this.style.borderColor = '#d1d5db'; // Default border
+                    }
+                } else {
+                    this.style.borderColor = '#d1d5db';
+                    hideBankNameWarning();
+                }
+            });
+            
+            // Detect selection from datalist (using change event)
+            bankNameInput.addEventListener('change', function() {
+                validateAndLockBankName();
+            });
+        }
+        
+        function validateAndLockBankName() {
+            const bankNameInput = document.getElementById('bankNameField');
+            const value = bankNameInput.value.trim();
+            const datalist = document.getElementById('vietnamBanksList');
+            const options = datalist.querySelectorAll('option');
+            
+            // Check if value exactly matches any option
+            let exactMatch = false;
+            options.forEach(option => {
+                if (option.value.toLowerCase() === value.toLowerCase()) {
+                    exactMatch = true;
+                }
+            });
+            
+            // Lock if exact match found
+            if (exactMatch && value.length > 0) {
+                lockBankName(value);
+            }
+        }
+        
+        function validateBankName() {
+            const bankNameInput = document.getElementById('bankNameField');
+            const value = bankNameInput.value.trim();
+            
+            if (value.length === 0) {
+                hideBankNameWarning();
+                return;
+            }
+            
+            const datalist = document.getElementById('vietnamBanksList');
+            const options = datalist.querySelectorAll('option');
+            
+            let exactMatch = false;
+            options.forEach(option => {
+                if (option.value.toLowerCase() === value.toLowerCase()) {
+                    exactMatch = true;
+                }
+            });
+            
+            if (!exactMatch && !bankNameLocked) {
+                showBankNameWarning();
+            } else {
+                hideBankNameWarning();
+                if (exactMatch && !bankNameLocked) {
+                    lockBankName(value);
+                }
+            }
+        }
+        
+        function lockBankName(value) {
+            const bankNameInput = document.getElementById('bankNameField');
+            const changeBtn = document.getElementById('changeBankBtn');
+            const lockedIcon = document.getElementById('bankNameLocked');
+            
+            bankNameLocked = true;
+            lastLockedValue = value;
+            
+            // Make input readonly (but still focusable for accessibility)
+            bankNameInput.setAttribute('readonly', 'readonly');
+            bankNameInput.style.backgroundColor = '#f9fafb';
+            bankNameInput.style.cursor = 'not-allowed';
+            bankNameInput.style.borderColor = '#10b981';
+            
+            // Show lock icon and change button
+            lockedIcon.classList.remove('hidden');
+            changeBtn.classList.remove('hidden');
+            
+            // Hide warning
+            hideBankNameWarning();
+            
+            // Re-initialize icons
+            lucide.createIcons();
+        }
+        
+        function unlockBankName() {
+            const bankNameInput = document.getElementById('bankNameField');
+            const changeBtn = document.getElementById('changeBankBtn');
+            const lockedIcon = document.getElementById('bankNameLocked');
+            
+            bankNameLocked = false;
+            lastLockedValue = '';
+            
+            // Remove readonly
+            bankNameInput.removeAttribute('readonly');
+            bankNameInput.style.backgroundColor = '#ffffff';
+            bankNameInput.style.cursor = 'text';
+            bankNameInput.style.borderColor = '#d1d5db';
+            
+            // Hide lock icon and change button
+            lockedIcon.classList.add('hidden');
+            changeBtn.classList.add('hidden');
+            
+            // Focus on input for easy editing
+            bankNameInput.focus();
+        }
+        
+        function showBankNameWarning() {
+            const warning = document.getElementById('bankNameWarning');
+            if (warning) {
+                warning.classList.remove('hidden');
+            }
+        }
+        
+        function hideBankNameWarning() {
+            const warning = document.getElementById('bankNameWarning');
+            if (warning) {
+                warning.classList.add('hidden');
+            }
+        }
+        
+        // Field Validation Helper - Optimized
+        const FieldValidator = {
+            fields: {
+                accountNumber: {
+                    inputId: 'accountNumberField',
+                    errorId: 'accountNumberError',
+                    errorTextId: 'accountNumberErrorText',
+                    rules: {
+                        required: true,
+                        pattern: /^\d+$/,
+                        patternError: 'Please enter a valid account number (digits only).',
+                        minLength: 8,
+                        maxLength: 17,
+                        lengthError: 'Account number must be between 8 and 17 digits.',
+                        digitsOnly: true
+                    }
+                },
+                accountHolderName: {
+                    inputId: 'accountHolderNameField',
+                    errorId: 'accountHolderNameError',
+                    errorTextId: 'accountHolderNameErrorText',
+                    rules: {
+                        required: true,
+                        noWhitespaceOnly: true,
+                        whitespaceError: 'Account holder name cannot contain only whitespace.',
+                        pattern: /^[a-zA-Z\s]+$/,
+                        patternError: 'Name cannot contain special characters.'
+                    }
+                },
+                routingNumber: {
+                    inputId: 'routingNumberField',
+                    errorId: 'routingNumberError',
+                    errorTextId: 'routingNumberErrorText',
+                    rules: {
+                        required: false,
+                        pattern: /^\d+$/,
+                        patternError: 'Please enter a valid routing number (digits only).',
+                        maxLength: 50,
+                        lengthError: 'Routing number cannot exceed 50 characters.',
+                        digitsOnly: true
+                    }
+                }
+            },
+
+            // Show error message
+            showError(input, errorDiv, errorText, message) {
+                input.classList.remove('border-gray-300');
+                input.classList.add('border-red-500');
+                errorText.textContent = message;
+                errorDiv.classList.remove('hidden');
+                lucide.createIcons();
+            },
+
+            // Show success (green border temporarily)
+            showSuccess(input) {
+                input.classList.remove('border-red-500');
+                input.classList.add('border-green-500');
+                setTimeout(() => {
+                    input.classList.remove('border-green-500');
+                    input.classList.add('border-gray-300');
+                }, 1000);
+            },
+
+            // Clear error
+            clearError(input, errorDiv) {
+                input.classList.remove('border-red-500', 'border-green-500');
+                input.classList.add('border-gray-300');
+                errorDiv.classList.add('hidden');
+            },
+
+            // Validate single field
+            validate(fieldName) {
+                const config = this.fields[fieldName];
+                if (!config) return true;
+
+                const input = document.getElementById(config.inputId);
+                const errorDiv = document.getElementById(config.errorId);
+                const errorText = document.getElementById(config.errorTextId);
+
+                if (!input || !errorDiv || !errorText) return true;
+
+                const value = input.value.trim();
+                const rules = config.rules;
+
+                // Clear previous errors
+                this.clearError(input, errorDiv);
+
+                // Required check
+                if (rules.required && value.length === 0) {
+                    return false; // HTML5 required will handle empty
+                }
+
+                // Optional field - empty is valid
+                if (!rules.required && value.length === 0) {
+                    return true;
+                }
+
+                // No whitespace only check
+                if (rules.noWhitespaceOnly && /^\s+$/.test(value)) {
+                    this.showError(input, errorDiv, errorText, rules.whitespaceError);
+                    return false;
+                }
+
+                // Pattern validation
+                if (rules.pattern && !rules.pattern.test(value)) {
+                    this.showError(input, errorDiv, errorText, rules.patternError);
+                    return false;
+                }
+
+                // Length validation
+                if (rules.minLength && value.length < rules.minLength) {
+                    this.showError(input, errorDiv, errorText, rules.lengthError);
+                    return false;
+                }
+                if (rules.maxLength && value.length > rules.maxLength) {
+                    this.showError(input, errorDiv, errorText, rules.lengthError);
+                    return false;
+                }
+
+                // Valid - show success indicator
+                if (rules.required) {
+                    this.showSuccess(input);
+                }
+                return true;
+            },
+
+            // Setup event listeners for a field
+            setupField(fieldName) {
+                const config = this.fields[fieldName];
+                if (!config) return;
+
+                const input = document.getElementById(config.inputId);
+                if (!input) return;
+
+                // Input and blur events
+                ['input', 'blur'].forEach(eventType => {
+                    input.addEventListener(eventType, () => this.validate(fieldName));
+                });
+
+                // Digits only keypress restriction
+                if (config.rules.digitsOnly) {
+                    input.addEventListener('keypress', (e) => {
+                        if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                            e.preventDefault();
+                        }
+                    });
+                }
+            },
+
+            // Initialize all fields
+            init() {
+                Object.keys(this.fields).forEach(fieldName => {
+                    this.setupField(fieldName);
+                });
+            },
+
+            // Clear all errors
+            clearAll() {
+                Object.values(this.fields).forEach(config => {
+                    const input = document.getElementById(config.inputId);
+                    const errorDiv = document.getElementById(config.errorId);
+                    if (input && errorDiv) {
+                        this.clearError(input, errorDiv);
+                    }
+                });
+            },
+
+            // Validate all fields (for form submission)
+            validateAll() {
+                return Object.keys(this.fields).every(fieldName => this.validate(fieldName));
+            }
+        };
+
+        // Initialize field validations
+        function initFieldValidations() {
+            FieldValidator.init();
+        }
+
+        // Individual validation functions (for backward compatibility)
+        function validateAccountNumber() {
+            return FieldValidator.validate('accountNumber');
+        }
+
+        function validateAccountHolderName() {
+            return FieldValidator.validate('accountHolderName');
+        }
+
+        function validateRoutingNumber() {
+            return FieldValidator.validate('routingNumber');
         }
 
         function editBankAccount(id, bankName, accountNumber, accountHolderName, routingNumber) {
@@ -808,21 +1404,70 @@
             // Show modal
             modal.classList.remove('hidden');
             lucide.createIcons();
+            
+            // Initialize bank name autocomplete helper for edit mode
+            initBankNameAutocomplete();
+            
+            // Initialize field validations
+            initFieldValidations();
+            
+            // Setup form validation for edit mode
+            setupBankAccountFormValidation();
+            
+            // Check if existing bank name matches datalist and lock if it does
+            setTimeout(() => {
+                validateAndLockBankName();
+            }, 100);
         }
 
         function closeBankAccountModal() {
             document.getElementById('bankAccountModal').classList.add('hidden');
+            
+            // Remove form validation handler
+            const form = document.getElementById('bankAccountForm');
+            if (form && formValidationHandler) {
+                form.removeEventListener('submit', formValidationHandler, true);
+                formValidationHandler = null;
+            }
+            
+            // Reset lock state
+            bankNameLocked = false;
+            lastLockedValue = '';
+            unlockBankName();
+            hideBankNameWarning();
+            
+            // Clear all field errors
+            clearAllFieldErrors();
+        }
+        
+        function clearAllFieldErrors() {
+            FieldValidator.clearAll();
         }
 
         // Withdrawal Modal Functions
         function openWithdrawalModal() {
             const modal = document.getElementById('withdrawalModal');
+            const bankAccountSelect = document.getElementById('withdrawalBankAccount');
+            
             // Reset form
             document.getElementById('withdrawalForm').reset();
             document.getElementById('withdrawalAmountInput').value = '';
             document.getElementById('remainingBalance').innerHTML = '';
             document.getElementById('amountError').classList.add('hidden');
             document.getElementById('submitWithdrawalBtn').disabled = true;
+            
+            // Auto-select primary bank account if exists
+            if (bankAccountSelect) {
+                const primaryOption = Array.from(bankAccountSelect.options).find(opt => 
+                    opt.getAttribute('data-is-primary') === 'true'
+                );
+                if (primaryOption) {
+                    bankAccountSelect.value = primaryOption.value;
+                    // Trigger change event to update submit button state
+                    bankAccountSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            
             modal.classList.remove('hidden');
             lucide.createIcons();
         }

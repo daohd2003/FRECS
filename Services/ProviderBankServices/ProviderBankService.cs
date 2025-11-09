@@ -72,5 +72,14 @@ namespace Services.ProviderBankServices
 
             return await _repo.UpdateAsync(existing);
         }
+
+        public async Task<bool> DeleteBankAccount(Guid providerId, Guid bankAccountId)
+        {
+            var existing = await _repo.GetByIdAsync(bankAccountId);
+            if (existing == null || existing.UserId != providerId)
+                return false;
+
+            return await _repo.DeleteAsync(bankAccountId);
+        }
     }
 }
