@@ -226,6 +226,66 @@ namespace ShareItAPI.Controllers
                 if (existingProduct == null) 
                     return NotFound(new ApiResponse<string>("Product not found.", null));
                 
+                var currentStatus = existingProduct.AvailabilityStatus.ToLower();
+                var isArchivedOrDeleted = currentStatus == "archived" || currentStatus == "deleted";
+
+                // If product is archived, only allow status change.
+                if (isArchivedOrDeleted)
+                {
+                    // Check if any field other than AvailabilityStatus was changed.
+                    // The DTO contains all form fields, so we compare them to the current DB values.
+                    bool otherFieldsChanged =
+                        dto.Name != existingProduct.Name ||
+                        dto.Description != existingProduct.Description ||
+                        dto.CategoryId != existingProduct.CategoryId ||
+                        dto.Size != existingProduct.Size ||
+                        dto.Color != existingProduct.Color ||
+                        dto.PricePerDay != existingProduct.PricePerDay ||
+                        (dto.PurchasePrice ?? 0) != existingProduct.PurchasePrice ||
+                        (dto.PurchaseQuantity ?? 0) != existingProduct.PurchaseQuantity ||
+                        (dto.RentalQuantity ?? 0) != existingProduct.RentalQuantity ||
+                        dto.SecurityDeposit != existingProduct.SecurityDeposit ||
+                        dto.RentalStatus != existingProduct.RentalStatus ||
+                        dto.PurchaseStatus != existingProduct.PurchaseStatus ||
+                        dto.Gender != existingProduct.Gender;
+
+                    if (otherFieldsChanged)
+                    {
+                        return BadRequest(new ApiResponse<string>(
+                            "This product is archived. To edit its details, first change its status to an active state (like 'Available'), save the change, and then edit other details.", 
+                            null));
+                    }
+                }
+                
+                // ✅ CHECK CONTENT MODERATION - ONLY when changing to "Available" status
+                // Skip moderation check if:
+                // 1. Changing to Archived/Deleted (allow archiving/deleting without check)
+                // 2. Status is Pending and changing to Archived (allow staff to archive violated products)
+                var newStatus = dto.AvailabilityStatus ?? existingProduct.AvailabilityStatus;
+                var isChangingToAvailable = newStatus.Equals("Available", StringComparison.OrdinalIgnoreCase);
+                var isChangingToArchived = newStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase) || 
+                                          newStatus.Equals("Deleted", StringComparison.OrdinalIgnoreCase);
+                
+                // Only check moderation when:
+                // - Changing TO "Available" status (must ensure content is appropriate)
+                // - OR updating Name/Description while ALREADY in "Available" status
+                bool shouldCheckModeration = isChangingToAvailable || 
+                    (currentStatus == "available" && !isChangingToArchived);
+                
+                if (shouldCheckModeration)
+                {
+                    var moderationResult = await _moderationService.CheckProductContentAsync(dto.Name, dto.Description);
+                    
+                    if (!moderationResult.IsAppropriate)
+                    {
+                        // Return 400 with violation details
+                        return BadRequest(new ApiResponse<ContentModerationResultDTO>(
+                            "Product contains inappropriate content and cannot be updated.",
+                            moderationResult
+                        ));
+                    }
+                }
+                
                 // Update fields but KEEP original ProviderId
                 var productDto = new ProductDTO
                 {

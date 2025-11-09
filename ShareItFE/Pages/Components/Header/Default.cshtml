@@ -61,22 +61,24 @@
                     </a>
                 }
 
-                <div class="notification-menu" data-userid="@Model.UserId" data-token="@Model.AccessToken" data-userrole="@Model.UserRole">
-                    <button id="notificationButton" class="notification-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                        </svg>
-                        @if (Model.UnreadNotificationCount > 0)
-                        {
-                            <span id="notificationCount" class="notification-count">@Model.UnreadNotificationCount</span>
-                        }
-                        else
-                        {
-                            <span id="notificationCount" class="notification-count" style="display: none;"></span>
-                        }
-                    </button>
-                    <div id="notificationDropdown" class="notification-dropdown">
+                @if (!string.Equals(Model.UserRole, "staff", StringComparison.OrdinalIgnoreCase))
+                {
+                    <div class="notification-menu" data-userid="@Model.UserId" data-token="@Model.AccessToken" data-userrole="@Model.UserRole">
+                        <button id="notificationButton" class="notification-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                            @if (Model.UnreadNotificationCount > 0)
+                            {
+                                <span id="notificationCount" class="notification-count">@Model.UnreadNotificationCount</span>
+                            }
+                            else
+                            {
+                                <span id="notificationCount" class="notification-count" style="display: none;"></span>
+                            }
+                        </button>
+                        <div id="notificationDropdown" class="notification-dropdown">
                         <div class="notification-header">
                             <span>Notifications</span>
                             <button id="markAllReadBtn" class="mark-all-read-btn">Mark all as read</button>
@@ -126,7 +128,8 @@
                             <a href="/Notifications">View all notifications</a>
                         </div>
                     </div>
-                </div>
+                    </div>
+                }
 
                 <div class="user-menu">
                     <button id="userMenuButton" class="user-menu-button">
@@ -147,10 +150,13 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             <span>Profile</span>
                         </a>
-                        <a asp-page="/Delivery">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                            <span>My Orders</span>
-                        </a>                       
+                        @if (!string.Equals(Model.UserRole, "staff", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <a asp-page="/Delivery">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                <span>My Orders</span>
+                            </a>
+                        }
                         @* Revenue - Only for Providers *@
                         @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
                         {

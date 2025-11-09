@@ -42,10 +42,10 @@ namespace ShareItAPI.Controllers
         
 
         /// <summary>
-        /// [ADMIN] Xem chi tiết một báo cáo cụ thể
+        /// [ADMIN/STAFF] Xem chi tiết một báo cáo cụ thể
         /// </summary>
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetReportDetails(Guid id)
         {
             var report = await _reportService.GetReportDetailsAsync(id);
@@ -54,10 +54,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [ADMIN] Lấy danh sách tất cả admin để gán việc
+        /// [ADMIN/STAFF] Lấy danh sách tất cả admin để gán việc
         /// </summary>
         [HttpGet("admins")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAllAdmins()
         {
             var currentAdminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
@@ -66,10 +66,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [ADMIN] Nhận một báo cáo để xử lý
+        /// [ADMIN/STAFF] Nhận một báo cáo để xử lý
         /// </summary>
         [HttpPost("{id}/take")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> TakeReport(Guid id)
         {
             var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
@@ -79,10 +79,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [ADMIN] Gán một báo cáo cho một admin khác
+        /// [ADMIN/STAFF] Gán một báo cáo cho một admin khác
         /// </summary>
         [HttpPut("{id}/assign")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> AssignReport(Guid id, [FromBody] AssignReportRequest request)
         {
             var (success, message) = await _reportService.AssignReportAsync(id, request.NewAdminId);
@@ -91,10 +91,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [ADMIN] Cập nhật trạng thái của một báo cáo
+        /// [ADMIN/STAFF] Cập nhật trạng thái của một báo cáo
         /// </summary>
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateReportStatusRequest request)
         {
             var (success, message) = await _reportService.UpdateStatusAsync(id, request.NewStatus);
@@ -103,10 +103,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [ADMIN] Gửi phản hồi cho người dùng và cập nhật trạng thái
+        /// [ADMIN/STAFF] Gửi phản hồi cho người dùng và cập nhật trạng thái
         /// </summary>
         [HttpPost("{id}/respond")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> RespondToReport(Guid id, [FromBody] RespondToReportRequest request)
         {
             var (success, message) = await _reportService.AddResponseAsync(id, request.ResponseMessage, request.NewStatus);

@@ -167,6 +167,274 @@ namespace Services.Tests.Controllers
 
         #endregion
 
+        #region View Provider Applications (GetAll)
+
+        [Fact]
+        public async Task GetAll_AsStaff_NoStatusProvided_ReturnsOkWithSuccessAndList()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var apps = new List<ProviderApplication>
+            {
+                new ProviderApplication { Id = Guid.NewGuid(), Status = ProviderApplicationStatus.pending },
+                new ProviderApplication { Id = Guid.NewGuid(), Status = ProviderApplicationStatus.approved }
+            };
+
+            _mockService
+                .Setup(s => s.GetAllApplicationsAsync(null))
+                .ReturnsAsync(apps);
+
+            // Act
+            var result = await _controller.GetAll(null);
+
+            // Assert
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, ok.StatusCode);
+            var api = Assert.IsType<ApiResponse<object>>(ok.Value);
+            Assert.Equal("Success", api.Message);
+            var returned = Assert.IsAssignableFrom<IEnumerable<ProviderApplication>>(api.Data);
+            Assert.Equal(2, returned.Count());
+
+            _mockService.Verify(s => s.GetAllApplicationsAsync(null), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAll_AsStaff_StatusPending_ReturnsOkWithSuccessAndList()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var apps = new List<ProviderApplication>
+            {
+                new ProviderApplication { Id = Guid.NewGuid(), Status = ProviderApplicationStatus.pending }
+            };
+
+            _mockService
+                .Setup(s => s.GetAllApplicationsAsync(ProviderApplicationStatus.pending))
+                .ReturnsAsync(apps);
+
+            // Act
+            var result = await _controller.GetAll(ProviderApplicationStatus.pending);
+
+            // Assert
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var api = Assert.IsType<ApiResponse<object>>(ok.Value);
+            Assert.Equal("Success", api.Message);
+            var returned = Assert.IsAssignableFrom<IEnumerable<ProviderApplication>>(api.Data);
+            Assert.Single(returned);
+
+            _mockService.Verify(s => s.GetAllApplicationsAsync(ProviderApplicationStatus.pending), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAll_AsStaff_ServiceThrows_PropagatesException()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var exMessage = "DB error";
+            _mockService
+                .Setup(s => s.GetAllApplicationsAsync(null))
+                .ThrowsAsync(new Exception(exMessage));
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<Exception>(() => _controller.GetAll(null));
+            Assert.Equal(exMessage, ex.Message);
+        }
+
+        #endregion
+
+        #region Approve Provider Application
+
+        [Fact]
+        public async Task Approve_AsStaff_Valid_ReturnsOkWithMessage()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            _mockService
+                .Setup(s => s.ApproveAsync(staffId, appId))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _controller.Approve(appId);
+
+            // Assert
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, ok.StatusCode);
+            var api = Assert.IsType<ApiResponse<string>>(ok.Value);
+            Assert.Equal("Application approved successfully", api.Message);
+        }
+
+        [Fact]
+        public async Task Approve_AsStaff_ServiceReturnsFalse_ReturnsBadRequestWithMessage()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            _mockService
+                .Setup(s => s.ApproveAsync(staffId, appId))
+                .ReturnsAsync(false);
+
+            // Act
+            var result = await _controller.Approve(appId);
+
+            // Assert
+            var bad = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(400, bad.StatusCode);
+            var api = Assert.IsType<ApiResponse<string>>(bad.Value);
+            Assert.Equal("Unable to approve application", api.Message);
+        }
+
+        [Fact]
+        public async Task Approve_NoUserIdClaim_ReturnsUnauthorized()
+        {
+            // Arrange: no NameIdentifier claim
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) }
+            };
+
+            // Act
+            var result = await _controller.Approve(Guid.NewGuid());
+
+            // Assert
+            var unauthorized = Assert.IsType<UnauthorizedResult>(result);
+            Assert.Equal(401, unauthorized.StatusCode);
+        }
+
+        [Fact]
+        public async Task Approve_AsStaff_ServiceThrows_PropagatesException()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var exMessage = "Unexpected";
+            _mockService
+                .Setup(s => s.ApproveAsync(staffId, appId))
+                .ThrowsAsync(new Exception(exMessage));
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<Exception>(() => _controller.Approve(appId));
+            Assert.Equal(exMessage, ex.Message);
+        }
+
+        #endregion
+
+        #region Reject Provider Application
+
+        [Fact]
+        public async Task Reject_AsStaff_ValidReason_ReturnsOkWithMessage()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var dto = new ProviderApplicationsController.RejectApplicationDto
+            {
+                RejectionReason = "Incomplete information"
+            };
+
+            _mockService
+                .Setup(s => s.RejectAsync(staffId, appId, dto.RejectionReason))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _controller.Reject(appId, dto);
+
+            // Assert
+            var ok = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, ok.StatusCode);
+            var api = Assert.IsType<ApiResponse<string>>(ok.Value);
+            Assert.Equal("Application rejected successfully", api.Message);
+
+            _mockService.Verify(s => s.RejectAsync(staffId, appId, dto.RejectionReason), Times.Once);
+        }
+
+        [Fact]
+        public async Task Reject_AsStaff_ServiceReturnsFalse_ReturnsBadRequestWithMessage()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var dto = new ProviderApplicationsController.RejectApplicationDto
+            {
+                RejectionReason = "Duplicate application"
+            };
+
+            _mockService
+                .Setup(s => s.RejectAsync(staffId, appId, dto.RejectionReason))
+                .ReturnsAsync(false);
+
+            // Act
+            var result = await _controller.Reject(appId, dto);
+
+            // Assert
+            var bad = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(400, bad.StatusCode);
+            var api = Assert.IsType<ApiResponse<string>>(bad.Value);
+            Assert.Equal("Unable to reject application", api.Message);
+        }
+
+        [Fact]
+        public async Task Reject_NoUserIdClaim_ReturnsUnauthorized()
+        {
+            // Arrange: no NameIdentifier claim
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) }
+            };
+
+            var dto = new ProviderApplicationsController.RejectApplicationDto
+            {
+                RejectionReason = "Reason"
+            };
+
+            // Act
+            var result = await _controller.Reject(Guid.NewGuid(), dto);
+
+            // Assert
+            var unauthorized = Assert.IsType<UnauthorizedResult>(result);
+            Assert.Equal(401, unauthorized.StatusCode);
+        }
+
+        [Fact]
+        public async Task Reject_AsStaff_ServiceThrows_PropagatesException()
+        {
+            // Arrange
+            var staffId = Guid.NewGuid();
+            var appId = Guid.NewGuid();
+            SetupUserContext(staffId, "staff");
+
+            var dto = new ProviderApplicationsController.RejectApplicationDto
+            {
+                RejectionReason = "Any"
+            };
+
+            var exMessage = "Unexpected error";
+            _mockService
+                .Setup(s => s.RejectAsync(staffId, appId, dto.RejectionReason))
+                .ThrowsAsync(new Exception(exMessage));
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<Exception>(() => _controller.Reject(appId, dto));
+            Assert.Equal(exMessage, ex.Message);
+        }
+
+        #endregion
         #region Additional Test Cases
 
         /// <summary>
