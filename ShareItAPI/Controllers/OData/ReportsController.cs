@@ -22,7 +22,7 @@ namespace ShareItAPI.Controllers.OData
         // GET odata/unassigned
         [EnableQuery]
         [HttpGet("unassigned")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public IQueryable<ReportViewModel> GetUnassigned()
         {
             return _reportService.GetUnassignedReports();
@@ -31,7 +31,7 @@ namespace ShareItAPI.Controllers.OData
         // GET odata/mytasks
         [EnableQuery]
         [HttpGet("mytasks")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,staff")]
         public IQueryable<ReportViewModel> GetMyTasks()
         {
             var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));

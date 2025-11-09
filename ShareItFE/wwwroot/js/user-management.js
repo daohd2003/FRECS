@@ -723,16 +723,24 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
     }
 
     async blockUser(userId) {
+        console.log('[BLOCK USER] Starting block for userId:', userId);
         const user = this.users.find(u => u.id === userId);
-        if (!user) return;
+        if (!user) {
+            console.log('[BLOCK USER] User not found');
+            return;
+        }
 
         const confirmMessage = 'Are you sure you want to block this user?';
-        if (!confirm(confirmMessage)) return;
+        if (!confirm(confirmMessage)) {
+            console.log('[BLOCK USER] User cancelled');
+            return;
+        }
 
         try {
             this.showLoading();
             
             const endpoint = `${this.config.apiBaseUrl}/users/${userId}/block`;
+            console.log('[BLOCK USER] Calling endpoint:', endpoint);
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -741,6 +749,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                     'Content-Type': 'application/json'
                 }
             });
+
+            console.log('[BLOCK USER] Response status:', response.status);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -752,10 +762,12 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
             this.loadStatistics();
             this.filterUsers();
             
+            console.log('[BLOCK USER] Calling showSuccess...');
             this.showSuccess('User blocked successfully.');
+            console.log('[BLOCK USER] showSuccess called');
             
         } catch (error) {
-            console.error('Error blocking user:', error);
+            console.error('[BLOCK USER] Error:', error);
             this.showError('Failed to block user. Please try again.');
         } finally {
             this.hideLoading();
@@ -1199,37 +1211,90 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
     }
 
     showToast(message, type = 'info') {
-        const container = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
+        console.log('[TOAST] ===== START showToast =====');
+        console.log('[TOAST] Message:', message, 'Type:', type);
         
-        const icons = {
-            success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22,4 12,14.01 9,11.01"></polyline></svg>',
-            error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-            warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-            info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
-        };
-
-        toast.innerHTML = `
-            <div class="toast-icon">${icons[type]}</div>
-            <div class="toast-content">
-                <p class="toast-message">${message}</p>
-            </div>
-            <button class="toast-close" onclick="this.parentElement.remove()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+        // Create a BRAND NEW container directly in body (bypass everything)
+        let container = document.getElementById('myToastContainer123');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'myToastContainer123';
+            container.style.cssText = `
+                position: fixed !important;
+                top: 80px !important;
+                right: 20px !important;
+                z-index: 9999999 !important;
+                display: block !important;
+            `;
+            document.body.appendChild(container);
+            console.log('[TOAST] Created NEW container');
+        }
+        
+        // Create SUPER SIMPLE toast - NO CLASSES AT ALL
+        const toast = document.createElement('div');
+        const toastId = 'my_toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        toast.id = toastId;
+        
+        // NO CLASSES - ONLY ID
+        const color = type === 'success' ? '#10b981' : 
+                     type === 'error' ? '#ef4444' : 
+                     type === 'warning' ? '#f59e0b' : '#3b82f6';
+        
+        toast.style.cssText = `
+            background: white !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            margin-bottom: 10px !important;
+            border-left: 4px solid ${color} !important;
+            min-width: 300px !important;
+            max-width: 400px !important;
+            display: block !important;
+            position: relative !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 14px !important;
+            color: #333 !important;
         `;
-
+        
+        const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+        
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                    <span style="font-size: 20px;">${icon}</span>
+                    <span style="font-size: 14px; color: #333;">${message}</span>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999; padding: 0; margin-left: 10px;">×</button>
+            </div>
+        `;
+        
         container.appendChild(toast);
-
-        // Auto remove after 5 seconds
+        console.log('[TOAST] Toast created with ID:', toastId);
+        console.log('[TOAST] Toast element:', toast);
+        console.log('[TOAST] Container children count:', container.children.length);
+        
+        // Monitor toast existence
+        const checkInterval = setInterval(() => {
+            const exists = document.getElementById(toastId);
+            if (!exists) {
+                console.log('[TOAST] ⚠️ WARNING: Toast disappeared unexpectedly at', new Date().toLocaleTimeString());
+                clearInterval(checkInterval);
+            }
+        }, 100);
+        
+        // Remove after 5 seconds
         setTimeout(() => {
-            toast.classList.add('hiding');
-            setTimeout(() => toast.remove(), 300);
+            clearInterval(checkInterval);
+            const toastElement = document.getElementById(toastId);
+            if (toastElement) {
+                console.log('[TOAST] ✅ Removing toast after 5 seconds');
+                toastElement.remove();
+            } else {
+                console.log('[TOAST] ⚠️ Toast already removed!');
+            }
         }, 5000);
+        
+        console.log('[TOAST] ===== END showToast =====');
     }
 
     // Legacy method for backward compatibility

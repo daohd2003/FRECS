@@ -1554,12 +1554,12 @@
             <!-- Basic Information -->
             <div class="form-group">
                 <label class="form-label">Product Name *</label>
-                <input type="text" id="editProductName" class="form-input" required />
+                <input type="text" id="editProductName" class="form-input" required maxlength="255">
             </div>
             
             <div class="form-group">
                 <label class="form-label">Description *</label>
-                <textarea id="editProductDescription" class="form-textarea" rows="4" required></textarea>
+                <textarea id="editProductDescription" class="form-textarea" rows="4" required maxlength="2000"></textarea>
             </div>
             
             <div class="form-row">
@@ -1737,6 +1737,54 @@
         <div class="modal-footer">
             <button class="btn-modal btn-save" onclick="closeViolationErrorModal()" style="background: #dc2626;">
                 Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Update Violation Warning Modal -->
+<div id="updateViolationModal" class="modal-overlay">
+    <div class="modal-container" onclick="event.stopPropagation()" style="max-width: 650px;">
+        <div class="modal-header" style="background: #fef2f2; border-bottom: 2px solid #ef4444;">
+            <h2 class="modal-title" style="color: #dc2626;">
+                ⚠️ Content Violation Warning
+            </h2>
+            <button class="modal-close" onclick="closeUpdateViolationModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #fee; border-left: 4px solid #ef4444; padding: 1.25rem; margin-bottom: 1.5rem; border-radius: 8px;">
+                <p style="font-weight: 700; color: #dc2626; margin-bottom: 0.75rem; font-size: 16px;">
+                    ❌ Cannot Update Product
+                </p>
+                <p style="color: #666; margin: 0; line-height: 1.6;">
+                    The product content contains inappropriate words or violates our community guidelines. 
+                    Please review and correct the issues below before updating.
+                </p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #dc2626; font-weight: 700; font-size: 15px;">
+                    📋 Violation Reason
+                </label>
+                <div id="updateViolationReason" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1.5px solid #e5e7eb; color: #374151; word-wrap: break-word; line-height: 1.6; font-size: 14px;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #dc2626; font-weight: 700; font-size: 15px;">
+                    🚫 Violated Terms
+                </label>
+                <div id="updateViolationTerms" style="background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1.5px solid #fca5a5; display: flex; flex-wrap: wrap; gap: 8px; min-height: 50px;"></div>
+            </div>
+            
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 8px; margin-top: 1.5rem;">
+                <p style="color: #92400e; margin: 0; font-size: 13px; line-height: 1.5;">
+                    💡 <strong>Tip:</strong> Please edit the product name or description to remove the inappropriate content, then try updating again.
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-save" onclick="closeUpdateViolationModal()" style="background: #dc2626; width: 100%;">
+                <span style="font-weight: 600;">Close & Edit Product</span>
             </button>
         </div>
     </div>
@@ -2097,14 +2145,36 @@
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Error response:', errorText); // Debug log
-                let errorMessage = 'Failed to update product';
+                
                 try {
                     const error = JSON.parse(errorText);
-                    errorMessage = error.message || error.Message || errorMessage;
-                } catch (e) {
-                    errorMessage = errorText || errorMessage;
+                    
+                    // ✅ CHECK IF IT'S A CONTENT VIOLATION ERROR
+                    if (response.status === 400 && error.data) {
+                        const violationData = error.data;
+                        
+                        // Check if it's a content moderation violation
+                        if (violationData.reason && violationData.violatedTerms) {
+                            console.log('Content violation detected:', violationData);
+                            
+                            // Show violation popup instead of toast
+                            openUpdateViolationModal(
+                                violationData.reason, 
+                                violationData.violatedTerms
+                            );
+                            return; // Don't throw error, just show popup
+                        }
+                    }
+                    
+                    // For other errors, show normal error message
+                    const errorMessage = error.message || error.Message || 'Failed to update product';
+                    throw new Error(errorMessage);
+                } catch (parseError) {
+                    if (parseError instanceof SyntaxError) {
+                        throw new Error(errorText || 'Failed to update product');
+                    }
+                    throw parseError;
                 }
-                throw new Error(errorMessage);
             }
             
             showToast('Product updated successfully', 'success');
@@ -2256,6 +2326,33 @@
     
     function closeViolationErrorModal() {
         const modal = document.getElementById('violationErrorModal');
+        modal.classList.remove('active');
+    }
+    
+    // Update Violation Modal Functions
+    function openUpdateViolationModal(reason, violatedTerms) {
+        const modal = document.getElementById('updateViolationModal');
+        const reasonEl = document.getElementById('updateViolationReason');
+        const termsEl = document.getElementById('updateViolationTerms');
+        
+        reasonEl.textContent = reason || 'Content violates community guidelines';
+        
+        // Display violated terms as badges
+        if (violatedTerms && violatedTerms.length > 0) {
+            termsEl.innerHTML = violatedTerms.map(term => 
+                `<span style="background: #dc2626; color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 16px;">🚫</span> ${term}
+                </span>`
+            ).join('');
+        } else {
+            termsEl.innerHTML = '<span style="color: #9ca3af; font-style: italic;">No specific terms identified</span>';
+        }
+        
+        modal.classList.add('active');
+    }
+    
+    function closeUpdateViolationModal() {
+        const modal = document.getElementById('updateViolationModal');
         modal.classList.remove('active');
     }
     

@@ -91,5 +91,206 @@ namespace Services.Tests.Controllers
 			var ex = await Assert.ThrowsAsync<Exception>(() => _controller.GetAll());
 			Assert.Equal(exMessage, ex.Message);
 		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "View")]
+		public async Task GetById_AsCustomer_UserExists_ReturnsOkWithSuccessMessage()
+		{
+			// Arrange
+			var id = Guid.NewGuid();
+			var user = new User { Id = id, Email = "view@example.com" };
+			_mockUserService.Setup(s => s.GetByIdAsync(id)).ReturnsAsync(user);
+
+			// Create a controller with an allowed role for this action (customer)
+			var customerController = new UsersController(_mockUserService.Object);
+			var claims = new List<Claim>
+			{
+				new Claim(ClaimTypes.Role, "customer"),
+				new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+			};
+			var identity = new ClaimsIdentity(claims, "TestAuth");
+			var principal = new ClaimsPrincipal(identity);
+			customerController.ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext { User = principal }
+			};
+
+			// Act
+			var result = await customerController.GetById(id);
+
+			// Assert
+			var ok = Assert.IsType<OkObjectResult>(result);
+			Assert.Equal(200, ok.StatusCode);
+			var api = Assert.IsType<ApiResponse<User>>(ok.Value);
+			Assert.Equal("Success", api.Message);
+			Assert.Equal(id, api.Data.Id);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "View")]
+		public async Task GetById_AsCustomer_UserNotFound_ReturnsNotFoundWithMessage()
+		{
+			// Arrange
+			var id = Guid.NewGuid();
+			_mockUserService.Setup(s => s.GetByIdAsync(id)).ReturnsAsync((User?)null);
+
+			var customerController = new UsersController(_mockUserService.Object);
+			var claims = new List<Claim>
+			{
+				new Claim(ClaimTypes.Role, "customer"),
+				new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+			};
+			var identity = new ClaimsIdentity(claims, "TestAuth");
+			var principal = new ClaimsPrincipal(identity);
+			customerController.ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext { User = principal }
+			};
+
+			// Act
+			var result = await customerController.GetById(id);
+
+			// Assert
+			var notFound = Assert.IsType<NotFoundObjectResult>(result);
+			Assert.Equal(404, notFound.StatusCode);
+			var api = Assert.IsType<ApiResponse<string>>(notFound.Value);
+			Assert.Equal("User not found", api.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "View")]
+		public async Task GetById_AsCustomer_ServiceThrows_PropagatesException()
+		{
+			// Arrange
+			var id = Guid.NewGuid();
+			var exMessage = "Boom";
+			_mockUserService.Setup(s => s.GetByIdAsync(id)).ThrowsAsync(new Exception(exMessage));
+
+			var customerController = new UsersController(_mockUserService.Object);
+			var claims = new List<Claim>
+			{
+				new Claim(ClaimTypes.Role, "customer"),
+				new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+			};
+			var identity = new ClaimsIdentity(claims, "TestAuth");
+			var principal = new ClaimsPrincipal(identity);
+			customerController.ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext { User = principal }
+			};
+
+			// Act & Assert
+			var ex = await Assert.ThrowsAsync<Exception>(() => customerController.GetById(id));
+			Assert.Equal(exMessage, ex.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "Block")]
+		public async Task BlockUser_AsStaff_UserExists_ReturnsOkWithMessage()
+		{
+			// Arrange
+			var userId = Guid.NewGuid();
+			_mockUserService.Setup(s => s.BlockUserAsync(userId)).ReturnsAsync(true);
+
+			// Act
+			var result = await _controller.BlockUser(userId);
+
+			// Assert
+			var ok = Assert.IsType<OkObjectResult>(result);
+			Assert.Equal(200, ok.StatusCode);
+			var api = Assert.IsType<ApiResponse<string>>(ok.Value);
+			Assert.Equal("User blocked (set inactive) successfully", api.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "Block")]
+		public async Task BlockUser_AsStaff_UserNotFound_ReturnsNotFoundWithMessage()
+		{
+			// Arrange
+			var userId = Guid.NewGuid();
+			_mockUserService.Setup(s => s.BlockUserAsync(userId)).ReturnsAsync(false);
+
+			// Act
+			var result = await _controller.BlockUser(userId);
+
+			// Assert
+			var notFound = Assert.IsType<NotFoundObjectResult>(result);
+			Assert.Equal(404, notFound.StatusCode);
+			var api = Assert.IsType<ApiResponse<string>>(notFound.Value);
+			Assert.Equal("User not found", api.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "Block")]
+		public async Task BlockUser_AsStaff_ServiceThrows_PropagatesException()
+		{
+			// Arrange
+			var userId = Guid.NewGuid();
+			var exMessage = "Unexpected failure";
+			_mockUserService.Setup(s => s.BlockUserAsync(userId)).ThrowsAsync(new Exception(exMessage));
+
+			// Act & Assert
+			var ex = await Assert.ThrowsAsync<Exception>(() => _controller.BlockUser(userId));
+			Assert.Equal(exMessage, ex.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "Unblock")]
+		public async Task UnblockUser_AsStaff_UserExists_ReturnsOkWithMessage()
+		{
+			// Arrange
+			var userId = Guid.NewGuid();
+			_mockUserService.Setup(s => s.UnblockUserAsync(userId)).ReturnsAsync(true);
+
+			// Act
+			var result = await _controller.UnblockUser(userId);
+
+			// Assert
+			var ok = Assert.IsType<OkObjectResult>(result);
+			Assert.Equal(200, ok.StatusCode);
+			var api = Assert.IsType<ApiResponse<string>>(ok.Value);
+			Assert.Equal("User unblocked (set active) successfully", api.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "Unblock")]
+		public async Task UnblockUser_AsStaff_UserNotFound_ReturnsNotFoundWithMessage()
+		{
+			// Arrange
+			var userId = Guid.NewGuid();
+			_mockUserService.Setup(s => s.UnblockUserAsync(userId)).ReturnsAsync(false);
+
+			// Act
+			var result = await _controller.UnblockUser(userId);
+
+			// Assert
+			var notFound = Assert.IsType<NotFoundObjectResult>(result);
+			Assert.Equal(404, notFound.StatusCode);
+			var api = Assert.IsType<ApiResponse<string>>(notFound.Value);
+			Assert.Equal("User not found", api.Message);
+		}
+
+		[Fact]
+		[Trait("Feature", "Users")]
+		[Trait("Action", "Unblock")]
+		public async Task UnblockUser_AsStaff_ServiceThrows_PropagatesException()
+		{
+			// Arrange
+			var userId = Guid.NewGuid();
+			var exMessage = "Unexpected failure";
+			_mockUserService.Setup(s => s.UnblockUserAsync(userId)).ThrowsAsync(new Exception(exMessage));
+
+			// Act & Assert
+			var ex = await Assert.ThrowsAsync<Exception>(() => _controller.UnblockUser(userId));
+			Assert.Equal(exMessage, ex.Message);
+		}
 	}
 }

@@ -1,4 +1,6 @@
-﻿namespace BusinessObject.DTOs.ProductDto
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BusinessObject.DTOs.ProductDto
 {
     public class ProductDTO
     {
@@ -124,11 +126,20 @@
     /// </summary>
     public class AdminProductUpdateDTO
     {
+        [Required(ErrorMessage = "Product name is required.")]
+        [StringLength(255, ErrorMessage = "Product name cannot be longer than 255 characters.")]
         public string Name { get; set; }
+
+        [Required(ErrorMessage = "Description is required.")]
+        [StringLength(2000, ErrorMessage = "Description cannot be longer than 2000 characters.")]
         public string Description { get; set; }
         public Guid? CategoryId { get; set; }
         public string? Category { get; set; }
+
+        [StringLength(50, ErrorMessage = "Size cannot be longer than 50 characters.")]
         public string? Size { get; set; }
+
+        [StringLength(50, ErrorMessage = "Color cannot be longer than 50 characters.")]
         public string? Color { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal? PurchasePrice { get; set; }
