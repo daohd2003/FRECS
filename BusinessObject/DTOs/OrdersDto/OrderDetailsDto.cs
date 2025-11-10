@@ -1,10 +1,5 @@
-﻿using BusinessObject.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using BusinessObject.Enums;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace BusinessObject.DTOs.OrdersDto
 {
@@ -12,6 +7,7 @@ namespace BusinessObject.DTOs.OrdersDto
     {
         public Guid Id { get; set; }
         public string OrderCode { get; set; }
+        public Guid ProviderId { get; set; } // Provider who owns this order
         public DateTime RentalStartDate { get; set; }
         public DateTime RentalEndDate { get; set; }
         public DateTime OrderDate { get; set; }

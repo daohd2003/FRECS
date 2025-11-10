@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -10,6 +11,7 @@ using System.Text.Json;
 
 namespace ShareItFE.Pages.Provider
 {
+    [Authorize] // Require authentication but check role manually in methods
     public class OrderManagementModel : PageModel
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -72,6 +74,13 @@ namespace ShareItFE.Pages.Provider
             if (!User.Identity.IsAuthenticated)
             {
                 return RedirectToPage("/Auth");
+            }
+
+            // Verify user has provider role
+            if (!User.IsInRole("provider"))
+            {
+                TempData["ErrorMessage"] = "Access Denied. You do not have permission to access this page.";
+                return RedirectToPage("/Index");
             }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -184,6 +193,13 @@ namespace ShareItFE.Pages.Provider
                 return RedirectToPage("/Auth");
             }
 
+            // Verify user has provider role
+            if (!User.IsInRole("provider"))
+            {
+                TempData["ErrorMessage"] = "Access Denied.";
+                return RedirectToPage("/Index");
+            }
+
             try
             {
                 var client = await GetAuthenticatedClientAsync();
@@ -214,6 +230,13 @@ namespace ShareItFE.Pages.Provider
             if (!User.Identity.IsAuthenticated)
             {
                 return RedirectToPage("/Auth");
+            }
+
+            // Verify user has provider role
+            if (!User.IsInRole("provider"))
+            {
+                TempData["ErrorMessage"] = "Access Denied.";
+                return RedirectToPage("/Index");
             }
 
             try
