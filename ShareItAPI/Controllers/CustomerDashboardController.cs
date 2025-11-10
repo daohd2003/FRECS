@@ -9,7 +9,7 @@ namespace ShareItAPI.Controllers
 {
     [ApiController]
     [Route("api/customer/dashboard")]
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class CustomerDashboardController : ControllerBase
     {
         private readonly ICustomerDashboardService _dashboardService;
