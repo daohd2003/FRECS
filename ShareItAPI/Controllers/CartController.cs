@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.CartDto;
+using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.ApiResponses; // Add this using statement
 using Microsoft.AspNetCore.Authorization;
@@ -133,6 +133,10 @@ namespace ShareItAPI.Controllers
                 return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
             }
             catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>(ex.Message, null));
+            }
+            catch (InvalidOperationException ex) // Catch cost/quantity validation errors
             {
                 return BadRequest(new ApiResponse<object>(ex.Message, null));
             }

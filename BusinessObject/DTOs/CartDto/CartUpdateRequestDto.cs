@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace BusinessObject.DTOs.CartDto
         [Range(1, int.MaxValue, ErrorMessage = "Rental Days (Quantity) must be at least 1.")]
         public int? Quantity { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "Rental Days must be at least 1.")]
+        [Range(1, 30, ErrorMessage = "Rental Days must be between 1 and 30.")]
         public int? RentalDays { get; set; }
 
         // Optional: allow updating the rental start date from Cart

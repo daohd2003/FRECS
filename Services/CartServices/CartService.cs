@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.Models;
 using BusinessObject.Utilities;
@@ -113,6 +113,13 @@ namespace Services.CartServices
                 int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
                     ? cartAddRequestDto.RentalDays.Value
                     : 1;
+                
+                // Validate rental days maximum limit
+                if (rentalDays > 30)
+                {
+                    throw new ArgumentException("Rental Days cannot exceed 30 days.");
+                }
+                
                 DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
                 if (startDate < DateTime.UtcNow.Date)
                 {
@@ -197,6 +204,9 @@ namespace Services.CartServices
                 }
             }
 
+            // Validate total cost after adding product
+            await ValidateCartTotalCostAsync(customerId);
+
             return true;
         }
 
@@ -227,9 +237,28 @@ namespace Services.CartServices
                         }
                     }
                     
+                    // Store old quantity for rollback if needed
+                    int oldQuantity = targetItem.Quantity;
+                    
+                    // Temporarily set new quantity for validation
                     targetItem.Quantity = updateDto.Quantity.Value;
-                    await _cartRepository.UpdateCartItemAsync(targetItem);
-                    return true;
+                    
+                    try
+                    {
+                        // Validate total cost BEFORE committing to database
+                        await ValidateCartTotalCostAsync(customerId);
+                        
+                        // If validation passes, save to database
+                        await _cartRepository.UpdateCartItemAsync(targetItem);
+                        
+                        return true;
+                    }
+                    catch
+                    {
+                        // Rollback quantity if validation fails
+                        targetItem.Quantity = oldQuantity;
+                        throw; // Re-throw the validation exception
+                    }
                 }
                 else
                 {
@@ -247,34 +276,69 @@ namespace Services.CartServices
             var cartItems = await _cartRepository.GetCartItemsForCustomerQuery(customerId).ToListAsync();
             if (!cartItems.Any()) return false;
 
-            foreach (var item in cartItems)
+            // Store old values for rollback if validation fails
+            var oldValues = cartItems.Select(item => new 
+            { 
+                Item = item, 
+                OldStartDate = item.StartDate, 
+                OldRentalDays = item.RentalDays,
+                OldEndDate = item.EndDate
+            }).ToList();
+
+            try
             {
-                if (updateDto.StartDate.HasValue)
+                // First, update all items in memory (not saved to DB yet)
+                foreach (var item in cartItems)
                 {
-                    var newStart = updateDto.StartDate.Value.Date;
-                    if (newStart < DateTime.UtcNow.Date)
+                    if (updateDto.StartDate.HasValue)
                     {
-                        throw new ArgumentException("Start Date cannot be in the past.");
+                        var newStart = updateDto.StartDate.Value.Date;
+                        if (newStart < DateTime.UtcNow.Date)
+                        {
+                            throw new ArgumentException("Start Date cannot be in the past.");
+                        }
+                        item.StartDate = newStart;
+                        item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
+                            ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
+                            : null;
                     }
-                    item.StartDate = newStart;
-                    item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
-                        ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
-                        : null;
+
+                    if (updateDto.RentalDays.HasValue)
+                    {
+                        if (updateDto.RentalDays.Value < 1)
+                        {
+                            throw new ArgumentException("Rental Days must be at least 1.");
+                        }
+                        if (updateDto.RentalDays.Value > 30)
+                        {
+                            throw new ArgumentException("Rental Days cannot exceed 30 days.");
+                        }
+                        item.RentalDays = updateDto.RentalDays.Value;
+                        item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
+                            ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
+                            : null;
+                    }
                 }
 
-                if (updateDto.RentalDays.HasValue)
-                {
-                    if (updateDto.RentalDays.Value < 1)
-                    {
-                        throw new ArgumentException("Rental Days must be at least 1.");
-                    }
-                    item.RentalDays = updateDto.RentalDays.Value;
-                    item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
-                        ? item.StartDate.Value.AddDays(item.RentalDays.Value) 
-                        : null;
-                }
+                // Validate total cost BEFORE saving to database
+                await ValidateCartTotalCostAsync(customerId);
 
-                await _cartRepository.UpdateCartItemAsync(item);
+                // If validation passes, save all changes to database
+                foreach (var item in cartItems)
+                {
+                    await _cartRepository.UpdateCartItemAsync(item);
+                }
+            }
+            catch
+            {
+                // Rollback all changes if validation fails
+                foreach (var old in oldValues)
+                {
+                    old.Item.StartDate = old.OldStartDate;
+                    old.Item.RentalDays = old.OldRentalDays;
+                    old.Item.EndDate = old.OldEndDate;
+                }
+                throw; // Re-throw the validation exception
             }
 
             return true;
@@ -438,9 +502,57 @@ namespace Services.CartServices
                 throw new InvalidOperationException("No items could be added to cart. All products are either unavailable or out of stock.");
             }
 
+            // Validate total cost after adding order items to cart
+            await ValidateCartTotalCostAsync(customerId);
+
             // Count skippedCount and adjustedCount together for warning message
             int totalIssues = skippedCount + adjustedCount;
             return (true, addedCount, totalIssues);
+        }
+
+        /// <summary>
+        /// Validates that the total cart cost does not exceed 50,000,000 VND
+        /// Total includes rental/purchase price + deposit for rental items
+        /// </summary>
+        private async Task ValidateCartTotalCostAsync(Guid customerId)
+        {
+            const decimal MAX_CART_COST = 50_000_000m;
+            
+            var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
+            if (cart == null || !cart.Items.Any())
+            {
+                return;
+            }
+
+            // Calculate total cost including rental/purchase price AND deposit
+            decimal totalCost = 0m;
+            decimal totalDeposit = 0m;
+            
+            foreach (var item in cart.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null) continue;
+
+                if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                {
+                    // For rental: (price per day * rental days * quantity) + (deposit * quantity)
+                    decimal rentalDays = item.RentalDays ?? 1;
+                    totalCost += product.PricePerDay * rentalDays * item.Quantity;
+                    totalDeposit += product.SecurityDeposit * item.Quantity;
+                }
+                else
+                {
+                    // For purchase: price * quantity (no deposit)
+                    totalCost += product.PurchasePrice * item.Quantity;
+                }
+            }
+
+            decimal grandTotal = totalCost + totalDeposit;
+
+            if (grandTotal > MAX_CART_COST)
+            {
+                throw new InvalidOperationException($"Total exceeds maximum allowed amount of {MAX_CART_COST:N0} VND. Please reduce quantity or rental days.");
+            }
         }
     }
 }
