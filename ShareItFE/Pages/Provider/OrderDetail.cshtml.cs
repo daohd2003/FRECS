@@ -1,16 +1,17 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.OrdersDto;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Configuration;
 using ShareItFE.Common.Utilities;
 using ShareItFE.Extensions;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Provider
 {
+    [Authorize] // Require authentication but check role manually in methods
     public class OrderDetailModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
@@ -42,6 +43,13 @@ namespace ShareItFE.Pages.Provider
                 return RedirectToPage("/Auth");
             }
 
+            // Verify user has provider role
+            if (!User.IsInRole("provider"))
+            {
+                TempData["ErrorMessage"] = "Access Denied. You do not have permission to access this page.";
+                return RedirectToPage("/Index");
+            }
+
             try
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
@@ -54,6 +62,15 @@ namespace ShareItFE.Pages.Provider
                     if (apiResponse?.Data != null)
                     {
                         Order = apiResponse.Data;
+
+                        // Verify the logged-in provider owns this order
+                        var currentProviderId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        if (string.IsNullOrEmpty(currentProviderId) || Order.ProviderId.ToString() != currentProviderId)
+                        {
+                            TempData["ErrorMessage"] = "You do not have permission to view this order.";
+                            return RedirectToPage("/Provider/OrderManagement");
+                        }
+
                         return Page();
                     }
                     else
@@ -65,6 +82,11 @@ namespace ShareItFE.Pages.Provider
                 else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     TempData["ErrorMessage"] = "Order not found.";
+                    return RedirectToPage("/Provider/OrderManagement");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    TempData["ErrorMessage"] = "You do not have permission to view this order.";
                     return RedirectToPage("/Provider/OrderManagement");
                 }
                 else

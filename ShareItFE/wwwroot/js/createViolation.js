@@ -206,13 +206,24 @@ function renderFilePreview(itemId) {
         return;
     }
     
-    previewContainer.innerHTML = '';
-    
     const files = filesByItem[itemId] || [];
     
     if (files.length === 0) {
+        // Show empty state
+        previewContainer.classList.remove('has-files');
+        previewContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-images" style="font-size: 48px; color: #94a3b8; margin-bottom: 12px;"></i>
+                <p style="margin: 0; color: #64748b; font-size: 14px;">No files selected yet</p>
+                <p class="small-text" style="margin-top: 8px;">Supported: JPG, PNG, MP4, MOV (Maximum 10 files)</p>
+            </div>
+        `;
         return;
     }
+    
+    // Has files - clear empty state and show grid
+    previewContainer.classList.add('has-files');
+    previewContainer.innerHTML = '';
     
     files.forEach((file, index) => {
         const div = document.createElement('div');

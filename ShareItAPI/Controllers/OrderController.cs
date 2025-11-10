@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -118,11 +118,23 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        // NOTE: This endpoint is for ADMIN MANUAL INTERVENTION only
+        // Payment system (VNPay/SEPay) calls ChangeOrderStatus service method directly in IpnAction callback
+        // This endpoint is kept for admin to manually approve orders in case of payment issues
+        // Providers should NOT be able to manually call this endpoint
         [HttpPut("{orderId:guid}/mark-approved")]
+        [Authorize(Roles = "admin")] // Only admin can manually approve orders
         public async Task<IActionResult> MarkAsApproved(Guid orderId)
         {
-            await _orderService.MarkAsApprovedAsync(orderId);
-            return Ok(new ApiResponse<string>("Order marked as approved", null));
+            try
+            {
+                await _orderService.MarkAsApprovedAsync(orderId);
+                return Ok(new ApiResponse<string>("Order marked as approved", null));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
         }
         [HttpPut("{orderId:guid}/mark-shipping")]
         public async Task<IActionResult> MarkAsShipping(Guid orderId)
@@ -162,15 +174,43 @@ namespace ShareItAPI.Controllers
 
         // Endpoint cho PROVIDER
         [HttpGet("provider/dashboard-stats/{providerId}")]
+        [Authorize(Roles = "provider,admin")]
         public async Task<IActionResult> GetProviderDashboardStats(Guid providerId)
         {
+            // Verify the authenticated user is the provider or an admin
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized(new ApiResponse<object>("User not authenticated.", null));
+            }
+
+            // Allow admins to view any provider's stats, but providers can only view their own
+            if (!User.IsInRole("admin") && currentUserId != providerId.ToString())
+            {
+                return Forbid();
+            }
+
             var stats = await _orderService.GetProviderDashboardStatsAsync(providerId);
             return Ok(new ApiResponse<object>("Provider dashboard statistics", stats));
         }
 
         [HttpGet("provider/{providerId:guid}")]
+        [Authorize(Roles = "provider,admin")]
         public async Task<IActionResult> GetOrdersByProvider(Guid providerId)
         {
+            // Verify the authenticated user is the provider or an admin
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized(new ApiResponse<object>("User not authenticated.", null));
+            }
+
+            // Allow admins to view any provider's orders, but providers can only view their own
+            if (!User.IsInRole("admin") && currentUserId != providerId.ToString())
+            {
+                return Forbid();
+            }
+
             var orders = await _orderService.GetOrdersByProviderAsync(providerId);
             return Ok(new ApiResponse<object>("Orders by provider", orders));
         }
@@ -184,8 +224,22 @@ namespace ShareItAPI.Controllers
 
         // NEW: Endpoint to get orders for list display (by provider)
         [HttpGet("provider/{providerId:guid}/list-display")]
+        [Authorize(Roles = "provider,admin")]
         public async Task<IActionResult> GetProviderOrdersForListDisplay(Guid providerId)
         {
+            // Verify the authenticated user is the provider or an admin
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized(new ApiResponse<object>("User not authenticated.", null));
+            }
+
+            // Allow admins to view any provider's orders, but providers can only view their own
+            if (!User.IsInRole("admin") && currentUserId != providerId.ToString())
+            {
+                return Forbid();
+            }
+
             var orders = await _orderService.GetProviderOrdersForListDisplayAsync(providerId);
             return Ok(new ApiResponse<object>($"Orders for provider {providerId} list display retrieved", orders));
         }
@@ -221,6 +275,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("{orderId:guid}/provider-details")]
+        [Authorize(Roles = "provider,admin")]
         public async Task<IActionResult> GetOrderDetailsForProvider(Guid orderId)
         {
             var orderDetails = await _orderService.GetOrderDetailsForProviderAsync(orderId);
@@ -228,6 +283,19 @@ namespace ShareItAPI.Controllers
             if (orderDetails == null)
             {
                 return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            // Verify the authenticated user is the provider who owns this order or an admin
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized(new ApiResponse<object>("User not authenticated.", null));
+            }
+
+            // Allow admins to view any order, but providers can only view their own orders
+            if (!User.IsInRole("admin") && currentUserId != orderDetails.ProviderId.ToString())
+            {
+                return Forbid();
             }
 
             return Ok(new ApiResponse<OrderDetailsDto>("Provider order details retrieved successfully.", orderDetails));

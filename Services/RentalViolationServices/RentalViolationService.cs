@@ -154,6 +154,13 @@ namespace Services.RentalViolationServices
                     }
                 }
 
+                // Update order status to returned_with_issue if currently returning
+                if (createdViolationIds.Any() && order.Status == OrderStatus.returning)
+                {
+                    order.Status = OrderStatus.returned_with_issue;
+                    await _orderRepo.UpdateAsync(order);
+                }
+
                 // Send notification to customer after all violations are created
                 if (createdViolationIds.Any())
                 {

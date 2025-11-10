@@ -13,6 +13,7 @@
             BusinessObject.Enums.OrderStatus.in_use => "status-in-use",
             BusinessObject.Enums.OrderStatus.returning => "status-returning",
             BusinessObject.Enums.OrderStatus.returned => "status-returned",
+            BusinessObject.Enums.OrderStatus.returned_with_issue => "status-returned-with-issue",
             BusinessObject.Enums.OrderStatus.cancelled => "status-cancelled",
             _ => "status-default"
         };
@@ -28,6 +29,7 @@
             BusinessObject.Enums.OrderStatus.in_use => "In Use",
             BusinessObject.Enums.OrderStatus.returning => "Returning",
             BusinessObject.Enums.OrderStatus.returned => "Returned",
+            BusinessObject.Enums.OrderStatus.returned_with_issue => "Returned with Issue",
             BusinessObject.Enums.OrderStatus.cancelled => "Cancelled",
             _ => status.ToString()
         };
@@ -59,6 +61,22 @@
             <span>Back to Orders</span>
         </a>
     </div>
+
+    @* Success/Error Messages *@
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success" style="background-color: #d1fae5; border-left: 4px solid #10b981; color: #065f46; padding: 16px; margin-bottom: 20px; border-radius: 8px;">
+            <i class="bi bi-check-circle-fill"></i>
+            <strong>@TempData["SuccessMessage"]</strong>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" style="background-color: #fee2e2; border-left: 4px solid #ef4444; color: #991b1b; padding: 16px; margin-bottom: 20px; border-radius: 8px;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>@TempData["ErrorMessage"]</strong>
+        </div>
+    }
 
     @if (Model.Order != null)
     {
@@ -177,9 +195,24 @@
                                 </div>
                             }
 
-                            <!-- Returned -->
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned ||
-                                 Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                            <!-- Returned with Issue -->
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                            {
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0">
+                                        <div class="bg-orange-100 h-8 w-8 rounded-full flex items-center justify-center">
+                                            <i data-lucide="alert-triangle" class="h-5 w-5 text-orange-600"></i>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <p class="text-sm font-medium text-gray-900">Returned with Issue</p>
+                                        <p class="text-xs text-orange-600">Items returned with violations reported</p>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Returned - Only show if status is exactly "returned" (not "returned_with_issue") -->
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned)
                             {
                                 <div class="flex items-start">
                                     <div class="flex-shrink-0">
@@ -189,16 +222,7 @@
                                     </div>
                                     <div class="ml-4 flex-1">
                                         <p class="text-sm font-medium text-gray-900">Returned</p>
-                                        <p class="text-xs text-gray-500">
-                                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
-                                            {
-                                                <span class="text-orange-600">Returned with issue</span>
-                                            }
-                                            else
-                                            {
-                                                <span>Successfully returned</span>
-                                            }
-                                        </p>
+                                        <p class="text-xs text-gray-500">Successfully returned</p>
                                     </div>
                                 </div>
                             }
@@ -280,15 +304,6 @@
                                 <button class="btn" style="background-color: #cbd5e0; color: #a0aec0; cursor: not-allowed;" disabled title="Only available when order status is 'Returning'">
                                     <i class="bi bi-exclamation-triangle"></i> Report Issue
                                 </button>
-                            }
-                            
-                            @* Show message if issue already reported *@
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
-                            {
-                                <div class="alert" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 6px;">
-                                    <i class="bi bi-info-circle" style="color: #f59e0b;"></i>
-                                    <span style="color: #92400e; font-size: 14px;">Issue reported. Waiting for customer response.</span>
-                                </div>
                             }
                         </div>
                     </div>

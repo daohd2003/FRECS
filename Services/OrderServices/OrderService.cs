@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
@@ -326,6 +326,12 @@ namespace Services.OrderServices
             if (order.Status == OrderStatus.returned)
             {
                 throw new InvalidOperationException("Order is already marked as returned");
+            }
+
+            // Validate state transition: Can only mark as returned from 'returning' status
+            if (order.Status != OrderStatus.returning)
+            {
+                throw new InvalidOperationException($"Cannot mark order as returned. Order must be in 'returning' status. Current status: {order.Status}");
             }
 
             order.Status = OrderStatus.returned;
@@ -769,6 +775,12 @@ namespace Services.OrderServices
             if (order == null)
                 throw new Exception("Order not found");
 
+            // Validate state transition: Can only mark as returned_with_issue from 'returning' status
+            if (order.Status != OrderStatus.returning)
+            {
+                throw new InvalidOperationException($"Cannot mark order as returned with issue. Order must be in 'returning' status. Current status: {order.Status}");
+            }
+
             // 2. Cập nhật trạng thái và thời gian
             order.Status = OrderStatus.returned_with_issue;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
@@ -819,6 +831,7 @@ namespace Services.OrderServices
                                          .Include(o => o.Items)
                                              .ThenInclude(oi => oi.Product)
                                                  .ThenInclude(p => p.Images)
+                                         .OrderByDescending(o => o.CreatedAt)
                                          .ToListAsync();
 
             return _mapper.Map<IEnumerable<OrderListDto>>(orders);

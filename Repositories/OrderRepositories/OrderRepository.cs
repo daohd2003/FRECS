@@ -49,6 +49,7 @@ namespace Repositories.OrderRepositories
                 .Where(o => o.ProviderId == providerId)
                 .Include(o => o.Items)
                 .Include(o => o.Customer)
+                .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
 
