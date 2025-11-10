@@ -28,6 +28,11 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AccountHolderName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("AccountNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -41,17 +46,16 @@ namespace DataAccess.Migrations
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("RoutingNumber")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ProviderId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("BankAccounts");
                 });
@@ -143,6 +147,7 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -195,6 +200,65 @@ namespace DataAccess.Migrations
                     b.HasIndex("User2Id");
 
                     b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.DepositRefund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExternalTransactionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("OriginalDepositAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ProcessedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("RefundAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<Guid?>("RefundBankAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TotalPenaltyAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("ProcessedByAdminId");
+
+                    b.HasIndex("RefundBankAccountId");
+
+                    b.ToTable("DepositRefunds");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.DiscountCode", b =>
@@ -706,6 +770,14 @@ namespace DataAccess.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("IdCardBackImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("IdCardFrontImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -991,6 +1063,61 @@ namespace DataAccess.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("BusinessObject.Models.WithdrawalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 0)");
+
+                    b.Property<Guid>("BankAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExternalTransactionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ProcessedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankAccountId");
+
+                    b.HasIndex("ProcessedByAdminId");
+
+                    b.HasIndex("ProviderId");
+
+                    b.ToTable("WithdrawalRequests");
+                });
+
             modelBuilder.Entity("OrderTransaction", b =>
                 {
                     b.Property<Guid>("OrdersId")
@@ -1008,13 +1135,13 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("BusinessObject.Models.BankAccount", b =>
                 {
-                    b.HasOne("BusinessObject.Models.User", "Provider")
+                    b.HasOne("BusinessObject.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("ProviderId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Provider");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Cart", b =>
@@ -1070,6 +1197,39 @@ namespace DataAccess.Migrations
                     b.Navigation("User1");
 
                     b.Navigation("User2");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.DepositRefund", b =>
+                {
+                    b.HasOne("BusinessObject.Models.User", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObject.Models.Order", "Order")
+                        .WithOne("DepositRefund")
+                        .HasForeignKey("BusinessObject.Models.DepositRefund", "OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObject.Models.User", "ProcessedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("ProcessedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("BusinessObject.Models.BankAccount", "RefundBankAccount")
+                        .WithMany()
+                        .HasForeignKey("RefundBankAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("ProcessedByAdmin");
+
+                    b.Navigation("RefundBankAccount");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
@@ -1354,6 +1514,32 @@ namespace DataAccess.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("BusinessObject.Models.WithdrawalRequest", b =>
+                {
+                    b.HasOne("BusinessObject.Models.BankAccount", "BankAccount")
+                        .WithMany()
+                        .HasForeignKey("BankAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BusinessObject.Models.User", "ProcessedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("ProcessedByAdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("BusinessObject.Models.User", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BankAccount");
+
+                    b.Navigation("ProcessedByAdmin");
+
+                    b.Navigation("Provider");
+                });
+
             modelBuilder.Entity("OrderTransaction", b =>
                 {
                     b.HasOne("BusinessObject.Models.Order", null)
@@ -1391,6 +1577,8 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("BusinessObject.Models.Order", b =>
                 {
+                    b.Navigation("DepositRefund");
+
                     b.Navigation("Items");
                 });
 

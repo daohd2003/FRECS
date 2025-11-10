@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using BusinessObject.Enums;
+using Microsoft.AspNetCore.Http;
 
 namespace BusinessObject.DTOs.ProviderApplications
 {
@@ -17,6 +18,9 @@ namespace BusinessObject.DTOs.ProviderApplications
 
         [MaxLength(500)]
         public string? Notes { get; set; }
+
+        public IFormFile? IdCardFrontImage { get; set; }
+        public IFormFile? IdCardBackImage { get; set; }
     }
 
     public class ProviderApplicationReviewDto

@@ -31,7 +31,7 @@ namespace ShareItAPI.Controllers
 
         // POST- Submit feedback for a product or order
         [HttpPost]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> SubmitFeedback([FromBody] FeedbackRequestDto dto)
         {
             var customerId = GetCurrentUserId();
@@ -42,7 +42,7 @@ namespace ShareItAPI.Controllers
 
         // GET - Get all feedback submitted by the current user
         [HttpGet]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetMyFeedbacks()
         {
             var customerId = GetCurrentUserId();
@@ -85,7 +85,7 @@ namespace ShareItAPI.Controllers
 
         // PUT - Update feedback
         [HttpPut("{feedbackId:guid}")]
-        [Authorize(Roles = "customer,admin")]
+        [Authorize(Roles = "customer,provider,admin")]
         public async Task<IActionResult> UpdateFeedback(Guid feedbackId, [FromBody] FeedbackRequestDto dto)
         {
             var currentUserId = GetCurrentUserId();
@@ -95,7 +95,7 @@ namespace ShareItAPI.Controllers
 
         // DELETE /api/feedbacks/{feedbackId} - Delete feedback
         [HttpDelete("{feedbackId:guid}")]
-        [Authorize(Roles = "customer,admin")]
+        [Authorize(Roles = "customer,provider,admin")]
         public async Task<IActionResult> DeleteFeedback(Guid feedbackId)
         {
             var currentUserId = GetCurrentUserId();

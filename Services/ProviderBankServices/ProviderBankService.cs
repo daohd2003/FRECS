@@ -20,7 +20,7 @@ namespace Services.ProviderBankServices
 
         public async Task<IEnumerable<BankAccount>> GetBankAccounts(Guid providerId)
         {
-            return await _repo.GetAllByProviderIdAsync(providerId);
+            return await _repo.GetAllByUserIdAsync(providerId);
         }
 
         public async Task<BankAccount?> GetBankAccountById(Guid id)
@@ -40,9 +40,10 @@ namespace Services.ProviderBankServices
             var entity = new BankAccount
             {
                 Id = Guid.NewGuid(),
-                ProviderId = providerId,
+                UserId = providerId,
                 BankName = dto.BankName,
                 AccountNumber = dto.AccountNumber,
+                AccountHolderName = dto.AccountHolderName,
                 RoutingNumber = dto.RoutingNumber,
                 IsPrimary = dto.IsPrimary
             };
@@ -53,7 +54,7 @@ namespace Services.ProviderBankServices
         public async Task<bool> UpdateBankAccount(Guid providerId, BankAccountUpdateDto dto)
         {
             var existing = await _repo.GetByIdAsync(dto.Id);
-            if (existing == null || existing.ProviderId != providerId)
+            if (existing == null || existing.UserId != providerId)
                 return false;
 
             if (dto.IsPrimary && !existing.IsPrimary)
@@ -65,10 +66,20 @@ namespace Services.ProviderBankServices
 
             existing.BankName = dto.BankName;
             existing.AccountNumber = dto.AccountNumber;
+            existing.AccountHolderName = dto.AccountHolderName;
             existing.RoutingNumber = dto.RoutingNumber;
             existing.IsPrimary = dto.IsPrimary;
 
             return await _repo.UpdateAsync(existing);
+        }
+
+        public async Task<bool> DeleteBankAccount(Guid providerId, Guid bankAccountId)
+        {
+            var existing = await _repo.GetByIdAsync(bankAccountId);
+            if (existing == null || existing.UserId != providerId)
+                return false;
+
+            return await _repo.DeleteAsync(bankAccountId);
         }
     }
 }

@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Services.OrderServices;
 using Services.Payments.VNPay;
 using Services.Transactions;
+using Services.CartServices;
 using System.Security.Claims;
 using ShareItAPI.Extensions;
 
@@ -28,9 +29,10 @@ namespace ShareItAPI.Controllers
         private readonly ILogger<VNPayController> _logger;
         private readonly IOrderService _orderService;
         private readonly ITransactionService _transactionService;
+        private readonly ICartService _cartService;
         private readonly ShareItDbContext _context;
 
-        public VNPayController(IVnpay vnpay, IConfiguration configuration, IWebHostEnvironment environment, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService, ShareItDbContext context)
+        public VNPayController(IVnpay vnpay, IConfiguration configuration, IWebHostEnvironment environment, ILogger<VNPayController> logger, ITransactionService transactionService, IOrderService orderService, ICartService cartService, ShareItDbContext context)
         {
             _vnpay = vnpay;
             _configuration = configuration;
@@ -45,6 +47,7 @@ namespace ShareItAPI.Controllers
             _logger = logger;
             _transactionService = transactionService;
             _orderService = orderService;
+            _cartService = cartService;
             _context = context;
         }
 
@@ -258,16 +261,20 @@ namespace ShareItAPI.Controllers
         /// Return payment result to user
         /// </summary>
         [HttpGet("Callback")]
-        public IActionResult Callback() // Thay đổi kiểu trả về thành IActionResult
+        public async Task<IActionResult> Callback() // Async method to support cart clearing
         {
             _logger.LogInformation("Callback endpoint was called at {Time}", DateTime.Now);
 
             // Lấy URL frontend từ cấu hình
             var frontendBaseUrl = _configuration.GetFrontendBaseUrl(_environment);
+            
+            // Fallback to default if not configured
             if (string.IsNullOrEmpty(frontendBaseUrl))
             {
-                _logger.LogError("FrontendSettings:{Environment}:BaseUrl is not configured.", _environment.EnvironmentName);
-                return BadRequest(new { RspCode = "99", Message = "Frontend base URL not configured." });
+                _logger.LogError("FrontendSettings:{Environment}:BaseUrl is not configured. Using default.", _environment.EnvironmentName);
+                frontendBaseUrl = _environment.IsDevelopment() 
+                    ? "https://localhost:7045" 
+                    : "https://share-it-fe-ewh8dbeahgaagufb.southeastasia-01.azurewebsites.net";
             }
 
             if (Request.QueryString.HasValue)
@@ -279,28 +286,50 @@ namespace ShareItAPI.Controllers
                     if (paymentResult.IsSuccess)
                     {
                         _logger.LogInformation("Payment success for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                        // Chuyển hướng về trang chủ hoặc trang xác nhận thanh toán thành công của bạn
-                        // Bạn có thể truyền các tham số qua URL để frontend xử lý (ví dụ: trạng thái, transactionId)
+                        // Chuyển hướng về order history với success status
                         return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=success&vnp_TxnRef={paymentResult.PaymentId}");
                     }
                     else
                     {
                         _logger.LogWarning("Payment failed for PaymentId: {PaymentId}", paymentResult.PaymentId);
-                        // Chuyển hướng về trang lỗi thanh toán của bạn
-                        return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=failed&vnp_TxnRef={paymentResult.PaymentId}&vnp_Message={paymentResult.PaymentResponse?.Description ?? "Lỗi không xác định"}");
+                        
+                        // Clear cart when payment failed/cancelled
+                        try
+                        {
+                            string description = paymentResult.Description;
+                            if (description != null && description.StartsWith("TID:"))
+                            {
+                                var transactionId = Guid.Parse(description.Substring(4));
+                                var transaction = await _context.Transactions.FirstOrDefaultAsync(t => t.Id == transactionId);
+                                
+                                if (transaction != null)
+                                {
+                                    await _cartService.ClearCartAsync(transaction.CustomerId);
+                                    _logger.LogInformation("Cart cleared for CustomerId: {CustomerId} after payment cancellation", transaction.CustomerId);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error clearing cart after payment failure");
+                            // Continue redirect even if cart clear fails
+                        }
+                        
+                        // Chuyển hướng về order history với failed status
+                        return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1");
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing Callback");
-                    // Chuyển hướng về trang lỗi chung hoặc trang ban đầu
-                    return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=error&errorMessage={Uri.EscapeDataString(ex.Message)}");
+                    // Vẫn redirect về order history ngay cả khi có lỗi
+                    return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1");
                 }
             }
 
             _logger.LogWarning("Callback called but query string is empty");
-            // Nếu không có query string, cũng chuyển hướng về một trang với thông báo lỗi
-            return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1&paymentStatus=error&errorMessage={Uri.EscapeDataString("Payment information not found.")}");
+            // Luôn redirect về order history
+            return Redirect($"{frontendBaseUrl}/Profile?tab=orders&page=1");
         }
         ///// <summary>
         ///// Return payment result to user

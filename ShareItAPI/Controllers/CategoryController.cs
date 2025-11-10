@@ -87,12 +87,12 @@ namespace ShareItAPI.Controllers
 		}
 
 	/// <summary>
-	/// Creates a new category with optional image upload
+	/// Creates a new category with required image upload
 	/// </summary>
 	/// <param name="name">Category name (required)</param>
 	/// <param name="description">Category description (optional)</param>
 	/// <param name="isActive">Is category active (default: true)</param>
-	/// <param name="ImageFile">Category image file (optional)</param>
+	/// <param name="ImageFile">Category image file (required)</param>
 	/// <returns>Created category with uploaded image URL</returns>
 	/// <remarks>
 	/// Sample request:
@@ -103,16 +103,16 @@ namespace ShareItAPI.Controllers
 	/// - name: "Electronics" (required)
 	/// - description: "Electronic devices" (optional)
 	/// - isActive: true (optional, default: true)
-	/// - ImageFile: [file] (optional - JPG, PNG, GIF, WEBP, max 5MB)
+	/// - ImageFile: [file] (required - JPG, PNG, GIF, WEBP, max 5MB)
 	/// 
 	/// Image will be uploaded to Cloudinary automatically and URL saved to database.
 	/// </remarks>
 	[HttpPost]
 	public async Task<IActionResult> Create(
 		[FromForm] string name, 
-		[FromForm] string? description, 
-		[FromForm] bool isActive = true, 
-		[FromForm] IFormFile? ImageFile = null)
+		[FromForm] IFormFile? ImageFile,
+		[FromForm] string description, 
+		[FromForm] bool isActive = true)
 	{
 		try
 		{
@@ -122,6 +122,18 @@ namespace ShareItAPI.Controllers
 				return BadRequest(new ApiResponse<string>("Category name is required", null));
 			}
 
+			// Validate description is provided
+			if (string.IsNullOrWhiteSpace(description))
+			{
+				return BadRequest(new ApiResponse<string>("Category description is required", null));
+			}
+
+			// Validate image is provided
+			if (ImageFile == null || ImageFile.Length == 0)
+			{
+				return BadRequest(new ApiResponse<string>("Image is required", null));
+			}
+
 			// Get user ID from JWT token
 			var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 			if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -129,25 +141,22 @@ namespace ShareItAPI.Controllers
 				return BadRequest(new ApiResponse<string>("Invalid user ID", null));
 			}
 
-			// Upload image to Cloudinary if provided
-			string? imageUrl = null;
-			if (ImageFile != null && ImageFile.Length > 0)
+			// Upload image to Cloudinary (required)
+			string imageUrl;
+			try
 			{
-				try
-				{
-					var uploadResult = await _cloudinaryService.UploadCategoryImageAsync(ImageFile, userId);
-					imageUrl = uploadResult.ImageUrl;
-				}
-				catch (ArgumentException ex)
-				{
-					// Validation error from upload (file type, size, etc.)
-					return BadRequest(new ApiResponse<string>($"Image upload validation failed: {ex.Message}", null));
-				}
-				catch (Exception ex)
-				{
-					// Upload error
-					return StatusCode(500, new ApiResponse<string>($"Image upload failed: {ex.Message}", null));
-				}
+				var uploadResult = await _cloudinaryService.UploadCategoryImageAsync(ImageFile, userId);
+				imageUrl = uploadResult.ImageUrl;
+			}
+			catch (ArgumentException ex)
+			{
+				// Validation error from upload (file type, size, etc.)
+				return BadRequest(new ApiResponse<string>($"Image upload validation failed: {ex.Message}", null));
+			}
+			catch (Exception ex)
+			{
+				// Upload error
+				return StatusCode(500, new ApiResponse<string>($"Image upload failed: {ex.Message}", null));
 			}
 
 			// Create DTO with uploaded image URL
@@ -156,7 +165,7 @@ namespace ShareItAPI.Controllers
 				Name = name,
 				Description = description,
 				IsActive = isActive,
-				ImageUrl = imageUrl  // Cloudinary URL or null
+				ImageUrl = imageUrl  // Cloudinary URL (required)
 			};
 
 			// Create category in database
@@ -205,7 +214,7 @@ namespace ShareItAPI.Controllers
 	public async Task<IActionResult> Update(
 		Guid id,
 		[FromForm] string name,
-		[FromForm] string? description,
+		[FromForm] string description,
 		[FromForm] bool isActive = true,
 		[FromForm] IFormFile? ImageFile = null)
 	{
@@ -215,6 +224,12 @@ namespace ShareItAPI.Controllers
 			if (string.IsNullOrWhiteSpace(name))
 			{
 				return BadRequest(new ApiResponse<string>("Category name is required", null));
+			}
+
+			// Validate description is provided
+			if (string.IsNullOrWhiteSpace(description))
+			{
+				return BadRequest(new ApiResponse<string>("Category description is required", null));
 			}
 
 			// Get user ID from JWT token

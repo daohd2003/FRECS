@@ -1,204 +1,1318 @@
 @page
 @model ShareItFE.Pages.Admin.IndexModel
 @{
-    ViewData["Title"] = "Admin Dashboard";
-    Layout = "~/Pages/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Revenue Dashboard & Analytics";
+    Layout = "_AdminLayout";
 }
 
-<div class="admin-dashboard">
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-        <h1 class="dashboard-title">Dashboard Overview</h1>
-        <p class="dashboard-subtitle">Welcome back, Administrator</p>
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+    <style>
+        /* Tab Switching Styles */
+        .view-tabs {
+            display: flex;
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            padding: 0.25rem;
+        }
+
+        .view-tab {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-tab:hover {
+            color: #374151;
+        }
+
+        .view-tab.active {
+            background: white;
+            color: #7c3aed;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .view-tab svg {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* Provider Section Styles */
+        .providers-section {
+            display: none;
+        }
+
+        .providers-section.active {
+            display: block;
+        }
+
+        .overview-section {
+            display: block;
+        }
+
+        .overview-section.hidden {
+            display: none;
+        }
+
+        .providers-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .provider-search {
+            position: relative;
+            max-width: 300px;
+        }
+
+        .provider-search input {
+            width: 100%;
+            padding: 0.625rem 0.75rem 0.625rem 2.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .provider-search input:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .provider-search svg {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1.25rem;
+            height: 1.25rem;
+            color: #9ca3af;
+        }
+
+        .provider-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .provider-table th {
+            background: #f9fafb;
+            padding: 0.75rem 1.5rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .provider-table th:hover {
+            background: #f3f4f6;
+        }
+
+        .provider-table th.sort-asc::after {
+            content: ' ↑';
+        }
+
+        .provider-table th.sort-desc::after {
+            content: ' ↓';
+        }
+
+        .provider-table td {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .provider-table tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        .provider-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .provider-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .provider-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .provider-modal-content {
+            position: relative;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @@keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .provider-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .provider-modal-header h3,
+        .provider-modal-header #providerModalTitle {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .provider-modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: #6b7280;
+            transition: color 0.2s;
+        }
+
+        .provider-modal-close:hover {
+            color: #1a202c;
+        }
+
+        .provider-modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        .modal-loading::before {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @@keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .modal-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: #ef4444;
+            text-align: center;
+        }
+    </style>
+}
+
+<div class="admin-revenue-dashboard">
+    <!-- Header -->
+    <div class="dashboard-header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="dashboard-main-title">Revenue Dashboard & Analytics</h1>
+                <p class="dashboard-subtitle">Comprehensive revenue analytics and system insights</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-export" onclick="exportDashboard()">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export
+                </button>
+                <div class="view-tabs">
+                    <button class="view-tab active" data-view="overview" onclick="switchView('overview')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        <span>Overview</span>
+                    </button>
+                    <button class="view-tab" data-view="providers" onclick="switchView('providers')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>Providers</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="stats-grid">
-        <!-- Total Users Card -->
-        <div class="stat-card stat-card-purple">
-            <div class="stat-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">@Model.TotalUsers</h3>
-                <p class="stat-label">Total Users</p>
-            </div>
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert-error">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>@Model.ErrorMessage</span>
         </div>
+    }
 
-        <!-- Total Products Card -->
-        <div class="stat-card stat-card-blue">
-            <div class="stat-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+    <!-- Date Range Filter -->
+    <div class="date-filter-card">
+        <div class="date-filter-content">
+            <div class="date-filter-label">
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
+                <span>Date Range:</span>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">@Model.TotalProducts</h3>
-                <p class="stat-label">Total Products</p>
-            </div>
-        </div>
-
-        <!-- Total Orders Card -->
-        <div class="stat-card stat-card-green">
-            <div class="stat-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                    <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
-                    <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
-                    <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">@Model.TotalOrders</h3>
-                <p class="stat-label">Total Orders</p>
-            </div>
-        </div>
-
-        <!-- Discount Codes Card -->
-        <div class="stat-card stat-card-orange">
-            <div class="stat-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">@Model.TotalDiscountCodes</h3>
-                <p class="stat-label">Discount Codes</p>
-            </div>
+            <form method="get" class="date-filter-form" id="dateFilterForm">
+                <!-- Hidden input to preserve preset selection -->
+                <input type="hidden" name="Preset" id="presetInput" value="@Model.Preset" />
+                <!-- Hidden input to preserve active tab -->
+                <input type="hidden" name="ActiveTab" id="activeTabInput" value="overview" />
+                
+                <div class="preset-buttons">
+                    <button type="button" class="preset-btn @(Model.Preset == "Today" ? "active" : "")" onclick="setDatePreset('Today')">Today</button>
+                    <button type="button" class="preset-btn @(Model.Preset == "Last 7 Days" ? "active" : "")" onclick="setDatePreset('Last 7 Days')">Last 7 Days</button>
+                    <button type="button" class="preset-btn @(Model.Preset == "Last 30 Days" ? "active" : "")" onclick="setDatePreset('Last 30 Days')">Last 30 Days</button>
+                    <button type="button" class="preset-btn @(Model.Preset == "This Month" ? "active" : "")" onclick="setDatePreset('This Month')">This Month</button>
+                    <button type="button" class="preset-btn @(Model.Preset == "Last Month" ? "active" : "")" onclick="setDatePreset('Last Month')">Last Month</button>
+                </div>
+                <div class="custom-date-picker">
+                    <input type="date" name="StartDate" id="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" class="date-input" onchange="setCustomDate()" />
+                    <span class="date-separator">to</span>
+                    <input type="date" name="EndDate" id="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")" class="date-input" onchange="setCustomDate()" />
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="quick-actions-section">
-        <h2 class="section-title">Quick Actions</h2>
-        <div class="quick-actions-grid">
-            <a asp-page="/Admin/Discounts/DiscountCodes" class="quick-action-card">
-                <div class="quick-action-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                    </svg>
+    <!-- Overview Section -->
+    <div class="overview-section" id="overviewSection">
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Total Revenue</p>
+                        <h3 class="kpi-value">@Model.DashboardData.KPIs.TotalRevenue.ToString("N0")₫</h3>
+                        <div class="kpi-change">
+                            <svg class="icon @(Model.DashboardData.KPIs.RevenueChange >= 0 ? "trend-up" : "trend-down")" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                @if (Model.DashboardData.KPIs.RevenueChange >= 0)
+                                {
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                }
+                                else
+                                {
+                                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    <polyline points="17 18 23 18 23 12"></polyline>
+                                }
+                            </svg>
+                            <span class="@(Model.DashboardData.KPIs.RevenueChange >= 0 ? "positive" : "negative")">
+                                @(Model.DashboardData.KPIs.RevenueChange >= 0 ? "+" : "")@Model.DashboardData.KPIs.RevenueChange.ToString("N1")%
+                            </span>
+                            <span class="kpi-comparison">vs previous period</span>
+                        </div>
+                    </div>
+                    <div class="kpi-icon bg-green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
                 </div>
-                <h3>Manage Discount Codes</h3>
-                <p>Create and manage promotional codes</p>
-            </a>
+            </div>
 
-            <a asp-page="/ReportManagement" class="quick-action-card">
-                <div class="quick-action-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Total Orders</p>
+                        <h3 class="kpi-value">@Model.DashboardData.KPIs.TotalOrders.ToString("N0")</h3>
+                        <div class="kpi-change">
+                            <svg class="icon @(Model.DashboardData.KPIs.OrdersChange >= 0 ? "trend-up" : "trend-down")" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                @if (Model.DashboardData.KPIs.OrdersChange >= 0)
+                                {
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                }
+                                else
+                                {
+                                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    <polyline points="17 18 23 18 23 12"></polyline>
+                                }
+                            </svg>
+                            <span class="@(Model.DashboardData.KPIs.OrdersChange >= 0 ? "positive" : "negative")">
+                                @(Model.DashboardData.KPIs.OrdersChange >= 0 ? "+" : "")@Model.DashboardData.KPIs.OrdersChange.ToString("N1")%
+                            </span>
+                            <span class="kpi-comparison">vs previous period</span>
+                        </div>
+                    </div>
+                    <div class="kpi-icon bg-blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                    </div>
                 </div>
-                <h3>Review Reports</h3>
-                <p>Handle user and product reports</p>
-            </a>
+            </div>
 
-            <a asp-page="/ProductVerification" class="quick-action-card">
-                <div class="quick-action-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Total Users</p>
+                        <h3 class="kpi-value">@Model.DashboardData.Users.TotalUsers.ToString("N0")</h3>
+                        <div class="kpi-change">
+                            <svg class="icon @(Model.DashboardData.KPIs.UsersChange >= 0 ? "trend-up" : "trend-down")" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                @if (Model.DashboardData.KPIs.UsersChange >= 0)
+                                {
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                }
+                                else
+                                {
+                                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    <polyline points="17 18 23 18 23 12"></polyline>
+                                }
+                            </svg>
+                            <span class="@(Model.DashboardData.KPIs.UsersChange >= 0 ? "positive" : "negative")">
+                                @(Model.DashboardData.KPIs.UsersChange >= 0 ? "+" : "")@Model.DashboardData.KPIs.UsersChange.ToString("N1")%
+                            </span>
+                            <span class="kpi-comparison">vs previous period</span>
+                        </div>
+                    </div>
+                    <div class="kpi-icon bg-purple">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
                 </div>
-                <h3>Verify Products</h3>
-                <p>Review and approve pending products</p>
-            </a>
+            </div>
 
-            <a asp-page="/Admin/Messages" class="quick-action-card">
-                <div class="quick-action-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Active Products</p>
+                        <h3 class="kpi-value">@Model.DashboardData.Products.AvailableProducts.ToString("N0")</h3>
+                        <div class="kpi-change">
+                            <svg class="icon @(Model.DashboardData.KPIs.ProductsChange >= 0 ? "trend-up" : "trend-down")" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                @if (Model.DashboardData.KPIs.ProductsChange >= 0)
+                                {
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                    <polyline points="17 6 23 6 23 12"></polyline>
+                                }
+                                else
+                                {
+                                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                                    <polyline points="17 18 23 18 23 12"></polyline>
+                                }
+                            </svg>
+                            <span class="@(Model.DashboardData.KPIs.ProductsChange >= 0 ? "positive" : "negative")">
+                                @(Model.DashboardData.KPIs.ProductsChange >= 0 ? "+" : "")@Model.DashboardData.KPIs.ProductsChange.ToString("N1")%
+                            </span>
+                            <span class="kpi-comparison">vs previous period</span>
+                        </div>
+                    </div>
+                    <div class="kpi-icon bg-orange">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
+                    </div>
                 </div>
-                <h3>Messages</h3>
-                <p>View and respond to user messages</p>
-            </a>
+            </div>
+        </div>
 
-            <a asp-page="/Admin/StaffManagement" class="quick-action-card">
-                <div class="quick-action-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Revenue Chart -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div>
+                    <h2 class="chart-title">Revenue Over Time</h2>
+                    <p class="chart-subtitle">Total revenue for selected period: @Model.DashboardData.Revenue.TotalRevenue.ToString("N0")₫</p>
+                </div>
+                <div class="chart-legend">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span>Daily Revenue Trend</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Secondary Metrics Grid -->
+        <div class="secondary-metrics-grid">
+            <!-- User Breakdown -->
+            <div class="chart-card-half">
+                <div class="chart-header">
+                    <h3 class="chart-title">User Distribution</h3>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                 </div>
-                <h3>Staff Management</h3>
-                <p>Manage staff accounts and permissions</p>
-            </a>
+                <div class="chart-container-small">
+                    <canvas id="userDistributionChart"></canvas>
+                </div>
+                <div class="metric-stats" style="margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                    <div class="stat-row">
+                        <span class="stat-label">Total Users</span>
+                        <span class="stat-value">@Model.DashboardData.Users.TotalUsers</span>
+                    </div>
+                    <div class="stat-row highlight">
+                        <span class="stat-label">New This Period</span>
+                        <span class="stat-value text-green">+@Model.DashboardData.Users.NewUsersThisMonth</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Metrics -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h3 class="metric-title">Product Statistics</h3>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                    </svg>
+                </div>
+                <div class="metric-stats">
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('products', 'all')">
+                        <span class="stat-label">Total Products</span>
+                        <span class="stat-value">@Model.DashboardData.Products.TotalProducts</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('products', 'available')">
+                        <span class="stat-label">Available</span>
+                        <span class="stat-value text-green">@Model.DashboardData.Products.AvailableProducts</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('products', 'rented')">
+                        <span class="stat-label">Rented</span>
+                        <span class="stat-value text-blue">@Model.DashboardData.Products.RentedProducts</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('products', 'purchased')">
+                        <span class="stat-label">Purchased</span>
+                        <span class="stat-value">@Model.DashboardData.Products.TotalSoldItems</span>
+                    </div>
+                    <div class="stat-row highlight">
+                        <span class="stat-label">New This Period</span>
+                        <span class="stat-value text-green">+@Model.DashboardData.Products.NewProductsThisMonth</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Status -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h3 class="metric-title">Order Status</h3>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                </div>
+                <div class="metric-stats">
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('orders', 'all')">
+                        <span class="stat-label">Total Orders</span>
+                        <span class="stat-value">@Model.DashboardData.Orders.TotalOrders</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('orders', 'in_use')">
+                        <span class="stat-label">In Use</span>
+                        <span class="stat-value text-blue">@Model.DashboardData.Orders.InUseOrders</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('orders', 'returned_with_issue')">
+                        <span class="stat-label">Returned with Issue</span>
+                        <span class="stat-value text-yellow">@Model.DashboardData.Orders.ReturnedWithIssueOrders</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('orders', 'completed')">
+                        <span class="stat-label">Completed</span>
+                        <span class="stat-value text-green">@Model.DashboardData.Orders.CompletedOrders</span>
+                    </div>
+                    <div class="stat-row highlight">
+                        <span class="stat-label">Completion Rate</span>
+                        <span class="stat-value text-green">@Model.DashboardData.Orders.CompletionRate.ToString("N1")%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h3 class="metric-title">System Health</h3>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                </div>
+                <div class="metric-stats">
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('reports', 'pending')">
+                        <span class="stat-label">Pending Reports</span>
+                        <span class="stat-value @(Model.DashboardData.SystemHealth.PendingReports > 0 ? "text-red" : "")">@Model.DashboardData.SystemHealth.PendingReports</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('violations', 'active')">
+                        <span class="stat-label">Active Violations</span>
+                        <span class="stat-value @(Model.DashboardData.SystemHealth.ActiveViolations > 0 ? "text-yellow" : "")">@Model.DashboardData.SystemHealth.ActiveViolations</span>
+                    </div>
+                    <div class="stat-row stat-clickable" onclick="showDetailModal('users', 'banned')">
+                        <span class="stat-label">Banned Users</span>
+                        <span class="stat-value text-red">@Model.DashboardData.SystemHealth.BannedUsers</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Success Rate</span>
+                        <span class="stat-value text-green">@Model.DashboardData.Revenue.SuccessRate.ToString("N1")%</span>
+                    </div>
+                    <div class="stat-row highlight">
+                        <span class="stat-label">Pending Applications</span>
+                        <span class="stat-value text-yellow">@Model.DashboardData.Users.PendingProviderApplications</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+            <div class="chart-card-half">
+                <div class="chart-header">
+                    <h3 class="chart-title">Payment Methods</h3>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                </div>
+                <div class="chart-container-small">
+                    <canvas id="paymentMethodChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card-half">
+                <div class="chart-header">
+                    <h3 class="chart-title">Transaction Status</h3>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                </div>
+                <div class="chart-container-small">
+                    <canvas id="transactionStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Providers & Popular Products -->
+        <div class="tables-row">
+            <!-- Top Providers -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h3 class="table-title">Top Providers</h3>
+                    <span class="table-badge">Top 5</span>
+                </div>
+                <div class="table-container">
+                    @if (Model.DashboardData.TopProviders != null && Model.DashboardData.TopProviders.Any())
+                    {
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Provider</th>
+                                    <th>Revenue</th>
+                                    <th>Orders</th>
+                                    <th>Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var provider in Model.DashboardData.TopProviders)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="provider-info">
+                                                @if (!string.IsNullOrEmpty(provider.AvatarUrl))
+                                                {
+                                                    <img src="@provider.AvatarUrl" alt="@provider.ProviderName" class="avatar" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="avatar-placeholder">@provider.ProviderName.Substring(0, 1)</div>
+                                                }
+                                                <div>
+                                                    <div class="provider-name">@provider.ProviderName</div>
+                                                    <div class="provider-products">@provider.TotalProducts products</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="revenue-cell">@provider.TotalRevenue.ToString("N0")₫</td>
+                                        <td>@provider.TotalOrders</td>
+                                        <td>
+                                            <span class="rating-badge">@provider.AverageRating.ToString("N1") ⭐</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <p>No provider data available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Popular Products -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h3 class="table-title">Popular Products</h3>
+                    <span class="table-badge">Top 5</span>
+                </div>
+                <div class="table-container">
+                    @if (Model.DashboardData.PopularProducts != null && Model.DashboardData.PopularProducts.Any())
+                    {
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Rents</th>
+                                    <th>Revenue</th>
+                                    <th>Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var product in Model.DashboardData.PopularProducts)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="product-info">
+                                                @if (!string.IsNullOrEmpty(product.ImageUrl))
+                                                {
+                                                    <img src="@product.ImageUrl" alt="@product.ProductName" class="product-thumb" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="product-thumb-placeholder">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                                        </svg>
+                                                    </div>
+                                                }
+                                                <div>
+                                                    <div class="product-name">@product.ProductName</div>
+                                                    <div class="product-provider">@product.ProviderName</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>@product.RentCount</td>
+                                        <td class="revenue-cell">@product.Revenue.ToString("N0")₫</td>
+                                        <td>
+                                            <span class="rating-badge">@product.AverageRating.ToString("N1") ⭐</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <p>No product data available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Column Layout: Recent Activities & Active Users -->
+        <div class="dashboard-columns">
+            <!-- Recent Activities -->
+            <div class="activities-card">
+                <div class="activities-header">
+                    <h3 class="activities-title">Recent Activities</h3>
+                    <span class="activities-badge">Latest 10</span>
+                </div>
+                <div class="activities-container">
+                    @if (Model.DashboardData.RecentActivities != null && Model.DashboardData.RecentActivities.Any())
+                    {
+                        @foreach (var activity in Model.DashboardData.RecentActivities)
+                        {
+                            <a href="@activity.NavigationUrl" class="activity-item activity-@activity.Color activity-link">
+                                <div class="activity-icon-wrapper">
+                                    <div class="activity-icon">
+                                        @switch (activity.Icon)
+                                        {
+                                            case "shopping-cart":
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="9" cy="21" r="1"></circle>
+                                                    <circle cx="20" cy="21" r="1"></circle>
+                                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                                </svg>
+                                                break;
+                                            case "user-plus":
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                    <circle cx="8.5" cy="7" r="4"></circle>
+                                                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                                                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                                                </svg>
+                                                break;
+                                            case "package":
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                                                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                                </svg>
+                                                break;
+                                            case "alert-circle":
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                                </svg>
+                                                break;
+                                            default:
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                </svg>
+                                                break;
+                                        }
+                                    </div>
+                                </div>
+                                <div class="activity-content">
+                                    <p class="activity-description">@activity.Description</p>
+                                    <span class="activity-time">@Model.GetTimeAgo(activity.Timestamp)</span>
+                                </div>
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <p>No recent activity</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Active Users Dashboard -->
+            <div class="active-users-card">
+                <div class="active-users-header">
+                    <div class="header-left">
+                        <h3 class="active-users-title">Active Users</h3>
+                        <span class="active-users-badge" id="activeUsersCount">0</span>
+                    </div>
+                    <div class="connection-status" id="connectionStatus">
+                        <div class="status-dot"></div>
+                        <span>Connecting...</span>
+                    </div>
+                </div>
+                <div class="active-users-container" id="activeUsersContainer">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading active users...</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Recent Activity -->
-    <div class="recent-activity-section">
-        <h2 class="section-title">Recent Activity</h2>
-        <div class="activity-card">
-            <div class="activity-list">
-                @if (Model.RecentActivities != null && Model.RecentActivities.Any())
-                {
-                    @foreach (var activity in Model.RecentActivities)
-                    {
-                        <div class="activity-item">
-                            <div class="activity-icon @activity.Type.ToLower()">
-                                @switch (activity.Type.ToLower())
-                                {
-                                    case "user":
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="12" cy="7" r="4"></circle>
-                                        </svg>
-                                        break;
-                                    case "order":
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                                        </svg>
-                                        break;
-                                    case "product":
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                        </svg>
-                                        break;
-                                    default:
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                        </svg>
-                                        break;
-                                }
-                            </div>
-                            <div class="activity-content">
-                                <p class="activity-text">@activity.Description</p>
-                                <span class="activity-time">@activity.TimeAgo</span>
-                            </div>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div class="activity-empty">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <p>No recent activity</p>
+    <!-- Providers Section -->
+    <div class="providers-section" id="providersSection">
+        <!-- Providers Summary Stats -->
+        <div class="providers-summary-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Total Provider Revenue</p>
+                        <h3 class="kpi-value" id="providerTotalRevenue">0₫</h3>
                     </div>
-                }
+                    <div class="kpi-icon bg-green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Active Providers</p>
+                        <h3 class="kpi-value" id="activeProvidersCount">0</h3>
+                    </div>
+                    <div class="kpi-icon bg-purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-info">
+                        <p class="kpi-label">Total Orders</p>
+                        <h3 class="kpi-value" id="providerTotalOrders">0</h3>
+                    </div>
+                    <div class="kpi-icon bg-blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Providers Table -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2 class="chart-title">Provider Performance</h2>
+                <div class="provider-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="providerSearchInput" placeholder="Search providers..." oninput="filterProviders()" />
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="provider-table" id="providersTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortProvidersTable(0)">Provider</th>
+                            <th onclick="sortProvidersTable(1)">Total Revenue</th>
+                            <th onclick="sortProvidersTable(2)">Orders</th>
+                            <th onclick="sortProvidersTable(3)">Avg Revenue</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="providersTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 3rem;">
+                                <div style="color: #9ca3af;">
+                                    <svg style="width: 3rem; height: 3rem; margin: 0 auto 1rem; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                    <p>Loading providers data...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-@section Styles {
-    <link rel="stylesheet" href="~/css/admin-dashboard.css" asp-append-version="true" />
+<!-- Detail Modal -->
+<div id="detailModal" class="detail-modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeDetailModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Details</h2>
+            <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+        </div>
+        <div class="modal-filters">
+            <input type="text" id="modalSearch" placeholder="Search..." class="modal-search-input" />
+            <select id="modalFilter" class="modal-filter-select">
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="modal-loading">Loading...</div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeDetailModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Provider Detail Modal -->
+<div class="provider-modal" id="providerDetailModal">
+    <div class="provider-modal-overlay" onclick="closeProviderModal()"></div>
+    <div class="provider-modal-content">
+        <div class="provider-modal-header">
+            <div id="providerModalTitle" style="flex: 1;">Provider Details</div>
+            <button class="provider-modal-close" onclick="closeProviderModal()">
+                <svg style="width: 1.5rem; height: 1.5rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="provider-modal-body" id="providerModalBody">
+            <!-- Content will be dynamically loaded -->
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Prepare data for charts - MUST be defined before admin-dashboard.js loads
+        const revenueData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DashboardData.DailyRevenue.Select(d => new { date = d.Date.ToString("yyyy-MM-dd"), revenue = d.Revenue, orders = d.OrderCount })));
+        const paymentMethods = {
+            vnpay: @Model.DashboardData.PaymentMethods.VNPay,
+            sepay: @Model.DashboardData.PaymentMethods.SEPay
+        };
+        const transactionStatus = {
+            completed: @Model.DashboardData.TransactionStatus.Completed,
+            failed: @Model.DashboardData.TransactionStatus.Failed,
+            pending: @Model.DashboardData.TransactionStatus.Pending,
+            initiated: @Model.DashboardData.TransactionStatus.Initiated
+        };
+        const userDistribution = {
+            customers: @Model.DashboardData.Users.TotalCustomers,
+            providers: @Model.DashboardData.Users.TotalProviders,
+            staff: @Model.DashboardData.Users.TotalStaff
+        };
+    </script>
+    <script src="~/js/admin-dashboard.js" asp-append-version="true"></script>
+    <script src="~/js/admin-providers.js" asp-append-version="true"></script>
+    <script src="~/js/dist/browser/signalr.js"></script>
+    <script src="~/js/active-users-dashboard.js" asp-append-version="true"></script>
+    
+    <script>
+        // Tab switching function
+        function switchView(view) {
+            const overviewSection = document.getElementById('overviewSection');
+            const providersSection = document.getElementById('providersSection');
+            const tabs = document.querySelectorAll('.view-tab');
+            const activeTabInput = document.getElementById('activeTabInput');
+            
+            // Update hidden input to preserve tab on form submit
+            if (activeTabInput) {
+                activeTabInput.value = view;
+            }
+            
+            // Update tab active states
+            tabs.forEach(tab => {
+                if (tab.getAttribute('data-view') === view) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Switch sections
+            if (view === 'overview') {
+                overviewSection.classList.remove('hidden');
+                providersSection.classList.remove('active');
+            } else if (view === 'providers') {
+                overviewSection.classList.add('hidden');
+                providersSection.classList.add('active');
+                
+                // Load providers data if not already loaded
+                if (!window.providersLoaded) {
+                    loadProvidersData();
+                    window.providersLoaded = true;
+                }
+            }
+        }
+        
+        // Restore active tab on page load (from URL parameter)
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activeTab = urlParams.get('ActiveTab');
+            
+            if (activeTab && activeTab === 'providers') {
+                // Force reload providers data with new date filters
+                window.providersLoaded = false;
+                switchView('providers');
+            }
+        });
+    </script>
+
+    <style>
+        /* Active Users Dashboard Styles */
+        .active-users-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .active-users-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .active-users-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .active-users-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+        }
+        .active-users-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            min-width: 32px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+        }
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #718096;
+            padding: 0.375rem 0.75rem;
+            background: #f7fafc;
+            border-radius: 9999px;
+        }
+        .connection-status .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e0;
+            animation: pulse 2s infinite;
+        }
+        .connection-status.connected .status-dot {
+            background: #48bb78;
+        }
+        .connection-status.disconnected .status-dot {
+            background: #fc8181;
+            animation: none;
+        }
+        @@keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .active-users-container {
+            padding: 1.5rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 1.5rem;
+            color: #a0aec0;
+        }
+        .loading-state .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        @@keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .active-user-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            background: #f7fafc;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s ease;
+        }
+        .active-user-item:hover {
+            background: #edf2f7;
+            transform: translateX(4px);
+        }
+        .active-user-item:last-child {
+            margin-bottom: 0;
+        }
+        .user-avatar-wrapper {
+            position: relative;
+        }
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .user-status-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .user-status-indicator.online {
+            background: #48bb78;
+        }
+        .user-status-indicator.away {
+            background: #f6ad55;
+        }
+        .user-status-indicator.idle {
+            background: #cbd5e0;
+        }
+        .user-info-section {
+            flex: 1;
+            min-width: 0;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .user-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .user-role-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .user-role-badge.admin {
+            background: #fed7d7;
+            color: #c53030;
+        }
+        .user-role-badge.staff {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        .user-role-badge.provider {
+            background: #d6bcfa;
+            color: #553c9a;
+        }
+        .user-role-badge.customer {
+            background: #c6f6d5;
+            color: #276749;
+        }
+        .user-online-time {
+            font-size: 0.75rem;
+            color: #718096;
+        }
+        .empty-active-users {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            color: #a0aec0;
+        }
+        .empty-active-users svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        .empty-active-users p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+    </style>
 }
 

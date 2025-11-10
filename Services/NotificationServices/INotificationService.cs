@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.NotificationDto;
+using BusinessObject.DTOs.PagingDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using System;
@@ -12,6 +13,13 @@ namespace Services.NotificationServices
     public interface INotificationService
     {
         Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false);
+        Task<PagedResult<NotificationResponse>> GetPagedNotifications(
+            Guid userId,
+            int page,
+            int pageSize,
+            string? searchTerm = null,
+            NotificationType? filterType = null,
+            bool? isRead = null);
         Task MarkAsRead(Guid notificationId);
         Task MarkAllAsRead(Guid userId);
         Task SendNotification(Guid userId, string message, NotificationType type, Guid? orderId = null);
@@ -22,5 +30,7 @@ namespace Services.NotificationServices
         Task NotifyOrderItemsUpdate(Guid orderId, IEnumerable<Guid> updatedItemIds);
         Task NotifyTransactionCompleted(Guid orderId, Guid userId);
         Task NotifyTransactionFailed(Guid orderId, Guid userId);
+        Task NotifyTransactionFailedByTransactionId(Guid transactionId, Guid userId);
+        Task DeleteNotification(Guid notificationId);
     }
 }

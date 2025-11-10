@@ -67,12 +67,28 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             @* Checkout Form *@
             <div class="lg:col-span-2 space-y-6">
-                <form method="post" asp-page-handler="Checkout" class="space-y-6">
+                <form method="post" asp-page-handler="Checkout" class="space-y-6" id="checkoutForm" onsubmit="return validateCheckoutForm(event);">
                     @Html.AntiForgeryToken()
 
                     @if (Model.OrderId.HasValue && Model.OrderId.Value != Guid.Empty)
                     {
                         <input type="hidden" asp-for="OrderId" />
+                    }
+
+                    @* Validation Summary *@
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                                <div>
+                                    <h3 class="font-semibold">Please correct the following errors:</h3>
+                                    <div asp-validation-summary="All" class="text-sm mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
                     }
 
                     @* Contact & Delivery Information (Combined) *@
@@ -82,11 +98,24 @@
                             Contact & Delivery Information
                         </h2>
 
-                        <div class="mb-4 flex items-center">
-                            <input type="checkbox" id="useSameProfile" name="Input.UseSameProfile" value="true"
-                                   checked="@(Model.Input.UseSameProfile)" onchange="toggleInputMethod(this.checked);"
-                                   class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                            <label for="useSameProfile" class="ml-2 text-sm text-gray-700">Use information from my profile</label>
+                        <div class="mb-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="useSameProfile" name="Input.UseSameProfile" value="true"
+                                       checked="@(Model.Input.UseSameProfile)" 
+                                       disabled="@(!Model.HasRequiredProfileInfo)"
+                                       onchange="toggleInputMethod(this.checked);"
+                                       class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded @(!Model.HasRequiredProfileInfo ? "opacity-50 cursor-not-allowed" : "")">
+                                <label for="useSameProfile" class="ml-2 text-sm text-gray-700 @(!Model.HasRequiredProfileInfo ? "opacity-50" : "")">Use information from my profile</label>
+                            </div>
+                            @if (!Model.HasRequiredProfileInfo)
+                            {
+                                <p class="mt-2 text-sm text-red-600" style="display: flex; align-items: center;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px; min-width: 16px; min-height: 16px; margin-right: 6px;" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>Please update your phone number and address in your <a asp-page="/Profile" class="underline font-medium hover:text-red-700">profile</a> to use this feature.</span>
+                                </p>
+                            }
                         </div>
 
                         <div id="manualInputFields" style="display: @(Model.Input.UseSameProfile ? "none" : "block");">
@@ -103,13 +132,19 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Phone number</label>
-                                    <input type="tel" name="Input.PhoneNumber" value="@Model.Input.PhoneNumber"
-                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
+                                    <input type="tel" id="phoneNumberInput" name="Input.PhoneNumber" value="@Model.Input.PhoneNumber"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                           @(Model.Input.UseSameProfile ? "disabled" : "") 
+                                           data-validation-required="true" />
+                                    <div class="validation-message text-red-600 text-sm mt-1" style="display: none;" data-valmsg-for="Input.PhoneNumber">Phone number is required</div>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                                    <input type="text" name="Input.Address" value="@Model.Input.Address"
-                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @(Model.Input.UseSameProfile ? "disabled" : "") />
+                                    <input type="text" id="addressInput" name="Input.Address" value="@Model.Input.Address"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                           @(Model.Input.UseSameProfile ? "disabled" : "") 
+                                           data-validation-required="true" />
+                                    <div class="validation-message text-red-600 text-sm mt-1" style="display: none;" data-valmsg-for="Input.Address">Address is required</div>
                                 </div>
                             </div>
                         </div>
@@ -268,6 +303,96 @@
 
 @section Scripts {
     <script>
+        // Global validation function called from form onsubmit
+        function validateCheckoutForm(event) {
+            console.log('🔍 validateCheckoutForm called');
+            
+            const useSameProfileCheckbox = document.getElementById('useSameProfile');
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const addressInput = document.getElementById('addressInput');
+            const phoneValidationMsg = document.querySelector('[data-valmsg-for="Input.PhoneNumber"]');
+            const addressValidationMsg = document.querySelector('[data-valmsg-for="Input.Address"]');
+            
+            console.log('Elements:', {
+                useSameProfile: useSameProfileCheckbox?.checked,
+                phoneInput: phoneNumberInput,
+                phoneDisabled: phoneNumberInput?.disabled,
+                phoneValue: phoneNumberInput?.value,
+                addressInput: addressInput,
+                addressDisabled: addressInput?.disabled,
+                addressValue: addressInput?.value
+            });
+            
+            // Only validate if NOT using profile info
+            if (!useSameProfileCheckbox || !useSameProfileCheckbox.checked) {
+                let isValid = true;
+                
+                console.log('📝 Validating manual inputs...');
+                
+                // Validate Phone Number
+                if (phoneNumberInput && !phoneNumberInput.disabled) {
+                    if (!phoneNumberInput.value || phoneNumberInput.value.trim() === '') {
+                        console.log('❌ Phone number is EMPTY');
+                        if (phoneValidationMsg) {
+                            phoneValidationMsg.style.display = 'block';
+                            console.log('✓ Phone validation message displayed');
+                        }
+                        phoneNumberInput.style.borderColor = '#ef4444';
+                        phoneNumberInput.style.borderWidth = '2px';
+                        isValid = false;
+                    } else {
+                        console.log('✅ Phone number is valid:', phoneNumberInput.value);
+                        if (phoneValidationMsg) {
+                            phoneValidationMsg.style.display = 'none';
+                        }
+                    }
+                }
+                
+                // Validate Address
+                if (addressInput && !addressInput.disabled) {
+                    if (!addressInput.value || addressInput.value.trim() === '') {
+                        console.log('❌ Address is EMPTY');
+                        if (addressValidationMsg) {
+                            addressValidationMsg.style.display = 'block';
+                            console.log('✓ Address validation message displayed');
+                        }
+                        addressInput.style.borderColor = '#ef4444';
+                        addressInput.style.borderWidth = '2px';
+                        isValid = false;
+                    } else {
+                        console.log('✅ Address is valid:', addressInput.value);
+                        if (addressValidationMsg) {
+                            addressValidationMsg.style.display = 'none';
+                        }
+                    }
+                }
+                
+                if (!isValid) {
+                    console.log('🛑 VALIDATION FAILED - Blocking form submission');
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    
+                    // Scroll to first error
+                    setTimeout(() => {
+                        const firstError = document.querySelector('[data-valmsg-for][style*="display: block"]');
+                        if (firstError) {
+                            firstError.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 100);
+                    
+                    return false; // Return false to prevent form submission
+                } else {
+                    console.log('✅ VALIDATION PASSED - Form will submit');
+                }
+            } else {
+                console.log('ℹ️ Using profile info - Skipping validation');
+            }
+            
+            return true; // Allow form submission
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             // --- 1. Logic cho Toast Messages ---
             const toastSuccess = document.getElementById('toast-success');
@@ -287,12 +412,27 @@
             // Hàm này sẽ điều khiển việc hiển thị/vô hiệu hóa các trường nhập liệu thủ công
             function toggleInputMethod(isChecked) {
                 const inputs = manualInputFields.querySelectorAll('input, select');
+                const phoneValidationMsg = document.querySelector('[data-valmsg-for="Input.PhoneNumber"]');
+                const addressValidationMsg = document.querySelector('[data-valmsg-for="Input.Address"]');
+                const phoneNumberInput = document.getElementById('phoneNumberInput');
+                const addressInput = document.getElementById('addressInput');
 
                 if (isChecked) {
                     manualInputFields.style.display = 'none';
                     inputs.forEach(input => {
                         input.setAttribute('disabled', 'disabled');
                     });
+                    // Clear validation messages when using profile
+                    if (phoneValidationMsg) phoneValidationMsg.style.display = 'none';
+                    if (addressValidationMsg) addressValidationMsg.style.display = 'none';
+                    if (phoneNumberInput) {
+                        phoneNumberInput.style.borderColor = '';
+                        phoneNumberInput.style.borderWidth = '';
+                    }
+                    if (addressInput) {
+                        addressInput.style.borderColor = '';
+                        addressInput.style.borderWidth = '';
+                    }
                 } else {
                     manualInputFields.style.display = 'block';
                     inputs.forEach(input => {
@@ -306,23 +446,108 @@
                 // Khởi tạo trạng thái ban đầu khi trang tải dựa trên giá trị Razor Model
                 toggleInputMethod(useSameProfileCheckbox.checked);
             }
+            
+            // Add input event listeners to clear validation messages
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const addressInput = document.getElementById('addressInput');
+            const phoneValidationMsg = document.querySelector('[data-valmsg-for="Input.PhoneNumber"]');
+            const addressValidationMsg = document.querySelector('[data-valmsg-for="Input.Address"]');
+            
+            if (phoneNumberInput && phoneValidationMsg) {
+                phoneNumberInput.addEventListener('input', function() {
+                    if (this.value && this.value.trim()) {
+                        phoneValidationMsg.style.display = 'none';
+                        this.style.borderColor = '';
+                        this.style.borderWidth = '';
+                    }
+                });
+            }
+            
+            if (addressInput && addressValidationMsg) {
+                addressInput.addEventListener('input', function() {
+                    if (this.value && this.value.trim()) {
+                        addressValidationMsg.style.display = 'none';
+                        this.style.borderColor = '';
+                        this.style.borderWidth = '';
+                    }
+                });
+            }
 
             // --- 3. Logic cho Modal QR Code ---
             const qrModalContainer = document.getElementById('qr-modal-container');
             const transactionId = "@TempData["TransactionId"]"; // Lấy transactionId từ TempData Razor Pages
+            const successMessage = "@Model.SuccessMessage"; // Check if there's a success message from POST
 
             if (qrModalContainer) { // Chỉ chạy logic modal nếu modal HTML tồn tại trên trang
                 const closeBtnIcon = document.getElementById('modal-icon-close');
                 const closeBtnOverlay = document.getElementById('modal-overlay-close');
 
                 const openQrModal = () => qrModalContainer.classList.add('open');
-                const closeQrModal = () => qrModalContainer.classList.remove('open');
+                const closeQrModal = async () => {
+                    qrModalContainer.classList.remove('open');
+                    
+                    try {
+                        const accessToken = '@(Request.Cookies["AccessToken"])';
+                        const headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        
+                        if (accessToken) {
+                            headers['Authorization'] = `Bearer ${accessToken}`;
+                        }
+                        
+                        // Clear cart first
+                        await fetch('@Model.ApiBaseUrl/cart/clear', {
+                            method: 'DELETE',
+                            headers: headers
+                        });
+                        
+                        // Clear checkout session/TempData and send notification
+                        const clearSessionUrl = transactionId && transactionId.trim() !== '' 
+                            ? `/CheckoutPage/Checkout?handler=ClearSession&transactionId=${transactionId}`
+                            : '/CheckoutPage/Checkout?handler=ClearSession';
+                        
+                        await fetch(clearSessionUrl, {
+                            method: 'POST',
+                            headers: {
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        });
+                        
+                        // Wait a moment for notification to be created and broadcasted
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                    } catch (e) {
+                        console.log('Error during cleanup:', e);
+                    }
+                    
+                    // Reload notifications after closing QR modal (after notification has been created)
+                    try {
+                        if (window.loadNotifications) {
+                            const notificationMenu = document.querySelector('.notification-menu');
+                            const userId = notificationMenu ? notificationMenu.dataset.userid : null;
+                            if (userId) {
+                                await window.loadNotifications(userId);
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Error reloading notifications:', e);
+                    }
+                    
+                    // Redirect to order history after closing QR modal
+                    // PendingCartOrderIds is now stored in Session, so it won't be lost on redirect
+                    setTimeout(() => {
+                        window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
+                    }, 500);
+                };
 
                 closeBtnIcon.addEventListener('click', closeQrModal);
                 closeBtnOverlay.addEventListener('click', closeQrModal);
 
-                // Tự động mở modal khi trang tải xong (nếu có QrCodeUrl)
-                setTimeout(openQrModal, 100);
+                // CHỈ tự động mở modal khi vừa tạo QR code (có transactionId và successMessage)
+                if (transactionId && transactionId.trim() !== '' && successMessage && successMessage.includes('QR')) {
+                    setTimeout(openQrModal, 100);
+                }
 
                 // Nếu có transactionId, bắt đầu kiểm tra trạng thái thanh toán định kỳ
                 if (transactionId) {
@@ -344,6 +569,19 @@
 
                             if (status === "completed") {
                                 clearInterval(checkStatusInterval);
+                                
+                                // Clear pending cart order IDs from session since payment is successful
+                                try {
+                                    await fetch('/CheckoutPage/Checkout?handler=ClearPendingCartOrders', {
+                                        method: 'POST',
+                                        headers: {
+                                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                                        }
+                                    });
+                                } catch (e) {
+                                    console.log('Could not clear pending cart orders:', e);
+                                }
+                                
                                 alert("Payment successful!");
                                 // Chuyển hướng đến trang lịch sử đơn hàng sau khi thanh toán thành công
                                 window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
@@ -357,9 +595,7 @@
                         }
                     }, 3000); // Kiểm tra mỗi 3 giây
 
-                    // Dừng interval khi người dùng đóng modal thủ công
-                    closeBtnIcon.addEventListener('click', () => { clearInterval(checkStatusInterval); console.log('Payment status check stopped due to modal close.'); });
-                    closeBtnOverlay.addEventListener('click', () => { clearInterval(checkStatusInterval); console.log('Payment status check stopped due to modal overlay click.'); });
+                    // Note: Interval will be stopped automatically when page redirects after modal close
                 }
             }
 

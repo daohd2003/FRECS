@@ -1,10 +1,13 @@
-﻿namespace BusinessObject.DTOs.ProductDto
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BusinessObject.DTOs.ProductDto
 {
     public class ProductDTO
     {
         public Guid Id { get; set; }
         public Guid ProviderId { get; set; }
         public string ProviderName { get; set; }
+        public string? ProviderEmail { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public Guid? CategoryId { get; set; }
@@ -116,5 +119,36 @@
         public string? PurchaseStatus { get; set; }
         public string? Gender { get; set; }
         public List<ProductImageDTO>? Images { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for Admin/Staff to update products without changing ProviderId
+    /// </summary>
+    public class AdminProductUpdateDTO
+    {
+        [Required(ErrorMessage = "Product name is required.")]
+        [StringLength(255, ErrorMessage = "Product name cannot be longer than 255 characters.")]
+        public string Name { get; set; }
+
+        [Required(ErrorMessage = "Description is required.")]
+        [StringLength(2000, ErrorMessage = "Description cannot be longer than 2000 characters.")]
+        public string Description { get; set; }
+        public Guid? CategoryId { get; set; }
+        public string? Category { get; set; }
+
+        [StringLength(50, ErrorMessage = "Size cannot be longer than 50 characters.")]
+        public string? Size { get; set; }
+
+        [StringLength(50, ErrorMessage = "Color cannot be longer than 50 characters.")]
+        public string? Color { get; set; }
+        public decimal PricePerDay { get; set; }
+        public decimal? PurchasePrice { get; set; }
+        public int? PurchaseQuantity { get; set; }
+        public int? RentalQuantity { get; set; }
+        public decimal SecurityDeposit { get; set; }
+        public string? RentalStatus { get; set; }
+        public string? PurchaseStatus { get; set; }
+        public string? Gender { get; set; }
+        public string? AvailabilityStatus { get; set; }
     }
 }

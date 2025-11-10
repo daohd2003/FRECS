@@ -1,4 +1,5 @@
-﻿using BusinessObject.DTOs.FavoriteDtos;
+﻿using AutoMapper;
+using BusinessObject.DTOs.FavoriteDtos;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Models;
 using Repositories.FavoriteRepositories;
@@ -13,10 +14,12 @@ namespace Services.FavoriteServices
     public class FavoriteService : IFavoriteService
     {
         private readonly IFavoriteRepository _favoriteRepository;
+        private readonly IMapper _mapper;
 
-        public FavoriteService(IFavoriteRepository favoriteRepository)
+        public FavoriteService(IFavoriteRepository favoriteRepository, IMapper mapper)
         {
             _favoriteRepository = favoriteRepository;
+            _mapper = mapper;
         }
 
         public async Task<List<Favorite>> GetFavoritesByUserIdAsync(Guid userId)
@@ -26,7 +29,17 @@ namespace Services.FavoriteServices
 
         public async Task<List<FavoriteWithProductDto>> GetFavoritesWithProductDetailsAsync(Guid userId)
         {
-            return await _favoriteRepository.GetFavoritesWithProductDetailsAsync(userId);
+            // Get favorites with product details from repository
+            var favorites = await _favoriteRepository.GetFavoritesWithProductDetailsAsync(userId);
+
+            // Map to DTO in service layer
+            return favorites.Select(f => new FavoriteWithProductDto
+            {
+                UserId = f.UserId,
+                ProductId = f.ProductId,
+                CreatedAt = f.CreatedAt,
+                Product = _mapper.Map<ProductDTO>(f.Product)
+            }).ToList();
         }
 
         public async Task<bool> IsFavoriteAsync(Guid userId, Guid productId)

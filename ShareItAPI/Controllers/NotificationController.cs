@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.NotificationDto;
+using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.NotificationServices;
@@ -26,6 +27,20 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<object>("Fetched user notifications successfully", notifications));
         }
 
+        // GET: api/notification/paged/{userId}?page=1&pageSize=10&searchTerm=order&filterType=order&isRead=false
+        [HttpGet("paged/{userId}")]
+        public async Task<IActionResult> GetPagedNotifications(
+            Guid userId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] NotificationType? filterType = null,
+            [FromQuery] bool? isRead = null)
+        {
+            var pagedResult = await _notificationService.GetPagedNotifications(userId, page, pageSize, searchTerm, filterType, isRead);
+            return Ok(new ApiResponse<object>("Fetched paged notifications successfully", pagedResult));
+        }
+
         // GET: api/notification/unread-count/{userId}
         [HttpGet("unread-count/{userId}")]
         public async Task<IActionResult> GetUnreadCount(Guid userId)
@@ -48,6 +63,14 @@ namespace ShareItAPI.Controllers
         {
             await _notificationService.MarkAllAsRead(userId);
             return Ok(new ApiResponse<string>("All notifications marked as read", null));
+        }
+
+        // DELETE: api/notification/{notificationId}
+        [HttpDelete("{notificationId}")]
+        public async Task<IActionResult> DeleteNotification(Guid notificationId)
+        {
+            await _notificationService.DeleteNotification(notificationId);
+            return Ok(new ApiResponse<string>("Notification deleted successfully", null));
         }
 
         // POST: api/notification/manual
@@ -91,5 +114,20 @@ namespace ShareItAPI.Controllers
             await _notificationService.NotifyOrderItemsUpdate(request.OrderId, request.UpdatedItemIds);
             return Ok(new ApiResponse<string>("Order items update notification sent", null));
         }*/
+
+        // POST: api/notification/transaction-failed?transactionId={guid}&userId={guid}
+        [HttpPost("transaction-failed")]
+        public async Task<IActionResult> NotifyTransactionFailed([FromQuery] Guid transactionId, [FromQuery] Guid userId)
+        {
+            try
+            {
+                await _notificationService.NotifyTransactionFailedByTransactionId(transactionId, userId);
+                return Ok(new ApiResponse<string>("Transaction failed notifications sent", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error sending notification: {ex.Message}", null));
+            }
+        }
     }
 }

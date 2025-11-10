@@ -35,7 +35,7 @@
 
     <form id="chatForm" class="chat-input-form">
         <input type="text" id="chatInput" class="chat-input" placeholder="Ask me about clothing..." autocomplete="off" />
-        <button type="submit" class="chat-send-btn">Send</button>
+        <button type="submit" class="chat-send-btn">▶</button>
     </form>
 </div>
 
@@ -57,6 +57,70 @@
             const suggestionsContainer = document.getElementById('suggestionsContainer');
             const toggleSuggestionsBtn = document.getElementById('toggleSuggestionsBtn');
             const toggleIcon = toggleSuggestionsBtn.querySelector('.toggle-icon');
+
+            // Vietnamese events calendar
+            const vietnameseEvents = [
+                { month: 1, day: 1, name: "New Year", query: "Show me outfits for New Year celebration", daysBeforeToShow: 7 },
+                { month: 1, day: 29, name: "Lunar New Year (Tet)", query: "Show me traditional outfits for Tet celebration", daysBeforeToShow: 15 }, // Approximate date, varies yearly
+                { month: 2, day: 14, name: "Valentine's Day", query: "Show me romantic outfits for Valentine's Day", daysBeforeToShow: 7 },
+                { month: 3, day: 8, name: "International Women's Day", query: "Show me elegant outfits for Women's Day celebration", daysBeforeToShow: 7 },
+                { month: 4, day: 30, name: "Reunification Day", query: "Show me formal outfits for national holiday", daysBeforeToShow: 5 },
+                { month: 5, day: 1, name: "Labor Day", query: "Show me casual outfits for Labor Day", daysBeforeToShow: 5 },
+                { month: 6, day: 1, name: "Children's Day", query: "Show me fun outfits for family celebration", daysBeforeToShow: 5 },
+                { month: 9, day: 2, name: "National Day", query: "Show me patriotic and formal outfits", daysBeforeToShow: 5 },
+                { month: 10, day: 20, name: "Vietnamese Women's Day", query: "Show me beautiful outfits for Vietnamese Women's Day", daysBeforeToShow: 10 },
+                { month: 11, day: 20, name: "Teachers' Day", query: "Show me elegant outfits for Teachers' Day", daysBeforeToShow: 10 },
+                { month: 12, day: 24, name: "Christmas Eve", query: "Show me festive outfits for Christmas", daysBeforeToShow: 10 },
+                { month: 12, day: 25, name: "Christmas", query: "Show me Christmas party outfits", daysBeforeToShow: 10 }
+            ];
+
+            // Check for upcoming events
+            function getUpcomingEventSuggestions() {
+                const now = new Date();
+                // Reset to start of day for date-only comparison
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                
+                const upcomingEvents = [];
+                
+                for (const event of vietnameseEvents) {
+                    // Create event date (at start of day)
+                    let eventDate = new Date(today.getFullYear(), event.month - 1, event.day);
+                    
+                    // Calculate days until event (can be negative if event passed)
+                    const daysUntilEvent = Math.round((eventDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    // Show suggestion if:
+                    // - Event is within N days BEFORE (daysUntilEvent between 0 and daysBeforeToShow)
+                    // - OR it's the event day itself (daysUntilEvent === 0)
+                    if (daysUntilEvent >= 0 && daysUntilEvent <= event.daysBeforeToShow) {
+                        upcomingEvents.push({
+                            query: event.query,
+                            daysUntil: daysUntilEvent,
+                            name: event.name,
+                            priority: daysUntilEvent // Closer events have higher priority (lower number)
+                        });
+                    }
+                    // If event has passed this year, check next year's event
+                    else if (daysUntilEvent < 0) {
+                        eventDate = new Date(today.getFullYear() + 1, event.month - 1, event.day);
+                        const daysUntilNextYear = Math.round((eventDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        if (daysUntilNextYear >= 0 && daysUntilNextYear <= event.daysBeforeToShow) {
+                            upcomingEvents.push({
+                                query: event.query,
+                                daysUntil: daysUntilNextYear,
+                                name: event.name,
+                                priority: daysUntilNextYear
+                            });
+                        }
+                    }
+                }
+                
+                // Sort by priority (closest events first)
+                upcomingEvents.sort((a, b) => a.priority - b.priority);
+                
+                return upcomingEvents.slice(0, 2).map(e => e.query); // Return max 2 event suggestions
+            }
 
             // Quick suggestion templates
             const suggestionSets = {
@@ -150,7 +214,25 @@
             function updateSuggestions(history) {
                 // Show initial suggestions if chat is empty or just greeting
                 if (history.length <= 1) {
-                    renderSuggestions(suggestionSets.initial);
+                    // Get event-based suggestions
+                    const eventSuggestions = getUpcomingEventSuggestions();
+                    
+                    // Merge event suggestions with regular initial suggestions
+                    let allSuggestions = [];
+                    if (eventSuggestions.length > 0) {
+                        // Add event suggestions first (they are more timely/relevant)
+                        allSuggestions = [...eventSuggestions];
+                        // Then add some regular suggestions (limit total to 4-5)
+                        const remainingSlots = 4 - eventSuggestions.length;
+                        if (remainingSlots > 0) {
+                            allSuggestions.push(...suggestionSets.initial.slice(0, remainingSlots));
+                        }
+                    } else {
+                        // No events, use regular suggestions
+                        allSuggestions = suggestionSets.initial;
+                    }
+                    
+                    renderSuggestions(allSuggestions);
                     quickSuggestions.style.display = 'block';
                 } else {
                     // Hide suggestions after user starts chatting

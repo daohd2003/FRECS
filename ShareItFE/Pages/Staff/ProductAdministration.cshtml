@@ -1,0 +1,2404 @@
+@page
+@model ShareItFE.Pages.Staff.ProductAdministrationModel
+@{
+    ViewData["Title"] = "Product Administrator";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/category-management.css" asp-append-version="true" />
+    <style>
+        .tabs-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .tabs-list {
+            display: flex;
+            border-bottom: 2px solid #f1f5f9;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .tab-item {
+            flex: 1;
+        }
+        .tab-button {
+            width: 100%;
+            padding: 16px 24px;
+            background: none;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-button:hover {
+            background: #f8fafc;
+            color: #334155;
+        }
+        .tab-button.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+            background: #fafbfc;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            gap: 6px;
+        }
+        .status-badge.available {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-badge.rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .product-image-cell {
+            cursor: pointer;
+        }
+        .product-image-cell img {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            transition: transform 0.2s;
+        }
+        .product-image-cell img:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9998;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-container {
+            background: white;
+            border-radius: 16px;
+            max-width: 650px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
+        }
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .modal-body {
+            padding: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e293b;
+            font-size: 14px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .product-image-preview {
+            width: 100%;
+            height: 200px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .product-image-preview:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        
+        /* Image Lightbox */
+        .image-lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .image-lightbox.active {
+            display: flex;
+        }
+        .lightbox-image {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            cursor: zoom-in;
+            transition: transform 0.2s;
+        }
+        .lightbox-image.zoomed {
+            max-width: none;
+            max-height: none;
+            cursor: grab;
+        }
+        .lightbox-image.zoomed:active {
+            cursor: grabbing;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(255,255,255,0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .lightbox-close:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(90deg);
+        }
+        .modal-footer {
+            padding: 20px 28px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .btn-modal {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        .btn-cancel {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .btn-cancel:hover {
+            background: #e2e8f0;
+        }
+        .btn-save {
+            background: #6366f1;
+            color: white;
+        }
+        .btn-save:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+        }
+        
+        /* Pagination Styles */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
+            padding: 20px 0;
+        }
+        .pagination-btn {
+            padding: 8px 16px;
+            border: 1.5px solid #e2e8f0;
+            background: white;
+            color: #475569;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            background: #f8fafc;
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .pagination-info {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .page-number {
+            padding: 8px 12px;
+            border: 1.5px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .page-number:hover {
+            background: #f8fafc;
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        .page-number.active {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+        }
+        
+        @@keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @@keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .product-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .product-details {
+            flex: 1;
+        }
+        .product-name {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .product-id {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .provider-group {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .provider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .provider-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .provider-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        #pending-review .action-buttons {
+            gap: 4px;
+        }
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        /* Table overflow fix */
+        .table-wrapper {
+            overflow-x: auto;
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-container {
+            width: 100%;
+            overflow: hidden;
+        }
+        .categories-table {
+            width: 100%;
+            table-layout: auto;
+            border-collapse: collapse;
+        }
+        .categories-table th,
+        .categories-table td {
+            padding: 10px 8px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .categories-table th {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #475569;
+            background: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .approve-btn {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .approve-btn:hover {
+            background: #bbf7d0;
+        }
+        .reject-btn {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .reject-btn:hover {
+            background: #fecaca;
+        }
+        .view-btn {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .view-btn:hover {
+            background: #bfdbfe;
+        }
+        .delete-btn {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .delete-btn:hover {
+            background: #fde68a;
+        }
+    </style>
+}
+
+<div class="category-management-container">
+    <!-- Header Section -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1 class="page-title">Product Administrator</h1>
+                <p class="page-description">Manage and moderate product listings from providers</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Total Products</p>
+                <p class="stat-value" id="totalProducts">@Model.TotalProducts</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22,4 12,14.01 9,11.01"></polyline>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Available</p>
+                <p class="stat-value" id="availableProducts">@Model.Available</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9 12l2 2 4-4"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Pending Review</p>
+                <p class="stat-value" id="pendingProducts">@Model.Pending</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Rejected</p>
+                <p class="stat-value" id="rejectedProducts">@Model.Rejected</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Section -->
+    <div class="tabs-container">
+        <ul class="tabs-list">
+            <li class="tab-item">
+                <button class="tab-button active" data-tab="all-products">
+                    All Products
+                </button>
+            </li>
+            <li class="tab-item">
+                <button class="tab-button" data-tab="by-provider">
+                    By Provider
+                </button>
+            </li>
+            <li class="tab-item">
+                <button class="tab-button" data-tab="pending-review">
+                    Pending Review
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="search-filter-container">
+        <div class="search-section">
+            <div class="search-input-group">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search products by name, provider, or description..." class="search-input">
+            </div>
+        </div>
+        <div class="filter-section">
+            <select id="providerSelect" class="filter-select" style="min-width: 250px; display: none;">
+                <option value="">-- Choose a provider --</option>
+            </select>
+            <select id="statusFilter" class="filter-select">
+                <option value="all">All Status</option>
+                <option value="available">Available</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+                <option value="archived">Archived</option>
+            </select>
+            <select id="sortFilter" class="filter-select">
+                <option value="createdAt-desc">Newest First</option>
+                <option value="createdAt-asc">Oldest First</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="price-asc">Price (Low to High)</option>
+                <option value="price-desc">Price (High to Low)</option>
+            </select>
+            <select id="typeFilter" class="filter-select">
+                <option value="all">All Types</option>
+                <option value="rental">Rental Only</option>
+                <option value="purchase">Purchase Only</option>
+                <option value="both">Both</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Tab Content: All Products -->
+    <div id="all-products" class="tab-content active">
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table class="categories-table">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Product</th>
+                        <th>Category</th>
+                            <th>Provider</th>
+                            <th>Status</th>
+                        <th>Pricing</th>
+                            <th>Stock</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allProductsTableBody">
+                        <!-- Data will be loaded via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="allProductsPagination" class="pagination-container">
+            <!-- Pagination will be rendered here -->
+        </div>
+    </div>
+
+    <!-- Tab Content: By Provider -->
+    <div id="by-provider" class="tab-content">
+        <div id="providerProductsContainer">
+            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5;">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <p style="font-size: 16px; margin: 0;">Please select a provider from the dropdown above</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content: Pending Review -->
+    <div id="pending-review" class="tab-content">
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table class="categories-table" style="min-width: 1150px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Image</th>
+                            <th style="min-width: 140px; max-width: 170px;">Product</th>
+                            <th style="width: 85px;">Category</th>
+                            <th style="width: 100px;">Provider</th>
+                            <th style="width: 75px;">Status</th>
+                            <th style="width: 100px;">Pricing</th>
+                            <th style="width: 70px;">Stock</th>
+                            <th style="min-width: 130px; max-width: 150px;">Reason</th>
+                            <th style="width: 75px;">Date</th>
+                            <th style="width: 190px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingProductsTableBody">
+                        <!-- Data will be loaded via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="pendingProductsPagination" class="pagination-container">
+            <!-- Pagination will be rendered here -->
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = '@Model.ApiBaseUrl';
+        const ACCESS_TOKEN = '@Model.AccessToken';
+        const pageSize = 10; // Số sản phẩm trên mỗi trang
+        
+        // Tab switching
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Update active tab button
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update active tab content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+                
+                // Show/hide provider select based on tab
+                const providerSelect = document.getElementById('providerSelect');
+                if (tabId === 'by-provider') {
+                    providerSelect.style.display = 'block';
+                } else {
+                    providerSelect.style.display = 'none';
+                }
+                
+                // Load data for the selected tab
+                loadTabData(tabId);
+            });
+        });
+
+        // Initial load
+        loadTabData('all-products');
+
+        async function loadTabData(tabId) {
+            switch(tabId) {
+                case 'all-products':
+                    await loadAllProducts();
+                    break;
+                case 'by-provider':
+                    await loadProductsByProvider();
+                    break;
+                case 'pending-review':
+                    await loadPendingProducts();
+                    break;
+            }
+        }
+
+        async function loadAllProducts(page = 1) {
+            try {
+                currentPage.all = page;
+                
+                // Get filter values
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+                const statusFilter = document.getElementById('statusFilter').value;
+                const sortFilter = document.getElementById('sortFilter').value;
+                const typeFilter = document.getElementById('typeFilter').value;
+                
+                const response = await fetch(`${API_BASE_URL}/products/admin/all?page=${page}&pageSize=${pageSize}`, {
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load products');
+
+                const result = await response.json();
+                let products = result.data?.items || [];
+                const totalPages = result.data?.totalPages || 1;
+                
+                // Apply client-side filters
+                if (searchTerm) {
+                    products = products.filter(p => 
+                        p.name.toLowerCase().includes(searchTerm) ||
+                        p.providerName?.toLowerCase().includes(searchTerm) ||
+                        p.category?.toLowerCase().includes(searchTerm) ||
+                        p.description?.toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                if (statusFilter && statusFilter !== 'all') {
+                    products = products.filter(p => 
+                        p.availabilityStatus.toLowerCase() === statusFilter.toLowerCase()
+                    );
+                }
+                
+                if (typeFilter && typeFilter !== 'all') {
+                    products = products.filter(p => {
+                        const isRental = p.rentalStatus === 'Available';
+                        const isPurchase = p.purchaseStatus === 'Available';
+                        
+                        if (typeFilter === 'rental') return isRental && !isPurchase;
+                        if (typeFilter === 'purchase') return !isRental && isPurchase;
+                        if (typeFilter === 'both') return isRental && isPurchase;
+                        return true;
+                    });
+                }
+                
+                // Apply sorting
+                products = sortProducts(products, sortFilter);
+                
+                const tbody = document.getElementById('allProductsTableBody');
+                
+                if (products.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">No products found</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = products.map(product => {
+                    // Build pricing display
+                    let pricingDisplay = '';
+                    const isRentalAvailable = product.rentalStatus === 'Available';
+                    const isPurchaseAvailable = product.purchaseStatus === 'Available';
+                    
+                    if (isRentalAvailable && isPurchaseAvailable) {
+                        pricingDisplay = `
+                            <div style="font-size: 12px;">
+                                <div style="color: #2563eb; font-weight: 600;">📅 ₫${product.pricePerDay.toLocaleString()}/day</div>
+                                <div style="color: #7c3aed; font-weight: 600; margin-top: 2px;">💰 ₫${product.purchasePrice.toLocaleString()}</div>
+                            </div>
+                        `;
+                    } else if (isRentalAvailable) {
+                        pricingDisplay = `<span style="color: #2563eb; font-weight: 600;">📅 ₫${product.pricePerDay.toLocaleString()}/day</span>`;
+                    } else if (isPurchaseAvailable) {
+                        pricingDisplay = `<span style="color: #7c3aed; font-weight: 600;">💰 ₫${product.purchasePrice.toLocaleString()}</span>`;
+                    } else {
+                        pricingDisplay = '<span style="color: #94a3b8;">N/A</span>';
+                    }
+                    
+                    // Build stock display
+                    let stockDisplay = '';
+                    if (isRentalAvailable && isPurchaseAvailable) {
+                        stockDisplay = `
+                            <div style="font-size: 12px;">
+                                <div style="color: #2563eb; font-weight: 500;">Rental: ${product.rentalQuantity}</div>
+                                <div style="color: #7c3aed; font-weight: 500; margin-top: 2px;">Purchase: ${product.purchaseQuantity}</div>
+                            </div>
+                        `;
+                    } else if (isRentalAvailable) {
+                        stockDisplay = `<span style="color: #2563eb; font-weight: 500;">Rental: ${product.rentalQuantity}</span>`;
+                    } else if (isPurchaseAvailable) {
+                        stockDisplay = `<span style="color: #7c3aed; font-weight: 500;">Purchase: ${product.purchaseQuantity}</span>`;
+                    } else {
+                        stockDisplay = '<span style="color: #94a3b8;">N/A</span>';
+                    }
+                    
+                    return `
+                    <tr>
+                        <td>
+                            <div class="product-image-cell" onclick="openImageLightbox('${product.primaryImagesUrl || '/images/no-image.png'}')">
+                                <img src="${product.primaryImagesUrl || '/images/no-image.png'}" alt="${product.name}" />
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-info">
+                                <div class="product-details">
+                                    <div class="product-name">${product.name}</div>
+                                    <div class="product-id">ID: ${product.id.substring(0, 8)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${product.category || 'N/A'}">${product.category || '<span style="color: #94a3b8;">N/A</span>'}</td>
+                        <td>${product.providerName}</td>
+                        <td>
+                            <span class="status-badge ${product.availabilityStatus.toLowerCase()}">
+                                ${product.availabilityStatus}
+                            </span>
+                        </td>
+                        <td>${pricingDisplay}</td>
+                        <td>${stockDisplay}</td>
+                        <td>${new Date(product.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${product.availabilityStatus.toLowerCase() === 'pending' ? `
+                                    <button class="action-btn approve-btn" onclick="unflagProduct('${product.id}')" title="Unflag & Approve">✓</button>
+                                ` : `
+                                    <button class="action-btn" onclick="openFlagModal('${product.id}', '${product.name}')" title="Flag Violation" style="background: #fbbf24; color: #78350f;">⚠</button>
+                                `}
+                                <button class="action-btn view-btn" onclick="openEditModal('${product.id}')" title="Edit Product">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                                <button class="action-btn" onclick="viewProductDetail('${product.id}')" title="View Detail" style="background: #10b981; color: white;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                                <button class="action-btn delete-btn" onclick="deleteProduct('${product.id}')" title="Delete Product">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3,6 5,6 21,6"></polyline>
+                                        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    `;
+                }).join('');
+                
+                // Render pagination
+                const paginationContainer = document.getElementById('allProductsPagination');
+                renderPagination(paginationContainer, page, totalPages, 'loadAllProducts');
+            } catch (error) {
+                console.error('Error loading products:', error);
+                showToast('Failed to load products', 'error');
+            }
+        }
+
+        async function loadProductsByProvider() {
+            try {
+                // Load all products grouped by provider to populate dropdown
+                const response = await fetch(`${API_BASE_URL}/products/admin/by-provider?page=1&pageSize=1000`, {
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load providers');
+
+                const result = await response.json();
+                const providerGroups = result.data?.data || [];
+                
+                // Populate provider dropdown
+                const providerSelect = document.getElementById('providerSelect');
+                providerSelect.innerHTML = '<option value="">-- Choose a provider --</option>' +
+                    providerGroups.map(group => `
+                        <option value="${group.providerId}" data-stats='${JSON.stringify({
+                            total: group.totalProducts,
+                            available: group.availableProducts,
+                            pending: group.pendingProducts
+                        })}'>
+                            ${group.providerName} (${group.totalProducts} products)
+                        </option>
+                    `).join('');
+                
+                // Store provider data for later use
+                window.providerData = providerGroups;
+                
+            } catch (error) {
+                console.error('Error loading providers:', error);
+                showToast('Failed to load providers', 'error');
+            }
+        }
+
+        async function loadPendingProducts(page = 1) {
+            try {
+                currentPage.pending = page;
+                const response = await fetch(`${API_BASE_URL}/products/admin/pending?page=${page}&pageSize=${pageSize}`, {
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load pending products');
+
+                const result = await response.json();
+                const products = result.data?.items || [];
+                const totalPages = result.data?.totalPages || 1;
+                
+                const tbody = document.getElementById('pendingProductsTableBody');
+                
+                if (products.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px; color: #94a3b8;">No pending products found</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = products.map(product => {
+                    // Build pricing display
+                    let pricingDisplay = '';
+                    const isRentalAvailable = product.rentalStatus === 'Available';
+                    const isPurchaseAvailable = product.purchaseStatus === 'Available';
+                    
+                    if (isRentalAvailable && isPurchaseAvailable) {
+                        pricingDisplay = `
+                            <div style="font-size: 12px;">
+                                <div style="color: #2563eb; font-weight: 600;">📅 ₫${product.pricePerDay.toLocaleString()}/day</div>
+                                <div style="color: #7c3aed; font-weight: 600; margin-top: 2px;">💰 ₫${product.purchasePrice.toLocaleString()}</div>
+                            </div>
+                        `;
+                    } else if (isRentalAvailable) {
+                        pricingDisplay = `<span style="color: #2563eb; font-weight: 600;">📅 ₫${product.pricePerDay.toLocaleString()}/day</span>`;
+                    } else if (isPurchaseAvailable) {
+                        pricingDisplay = `<span style="color: #7c3aed; font-weight: 600;">💰 ₫${product.purchasePrice.toLocaleString()}</span>`;
+                    } else {
+                        pricingDisplay = '<span style="color: #94a3b8;">N/A</span>';
+                    }
+                    
+                    // Build stock display
+                    let stockDisplay = '';
+                    if (isRentalAvailable && isPurchaseAvailable) {
+                        stockDisplay = `
+                            <div style="font-size: 12px;">
+                                <div style="color: #2563eb; font-weight: 500;">Rental: ${product.rentalQuantity}</div>
+                                <div style="color: #7c3aed; font-weight: 500; margin-top: 2px;">Purchase: ${product.purchaseQuantity}</div>
+                            </div>
+                        `;
+                    } else if (isRentalAvailable) {
+                        stockDisplay = `<span style="color: #2563eb; font-weight: 500;">Rental: ${product.rentalQuantity}</span>`;
+                    } else if (isPurchaseAvailable) {
+                        stockDisplay = `<span style="color: #7c3aed; font-weight: 500;">Purchase: ${product.purchaseQuantity}</span>`;
+                    } else {
+                        stockDisplay = '<span style="color: #94a3b8;">N/A</span>';
+                    }
+                    
+                    // Display reason - check if product has violation/moderation reason
+                    let reasonDisplay = '<div style="color: #94a3b8; font-style: italic; font-size: 10px; padding: 4px;">Awaiting...</div>';
+                    if (product.violationReason || product.moderationReason) {
+                        const reason = product.violationReason || product.moderationReason;
+                        const shortReason = reason.length > 45 ? reason.substring(0, 45) + '...' : reason;
+                        reasonDisplay = `
+                            <div style="font-size: 9px; line-height: 1.3; padding: 3px 2px;">
+                                <div style="color: #dc2626; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 2px;">
+                                    <span style="font-size: 11px;">⚠</span>
+                                    <span style="font-size: 9px;">AI Issue</span>
+                                </div>
+                                <div style="color: #78350f; background: #fef3c7; padding: 3px 5px; border-radius: 3px; border-left: 2px solid #f59e0b; font-size: 9px; word-break: break-word;" title="${reason}">
+                                    ${shortReason}
+                            </div>
+                            </div>
+                        `;
+                    }
+                    
+                    return `
+                                            <tr>
+                                                <td>
+                            <div class="product-image-cell" onclick="openImageLightbox('${product.primaryImagesUrl || '/images/no-image.png'}')">
+                                                        <img src="${product.primaryImagesUrl || '/images/no-image.png'}" alt="${product.name}" />
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="product-info">
+                                                        <div class="product-details">
+                                                            <div class="product-name">${product.name}</div>
+                                                            <div class="product-id">ID: ${product.id.substring(0, 8)}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                        <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${product.category || 'N/A'}">${product.category || '<span style="color: #94a3b8;">N/A</span>'}</td>
+                        <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${product.providerName}">${product.providerName}</td>
+                                                <td>
+                            <span class="status-badge ${product.availabilityStatus.toLowerCase()}" style="font-size: 11px; padding: 4px 8px;">
+                                                        ${product.availabilityStatus}
+                                                    </span>
+                                                </td>
+                        <td>${pricingDisplay}</td>
+                        <td>${stockDisplay}</td>
+                        <td>
+                            ${reasonDisplay}
+                        </td>
+                        <td style="white-space: nowrap; font-size: 11px;">${new Date(product.createdAt).toLocaleDateString()}</td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                <button class="action-btn approve-btn" onclick="unflagProduct('${product.id}')" title="Approve">✓</button>
+                                <button class="action-btn reject-btn" onclick="rejectProduct('${product.id}')" title="Reject">✗</button>
+                                                        <button class="action-btn view-btn" onclick="openEditModal('${product.id}')" title="Edit Product">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                            </svg>
+                                                        </button>
+                                <button class="action-btn" onclick="viewProductDetail('${product.id}')" title="View Detail" style="background: #10b981; color: white;">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                `;
+                }).join('');
+                
+                // Render pagination
+                const paginationContainer = document.getElementById('pendingProductsPagination');
+                renderPagination(paginationContainer, page, totalPages, 'loadPendingProducts');
+            } catch (error) {
+                console.error('Error loading pending products:', error);
+                showToast('Failed to load pending products', 'error');
+            }
+        }
+
+        async function approveProduct(productId) {
+            if (!confirm('Are you sure you want to approve this product?')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('productId', productId);
+
+                const response = await fetch('?handler=ApproveProduct', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    loadTabData(document.querySelector('.tab-button.active').getAttribute('data-tab'));
+                    await loadStatistics();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error approving product:', error);
+                showToast('Failed to approve product', 'error');
+            }
+        }
+
+        async function rejectProduct(productId) {
+            if (!confirm('Are you sure you want to reject this product?')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('productId', productId);
+
+                const response = await fetch('?handler=RejectProduct', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    loadTabData(document.querySelector('.tab-button.active').getAttribute('data-tab'));
+                    await loadStatistics();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error rejecting product:', error);
+                showToast('Failed to reject product', 'error');
+            }
+        }
+
+        async function deleteProduct(productId) {
+            if (!confirm('Are you sure you want to delete this product?')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('productId', productId);
+                formData.append('hardDelete', 'false');
+
+                const response = await fetch('?handler=DeleteProduct', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    loadTabData(document.querySelector('.tab-button.active').getAttribute('data-tab'));
+                    await loadStatistics();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                showToast('Failed to delete product', 'error');
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/products/admin/statistics`, {
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const result = await response.json();
+                const stats = result.data;
+                
+                document.getElementById('totalProducts').textContent = stats.totalProducts;
+                document.getElementById('availableProducts').textContent = stats.available;
+                document.getElementById('pendingProducts').textContent = stats.pending;
+                document.getElementById('rejectedProducts').textContent = stats.rejected;
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Search and filter functionality
+        document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+        document.getElementById('sortFilter').addEventListener('change', applyFilters);
+        document.getElementById('typeFilter').addEventListener('change', applyFilters);
+        document.getElementById('providerSelect').addEventListener('change', handleProviderChange);
+
+        function applyFilters() {
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            
+            if (activeTab === 'all-products') {
+                loadAllProducts();
+            } else if (activeTab === 'by-provider') {
+                const providerId = document.getElementById('providerSelect').value;
+                if (providerId && window.providerData) {
+                    filterAndDisplayProviderProducts();
+                }
+            }
+        }
+        
+        function handleProviderChange() {
+            const providerId = document.getElementById('providerSelect').value;
+            const container = document.getElementById('providerProductsContainer');
+            
+            if (!providerId) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.5;">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <p style="font-size: 16px; margin: 0;">Please select a provider from the dropdown above</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filterAndDisplayProviderProducts();
+        }
+        
+        function filterAndDisplayProviderProducts() {
+            const providerId = document.getElementById('providerSelect').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const sortFilter = document.getElementById('sortFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            
+            const providerGroup = window.providerData?.find(g => g.providerId === providerId);
+            if (!providerGroup) return;
+            
+            let filteredProducts = [...providerGroup.products];
+            
+            // Apply search filter
+            if (searchTerm) {
+                filteredProducts = filteredProducts.filter(p => 
+                    p.name.toLowerCase().includes(searchTerm) ||
+                    p.category?.toLowerCase().includes(searchTerm) ||
+                    p.id.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Apply status filter
+            if (statusFilter && statusFilter !== 'all') {
+                filteredProducts = filteredProducts.filter(p => 
+                    p.availabilityStatus.toLowerCase() === statusFilter.toLowerCase()
+                );
+            }
+            
+            // Apply type filter
+            if (typeFilter && typeFilter !== 'all') {
+                filteredProducts = filteredProducts.filter(p => {
+                    const isRental = p.rentalStatus === 'Available';
+                    const isPurchase = p.purchaseStatus === 'Available';
+                    
+                    if (typeFilter === 'rental') return isRental && !isPurchase;
+                    if (typeFilter === 'purchase') return !isRental && isPurchase;
+                    if (typeFilter === 'both') return isRental && isPurchase;
+                    return true;
+                });
+            }
+            
+            // Apply sorting
+            filteredProducts = sortProducts(filteredProducts, sortFilter);
+            
+            // Display results
+            displayProviderProducts(providerGroup, filteredProducts);
+        }
+        
+        function sortProducts(products, sortFilter) {
+            const [field, order] = sortFilter.split('-');
+            
+            return products.sort((a, b) => {
+                let aVal, bVal;
+                
+                switch(field) {
+                    case 'name':
+                        aVal = a.name.toLowerCase();
+                        bVal = b.name.toLowerCase();
+                        break;
+                    case 'createdAt':
+                        aVal = new Date(a.createdAt);
+                        bVal = new Date(b.createdAt);
+                        break;
+                    case 'price':
+                        // Use the lowest available price for sorting
+                        aVal = Math.min(
+                            a.rentalStatus === 'Available' ? a.pricePerDay : Infinity,
+                            a.purchaseStatus === 'Available' ? a.purchasePrice : Infinity
+                        );
+                        bVal = Math.min(
+                            b.rentalStatus === 'Available' ? b.pricePerDay : Infinity,
+                            b.purchaseStatus === 'Available' ? b.purchasePrice : Infinity
+                        );
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (order === 'asc') {
+                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                } else {
+                    return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+                }
+            });
+        }
+        
+        function displayProviderProducts(providerGroup, products, currentPage = 1) {
+            const container = document.getElementById('providerProductsContainer');
+            const totalPages = Math.ceil(products.length / pageSize);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const paginatedProducts = products.slice(startIndex, endIndex);
+            
+            // Store filtered products for pagination
+            window.currentProviderProducts = products;
+            window.currentProviderPage = currentPage;
+            
+            container.innerHTML = `
+                <div class="provider-group">
+                    <div class="provider-header">
+                        <div class="provider-name">${providerGroup.providerName}</div>
+                        <div class="provider-stats">
+                            <span>Total: ${providerGroup.totalProducts}</span>
+                            <span>Available: ${providerGroup.availableProducts}</span>
+                            <span>Pending: ${providerGroup.pendingProducts}</span>
+                            <span>Rejected: ${providerGroup.rejectedProducts}</span>
+                            <span>Showing: ${products.length} (Page ${currentPage}/${totalPages})</span>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="categories-table">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Pricing</th>
+                                    <th>Stock</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderProductRows(paginatedProducts)}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="providerProductsPagination" class="pagination-container"></div>
+                </div>
+            `;
+            
+            // Render pagination
+            const paginationContainer = document.getElementById('providerProductsPagination');
+            renderProviderPagination(paginationContainer, currentPage, totalPages);
+        }
+        
+        function renderProviderPagination(container, currentPage, totalPages) {
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            let html = `
+                <button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="changeProviderPage(${currentPage - 1})">
+                    ← Prev
+                </button>
+            `;
+            
+            if (startPage > 1) {
+                html += `<span class="page-number" onclick="changeProviderPage(1)">1</span>`;
+                if (startPage > 2) html += `<span class="pagination-info">...</span>`;
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<span class="page-number ${i === currentPage ? 'active' : ''}" onclick="changeProviderPage(${i})">${i}</span>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="pagination-info">...</span>`;
+                html += `<span class="page-number" onclick="changeProviderPage(${totalPages})">${totalPages}</span>`;
+            }
+            
+            html += `
+                <button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="changeProviderPage(${currentPage + 1})">
+                    Next →
+                </button>
+                <span class="pagination-info">Page ${currentPage} of ${totalPages}</span>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function changeProviderPage(page) {
+            const providerId = document.getElementById('providerSelect').value;
+            const providerGroup = window.providerData?.find(g => g.providerId === providerId);
+            if (!providerGroup) return;
+            
+            displayProviderProducts(providerGroup, window.currentProviderProducts, page);
+        }
+        
+        function renderProductRows(products) {
+            if (products.length === 0) {
+                return `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">No products found</td></tr>`;
+            }
+            
+            return products.map(product => {
+                // Build pricing display
+                let pricingDisplay = '';
+                const isRentalAvailable = product.rentalStatus === 'Available';
+                const isPurchaseAvailable = product.purchaseStatus === 'Available';
+                
+                if (isRentalAvailable && isPurchaseAvailable) {
+                    pricingDisplay = `
+                        <div style="font-size: 12px;">
+                            <div style="color: #2563eb; font-weight: 600;">📅 ₫${product.pricePerDay.toLocaleString()}/day</div>
+                            <div style="color: #7c3aed; font-weight: 600; margin-top: 2px;">💰 ₫${product.purchasePrice.toLocaleString()}</div>
+                        </div>
+                    `;
+                } else if (isRentalAvailable) {
+                    pricingDisplay = `<span style="color: #2563eb; font-weight: 600;">📅 ₫${product.pricePerDay.toLocaleString()}/day</span>`;
+                } else if (isPurchaseAvailable) {
+                    pricingDisplay = `<span style="color: #7c3aed; font-weight: 600;">💰 ₫${product.purchasePrice.toLocaleString()}</span>`;
+                } else {
+                    pricingDisplay = '<span style="color: #94a3b8;">N/A</span>';
+                }
+                
+                // Build stock display
+                let stockDisplay = '';
+                if (isRentalAvailable && isPurchaseAvailable) {
+                    stockDisplay = `${product.rentalQuantity} / ${product.purchaseQuantity}`;
+                } else if (isRentalAvailable) {
+                    stockDisplay = product.rentalQuantity;
+                } else if (isPurchaseAvailable) {
+                    stockDisplay = product.purchaseQuantity;
+                } else {
+                    stockDisplay = '-';
+                }
+                
+                return `
+                <tr>
+                    <td>
+                        <div class="product-image-cell" onclick="openImageLightbox('${product.primaryImagesUrl || '/images/no-image.png'}')">
+                            <img src="${product.primaryImagesUrl || '/images/no-image.png'}" alt="${product.name}" />
+                        </div>
+                    </td>
+                    <td>
+                        <div class="product-info">
+                            <div class="product-details">
+                                <div class="product-name">${product.name}</div>
+                                <div class="product-id">ID: ${product.id.substring(0, 8)}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${product.category || 'N/A'}">${product.category || '<span style="color: #94a3b8;">N/A</span>'}</td>
+                    <td>
+                        <span class="status-badge ${product.availabilityStatus.toLowerCase()}">
+                            ${product.availabilityStatus}
+                        </span>
+                    </td>
+                    <td>${pricingDisplay}</td>
+                    <td>${stockDisplay}</td>
+                    <td>${new Date(product.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <div class="action-buttons">
+                            ${product.availabilityStatus.toLowerCase() === 'pending' ? `
+                                <button class="action-btn approve-btn" onclick="unflagProduct('${product.id}')" title="Unflag & Approve">✓</button>
+                            ` : `
+                                <button class="action-btn" onclick="openFlagModal('${product.id}', '${product.name}')" title="Flag Violation" style="background: #fbbf24; color: #78350f;">⚠</button>
+                            `}
+                            <button class="action-btn view-btn" onclick="openEditModal('${product.id}')" title="Edit Product">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="action-btn" onclick="viewProductDetail('${product.id}')" title="View Detail" style="background: #10b981; color: white;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="deleteProduct('${product.id}')" title="Delete Product">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3,6 5,6 21,6"></polyline>
+                                    <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+        
+        // View Product Detail - Navigate to product details page
+        function viewProductDetail(productId) {
+            // Navigate to Products detail page with route parameter
+            window.open(`/products/detail/${productId}`, '_blank');
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+}
+
+<!-- Edit Product Modal -->
+<div id="editProductModal" class="modal-overlay">
+    <div class="modal-container" onclick="event.stopPropagation()" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Product</h2>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <!-- Product Image -->
+            <img id="editProductImage" class="product-image-preview" src="" alt="Product Image" onclick="openImageLightbox(this.src)" />
+            
+            <!-- Basic Information -->
+            <div class="form-group">
+                <label class="form-label">Product Name *</label>
+                <input type="text" id="editProductName" class="form-input" required maxlength="255">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description *</label>
+                <textarea id="editProductDescription" class="form-textarea" rows="4" required maxlength="2000"></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select id="editProductCategory" class="form-select" required>
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Gender *</label>
+                    <select id="editProductGender" class="form-select" required>
+                        <option value="">Select gender</option>
+                        <option value="Unisex">Unisex</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Size *</label>
+                    <select id="editProductSize" class="form-select" required>
+                        <option value="">Select size</option>
+                        <option value="XS">XS</option>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">XXL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color *</label>
+                    <input type="text" id="editProductColor" class="form-input" required />
+                </div>
+            </div>
+            
+            <!-- Product Configuration -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Rental Option *</label>
+                    <select id="editRentalStatus" class="form-select" required onchange="toggleEditSections()">
+                        <option value="">Choose rental option</option>
+                        <option value="Available">Available for Rent</option>
+                        <option value="NotAvailable">Not for Rent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Purchase Option *</label>
+                    <select id="editPurchaseStatus" class="form-select" required onchange="toggleEditSections()">
+                        <option value="">Choose purchase option</option>
+                        <option value="NotForSale">Not for Sale</option>
+                        <option value="Available">Available for Purchase</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Rental Information (conditional) -->
+            <div id="editRentalSection" style="display: none; background: #eff6ff; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
+                <h4 style="margin-bottom: 12px; font-weight: 600; color: #1e40af;">📅 Rental Information</h4>
+            <div class="form-row">
+                <div class="form-group">
+                        <label class="form-label">Rental Price/Day (₫) *</label>
+                        <input type="number" id="editPricePerDay" class="form-input" min="0" step="1" placeholder="Enter daily rental price" />
+                </div>
+                <div class="form-group">
+                        <label class="form-label">Rental Quantity *</label>
+                        <input type="number" id="editRentalQuantity" class="form-input" min="0" step="1" placeholder="Available quantity for rent" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Security Deposit (₫) *</label>
+                    <input type="number" id="editSecurityDeposit" class="form-input" min="0" step="1" placeholder="Refundable deposit amount" />
+                </div>
+            </div>
+            
+            <!-- Purchase Information (conditional) -->
+            <div id="editPurchaseSection" style="display: none; background: #f5f3ff; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #c4b5fd;">
+                <h4 style="margin-bottom: 12px; font-weight: 600; color: #6366f1;">🛒 Purchase Information</h4>
+            <div class="form-row">
+                <div class="form-group">
+                        <label class="form-label">Purchase Price (₫) *</label>
+                        <input type="number" id="editPurchasePrice" class="form-input" min="0" step="1" placeholder="Selling price" />
+                </div>
+                <div class="form-group">
+                        <label class="form-label">Purchase Quantity *</label>
+                        <input type="number" id="editPurchaseQuantity" class="form-input" min="0" step="1" placeholder="Available for sale" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Only: Availability Status -->
+            <div class="form-group" style="background: #fef3c7; padding: 12px; border-radius: 8px; border: 1px solid #fbbf24;">
+                <label class="form-label">⚡ Admin: Availability Status</label>
+                <select id="editAvailabilityStatus" class="form-select">
+                        <option value="available">Available</option>
+                        <option value="pending">Pending</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                <p style="font-size: 12px; color: #92400e; margin-top: 6px;">Set product visibility status</p>
+            </div>
+            
+            <input type="hidden" id="editProductId" />
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-cancel" onclick="closeEditModal()">Cancel</button>
+            <button class="btn-modal btn-save" onclick="saveProductChanges()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Flag Violation Modal -->
+<div id="flagViolationModal" class="modal-overlay">
+    <div class="modal-container" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h2 class="modal-title">Flag Product Violation</h2>
+            <button class="modal-close" onclick="closeFlagModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Product Name</label>
+                <input type="text" id="flagProductName" class="form-input" readonly style="background: #f8fafc;" />
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Violation Reason</label>
+                <textarea id="flagViolationReason" class="form-textarea" placeholder="Enter the reason for flagging this product..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Violated Terms (comma-separated)</label>
+                <input type="text" id="flagViolatedTerms" class="form-input" placeholder="e.g., inappropriate content, hate speech, scam" />
+            </div>
+            
+            <input type="hidden" id="flagProductId" />
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-cancel" onclick="closeFlagModal()">Cancel</button>
+            <button class="btn-modal btn-save" style="background: #ef4444;" onclick="submitFlagViolation()">Flag & Send Email</button>
+        </div>
+    </div>
+</div>
+
+<!-- Violation Error Modal -->
+<div id="violationErrorModal" class="modal-overlay">
+    <div class="modal-container" onclick="event.stopPropagation()" style="max-width: 600px;">
+        <div class="modal-header" style="background: #fef2f2; border-bottom: 2px solid #ef4444;">
+            <h2 class="modal-title" style="color: #dc2626;">
+                ⚠️ Content Violation Detected
+            </h2>
+            <button class="modal-close" onclick="closeViolationErrorModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #fee; border-left: 4px solid #ef4444; padding: 1rem; margin-bottom: 1rem; border-radius: 4px;">
+                <p style="font-weight: 600; color: #dc2626; margin-bottom: 0.5rem;">❌ Moderation Check Failed</p>
+                <p style="color: #666; margin: 0;">
+                    The product content violates our community guidelines and has been set to <strong>PENDING</strong> status. 
+                    A chat notification has been sent to the provider.
+                </p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #dc2626; font-weight: 600;">Reason</label>
+                <div id="violationReason" style="background: #f8fafc; padding: 0.75rem; border-radius: 4px; border: 1px solid #e5e7eb; color: #374151; word-wrap: break-word;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #dc2626; font-weight: 600;">Violated Terms</label>
+                <div id="violationTerms" style="background: #f8fafc; padding: 0.75rem; border-radius: 4px; border: 1px solid #e5e7eb; color: #374151; word-wrap: break-word;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-save" onclick="closeViolationErrorModal()" style="background: #dc2626;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Update Violation Warning Modal -->
+<div id="updateViolationModal" class="modal-overlay">
+    <div class="modal-container" onclick="event.stopPropagation()" style="max-width: 650px;">
+        <div class="modal-header" style="background: #fef2f2; border-bottom: 2px solid #ef4444;">
+            <h2 class="modal-title" style="color: #dc2626;">
+                ⚠️ Content Violation Warning
+            </h2>
+            <button class="modal-close" onclick="closeUpdateViolationModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #fee; border-left: 4px solid #ef4444; padding: 1.25rem; margin-bottom: 1.5rem; border-radius: 8px;">
+                <p style="font-weight: 700; color: #dc2626; margin-bottom: 0.75rem; font-size: 16px;">
+                    ❌ Cannot Update Product
+                </p>
+                <p style="color: #666; margin: 0; line-height: 1.6;">
+                    The product content contains inappropriate words or violates our community guidelines. 
+                    Please review and correct the issues below before updating.
+                </p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #dc2626; font-weight: 700; font-size: 15px;">
+                    📋 Violation Reason
+                </label>
+                <div id="updateViolationReason" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1.5px solid #e5e7eb; color: #374151; word-wrap: break-word; line-height: 1.6; font-size: 14px;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #dc2626; font-weight: 700; font-size: 15px;">
+                    🚫 Violated Terms
+                </label>
+                <div id="updateViolationTerms" style="background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1.5px solid #fca5a5; display: flex; flex-wrap: wrap; gap: 8px; min-height: 50px;"></div>
+            </div>
+            
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1rem; border-radius: 8px; margin-top: 1.5rem;">
+                <p style="color: #92400e; margin: 0; font-size: 13px; line-height: 1.5;">
+                    💡 <strong>Tip:</strong> Please edit the product name or description to remove the inappropriate content, then try updating again.
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-save" onclick="closeUpdateViolationModal()" style="background: #dc2626; width: 100%;">
+                <span style="font-weight: 600;">Close & Edit Product</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Lightbox -->
+<div id="imageLightbox" class="image-lightbox" onclick="closeImageLightbox()">
+    <span class="lightbox-close" onclick="closeImageLightbox()">&times;</span>
+    <img id="lightboxImage" class="lightbox-image" src="" alt="Full Size" onclick="toggleZoom(event)" />
+    <div style="position: absolute; bottom: 20px; color: white; font-size: 13px; background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px;">
+        Click image to zoom | Scroll to zoom in/out | Drag to pan
+    </div>
+</div>
+
+<script>
+    // Modal functions
+    function closeEditModal() {
+        document.getElementById('editProductModal').classList.remove('active');
+    }
+    
+    function closeFlagModal() {
+        document.getElementById('flagViolationModal').classList.remove('active');
+    }
+    
+    // Image lightbox functions with zoom
+    let lightboxScale = 1;
+    let lightboxPosX = 0;
+    let lightboxPosY = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    
+    function openImageLightbox(imageSrc) {
+        const img = document.getElementById('lightboxImage');
+        img.src = imageSrc;
+        img.style.transform = 'translate(0, 0) scale(1)';
+        img.classList.remove('zoomed');
+        lightboxScale = 1;
+        lightboxPosX = 0;
+        lightboxPosY = 0;
+        document.getElementById('imageLightbox').classList.add('active');
+    }
+    
+    function closeImageLightbox() {
+        document.getElementById('imageLightbox').classList.remove('active');
+        const img = document.getElementById('lightboxImage');
+        img.classList.remove('zoomed');
+        lightboxScale = 1;
+    }
+    
+    function toggleZoom(event) {
+        event.stopPropagation();
+        const img = event.target;
+        
+        if (lightboxScale === 1) {
+            lightboxScale = 2;
+            img.classList.add('zoomed');
+        } else {
+            lightboxScale = 1;
+            lightboxPosX = 0;
+            lightboxPosY = 0;
+            img.classList.remove('zoomed');
+        }
+        
+        img.style.transform = `translate(${lightboxPosX}px, ${lightboxPosY}px) scale(${lightboxScale})`;
+    }
+    
+    // Mouse wheel zoom
+    document.getElementById('lightboxImage').addEventListener('wheel', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        lightboxScale = Math.min(Math.max(0.5, lightboxScale + delta), 5);
+        
+        if (lightboxScale > 1) {
+            this.classList.add('zoomed');
+        } else {
+            this.classList.remove('zoomed');
+            lightboxPosX = 0;
+            lightboxPosY = 0;
+        }
+        
+        this.style.transform = `translate(${lightboxPosX}px, ${lightboxPosY}px) scale(${lightboxScale})`;
+    });
+    
+    // Drag to pan
+    document.getElementById('lightboxImage').addEventListener('mousedown', function(e) {
+        if (lightboxScale > 1) {
+            isDragging = true;
+            startX = e.clientX - lightboxPosX;
+            startY = e.clientY - lightboxPosY;
+            this.style.cursor = 'grabbing';
+            e.preventDefault();
+        }
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+        if (isDragging) {
+            lightboxPosX = e.clientX - startX;
+            lightboxPosY = e.clientY - startY;
+            document.getElementById('lightboxImage').style.transform = `translate(${lightboxPosX}px, ${lightboxPosY}px) scale(${lightboxScale})`;
+        }
+    });
+    
+    document.addEventListener('mouseup', function() {
+        if (isDragging) {
+            isDragging = false;
+            const img = document.getElementById('lightboxImage');
+            img.style.cursor = lightboxScale > 1 ? 'grab' : 'zoom-in';
+        }
+    });
+    
+    // Close lightbox with ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageLightbox();
+        }
+    });
+    
+    // Close modals when clicking overlay
+    document.getElementById('editProductModal').addEventListener('click', closeEditModal);
+    document.getElementById('flagViolationModal').addEventListener('click', closeFlagModal);
+    
+    // Pagination state
+    let currentPage = { all: 1, pending: 1 };
+    
+    // Open Edit Modal
+    async function openEditModal(productId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+                headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}` }
+            });
+            
+            if (!response.ok) throw new Error('Failed to load product');
+            
+            const result = await response.json();
+            const product = result.data;
+            
+            // Populate ALL fields
+            document.getElementById('editProductId').value = product.id;
+            document.getElementById('editProductImage').src = product.primaryImagesUrl || '/images/no-image.png';
+            document.getElementById('editProductName').value = product.name;
+            document.getElementById('editProductDescription').value = product.description || '';
+            document.getElementById('editProductSize').value = product.size || '';
+            document.getElementById('editProductColor').value = product.color || '';
+            document.getElementById('editProductGender').value = product.gender || 'Unisex';
+            
+            // Rental/Purchase Configuration
+            document.getElementById('editRentalStatus').value = product.rentalStatus || 'NotAvailable';
+            document.getElementById('editPurchaseStatus').value = product.purchaseStatus || 'NotForSale';
+            
+            // Pricing fields
+            document.getElementById('editPricePerDay').value = product.pricePerDay || '';
+            document.getElementById('editRentalQuantity').value = product.rentalQuantity || '';
+            document.getElementById('editSecurityDeposit').value = product.securityDeposit || '';
+            document.getElementById('editPurchasePrice').value = product.purchasePrice || '';
+            document.getElementById('editPurchaseQuantity').value = product.purchaseQuantity || '';
+            
+            // Admin only
+            document.getElementById('editAvailabilityStatus').value = product.availabilityStatus || 'available';
+            
+            // Load categories and set selected
+            await loadCategories();
+            
+            // Set category with slight delay to ensure dropdown is populated
+            setTimeout(() => {
+                const categorySelect = document.getElementById('editProductCategory');
+                if (product.categoryId) {
+                    categorySelect.value = product.categoryId;
+                    console.log('Category set to:', product.categoryId, 'Selected:', categorySelect.value);
+                }
+            }, 100);
+            
+            // Show/hide sections based on status
+            toggleEditSections();
+            
+            document.getElementById('editProductModal').classList.add('active');
+        } catch (error) {
+            console.error('Error loading product:', error);
+            showToast('Failed to load product details', 'error');
+        }
+    }
+    
+    // Toggle rental/purchase sections in edit modal
+    function toggleEditSections() {
+        const rentalStatus = document.getElementById('editRentalStatus').value;
+        const purchaseStatus = document.getElementById('editPurchaseStatus').value;
+        
+        const rentalSection = document.getElementById('editRentalSection');
+        const purchaseSection = document.getElementById('editPurchaseSection');
+        
+        // Show/hide rental section
+        if (rentalStatus === 'Available') {
+            rentalSection.style.display = 'block';
+            // Make rental fields required
+            document.getElementById('editPricePerDay').required = true;
+            document.getElementById('editRentalQuantity').required = true;
+            document.getElementById('editSecurityDeposit').required = true;
+        } else {
+            rentalSection.style.display = 'none';
+            // Clear and remove required
+            document.getElementById('editPricePerDay').required = false;
+            document.getElementById('editRentalQuantity').required = false;
+            document.getElementById('editSecurityDeposit').required = false;
+            document.getElementById('editPricePerDay').value = '';
+            document.getElementById('editRentalQuantity').value = '';
+            document.getElementById('editSecurityDeposit').value = '';
+        }
+        
+        // Show/hide purchase section
+        if (purchaseStatus === 'Available') {
+            purchaseSection.style.display = 'block';
+            // Make purchase fields required
+            document.getElementById('editPurchasePrice').required = true;
+            document.getElementById('editPurchaseQuantity').required = true;
+        } else {
+            purchaseSection.style.display = 'none';
+            // Clear and remove required
+            document.getElementById('editPurchasePrice').required = false;
+            document.getElementById('editPurchaseQuantity').required = false;
+            document.getElementById('editPurchasePrice').value = '';
+            document.getElementById('editPurchaseQuantity').value = '';
+        }
+    }
+    
+    // Load categories for dropdown
+    async function loadCategories() {
+        const select = document.getElementById('editProductCategory');
+        if (select.options.length > 1) return; // Already loaded
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/categories`, {
+                headers: { 'Authorization': `Bearer ${ACCESS_TOKEN}` }
+            });
+            
+            if (!response.ok) {
+                console.error('Failed to load categories, status:', response.status);
+                return;
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+            const result = await response.json();
+                console.log('Categories loaded:', result); // Debug
+                
+                // Handle different response formats
+                let categories = [];
+                if (Array.isArray(result)) {
+                    categories = result;
+                } else if (result.data && Array.isArray(result.data)) {
+                    categories = result.data;
+                } else if (result.value && Array.isArray(result.value)) {
+                    categories = result.value;
+                }
+            
+            select.innerHTML = '<option value="">Select Category</option>' +
+                categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+    
+    // Save Product Changes - Using ADMIN endpoint
+    async function saveProductChanges() {
+        const productId = document.getElementById('editProductId').value;
+        
+        // Get rental/purchase selection
+        const rentalStatus = document.getElementById('editRentalStatus').value;
+        const purchaseStatus = document.getElementById('editPurchaseStatus').value;
+        
+        // Validate rental fields if rental is available
+        if (rentalStatus === 'Available') {
+            const pricePerDay = document.getElementById('editPricePerDay').value;
+            const rentalQuantity = document.getElementById('editRentalQuantity').value;
+            const securityDeposit = document.getElementById('editSecurityDeposit').value;
+            
+            if (!pricePerDay || pricePerDay <= 0) {
+                showToast('Please enter a valid rental price', 'error');
+                return;
+            }
+            if (!rentalQuantity || rentalQuantity <= 0) {
+                showToast('Please enter a valid rental quantity', 'error');
+                return;
+            }
+            if (!securityDeposit || securityDeposit <= 0) {
+                showToast('Please enter a valid security deposit', 'error');
+                return;
+            }
+        }
+        
+        // Validate purchase fields if purchase is available
+        if (purchaseStatus === 'Available') {
+            const purchasePrice = document.getElementById('editPurchasePrice').value;
+            const purchaseQuantity = document.getElementById('editPurchaseQuantity').value;
+            
+            if (!purchasePrice || purchasePrice <= 0) {
+                showToast('Please enter a valid purchase price', 'error');
+                return;
+            }
+            if (!purchaseQuantity || purchaseQuantity <= 0) {
+                showToast('Please enter a valid purchase quantity', 'error');
+                return;
+            }
+        }
+        
+        // Build product data matching AdminProductUpdateDTO
+        const productData = {
+            name: document.getElementById('editProductName').value.trim(),
+            description: document.getElementById('editProductDescription').value.trim(),
+            categoryId: document.getElementById('editProductCategory').value,
+            category: null, // Let backend handle this
+            size: document.getElementById('editProductSize').value.trim() || null,
+            color: document.getElementById('editProductColor').value.trim() || null,
+            gender: document.getElementById('editProductGender').value,
+            rentalStatus: rentalStatus,
+            purchaseStatus: purchaseStatus,
+            pricePerDay: rentalStatus === 'Available' ? parseFloat(document.getElementById('editPricePerDay').value) || 0 : 0,
+            rentalQuantity: rentalStatus === 'Available' ? parseInt(document.getElementById('editRentalQuantity').value) || 0 : null,
+            securityDeposit: rentalStatus === 'Available' ? parseFloat(document.getElementById('editSecurityDeposit').value) || 0 : 0,
+            purchasePrice: purchaseStatus === 'Available' ? parseFloat(document.getElementById('editPurchasePrice').value) || 0 : null,
+            purchaseQuantity: purchaseStatus === 'Available' ? parseInt(document.getElementById('editPurchaseQuantity').value) || 0 : null,
+            availabilityStatus: document.getElementById('editAvailabilityStatus').value
+        };
+        
+        // Validate basic required fields
+        if (!productData.name) {
+            showToast('Product name is required', 'error');
+            return;
+        }
+        if (!productData.description) {
+            showToast('Description is required', 'error');
+            return;
+        }
+        if (!productData.categoryId) {
+            showToast('Category is required', 'error');
+            return;
+        }
+        if (!productData.gender) {
+            showToast('Gender is required', 'error');
+            return;
+        }
+        
+        try {
+            console.log('Sending product data:', productData); // Debug log
+            
+            // USE ADMIN ENDPOINT to preserve ProviderId
+            const response = await fetch(`${API_BASE_URL}/products/admin/${productId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(productData)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText); // Debug log
+                
+                try {
+                    const error = JSON.parse(errorText);
+                    
+                    // ✅ CHECK IF IT'S A CONTENT VIOLATION ERROR
+                    if (response.status === 400 && error.data) {
+                        const violationData = error.data;
+                        
+                        // Check if it's a content moderation violation
+                        if (violationData.reason && violationData.violatedTerms) {
+                            console.log('Content violation detected:', violationData);
+                            
+                            // Show violation popup instead of toast
+                            openUpdateViolationModal(
+                                violationData.reason, 
+                                violationData.violatedTerms
+                            );
+                            return; // Don't throw error, just show popup
+                        }
+                    }
+                    
+                    // For other errors, show normal error message
+                    const errorMessage = error.message || error.Message || 'Failed to update product';
+                    throw new Error(errorMessage);
+                } catch (parseError) {
+                    if (parseError instanceof SyntaxError) {
+                        throw new Error(errorText || 'Failed to update product');
+                    }
+                    throw parseError;
+                }
+            }
+            
+            showToast('Product updated successfully', 'success');
+            closeEditModal();
+            
+            // Reload current tab data
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            loadTabData(activeTab);
+            await loadStatistics();
+        } catch (error) {
+            console.error('Error saving product:', error);
+            showToast(error.message || 'Failed to save changes', 'error');
+        }
+    }
+    
+    // Open Flag Violation Modal
+    function openFlagModal(productId, productName) {
+        document.getElementById('flagProductId').value = productId;
+        document.getElementById('flagProductName').value = productName;
+        document.getElementById('flagViolationReason').value = '';
+        document.getElementById('flagViolatedTerms').value = '';
+        document.getElementById('flagViolationModal').classList.add('active');
+    }
+    
+    // Submit Flag Violation
+    async function submitFlagViolation() {
+        const productId = document.getElementById('flagProductId').value;
+        const reason = document.getElementById('flagViolationReason').value.trim();
+        const termsInput = document.getElementById('flagViolatedTerms').value.trim();
+        
+        if (!reason) {
+            showToast('Please enter a violation reason', 'error');
+            return;
+        }
+        
+        const violatedTerms = termsInput ? termsInput.split(',').map(t => t.trim()) : [];
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/admin/${productId}/flag`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason, violatedTerms })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to flag product');
+            }
+            
+            showToast('Product flagged and email sent to provider', 'success');
+            closeFlagModal();
+            
+            // Reload current tab
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            loadTabData(activeTab);
+            await loadStatistics();
+        } catch (error) {
+            console.error('Error flagging product:', error);
+            showToast(error.message || 'Failed to flag product', 'error');
+        }
+    }
+    
+    // Unflag/Approve Product
+    async function unflagProduct(productId) {
+        if (!confirm('Are you sure you want to approve and unflag this product?')) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/admin/${productId}/approve`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ newStatus: 'available' })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to approve product');
+            }
+            
+            showToast('Product approved successfully', 'success');
+            
+            // Reload current tab
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            loadTabData(activeTab);
+            await loadStatistics();
+        } catch (error) {
+            console.error('Error approving product:', error);
+            showToast(error.message || 'Failed to approve product', 'error');
+        }
+    }
+    
+    // Re-check Moderation with AI
+    async function recheckModeration(productId) {
+        if (!confirm('Re-check this product with AI moderation system?')) return;
+        
+        showToast('Running AI moderation check...', 'info');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/admin/${productId}/recheck-moderation`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to re-check moderation');
+            }
+            
+            const result = await response.json();
+            const data = result.data;
+            
+            if (data.isAppropriate) {
+                // PASSED - Show success toast
+                showToast('PASSED: Product content is appropriate', 'success');
+            } else {
+                // VIOLATED - Show ERROR POPUP (instead of toast)
+                showViolationErrorModal(data.reason, data.violatedTerms);
+            }
+            
+            // Reload current tab
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            loadTabData(activeTab);
+            await loadStatistics();
+        } catch (error) {
+            console.error('Error re-checking moderation:', error);
+            showToast(error.message || 'Failed to re-check moderation', 'error');
+        }
+    }
+    
+    // Show Violation Error Modal (Popup)
+    function showViolationErrorModal(reason, violatedTerms) {
+        const modal = document.getElementById('violationErrorModal');
+        const reasonEl = document.getElementById('violationReason');
+        const termsEl = document.getElementById('violationTerms');
+        
+        reasonEl.textContent = reason || 'Content violates community guidelines';
+        termsEl.textContent = violatedTerms?.join(', ') || 'N/A';
+        
+        modal.classList.add('active');
+    }
+    
+    function closeViolationErrorModal() {
+        const modal = document.getElementById('violationErrorModal');
+        modal.classList.remove('active');
+    }
+    
+    // Update Violation Modal Functions
+    function openUpdateViolationModal(reason, violatedTerms) {
+        const modal = document.getElementById('updateViolationModal');
+        const reasonEl = document.getElementById('updateViolationReason');
+        const termsEl = document.getElementById('updateViolationTerms');
+        
+        reasonEl.textContent = reason || 'Content violates community guidelines';
+        
+        // Display violated terms as badges
+        if (violatedTerms && violatedTerms.length > 0) {
+            termsEl.innerHTML = violatedTerms.map(term => 
+                `<span style="background: #dc2626; color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 16px;">🚫</span> ${term}
+                </span>`
+            ).join('');
+        } else {
+            termsEl.innerHTML = '<span style="color: #9ca3af; font-style: italic;">No specific terms identified</span>';
+        }
+        
+        modal.classList.add('active');
+    }
+    
+    function closeUpdateViolationModal() {
+        const modal = document.getElementById('updateViolationModal');
+        modal.classList.remove('active');
+    }
+    
+    // Render Pagination
+    function renderPagination(container, currentPage, totalPages, onPageChange) {
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        let html = `
+            <button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="${onPageChange}(${currentPage - 1})">
+                ← Prev
+            </button>
+        `;
+        
+        if (startPage > 1) {
+            html += `<span class="page-number" onclick="${onPageChange}(1)">1</span>`;
+            if (startPage > 2) html += `<span class="pagination-info">...</span>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<span class="page-number ${i === currentPage ? 'active' : ''}" onclick="${onPageChange}(${i})">${i}</span>`;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="pagination-info">...</span>`;
+            html += `<span class="page-number" onclick="${onPageChange}(${totalPages})">${totalPages}</span>`;
+        }
+        
+        html += `
+            <button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="${onPageChange}(${currentPage + 1})">
+                Next →
+            </button>
+            <span class="pagination-info">Page ${currentPage} of ${totalPages}</span>
+        `;
+        
+        container.innerHTML = html;
+    }
+</script>
+

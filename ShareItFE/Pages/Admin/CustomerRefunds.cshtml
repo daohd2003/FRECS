@@ -1,0 +1,481 @@
+@page
+@model ShareItFE.Pages.Admin.CustomerRefundsModel
+@{
+    ViewData["Title"] = "Customer Refunds";
+    Layout = "~/Pages/Shared/_AdminLayout.cshtml";
+}
+
+<link rel="stylesheet" href="~/css/customer-refunds.css" asp-append-version="true" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<!-- CSRF Token -->
+<form method="post">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="refunds-container">
+    <!-- Header -->
+    <div class="refunds-header">
+        <div class="header-left">
+            <div class="header-icon-wrapper">
+                <i class="fas fa-hand-holding-usd header-icon"></i>
+            </div>
+            <div>
+                <h1 class="refunds-title">
+                    Customer <span class="highlight">Deposit Refunds</span>
+                </h1>
+                <p class="refunds-subtitle">Manage and process customer deposit refund requests</p>
+            </div>
+        </div>
+        <span class="pending-badge" id="header-pending-badge" style="display: none;">
+            <i class="fas fa-clock"></i>
+            <span id="header-pending-count">0</span> Pending
+        </span>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <div class="search-filter-wrapper">
+            <!-- Search Bar -->
+            <div class="search-bar-wrapper">
+                <div class="search-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Search by Order Code, Customer Name, Email..." 
+                    class="search-input" />
+                <button type="button" id="clear-search" class="clear-search-btn" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="filter-controls">
+                <button type="button" id="filterBtn" class="filter-btn">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Filters</span>
+                </button>
+                <button type="button" id="reset-filters" class="reset-btn">
+                    <i class="fas fa-redo"></i>
+                    <span class="btn-text">Reset</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapsible Filter Panel -->
+        <div id="filterPanel" class="filter-panel" style="display: none;">
+            <div class="filter-panel-content">
+                <div class="filter-group">
+                    <label for="statusSelect" class="filter-label">
+                        <i class="fas fa-info-circle"></i>
+                        Status
+                    </label>
+                    <select id="statusSelect" class="filter-select">
+                        <option value="">All Statuses</option>
+                        <option value="initiated">Initiated</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortDateSelect" class="filter-label">
+                        <i class="fas fa-calendar-alt"></i>
+                        Sort by Request Date
+                    </label>
+                    <select id="sortDateSelect" class="filter-select">
+                        <option value="" selected></option>
+                        <option value="desc">Newest First</option>
+                        <option value="asc">Oldest First</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortAmountSelect" class="filter-label">
+                        <i class="fas fa-dollar-sign"></i>
+                        Sort by Amount
+                    </label>
+                    <select id="sortAmountSelect" class="filter-select">
+                        <option value="" selected></option>
+                        <option value="asc">Low to High</option>
+                        <option value="desc">High to Low</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Info -->
+    <div class="results-info-card">
+        <div class="results-info-content">
+            <i class="fas fa-list-ul"></i>
+            <p id="results-info" class="results-text">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="refunds-tabs-wrapper">
+        <div class="refunds-tabs" role="tablist">
+            <button 
+                class="tab-button active" 
+                id="pending-tab" 
+                data-tab="pending" 
+                role="tab"
+                aria-selected="true">
+                <i class="fas fa-clock"></i>
+                <span>Pending Requests</span>
+                <span class="tab-badge" id="pending-count-badge">0</span>
+            </button>
+            <button 
+                class="tab-button" 
+                id="processed-tab" 
+                data-tab="processed" 
+                role="tab"
+                aria-selected="false">
+                <i class="fas fa-history"></i>
+                <span>History</span>
+                <span class="tab-badge" id="processed-count-badge">0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="refunds-tab-content">
+        <!-- Pending Tab -->
+        <div class="tab-pane active" id="pending-pane" role="tabpanel">
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="refunds-table">
+                        <thead>
+                            <tr>
+                                <th>REQUEST DATE</th>
+                                <th>CUSTOMER NAME</th>
+                                <th>ORDER CODE</th>
+                                <th>REFUND AMOUNT</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-tbody">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="loading-state">
+                                        <i class="fas fa-spinner fa-spin loading-icon"></i>
+                                        <p>Loading refund requests...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-pane" id="processed-pane" role="tabpanel" style="display: none;">
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="refunds-table">
+                        <thead>
+                            <tr>
+                                <th>REQUEST DATE</th>
+                                <th>CUSTOMER NAME</th>
+                                <th>ORDER CODE</th>
+                                <th>REFUND AMOUNT</th>
+                                <th>STATUS</th>
+                                <th>PROCESSED DATE</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processed-tbody">
+                            <tr>
+                                <td colspan="7">
+                                    <div class="loading-state">
+                                        <i class="fas fa-spinner fa-spin loading-icon"></i>
+                                        <p>Loading refund history...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-wrapper" id="paginationWrapper" style="display: none;">
+        <div class="pagination-info">
+            <span>Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span id="totalItems">0</span> results</span>
+        </div>
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+                <i class="fas fa-chevron-left"></i>
+                <span>Previous</span>
+            </button>
+            <div class="pagination-pages" id="paginationPages"></div>
+            <button class="pagination-btn" id="nextBtn" onclick="changePage(1)" disabled>
+                <span>Next</span>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        <div class="pagination-size">
+            <label for="itemsPerPage">Items per page:</label>
+            <select id="itemsPerPage" class="items-per-page-select" onchange="changeItemsPerPage()">
+                <option value="5">5</option>
+                <option value="8" selected>8</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Detail Modal -->
+<div class="modal fade" id="refundDetailModal" tabindex="-1" aria-labelledby="refundDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="refundDetailModalLabel">
+                    <i class="fas fa-receipt"></i> Deposit Refund Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Request Information -->
+                <div class="info-grid mb-4">
+                    <div class="info-item">
+                        <label class="info-label">Refund Code</label>
+                        <p class="info-value fw-bold" id="modalRefundCode">-</p>
+                    </div>
+                    <div class="info-item">
+                        <label class="info-label">Request Date</label>
+                        <p class="info-value" id="modalRequestDate">-</p>
+                    </div>
+                    <div class="info-item">
+                        <label class="info-label">Customer Name</label>
+                        <p class="info-value fw-semibold" id="modalCustomerName">-</p>
+                        <p class="info-sub-value" id="modalCustomerEmail">-</p>
+                    </div>
+                    <div class="info-item">
+                        <label class="info-label">Order Code</label>
+                        <p class="info-value fw-bold" id="modalOrderCode">-</p>
+                    </div>
+                </div>
+
+                <!-- Amount Details -->
+                <div class="details-card mb-4">
+                    <div class="details-card-header">
+                        <i class="fas fa-money-bill-wave text-success"></i>
+                        <h6 class="mb-0">Amount Breakdown</h6>
+                    </div>
+                    <div class="details-card-body">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label class="info-label">Original Deposit</label>
+                                <p class="info-value amount-display text-primary" id="modalOriginalDeposit">0 ₫</p>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Total Penalty</label>
+                                <p class="info-value amount-display text-danger" id="modalPenaltyAmount">0 ₫</p>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Refund Amount</label>
+                                <p class="info-value amount-display text-success fw-bold fs-5" id="modalRefundAmount">0 ₫</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Account Details -->
+                <div class="details-card mb-4">
+                    <div class="details-card-header">
+                        <i class="fas fa-university text-primary"></i>
+                        <h6 class="mb-0">Bank Transfer Information</h6>
+                    </div>
+                    <div class="details-card-body">
+                        <div id="bankDetailsSection">
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <label class="info-label">Bank Name</label>
+                                    <p class="info-value" id="modalBankName">-</p>
+                                </div>
+                                <div class="info-item">
+                                    <label class="info-label">Account Holder</label>
+                                    <p class="info-value" id="modalAccountHolder">-</p>
+                                </div>
+                                <div class="info-item">
+                                    <label class="info-label">Account Number</label>
+                                    <p class="info-value font-monospace" id="modalAccountNumber">-</p>
+                                </div>
+                                <div class="info-item">
+                                    <label class="info-label">Routing Number</label>
+                                    <p class="info-value font-monospace" id="modalRoutingNumber">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="noBankInfo" class="d-none">
+                            <div class="alert alert-warning mb-0 d-flex align-items-start">
+                                <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                                <small>Customer has not registered any bank account. Please contact the customer to provide bank account information before processing this refund.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="notes-section mb-4" id="notesSection" style="display: none;">
+                    <label class="info-label">Notes</label>
+                    <div class="notes-box notes-info">
+                        <i class="fas fa-sticky-note"></i>
+                        <p class="mb-0" id="modalNotes">-</p>
+                    </div>
+                </div>
+
+                <!-- Status Section -->
+                <div class="mb-4">
+                    <label class="info-label">Status</label>
+                    <div>
+                        <span class="status-badge-large" id="modalStatus">-</span>
+                    </div>
+                </div>
+
+                <!-- Processed Information -->
+                <div id="processedSection" style="display: none;">
+                    <div class="info-grid mb-4">
+                        <div class="info-item">
+                            <label class="info-label">Processed Date</label>
+                            <p class="info-value" id="modalProcessedDate">-</p>
+                        </div>
+                        <div class="info-item">
+                            <label class="info-label">Processed By</label>
+                            <p class="info-value" id="modalProcessedBy">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Transaction ID -->
+                    <div class="mb-4" id="transactionIdSection" style="display: none;">
+                        <label class="info-label">Transaction ID</label>
+                        <p class="info-value font-monospace" id="modalTransactionId">-</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div id="actionButtonsSection" class="action-buttons-modal" style="display: none;">
+                    <button type="button" class="btn btn-outline-danger btn-lg flex-fill" onclick="showRejectModal()">
+                        <i class="fas fa-times-circle"></i> Reject Request
+                    </button>
+                    <button type="button" class="btn btn-success btn-lg flex-fill" onclick="showApproveModal()">
+                        <i class="fas fa-check-circle"></i> Mark as Paid
+                    </button>
+                </div>
+
+                <!-- Reopen Button (for rejected refunds in history) -->
+                <div id="reopenButtonSection" class="mt-3" style="display: none;">
+                    <button type="button" class="btn btn-primary btn-lg w-100" onclick="reopenRefund()">
+                        <i class="fas fa-redo"></i> Reopen Refund Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header modal-header-success">
+                <h5 class="modal-title text-white" id="approveModalLabel">
+                    <i class="fas fa-check-circle"></i> Confirm Payment
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="approveTransactionId" class="form-label fw-semibold">Transaction ID <span class="text-muted">(Optional)</span></label>
+                    <input type="text" class="form-control" id="approveTransactionId" placeholder="Enter external transaction ID">
+                    <small class="text-muted">Bank transfer reference number or transaction ID</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="approveNotes" class="form-label fw-semibold">Admin Notes</label>
+                    <textarea class="form-control" id="approveNotes" rows="3" placeholder="Add any notes about this approval..."></textarea>
+                </div>
+
+                <div class="payment-summary-box">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-money-bill-wave text-success"></i> Payment Summary</h6>
+                    <div class="summary-row">
+                        <span>Amount to Transfer:</span>
+                        <span class="fw-bold text-success" id="approveAmount">0 ₫</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Bank Account:</span>
+                        <span class="fw-semibold" id="approveBankInfo">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="processApproval()">
+                    <i class="fas fa-check"></i> Confirm Payment Completed
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header modal-header-danger">
+                <h5 class="modal-title text-white" id="rejectModalLabel">
+                    <i class="fas fa-times-circle"></i> Reject Refund Request
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span>Please provide a clear reason for rejecting this refund request.</span>
+                </div>
+
+                <div class="mb-3">
+                    <label for="rejectReason" class="form-label fw-semibold">Rejection Reason <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="rejectReason" rows="4" placeholder="Explain why this request is being rejected..." required></textarea>
+                    <small class="text-muted">This will be sent to the customer</small>
+                </div>
+
+                <div class="payment-summary-box">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-info-circle text-danger"></i> Request Details</h6>
+                    <div class="summary-row">
+                        <span>Customer:</span>
+                        <span class="fw-semibold" id="rejectCustomerName">-</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Amount:</span>
+                        <span class="fw-bold text-danger" id="rejectAmount">0 ₫</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="processRejection()">
+                    <i class="fas fa-times"></i> Reject Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/customer-refunds.js" asp-append-version="true"></script>
+    <script>
+        const apiBaseUrl = '@Model.ApiBaseUrl';
+    </script>
+}

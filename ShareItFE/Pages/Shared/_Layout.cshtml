@@ -167,7 +167,8 @@
             const menuIconClose = document.getElementById('menuIconClose');
 
             if (mobileMenuButton && mobileMenu && menuIconOpen && menuIconClose) {
-                mobileMenuButton.addEventListener('click', function () {
+                mobileMenuButton.addEventListener('click', function (event) {
+                    event.stopPropagation();
                     const isMenuOpen = mobileMenu.style.display === 'block';
                     mobileMenu.style.display = isMenuOpen ? 'none' : 'block';
                     menuIconOpen.style.display = isMenuOpen ? 'block' : 'none';
@@ -177,9 +178,21 @@
 
             // Đóng dropdown khi click ra ngoài
             window.addEventListener('click', function (event) {
+                // Close user dropdown if click outside
                 if (userMenuDropdown && userMenuDropdown.style.display === 'block') {
                     if (!userMenuButton.contains(event.target)) {
                         userMenuDropdown.style.display = 'none';
+                    }
+                }
+                
+                // Close mobile menu if click outside
+                if (mobileMenu && mobileMenu.style.display === 'block') {
+                    if (!mobileMenuButton.contains(event.target) && !mobileMenu.contains(event.target)) {
+                        mobileMenu.style.display = 'none';
+                        if (menuIconOpen && menuIconClose) {
+                            menuIconOpen.style.display = 'block';
+                            menuIconClose.style.display = 'none';
+                        }
                     }
                 }
             });
@@ -235,6 +248,23 @@
                 }
             }
             // END: Thêm code cho SignalR Real-time Notification
+
+            // START: ActiveUsersHub Connection (for admin tracking)
+            @if (isAuthenticated)
+            {
+                <text>
+            const activeUsersConnection = new signalR.HubConnectionBuilder()
+                .withUrl(apiRootUrl + "/activeUsersHub", {
+                    accessTokenFactory: () => window.adminChatConfig?.accessToken || '@Context.Request.Cookies["AccessToken"]'
+                })
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            activeUsersConnection.start().catch(() => {});
+                </text>
+            }
+            // END: ActiveUsersHub Connection
         });
     </script>
 

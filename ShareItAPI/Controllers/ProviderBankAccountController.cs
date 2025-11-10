@@ -38,7 +38,7 @@ namespace ShareItAPI.Controllers
             if (account == null)
                 return NotFound(new ApiResponse<object>("Bank account not found", null));
 
-            if (!_userHelper.IsAdmin() && !_userHelper.IsOwner(account.ProviderId))
+            if (!_userHelper.IsAdmin() && !_userHelper.IsOwner(account.UserId))
                 throw new InvalidOperationException("You are not authorized to access these bank accounts.");
 
             return Ok(new ApiResponse<object>("Bank account found", account));
@@ -61,6 +61,17 @@ namespace ShareItAPI.Controllers
                 return NotFound(new ApiResponse<object>("Bank account not found", null));
 
             return Ok(new ApiResponse<object>("Bank account updated", null));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var providerId = _userHelper.GetCurrentUserId();
+            var success = await _service.DeleteBankAccount(providerId, id);
+            if (!success)
+                return NotFound(new ApiResponse<object>("Bank account not found or you don't have permission to delete it", null));
+
+            return Ok(new ApiResponse<object>("Bank account has been deleted.", null));
         }
     }
 }

@@ -334,11 +334,61 @@ namespace Services.OrderServices
             // Increment rent count for rental products when returned
             await UpdateProductCounts(order, OrderStatus.in_use, OrderStatus.returned);
             
+            // Auto-create deposit refund request if order has deposit
+            await CreateDepositRefundIfNeeded(order);
 
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.in_use, OrderStatus.returned);
 
             await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as returned");
+        }
+
+        /// <summary>
+        /// Automatically creates a deposit refund request when order is returned
+        /// Calculates refund amount = Original Deposit - Total Penalties
+        /// </summary>
+        private async Task CreateDepositRefundIfNeeded(Order order)
+        {
+            // Only create refund if order has deposit amount
+            if (order.TotalDeposit <= 0)
+            {
+                return;
+            }
+
+            // Calculate total penalties from rental violations
+            var totalPenalties = await _context.RentalViolations
+                .Where(v => order.Items.Select(i => i.Id).Contains(v.OrderItemId))
+                .SumAsync(v => v.PenaltyAmount);
+
+            // Calculate refund amount (cannot be negative)
+            var refundAmount = Math.Max(0, order.TotalDeposit - totalPenalties);
+
+            // Create deposit refund record
+            var depositRefund = new BusinessObject.Models.DepositRefund
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                CustomerId = order.CustomerId,
+                OriginalDepositAmount = order.TotalDeposit,
+                TotalPenaltyAmount = totalPenalties,
+                RefundAmount = refundAmount,
+                Status = BusinessObject.Enums.TransactionStatus.initiated,
+                CreatedAt = DateTime.UtcNow,
+                Notes = totalPenalties > 0 
+                    ? $"Deposit refund with penalty deduction. Total penalties: {totalPenalties:N0} ₫" 
+                    : "Full deposit refund - no violations"
+            };
+
+            await _context.DepositRefunds.AddAsync(depositRefund);
+            await _context.SaveChangesAsync();
+
+            // Notify customer about refund request
+            await _notificationService.SendNotification(
+                order.CustomerId,
+                $"Your deposit refund request has been created. Refund amount: {refundAmount:N0} ₫",
+                BusinessObject.Enums.NotificationType.order,
+                order.Id
+            );
         }
 
         public async Task MarkAsApprovedAsync(Guid orderId)

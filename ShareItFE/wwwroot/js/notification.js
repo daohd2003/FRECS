@@ -9,6 +9,7 @@
     const notificationList = document.getElementById('notificationList');
     const userId = notificationMenu.dataset.userid;
     const token = notificationMenu.dataset.token;
+    const userRole = notificationMenu.dataset.userrole;
 
     const authHeaders = {
         'Content-Type': 'application/json',
@@ -26,7 +27,6 @@
         
         // Load fresh notifications when opening dropdown
         if (!isVisible && userId) {
-            console.log('Loading fresh notifications on dropdown open...');
             loadNotifications(userId);
         }
     });
@@ -48,42 +48,31 @@
     }
 
     // Function to reload notifications - exposed globally
-    function loadNotifications(userIdParam = null) {
+    async function loadNotifications(userIdParam = null) {
         const targetUserId = userIdParam || userId;
-        if (!targetUserId) return;
+        if (!targetUserId) return Promise.resolve();
 
-        // Reload unread count
-        fetch(`${apiRootUrl}/api/notification/unread-count/${targetUserId}`, {
-            headers: authHeaders
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && typeof data.data === 'number') {
-                updateCountBadge(data.data);
+        try {
+            // Reload unread count
+            const countResponse = await fetch(`${apiRootUrl}/api/notification/unread-count/${targetUserId}`, {
+                headers: authHeaders
+            });
+            const countData = await countResponse.json();
+            if (countData && typeof countData.data === 'number') {
+                updateCountBadge(countData.data);
             }
-        })
-        .catch(error => {
-            console.error('Failed to reload notification count:', error);
-        });
 
-        // Always reload notification list to keep it updated
-        fetch(`${apiRootUrl}/api/notification/user/${targetUserId}?unreadOnly=false`, {
-            headers: authHeaders
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.data) {
-                console.log('Notifications reloaded:', data.data.length);
-                // Debug: Log first notification's createdAt to see format
-                if (data.data.length > 0) {
-                    console.log('First notification CreatedAt:', data.data[0].createdAt);
-                }
-                updateNotificationList(data.data);
+            // Always reload notification list to keep it updated
+            const listResponse = await fetch(`${apiRootUrl}/api/notification/user/${targetUserId}?unreadOnly=false`, {
+                headers: authHeaders
+            });
+            const listData = await listResponse.json();
+            if (listData && listData.data) {
+                updateNotificationList(listData.data);
             }
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Failed to reload notifications:', error);
-        });
+        }
     }
 
     // Function to update notification list DOM
@@ -102,9 +91,24 @@
             const unreadDot = isUnread ? '<div class="unread-dot"></div>' : '';
             
             if (notification.orderId && notification.orderId !== '00000000-0000-0000-0000-000000000000') {
-                // Notification with order link
+                // Notification with order link - route based on IsUserProvider
+                // isUserProvider === true: user là provider của order này -> đi đến provider order detail
+                // isUserProvider === false: user là customer của order này -> đi đến customer order detail
+                // isUserProvider === null: không xác định được (fallback theo role)
+                let orderDetailUrl;
+                if (notification.isUserProvider === true) {
+                    orderDetailUrl = `/provider/order/${notification.orderId}`;
+                } else if (notification.isUserProvider === false) {
+                    orderDetailUrl = `/Order/Details/${notification.orderId}`;
+                } else {
+                    // Fallback: dựa vào userRole nếu không xác định được
+                    orderDetailUrl = (userRole && userRole.toLowerCase() === 'provider') 
+                        ? `/provider/order/${notification.orderId}` 
+                        : `/Order/Details/${notification.orderId}`;
+                }
+                
                 html += `
-                    <a href="/Order/Details/${notification.orderId}" 
+                    <a href="${orderDetailUrl}" 
                        class="notification-item ${unreadClass}" 
                        data-id="${notification.id}">
                         <div class="notification-content">

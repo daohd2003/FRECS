@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.ProductDto;
+using BusinessObject.Enums;
 using BusinessObject.Models;
 using Repositories.RepositoryBase;
 using System;
@@ -19,5 +20,8 @@ namespace Repositories.ProductRepositories
         Task<bool> UpdateProductWithImagesAsync(ProductDTO productDto);
         Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request);
         Task<bool> HasOrderItemsAsync(Guid productId);
+        Task<Product?> GetProductWithProviderByIdAsync(Guid id);
+        Task<bool> UpdateProductAvailabilityStatusAsync(Guid productId, AvailabilityStatus status);
+        Task<Product?> GetProductWithImagesAndProviderAsync(Guid id);
     }
 }

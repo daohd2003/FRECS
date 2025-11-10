@@ -14,6 +14,7 @@ using DataAccess;
 using Hubs;
 using LibraryManagement.Services.Payments.Transactions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
@@ -41,12 +42,14 @@ using Repositories.RentalViolationRepositories;
 using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
+using Repositories.RevenueRepositories;
 using Services.AI;
 using Services.Authentication;
 using Services.CartServices;
 using Services.CloudServices;
 using Services.CategoryServices;
 using Services.ConversationServices;
+using Services.CustomerBankServices;
 using Services.DiscountCodeServices;
 using Services.EmailServices;
 using Services.FavoriteServices;
@@ -61,12 +64,18 @@ using Services.ProviderApplicationServices;
 using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
 using Services.ReportService;
+using Services.RevenueServices;
 using Services.Transactions;
 using Services.UserServices;
 using ShareItAPI.Middlewares;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using Services.CustomerDashboardServices;
+using Services.DepositServices;
+using Repositories.DepositRepositories;
+using Services.WithdrawalServices;
+using Repositories.WithdrawalRepositories;
 
 namespace ShareItAPI
 {
@@ -179,7 +188,9 @@ namespace ShareItAPI
 
                         // Nếu có token và request đang hướng đến hub của chúng ta
                         if (!string.IsNullOrEmpty(accessToken) &&
-                        (path.StartsWithSegments("/reportHub") || path.StartsWithSegments("/chathub")))
+                        (path.StartsWithSegments("/reportHub") || 
+                         path.StartsWithSegments("/chathub") || 
+                         path.StartsWithSegments("/activeUsersHub")))
 
                         {
                             // Gán token này để middleware xác thực
@@ -250,6 +261,9 @@ namespace ShareItAPI
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<ICustomerDashboardService, CustomerDashboardService>();
+            builder.Services.AddScoped<IDepositRepository, DepositRepository>();
+            builder.Services.AddScoped<IDepositService, DepositService>();
 
             builder.Services.AddAutoMapper(typeof(UserProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(OrderProfile).Assembly);
@@ -257,6 +271,7 @@ namespace ShareItAPI
             builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CategoryProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(CartMappingProfile).Assembly);
+            builder.Services.AddAutoMapper(typeof(RevenueProfile).Assembly);
             builder.Services.AddAutoMapper(typeof(DiscountCodeProfile).Assembly);
 
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
@@ -297,6 +312,17 @@ namespace ShareItAPI
                 });
             builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
             builder.Services.AddScoped<IAiSearchService, AiSearchService>();
+            
+            // Cấu hình ContentModerationOptions - Key riêng cho content moderation
+            builder.Services.AddHttpClient("ContentModeration")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .ConfigureHttpClient(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                });
+            builder.Services.Configure<ContentModerationOptions>(builder.Configuration.GetSection("ContentModeration"));
+            builder.Services.AddScoped<Services.ContentModeration.IContentModerationService, Services.ContentModeration.ContentModerationService>();
+            
             builder.Services.AddMemoryCache();
 
             // Register CartRepositories
@@ -312,6 +338,13 @@ namespace ShareItAPI
             builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
             builder.Services.AddScoped<IConversationService, ConversationService>();
 
+            // Register Revenue Services
+            builder.Services.AddScoped<IRevenueRepository, RevenueRepository>();
+            builder.Services.AddScoped<IRevenueService, RevenueService>();
+
+            // Register Customer Bank Services
+            builder.Services.AddScoped<ICustomerBankService, CustomerBankService>();
+
             // Register DiscountCode services
             builder.Services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
             builder.Services.AddScoped<IDiscountCodeService, DiscountCodeService>();
@@ -320,6 +353,18 @@ namespace ShareItAPI
             // Register RentalViolation services
             builder.Services.AddScoped<IRentalViolationRepository, RentalViolationRepository>();
             builder.Services.AddScoped<IRentalViolationService, RentalViolationService>();
+
+            // Register Dashboard services
+            builder.Services.AddScoped<Repositories.DashboardRepositories.IDashboardRepository, Repositories.DashboardRepositories.DashboardRepository>();
+            builder.Services.AddScoped<Services.DashboardServices.IDashboardService, Services.DashboardServices.DashboardService>();
+
+            // Register DepositRefund services
+            builder.Services.AddScoped<Repositories.DepositRefundRepositories.IDepositRefundRepository, Repositories.DepositRefundRepositories.DepositRefundRepository>();
+            builder.Services.AddScoped<Services.DepositRefundServices.IDepositRefundService, Services.DepositRefundServices.DepositRefundService>();
+
+            // Register Withdrawal services
+            builder.Services.AddScoped<IWithdrawalRepository, WithdrawalRepository>();
+            builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 
@@ -348,9 +393,14 @@ namespace ShareItAPI
             // Cấu hình endpoint
             app.MapHub<NotificationHub>("/notificationHub");
             app.MapHub<ChatHub>("/chathub");
+            app.MapHub<ActiveUsersHub>("/activeUsersHub");
             app.MapHub<ReportHub>("/reportHub");
 
             app.MapControllers();
+
+            // Set HubContext cho ActiveUsersHub để có thể broadcast từ background tasks
+            var hubContext = app.Services.GetRequiredService<IHubContext<ActiveUsersHub>>();
+            ActiveUsersHub.SetHubContext(hubContext);
 
             app.Run();
 

@@ -55,7 +55,13 @@ namespace Services.FeedbackServices
                 order = await _orderRepo.GetByIdAsync(item.OrderId);
                 if (order == null) throw new InvalidOperationException("Order associated with this item not found.");
                 if (order.CustomerId != customerId) throw new UnauthorizedAccessException("You are not authorized to feedback this order item.");
-                if (order.Status != OrderStatus.returned) throw new InvalidOperationException("You can only feedback for returned orders.");
+                
+                // Allow feedback for completed orders (rental: returned, purchase: in_use)
+                var validStatusesForFeedback = new[] { OrderStatus.returned, OrderStatus.in_use };
+                if (!validStatusesForFeedback.Contains(order.Status))
+                {
+                    throw new InvalidOperationException("You can only provide feedback for completed orders (in use or returned).");
+                }
 
                 if (await _feedbackRepo.HasUserFeedbackedOrderItemAsync(customerId, orderItemId.Value))
                 {
@@ -70,7 +76,13 @@ namespace Services.FeedbackServices
                 order = await _orderRepo.GetByIdAsync(orderId.Value);
                 if (order == null) throw new ArgumentException("Order not found.");
                 if (order.CustomerId != customerId) throw new UnauthorizedAccessException("You are not authorized to feedback this order.");
-                if (order.Status != OrderStatus.returned) throw new InvalidOperationException("You can only feedback for returned orders.");
+                
+                // Allow feedback for completed orders (rental: returned, purchase: in_use)
+                var validStatusesForFeedback = new[] { OrderStatus.returned, OrderStatus.in_use };
+                if (!validStatusesForFeedback.Contains(order.Status))
+                {
+                    throw new InvalidOperationException("You can only provide feedback for completed orders (in use or returned).");
+                }
 
                 if (await _feedbackRepo.HasUserFeedbackedOrderAsync(customerId, orderId.Value))
                 {

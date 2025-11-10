@@ -53,14 +53,14 @@ namespace Services.CategoryServices
             var existingCategory = await _repository.GetByNameAsync(dto.Name.Trim());
             if (existingCategory != null)
             {
-                throw new ArgumentException($"Category with name '{dto.Name.Trim()}' already exists");
+                throw new ArgumentException($"Category name is '{dto.Name.Trim()}' already exists");
             }
 
             var entity = new Category
             {
                 Id = Guid.NewGuid(),
                 Name = dto.Name.Trim(),
-                Description = dto.Description?.Trim(),
+                Description = dto.Description.Trim(),
                 IsActive = dto.IsActive,
                 CreatedAt = DateTimeHelper.GetVietnamTime()
             };
@@ -110,6 +110,12 @@ namespace Services.CategoryServices
             var existing = await _repository.GetByIdAsync(id);
             if (existing == null) return false;
 
+            // Validate description
+            if (string.IsNullOrWhiteSpace(dto.Description))
+            {
+                throw new ArgumentException("Category description is required");
+            }
+
             // Check for duplicate category name (regardless of IsActive status)
             // Exclude the current category being updated
             if (!string.IsNullOrWhiteSpace(dto.Name))
@@ -117,7 +123,7 @@ namespace Services.CategoryServices
                 var duplicateCategory = await _repository.GetByNameAsync(dto.Name.Trim());
                 if (duplicateCategory != null && duplicateCategory.Id != id)
                 {
-                    throw new ArgumentException($"Category with name '{dto.Name.Trim()}' already exists");
+                    throw new ArgumentException($"Category name is '{dto.Name.Trim()}' already exists");
                 }
             }
 

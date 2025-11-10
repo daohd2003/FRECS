@@ -14,10 +14,10 @@ namespace BusinessObject.Models
         public Guid Id { get; set; }
 
         [Required]
-        public Guid ProviderId { get; set; }
+        public Guid UserId { get; set; }
 
-        [ForeignKey(nameof(ProviderId))]
-        public User Provider { get; set; }
+        [ForeignKey(nameof(UserId))]
+        public User User { get; set; }
 
         [Required]
         [MaxLength(255)]
@@ -27,8 +27,12 @@ namespace BusinessObject.Models
         [MaxLength(50)]
         public string AccountNumber { get; set; }
 
+        [Required]
+        [MaxLength(255)]
+        public string AccountHolderName { get; set; }
+
         [MaxLength(50)]
-        public string RoutingNumber { get; set; }
+        public string? RoutingNumber { get; set; }
 
         public bool IsPrimary { get; set; } = false;
     }

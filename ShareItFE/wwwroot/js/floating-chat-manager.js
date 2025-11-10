@@ -64,30 +64,40 @@ class FloatingChatManager {
     }
 
     createContainer() {
-        if (document.getElementById('floating-chats-container')) {
-            this.container = document.getElementById('floating-chats-container');
-            this.expandedContainer = document.getElementById('floating-chats-expanded');
-            this.minimizedContainer = document.getElementById('floating-chats-minimized');
-            return;
-        }
+        // Wait for DOM to be ready before creating container
+        const createContainerElements = () => {
+            if (document.getElementById('floating-chats-container')) {
+                this.container = document.getElementById('floating-chats-container');
+                this.expandedContainer = document.getElementById('floating-chats-expanded');
+                this.minimizedContainer = document.getElementById('floating-chats-minimized');
+                return;
+            }
 
-        this.container = document.createElement('div');
-        this.container.id = 'floating-chats-container';
-        this.container.className = 'floating-chats-container';
-        
-        // Create expanded container (horizontal)
-        this.expandedContainer = document.createElement('div');
-        this.expandedContainer.id = 'floating-chats-expanded';
-        this.expandedContainer.className = 'floating-chats-expanded';
-        
-        // Create minimized container (vertical)
-        this.minimizedContainer = document.createElement('div');
-        this.minimizedContainer.id = 'floating-chats-minimized';
-        this.minimizedContainer.className = 'floating-chats-minimized';
-        
-        this.container.appendChild(this.expandedContainer);
-        this.container.appendChild(this.minimizedContainer);
-        document.body.appendChild(this.container);
+            this.container = document.createElement('div');
+            this.container.id = 'floating-chats-container';
+            this.container.className = 'floating-chats-container';
+            
+            // Create expanded container (horizontal)
+            this.expandedContainer = document.createElement('div');
+            this.expandedContainer.id = 'floating-chats-expanded';
+            this.expandedContainer.className = 'floating-chats-expanded';
+            
+            // Create minimized container (vertical)
+            this.minimizedContainer = document.createElement('div');
+            this.minimizedContainer.id = 'floating-chats-minimized';
+            this.minimizedContainer.className = 'floating-chats-minimized';
+            
+            this.container.appendChild(this.expandedContainer);
+            this.container.appendChild(this.minimizedContainer);
+            document.body.appendChild(this.container);
+        };
+
+        // If DOM is ready, create immediately, otherwise wait
+        if (document.body) {
+            createContainerElements();
+        } else {
+            document.addEventListener('DOMContentLoaded', createContainerElements);
+        }
     }
 
     loadSavedChats() {
@@ -130,6 +140,10 @@ class FloatingChatManager {
                 .withAutomaticReconnect()
                 .build();
 
+            // IMPORTANT: Remove all old handlers first to prevent duplicates
+            this.signalRConnection.off("ReceiveMessage");
+            
+            // Then register the new handler
             this.signalRConnection.on("ReceiveMessage", (message) => {
                 this.handleIncomingMessage(message);
             });
@@ -225,6 +239,7 @@ class FloatingChatManager {
             avatar: avatar || this.getInitials(userName),
             conversationId: null,
             messages: [],
+            messagesLoaded: false, // Track if messages have been loaded
             isMinimized: minimized,
             unreadCount: 0,
             element: null
@@ -350,7 +365,7 @@ class FloatingChatManager {
             this.updateUnreadBadge(chat);
             
             // Load conversation if not loaded
-            if (!chat.conversationId) {
+            if (!chat.conversationId || !chat.messagesLoaded) {
                 this.loadConversation(chat);
             } else {
                 this.scrollToBottom(chat);
@@ -400,6 +415,11 @@ class FloatingChatManager {
     }
 
     async loadMessages(chat) {
+        // Prevent loading messages multiple times
+        if (chat.messagesLoaded) {
+            return;
+        }
+
         try {
             const response = await fetch(
                 `${this.apiUrl}/conversations/${chat.conversationId}/messages?page=1&pageSize=50`,
@@ -411,7 +431,28 @@ class FloatingChatManager {
             if (!response.ok) throw new Error('Failed to load messages');
 
             const messages = await response.json();
-            chat.messages = messages.reverse();
+            
+            // Clear existing messages and load fresh
+            chat.messages = [];
+            
+            // Check message order from API by comparing timestamps
+            // If API returns newest first (most common), reverse it
+            if (messages.length > 1) {
+                const first = new Date(messages[0].sentAt || messages[0].createdAt);
+                const last = new Date(messages[messages.length - 1].sentAt || messages[messages.length - 1].createdAt);
+                
+                // If first message is newer than last, API returns newest first → reverse
+                if (first > last) {
+                    chat.messages = messages.reverse();
+                } else {
+                    // Already oldest first
+                    chat.messages = messages;
+                }
+            } else {
+                chat.messages = messages;
+            }
+            
+            chat.messagesLoaded = true; // Mark as loaded
 
             this.renderMessages(chat);
         } catch (error) {
@@ -433,34 +474,51 @@ class FloatingChatManager {
             return;
         }
 
+        // Clear and render all messages
         messagesArea.innerHTML = '';
-        chat.messages.forEach(msg => {
+        
+        // Messages are sorted oldest first
+        // Append them in order: oldest at top, newest at bottom
+        chat.messages.forEach((msg, index) => {
             this.addMessageToChat(chat, msg, true);
         });
 
+        // Scroll to show newest messages (at bottom)
         this.scrollToBottom(chat);
     }
 
     addMessageToChat(chat, message, isHistory = false) {
+        // Prevent duplicate messages by checking if message already exists
+        const messageId = message.id || `${message.senderId}_${message.sentAt || message.createdAt}_${message.content}`;
+        const isDuplicate = chat.messages.some(msg => {
+            const existingId = msg.id || `${msg.senderId}_${msg.sentAt || msg.createdAt}_${msg.content}`;
+            return existingId === messageId;
+        });
+
+        if (isDuplicate && !isHistory) {
+            return; // Skip adding duplicate message
+        }
+
         const messagesArea = chat.element.querySelector('.chat-messages-area');
         const isMe = message.senderId === this.currentUserId;
 
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${isMe ? 'me' : 'them'}`;
+        messageEl.dataset.messageId = messageId; // Track message ID in DOM
         
         // Add avatar for messages from others
         if (!isMe) {
             messageEl.innerHTML = `
                 <div class="message-avatar">${this.escapeHtml(chat.avatar)}</div>
                 <div class="message-bubble">
-                    <div>${this.escapeHtml(message.content)}</div>
+                    <span>${this.escapeHtml(message.content)}</span>
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
         } else {
             messageEl.innerHTML = `
                 <div class="message-bubble">
-                    <div>${this.escapeHtml(message.content)}</div>
+                    <span>${this.escapeHtml(message.content)}</span>
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
@@ -585,16 +643,11 @@ class FloatingChatManager {
     }
 }
 
-// Initialize on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        window.floatingChatManager = new FloatingChatManager();
-    });
-} else {
-    window.floatingChatManager = new FloatingChatManager();
-}
+// Initialize immediately - no waiting for DOM
+// This ensures the manager is available when other scripts call it
+window.floatingChatManager = new FloatingChatManager();
 
-// Global helper function
+// Global helper function - simple and direct since manager initializes immediately
 window.openFloatingChat = (userId, userName, avatar) => {
     if (window.floatingChatManager) {
         window.floatingChatManager.openChat(userId, userName, avatar);
@@ -602,4 +655,5 @@ window.openFloatingChat = (userId, userName, avatar) => {
         console.error('FloatingChatManager not initialized');
     }
 };
+
 

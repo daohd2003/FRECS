@@ -1,3 +1,5 @@
+using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.DashboardStatsDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -21,89 +23,100 @@ namespace ShareItFE.Pages.Admin
             _environment = environment;
         }
 
-        public int TotalUsers { get; set; }
-        public int TotalProducts { get; set; }
-        public int TotalOrders { get; set; }
-        public int TotalDiscountCodes { get; set; }
-        public List<ActivityItem> RecentActivities { get; set; } = new List<ActivityItem>();
+        public AdminDashboardDto DashboardData { get; set; } = new AdminDashboardDto();
+        public string ErrorMessage { get; set; } = string.Empty;
+
+        [BindProperty(SupportsGet = true)]
+        public DateTime? StartDate { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public DateTime? EndDate { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string Preset { get; set; } = "Last 30 Days";
 
         public async Task<IActionResult> OnGetAsync()
         {
             try
             {
+                // Set default date range if not provided
+                if (!StartDate.HasValue || !EndDate.HasValue)
+                {
+                    EndDate = DateTime.UtcNow;
+                    StartDate = EndDate.Value.AddDays(-30);
+                    Preset = "Last 30 Days";
+                }
+
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 var apiBaseUrl = _configuration.GetApiBaseUrl(_environment);
 
-                // Fetch statistics (you'll need to create these API endpoints or use existing ones)
-                try
+                // Fetch dashboard data
+                var response = await client.GetAsync($"{apiBaseUrl}/dashboard/admin?startDate={StartDate:yyyy-MM-dd}&endDate={EndDate:yyyy-MM-dd}");
+                
+                if (response.IsSuccessStatusCode)
                 {
-                    var usersResponse = await client.GetAsync($"{apiBaseUrl}/api/users/count");
-                    if (usersResponse.IsSuccessStatusCode)
+                    var content = await response.Content.ReadAsStringAsync();
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<AdminDashboardDto>>(content, new JsonSerializerOptions 
+                    { 
+                        PropertyNameCaseInsensitive = true 
+                    });
+
+                    if (apiResponse?.Data != null)
                     {
-                        var content = await usersResponse.Content.ReadAsStringAsync();
-                        TotalUsers = JsonSerializer.Deserialize<int>(content);
+                        DashboardData = apiResponse.Data;
+                    }
+                    else
+                    {
+                        ErrorMessage = "Dashboard data is null. API returned empty data.";
                     }
                 }
-                catch { TotalUsers = 0; }
-
-                try
+                else
                 {
-                    var productsResponse = await client.GetAsync($"{apiBaseUrl}/api/products/count");
-                    if (productsResponse.IsSuccessStatusCode)
-                    {
-                        var content = await productsResponse.Content.ReadAsStringAsync();
-                        TotalProducts = JsonSerializer.Deserialize<int>(content);
-                    }
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    ErrorMessage = $"Failed to load dashboard data. Status: {response.StatusCode}. Error: {errorContent}";
                 }
-                catch { TotalProducts = 0; }
-
-                try
-                {
-                    var ordersResponse = await client.GetAsync($"{apiBaseUrl}/api/orders/count");
-                    if (ordersResponse.IsSuccessStatusCode)
-                    {
-                        var content = await ordersResponse.Content.ReadAsStringAsync();
-                        TotalOrders = JsonSerializer.Deserialize<int>(content);
-                    }
-                }
-                catch { TotalOrders = 0; }
-
-                try
-                {
-                    var discountResponse = await client.GetAsync($"{apiBaseUrl}/api/DiscountCode");
-                    if (discountResponse.IsSuccessStatusCode)
-                    {
-                        var content = await discountResponse.Content.ReadAsStringAsync();
-                        var response = JsonSerializer.Deserialize<BusinessObject.DTOs.ApiResponses.ApiResponse<IEnumerable<object>>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        TotalDiscountCodes = response?.Data?.Count() ?? 0;
-                    }
-                }
-                catch { TotalDiscountCodes = 0; }
-
-                // Mock recent activities (you can fetch real data from API)
-                RecentActivities = new List<ActivityItem>
-                {
-                    new ActivityItem { Type = "User", Description = "New user registered", TimeAgo = "5 minutes ago" },
-                    new ActivityItem { Type = "Order", Description = "New order received", TimeAgo = "15 minutes ago" },
-                    new ActivityItem { Type = "Product", Description = "Product approved", TimeAgo = "1 hour ago" },
-                    new ActivityItem { Type = "User", Description = "User updated profile", TimeAgo = "2 hours ago" },
-                };
 
                 return Page();
             }
             catch (Exception ex)
             {
-                // Log error
-                return RedirectToPage("/Error");
+                ErrorMessage = $"Error loading dashboard: {ex.Message}. Stack: {ex.StackTrace}";
+                // Log to console for debugging
+                Console.WriteLine($"Dashboard Error: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
+                return Page();
             }
         }
-    }
 
-    public class ActivityItem
-    {
-        public string Type { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string TimeAgo { get; set; } = string.Empty;
+        public string GetTimeAgo(DateTime timestamp)
+        {
+            var timeSpan = DateTime.UtcNow - timestamp;
+            
+            if (timeSpan.TotalMinutes < 1)
+                return "Just now";
+            if (timeSpan.TotalMinutes < 60)
+                return $"{(int)timeSpan.TotalMinutes} minutes ago";
+            if (timeSpan.TotalHours < 24)
+                return $"{(int)timeSpan.TotalHours} hours ago";
+            if (timeSpan.TotalDays < 7)
+                return $"{(int)timeSpan.TotalDays} days ago";
+            
+            return timestamp.ToString("MMM dd, yyyy");
+        }
+
+        public string GetChangeColor(decimal change)
+        {
+            return change >= 0 ? "text-green-600" : "text-red-600";
+        }
+
+        public string GetChangeIcon(decimal change)
+        {
+            return change >= 0 ? "trending-up" : "trending-down";
+        }
     }
 }
 

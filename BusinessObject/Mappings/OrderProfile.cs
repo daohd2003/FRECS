@@ -63,6 +63,7 @@ namespace BusinessObject.Mappings
             .ForMember(dest => dest.TotalDepositAmount, opt => opt.MapFrom(src => src.TotalDeposit))
             // Map discount fields
             .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src => src.DiscountAmount))
+            .ForMember(dest => dest.DiscountCodeId, opt => opt.MapFrom(src => src.DiscountCodeId))
             .ForMember(dest => dest.DiscountCodeName, opt => opt.MapFrom(src => src.DiscountCode != null ? src.DiscountCode.Code : null))
             // AutoMapper sẽ tự động map List<OrderItem> sang List<OrderItemDetailsDto> nếu bạn đã định nghĩa mapping cho item
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))

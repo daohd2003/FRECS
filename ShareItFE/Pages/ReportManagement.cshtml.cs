@@ -14,7 +14,7 @@ using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,staff")]
     public class ReportManagementModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
@@ -63,6 +63,7 @@ namespace ShareItFE.Pages
         public int TotalCount { get; set; }
 
         public string? AccessToken { get; private set; }
+        public string CurrentUserRole { get; set; } = string.Empty;
 
         [BindProperty]
         public ReportActionInput ReportAction { get; set; }
@@ -76,6 +77,7 @@ namespace ShareItFE.Pages
         {
             AccessToken = HttpContext.Request.Cookies["AccessToken"];
             ApiRootUrl = _configuration.GetApiRootUrl(_environment);
+            CurrentUserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
             try
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();

@@ -1,0 +1,2682 @@
+@page
+@model ShareItFE.Pages.Customer.DepositManagementModel
+@{
+    ViewData["Title"] = "Deposit & Refund Management";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-dashboard.css" asp-append-version="true" />
+}
+
+<div class="dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div>
+            <h1 class="dashboard-title">Deposit & Refund Management</h1>
+            <p class="dashboard-subtitle">Track your deposit status and manage accounts for receiving refunds</p>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+        <a href="/Customer/Dashboard" class="tab-link">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Spending Overview
+        </a>
+        <a href="/Customer/DepositManagement" class="tab-link active">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Deposit Management
+        </a>
+    </div>
+
+    <!-- Alert Messages -->
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            @Model.SuccessMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            @Model.ErrorMessage
+        </div>
+    }
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid deposit-stats">
+        <!-- Deposits Refunded -->
+        <div class="stat-card">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <p class="stat-label">Deposits Refunded</p>
+                    <h3 class="stat-value">@Model.Stats.DepositsRefunded.ToString("N0")₫</h3>
+                </div>
+                <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Refunds -->
+        <div class="stat-card">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <p class="stat-label">Pending Refunds</p>
+                    <h3 class="stat-value">@Model.Stats.PendingRefunds.ToString("N0")₫</h3>
+                </div>
+                <div class="stat-icon yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Refund Issues -->
+        <div class="stat-card">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <p class="stat-label">Refund Issues</p>
+                    <h3 class="stat-value">@Model.Stats.RefundIssues</h3>
+                </div>
+                <div class="stat-icon red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refund Account Management Section -->
+    <div class="section-container">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Refund Account Management</h2>
+                <p class="section-subtitle">Manage your bank accounts designated for receiving deposit refunds</p>
+            </div>
+            <button class="add-btn" onclick="showAddBankModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Refund Account
+            </button>
+        </div>
+
+        @if (Model.BankAccounts.Any())
+        {
+            <div class="accounts-grid">
+                @foreach (var account in Model.BankAccounts)
+                {
+                    <div class="account-card @(account.IsPrimary ? "primary" : "")">
+                        @if (account.IsPrimary)
+                        {
+                            <span class="primary-badge">Primary</span>
+                        }
+                        <div class="account-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <div class="account-info">
+                            <h4 class="account-bank">@account.BankName</h4>
+                            <p class="account-number">Account: ****@account.Last4Digits</p>
+                            <p class="account-routing">Holder: @account.AccountHolderName</p>
+                            @if (!string.IsNullOrEmpty(account.RoutingNumber))
+                            {
+                                <p class="account-routing">Routing: @account.RoutingNumber</p>
+                            }
+                        </div>
+                        <div class="account-actions">
+                            @if (!account.IsPrimary)
+                            {
+                                <form method="post" asp-page-handler="SetPrimaryBankAccount" class="inline-form">
+                                    <input type="hidden" name="accountId" value="@account.Id" />
+                                    <button type="submit" class="action-btn primary-btn">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Set Primary
+                                    </button>
+                                </form>
+                            }
+                            <button class="action-btn edit-btn" onclick="editBankAccount('@account.Id', '@account.BankName', '@account.AccountNumber', '@account.AccountHolderName', '@(account.RoutingNumber ?? "")')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Edit
+                            </button>
+                            <form method="post" asp-page-handler="DeleteBankAccount" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this account?')">
+                                <input type="hidden" name="accountId" value="@account.Id" />
+                                <button type="submit" class="action-btn delete-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <h3>No Refund Accounts</h3>
+                <p>Add a bank account to receive deposit refunds</p>
+            </div>
+        }
+    </div>
+
+    <!-- Deposit History Section -->
+    <div class="section-container" id="depositHistorySection">
+        <div class="section-header">
+            <h2 class="section-title">Deposit History</h2>
+            <div class="section-actions">
+                <button class="filter-action-btn" id="filterBtn" onclick="showFilterModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Filter
+                    <span class="filter-badge" id="filterCount" style="display: none;"></span>
+                </button>
+                <button class="filter-action-btn" onclick="alert('Export feature coming soon!')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Filters Display -->
+        <div class="active-filters" id="activeFilters" style="display: none;">
+            <span class="filter-label">Active Filters:</span>
+            <div id="filterChipsContainer"></div>
+            <button type="button" class="clear-filters-btn" onclick="clearAllFilters()">Clear All</button>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ORDER / ITEM</th>
+                        <th>DEPOSIT AMOUNT</th>
+                        <th>REFUND METHOD</th>
+                        <th>REFUND AMOUNT</th>
+                        <th>STATUS</th>
+                        <th>REFUND DATE</th>
+                        <th>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody id="depositTableBody">
+                    @foreach (var refund in Model.DepositRefunds.OrderByDescending(r => r.CreatedAt))
+                    {
+                        var statusClass = refund.Status.ToString().ToLower() switch
+                        {
+                            "completed" => "status-completed",
+                            "pending" => "status-pending",
+                            "initiated" => "status-initiated",
+                            "failed" => "status-failed",
+                            _ => "status-pending"
+                        };
+
+                        <tr data-status="@refund.Status.ToString().ToLower()" data-created="@refund.CreatedAt.ToString("o")">
+                            <td>
+                                <div class="item-cell">
+                                    <div class="item-name">Deposit Refund</div>
+                                    <div class="item-code">@refund.OrderCode</div>
+                                </div>
+                            </td>
+                            <td class="amount-cell">@refund.OriginalDepositAmount.ToString("N0")₫</td>
+                            <td>
+                                <div class="method-cell">
+                                    <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                    @if (!string.IsNullOrEmpty(refund.CustomerBankName))
+                                    {
+                                        <span>@refund.CustomerBankName</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Bank Transfer</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="amount-cell">
+                                <span>@refund.RefundAmount.ToString("N0")₫</span>
+                                @if (refund.TotalPenaltyAmount > 0)
+                                {
+                                    <small class="text-muted d-block" style="font-size: 0.75rem; color: #dc3545;">
+                                        (Penalty: -@refund.TotalPenaltyAmount.ToString("N0")₫)
+                                    </small>
+                                }
+                            </td>
+                            <td>
+                                <span class="status-badge @statusClass">
+                                    @if (refund.Status == BusinessObject.Enums.TransactionStatus.completed)
+                                    {
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>Completed</span>
+                                    }
+                                    else if (refund.Status == BusinessObject.Enums.TransactionStatus.initiated)
+                                    {
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Initiated</span>
+                                    }
+                                    else if (refund.Status == BusinessObject.Enums.TransactionStatus.failed)
+                                    {
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        <span>Failed</span>
+                                    }
+                                </span>
+                            </td>
+                            <td class="date-cell">
+                                @if (refund.ProcessedAt.HasValue)
+                                {
+                                    @refund.ProcessedAt.Value.ToString("yyyy-MM-dd")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="action-btn" title="View Details" onclick="viewRefundDetails('@refund.Id')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.DepositRefunds.Any())
+                    {
+                        <tr id="emptyRow">
+                            <td colspan="7" class="text-center" style="padding: 3rem;">
+                                <div style="color: #6c757d;">
+                                    <svg style="width: 48px; height: 48px; margin: 0 auto 1rem; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                    </svg>
+                                    <h3 style="margin-bottom: 0.5rem;">No Deposit Refund History</h3>
+                                    <p>Your deposit refund history will appear here when available.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper" id="paginationWrapper" style="display: none;">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div class="pagination-controls" id="paginationControls"></div>
+        </div>
+    </div>
+
+    <!-- Refund Detail Modal -->
+    <div id="refundDetailModal" class="modal" style="display: none;">
+        <div class="modal-content refund-detail-modal">
+            <div class="modal-header">
+                <h3>Deposit Refund Details</h3>
+                <button type="button" class="close-btn" onclick="closeRefundDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading State -->
+                <div id="refundLoading" class="loading-state">
+                    <svg class="spinner" viewBox="0 0 50 50">
+                        <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                    </svg>
+                    <p>Loading refund details...</p>
+                </div>
+
+                <!-- Refund Details Content -->
+                <div id="refundContent" style="display: none;">
+                    <!-- Refund Status Banner -->
+                    <div id="refundStatusBanner" class="refund-status-banner">
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <h4 id="refundStatusTitle">Refund Status</h4>
+                            <p id="refundStatusDescription">Description</p>
+                        </div>
+                    </div>
+
+                    <!-- Order Information -->
+                    <div class="detail-section">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            Order Information
+                        </h4>
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Order Code</span>
+                                <span class="detail-value" id="refundOrderCode">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Request Created</span>
+                                <span class="detail-value" id="refundCreatedDate">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Processed Date</span>
+                                <span class="detail-value" id="refundProcessedDate">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amount Breakdown -->
+                    <div class="detail-section">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Amount Breakdown
+                        </h4>
+                        <div class="amount-breakdown">
+                            <div class="amount-row">
+                                <span>Original Deposit</span>
+                                <span class="amount-value" id="refundOriginalAmount">0₫</span>
+                            </div>
+                            <div class="amount-row penalty" id="penaltyRow" style="display: none;">
+                                <span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    Penalty Deduction
+                                </span>
+                                <span class="amount-value penalty-amount" id="refundPenaltyAmount">0₫</span>
+                            </div>
+                            <div class="amount-row total">
+                                <span>Final Refund Amount</span>
+                                <span class="amount-value total-amount" id="refundTotalAmount">0₫</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Violations (if any) -->
+                    <div class="detail-section" id="violationsSection" style="display: none;">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Rental Violations & Penalties
+                        </h4>
+                        <div id="violationsList" class="violations-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Bank Account Information -->
+                    <div class="detail-section">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Your Refund Bank Account
+                        </h4>
+                        <div id="bankInfoContent" class="bank-info-box">
+                            <div class="bank-info-row">
+                                <span class="bank-label">Bank Name</span>
+                                <span class="bank-value" id="refundBankName">-</span>
+                            </div>
+                            <div class="bank-info-row">
+                                <span class="bank-label">Account Holder</span>
+                                <span class="bank-value" id="refundAccountHolder">-</span>
+                            </div>
+                            <div class="bank-info-row">
+                                <span class="bank-label">Account Number</span>
+                                <span class="bank-value account-number" id="refundAccountNumber">-</span>
+                            </div>
+                            <div class="bank-info-row" id="routingNumberRow" style="display: none;">
+                                <span class="bank-label">Routing Number</span>
+                                <span class="bank-value" id="refundRoutingNumber">-</span>
+                            </div>
+                        </div>
+                        <div id="noBankInfo" class="no-bank-info" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <p>No bank account registered for this refund. Please add a bank account.</p>
+                        </div>
+                    </div>
+
+                    <!-- Admin Notes (if any) -->
+                    <div class="detail-section" id="adminNotesSection" style="display: none;">
+                        <h4 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                            Admin Notes
+                        </h4>
+                        <div class="admin-notes-box">
+                            <p id="refundAdminNotes">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeRefundDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Modal -->
+    <div id="filterModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Filter Deposit History</h3>
+                <button type="button" class="close-btn" onclick="closeFilterModal()">&times;</button>
+            </div>
+            <div class="filter-section">
+                <h4 class="filter-section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Status
+                </h4>
+                <div class="filter-options">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" name="statusFilter" value="completed" onchange="updateFilters()" />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <span class="status-badge status-completed">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Completed
+                            </span>
+                        </span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" name="statusFilter" value="failed" onchange="updateFilters()" />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <span class="status-badge status-failed">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Failed
+                            </span>
+                        </span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" name="statusFilter" value="initiated" onchange="updateFilters()" />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <span class="status-badge status-initiated">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Initiated
+                            </span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-clear-filter" onclick="clearFilterCheckboxes()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear
+                </button>
+                <div style="flex: 1;"></div>
+                <button type="button" class="btn-secondary" onclick="closeFilterModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Account Modal -->
+    <div id="bankAccountModal" class="modal" style="display: none; position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); max-width: 28rem; width: 100%; margin: 1rem;">
+            <div style="padding: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3 id="modalTitle" style="font-size: 1.25rem; font-weight: 600; color: #111827; margin: 0;">Add Refund Account</h3>
+                    <button type="button" onclick="closeBankModal()" style="color: #9ca3af; background: none; border: none; cursor: pointer; padding: 0.25rem; border-radius: 0.25rem; transition: color 0.2s;" onmouseover="this.style.color='#4b5563'" onmouseout="this.style.color='#9ca3af'">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <form id="bankAccountForm" method="post" asp-page-handler="CreateBankAccount">
+                    <input type="hidden" id="accountId" name="accountId" />
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label for="bankName" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Bank Name</label>
+                            <div style="position: relative;">
+                                <input type="text" 
+                                       id="bankName" 
+                                       name="bankName" 
+                                       list="vietnamBanksList"
+                                       required 
+                                       style="width: 100%; padding: 0.5rem 2rem 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s;"
+                                       placeholder="Type to search Vietnamese banks..." 
+                                       autocomplete="off" 
+                                       onfocus="this.style.outline='none'; this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 3px rgba(139, 92, 246, 0.1)'"
+                                       onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'" />
+                                <button type="button" 
+                                        id="changeBankBtn" 
+                                        style="display: none; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); padding: 4px 8px; font-size: 11px; color: #7c3aed; background: transparent; border: none; cursor: pointer; border-radius: 4px; z-index: 10;"
+                                        onmouseover="this.style.backgroundColor='#f3e8ff'"
+                                        onmouseout="this.style.backgroundColor='transparent'"
+                                        onclick="unlockBankName()">
+                                    Change
+                                </button>
+                                <div id="bankNameLocked" style="display: none; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); z-index: 10;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Bank name locked after selection">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                    <div id="bankNameWarning" style="display: none; margin-top: 4px; font-size: 12px; color: #d97706; align-items: center;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 4px; vertical-align: middle;">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>Bank name doesn't match our list. Please select from the dropdown to ensure accuracy.</span>
+                    </div>
+                    <datalist id="vietnamBanksList">
+                        <!-- Top Vietnamese Banks -->
+                        <option value="Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)">Vietcombank</option>
+                        <option value="Ngân hàng TMCP Đầu tư và Phát triển Việt Nam (BIDV)">BIDV</option>
+                        <option value="Ngân hàng TMCP Công thương Việt Nam (VietinBank)">VietinBank</option>
+                        <option value="Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam (Agribank)">Agribank</option>
+                        <option value="Ngân hàng TMCP Kỹ thương Việt Nam (Techcombank)">Techcombank</option>
+                        
+                        <!-- Commercial Banks -->
+                        <option value="Ngân hàng TMCP Á Châu (ACB)">ACB</option>
+                        <option value="Ngân hàng TMCP Quân đội (MB Bank)">MB Bank</option>
+                        <option value="Ngân hàng TMCP Việt Nam Thịnh Vượng (VPBank)">VPBank</option>
+                        <option value="Ngân hàng TMCP Tiên Phong (TPBank)">TPBank</option>
+                        <option value="Ngân hàng TMCP Sài Gòn Thương Tín (Sacombank)">Sacombank</option>
+                        <option value="Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh (HDBank)">HDBank</option>
+                        <option value="Ngân hàng TMCP Sài Gòn - Hà Nội (SHB)">SHB</option>
+                        <option value="Ngân hàng TMCP Quốc tế Việt Nam (VIB)">VIB</option>
+                        <option value="Ngân hàng TMCP Bưu điện Liên Việt (LienVietPostBank)">LienVietPostBank</option>
+                        <option value="Ngân hàng TMCP Phương Đông (OCB)">OCB</option>
+                        <option value="Ngân hàng TMCP Hàng Hải Việt Nam (MSB)">MSB</option>
+                        <option value="Ngân hàng TMCP Xuất Nhập khẩu Việt Nam (Eximbank)">Eximbank</option>
+                        <option value="Ngân hàng TMCP Đông Nam Á (SeABank)">SeABank</option>
+                        <option value="Ngân hàng TMCP Đại Chúng Việt Nam (PVcomBank)">PVcomBank</option>
+                        <option value="Ngân hàng TMCP Bắc Á (BacABank)">BacABank</option>
+                        
+                        <!-- Other Banks -->
+                        <option value="Ngân hàng TMCP Việt Nam Thương Tín (VietBank)">VietBank</option>
+                        <option value="Ngân hàng TMCP Nam Á (NamABank)">NamABank</option>
+                        <option value="Ngân hàng TMCP Xăng dầu Petrolimex (PGBank)">PGBank</option>
+                        <option value="Ngân hàng TMCP Bản Việt (VietCapitalBank)">VietCapitalBank</option>
+                        <option value="Ngân hàng TMCP Sài Gòn (SCB)">SCB</option>
+                        <option value="Ngân hàng TMCP An Bình (ABBank)">ABBank</option>
+                        <option value="Ngân hàng TMCP Quốc Dân (NCB)">NCB</option>
+                        <option value="Ngân hàng TMCP Bảo Việt (BaoVietBank)">BaoVietBank</option>
+                        <option value="Ngân hàng TMCP Kiên Long (KienLongBank)">KienLongBank</option>
+                        <option value="Ngân hàng TMCP Đông Á (DongABank)">DongABank</option>
+                        <option value="Ngân hàng TMCP Việt Á (VietABank)">VietABank</option>
+                        <option value="Ngân hàng TMCP Bưu Điện Việt Nam (LPBank)">LPBank</option>
+                        <option value="Ngân hàng TMCP Đại Dương (OceanBank)">OceanBank</option>
+                        <option value="Ngân hàng TMCP Quốc tế (VIB)">VIB</option>
+                        
+                        <!-- Foreign Banks in Vietnam -->
+                        <option value="HSBC Vietnam">HSBC</option>
+                        <option value="Standard Chartered Bank Vietnam">Standard Chartered</option>
+                        <option value="Citibank Vietnam">Citibank</option>
+                        <option value="Shinhan Bank Vietnam">Shinhan Bank</option>
+                        <option value="ANZ Vietnam">ANZ</option>
+                        <option value="Hong Leong Bank Vietnam">Hong Leong Bank</option>
+                        <option value="Public Bank Vietnam">Public Bank</option>
+                        <option value="CIMB Bank Vietnam">CIMB Bank</option>
+                        <option value="UOB Vietnam">UOB</option>
+                        <option value="Woori Bank Vietnam">Woori Bank</option>
+                    </datalist>
+                    <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        Type to search from 40+ Vietnamese banks
+                    </p>
+                        </div>
+                        <div>
+                            <label for="accountHolderName" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Account Holder Name</label>
+                            <input type="text" 
+                                   id="accountHolderName" 
+                                   name="accountHolderName" 
+                                   required 
+                                   style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s;"
+                                   placeholder="e.g. Nguyen Van A" 
+                                   autocomplete="off"
+                                   onfocus="this.style.outline='none'; this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 3px rgba(139, 92, 246, 0.1)'"
+                                   onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'" />
+                            <div id="accountHolderNameError" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #dc2626; align-items: center;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 0.25rem; vertical-align: middle;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span id="accountHolderNameErrorText"></span>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="accountNumber" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Account Number</label>
+                            <input type="text" 
+                                   id="accountNumber" 
+                                   name="accountNumber" 
+                                   required 
+                                   style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s;"
+                                   placeholder="e.g. 1234567890" 
+                                   autocomplete="off"
+                                   maxlength="17"
+                                   onfocus="this.style.outline='none'; this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 3px rgba(139, 92, 246, 0.1)'"
+                                   onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'" />
+                            <div id="accountNumberError" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #dc2626; align-items: center;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 0.25rem; vertical-align: middle;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span id="accountNumberErrorText"></span>
+                            </div>
+                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Must be 8-17 digits</p>
+                        </div>
+                        <div>
+                            <label for="routingNumber" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Routing Number (Optional)</label>
+                            <input type="text" 
+                                   id="routingNumber" 
+                                   name="routingNumber" 
+                                   style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; transition: all 0.2s;"
+                                   placeholder="e.g. 021000021" 
+                                   autocomplete="off"
+                                   maxlength="50"
+                                   onfocus="this.style.outline='none'; this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 3px rgba(139, 92, 246, 0.1)'"
+                                   onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'" />
+                            <div id="routingNumberError" style="display: none; margin-top: 0.25rem; font-size: 0.75rem; color: #dc2626; align-items: center;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; margin-right: 0.25rem; vertical-align: middle;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span id="routingNumberErrorText"></span>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="setAsPrimary" name="setAsPrimary" value="true" style="width: 1rem; height: 1rem; border-radius: 0.25rem; border: 1px solid #d1d5db; color: #8b5cf6; cursor: pointer;" />
+                                <span style="margin-left: 0.5rem; font-size: 0.875rem; color: #374151;">Set as primary account</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                        <button type="submit" style="flex: 1; background-color: #8b5cf6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 500; cursor: pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#7c3aed'" onmouseout="this.style.backgroundColor='#8b5cf6'">
+                            Save Account
+                        </button>
+                        <button type="button" onclick="closeBankModal()" style="flex: 1; background-color: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 500; cursor: pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#d1d5db'" onmouseout="this.style.backgroundColor='#e5e7eb'">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Active filters state
+let activeFilters = {
+    status: []
+};
+
+// Pagination state
+let currentPage = 1;
+const pageSize = 10;
+let filteredRows = [];
+
+function showFilterModal() {
+    document.getElementById('filterModal').style.display = 'block';
+}
+
+function closeFilterModal() {
+    document.getElementById('filterModal').style.display = 'none';
+}
+
+function updateFilters() {
+    // Get all checked status filters
+    const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
+    activeFilters.status = Array.from(statusCheckboxes).map(cb => cb.value);
+    
+    // Reset to page 1 when filter changes
+    currentPage = 1;
+    
+    // Apply filters
+    applyFilters();
+    
+    // Update UI
+    updateFilterUI();
+    
+    // Update pagination
+    updatePagination();
+}
+
+function clearFilterCheckboxes() {
+    // Uncheck all checkboxes
+    document.querySelectorAll('input[name="statusFilter"]').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    // Update filters
+    updateFilters();
+}
+
+function applyFilters() {
+    const tbody = document.getElementById('depositTableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Filter rows based on criteria
+    filteredRows = rows.filter(row => {
+        // Skip empty row
+        if (row.id === 'emptyRow' || row.id === 'noResultsRow') {
+            return false;
+        }
+        
+        const status = row.getAttribute('data-status');
+        
+        // Check if row matches filters
+        let shouldShow = true;
+        
+        // Status filter
+        if (activeFilters.status.length > 0) {
+            shouldShow = shouldShow && activeFilters.status.includes(status);
+        }
+        
+        return shouldShow;
+    });
+    
+    // Hide all data rows first
+    rows.forEach(row => {
+        if (row.id !== 'emptyRow' && row.id !== 'noResultsRow') {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Show rows for current page
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageRows = filteredRows.slice(start, end);
+    
+    pageRows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    // Show/hide empty state
+    const hasActiveFilters = activeFilters.status.length > 0;
+    showEmptyState(filteredRows.length === 0, hasActiveFilters);
+}
+
+function showEmptyState(show, hasFilters) {
+    const tbody = document.getElementById('depositTableBody');
+    const existingEmpty = tbody.querySelector('#noResultsRow');
+    const serverEmptyRow = tbody.querySelector('#emptyRow');
+    
+    if (show) {
+        // If no filters active, show server-side empty row
+        if (!hasFilters) {
+            if (existingEmpty) {
+                existingEmpty.remove();
+            }
+            if (serverEmptyRow) {
+                serverEmptyRow.style.display = '';
+            }
+        } else {
+            // If filters active, show "No Results Found"
+            if (serverEmptyRow) {
+                serverEmptyRow.style.display = 'none';
+            }
+            if (!existingEmpty) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.id = 'noResultsRow';
+                emptyRow.innerHTML = `
+                    <td colspan="7" class="text-center" style="padding: 3rem;">
+                        <div style="color: #6c757d;">
+                            <svg style="width: 48px; height: 48px; margin: 0 auto 1rem; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <h3 style="margin-bottom: 0.5rem;">No Results Found</h3>
+                            <p>Try adjusting your filters to see more results.</p>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(emptyRow);
+            }
+        }
+    } else {
+        // Has results - hide both empty states
+        if (existingEmpty) {
+            existingEmpty.remove();
+        }
+        if (serverEmptyRow) {
+            serverEmptyRow.style.display = 'none';
+        }
+    }
+}
+
+function updateFilterUI() {
+    const filterBtn = document.getElementById('filterBtn');
+    const filterCount = document.getElementById('filterCount');
+    const activeFiltersDiv = document.getElementById('activeFilters');
+    const filterChipsContainer = document.getElementById('filterChipsContainer');
+    
+    const totalFilters = activeFilters.status.length;
+    
+    // Update filter button
+    if (totalFilters > 0) {
+        filterBtn.classList.add('active');
+        filterCount.textContent = totalFilters;
+        filterCount.style.display = 'inline-flex';
+    } else {
+        filterBtn.classList.remove('active');
+        filterCount.style.display = 'none';
+    }
+    
+    // Update active filters display
+    if (totalFilters > 0) {
+        activeFiltersDiv.style.display = 'flex';
+        filterChipsContainer.innerHTML = '';
+        
+        // Add status filter chips
+        activeFilters.status.forEach(status => {
+            const chip = document.createElement('span');
+            chip.className = 'filter-chip';
+            chip.innerHTML = `
+                ${capitalizeFirst(status)}
+                <a href="javascript:void(0)" onclick="removeFilter('status', '${status}')" class="remove-filter">&times;</a>
+            `;
+            filterChipsContainer.appendChild(chip);
+        });
+    } else {
+        activeFiltersDiv.style.display = 'none';
+    }
+}
+
+function removeFilter(type, value) {
+    if (type === 'status') {
+        const index = activeFilters.status.indexOf(value);
+        if (index > -1) {
+            activeFilters.status.splice(index, 1);
+        }
+        
+        // Uncheck the checkbox
+        const checkbox = document.querySelector(`input[name="statusFilter"][value="${value}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+    }
+    
+    applyFilters();
+    updateFilterUI();
+}
+
+function clearAllFilters() {
+    // Reset filters
+    activeFilters.status = [];
+    
+    // Uncheck all checkboxes
+    document.querySelectorAll('input[name="statusFilter"]').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    // Reset to page 1
+    currentPage = 1;
+    
+    // Apply and update UI
+    applyFilters();
+    updateFilterUI();
+    updatePagination();
+}
+
+function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Pagination functions
+function updatePagination() {
+    const totalItems = filteredRows.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const paginationWrapper = document.getElementById('paginationWrapper');
+    const paginationInfo = document.getElementById('paginationInfo');
+    const paginationControls = document.getElementById('paginationControls');
+    
+    // Show/hide pagination
+    if (totalItems <= pageSize) {
+        paginationWrapper.style.display = 'none';
+        return;
+    }
+    
+    paginationWrapper.style.display = 'flex';
+    
+    // Update info
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalItems);
+    paginationInfo.innerHTML = `Showing <strong>${start}</strong> to <strong>${end}</strong> of <strong>${totalItems}</strong> results`;
+    
+    // Update controls
+    paginationControls.innerHTML = '';
+    
+    // Previous button
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'pagination-btn' + (currentPage <= 1 ? ' disabled' : '');
+    prevBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Previous
+    `;
+    prevBtn.disabled = currentPage <= 1;
+    prevBtn.onclick = () => goToPage(currentPage - 1);
+    paginationControls.appendChild(prevBtn);
+    
+    // Page numbers using PaginationHelper logic
+    const paginationItems = getPaginationItems(currentPage, totalPages);
+    
+    paginationItems.forEach(item => {
+        if (item === '...') {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'pagination-ellipsis';
+            ellipsis.textContent = '...';
+            paginationControls.appendChild(ellipsis);
+        } else {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = 'pagination-number' + (item === currentPage ? ' active' : '');
+            pageBtn.textContent = item;
+            pageBtn.onclick = () => goToPage(item);
+            paginationControls.appendChild(pageBtn);
+        }
+    });
+    
+    // Next button
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'pagination-btn' + (currentPage >= totalPages ? ' disabled' : '');
+    nextBtn.innerHTML = `
+        Next
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+    `;
+    nextBtn.disabled = currentPage >= totalPages;
+    nextBtn.onclick = () => goToPage(currentPage + 1);
+    paginationControls.appendChild(nextBtn);
+}
+
+function getPaginationItems(currentPage, totalPages, maxVisible = 7) {
+    const items = [];
+    
+    if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+            items.push(i);
+        }
+    } else {
+        items.push(1);
+        
+        if (currentPage <= 3) {
+            for (let i = 2; i <= 5 && i < totalPages; i++) {
+                items.push(i);
+            }
+            if (5 < totalPages - 1) {
+                items.push('...');
+            }
+        } else if (currentPage >= totalPages - 2) {
+            items.push('...');
+            for (let i = totalPages - 4; i < totalPages && i > 1; i++) {
+                items.push(i);
+            }
+        } else {
+            items.push('...');
+            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                if (i > 1 && i < totalPages) {
+                    items.push(i);
+                }
+            }
+            items.push('...');
+        }
+        
+        if (totalPages > 1) {
+            items.push(totalPages);
+        }
+    }
+    
+    return items;
+}
+
+function goToPage(page) {
+    const totalPages = Math.ceil(filteredRows.length / pageSize);
+    
+    if (page < 1 || page > totalPages) {
+        return;
+    }
+    
+    currentPage = page;
+    applyFilters();
+    updatePagination();
+    
+    // Scroll to deposit history section
+    document.getElementById('depositHistorySection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Initialize pagination on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all rows initially
+    const tbody = document.getElementById('depositTableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    filteredRows = rows.filter(row => {
+        return row.id !== 'emptyRow' && row.id !== 'noResultsRow';
+    });
+    
+    // Apply initial pagination
+    applyFilters();
+    updatePagination();
+});
+
+function showAddBankModal() {
+    document.getElementById('modalTitle').textContent = 'Add Refund Account';
+    document.getElementById('bankAccountForm').action = '?handler=CreateBankAccount';
+    document.getElementById('accountId').value = '';
+    document.getElementById('bankName').value = '';
+    document.getElementById('accountNumber').value = '';
+    document.getElementById('accountHolderName').value = '';
+    document.getElementById('routingNumber').value = '';
+    document.getElementById('setAsPrimary').checked = false;
+    document.getElementById('bankAccountModal').style.display = 'flex';
+    
+    // Clear all field errors
+    FieldValidator.clearAll();
+    hideBankNameWarning();
+    
+    // Initialize bank name validation
+    initBankNameAutocomplete();
+}
+
+function editBankAccount(id, bankName, accountNumber, accountHolderName, routingNumber) {
+    document.getElementById('modalTitle').textContent = 'Edit Refund Account';
+    document.getElementById('bankAccountForm').action = '?handler=UpdateBankAccount';
+    document.getElementById('accountId').value = id;
+    document.getElementById('bankName').value = bankName;
+    document.getElementById('accountNumber').value = accountNumber;
+    document.getElementById('accountHolderName').value = accountHolderName;
+    document.getElementById('routingNumber').value = routingNumber || '';
+    document.getElementById('setAsPrimary').checked = false;
+    document.getElementById('bankAccountModal').style.display = 'flex';
+    
+    // Clear all field errors
+    FieldValidator.clearAll();
+    hideBankNameWarning();
+    
+    // Initialize bank name validation
+    initBankNameAutocomplete();
+}
+
+function closeBankModal() {
+    document.getElementById('bankAccountModal').style.display = 'none';
+}
+
+// Bank Name Autocomplete Helper
+let bankNameLocked = false;
+let lastLockedValue = '';
+
+function initBankNameAutocomplete() {
+    const bankNameInput = document.getElementById('bankName');
+    if (!bankNameInput) return;
+    
+    // Reset lock state when modal opens
+    bankNameLocked = false;
+    lastLockedValue = '';
+    unlockBankName();
+    
+    // Add icon to indicate searchable
+    bankNameInput.addEventListener('focus', function() {
+        if (!bankNameLocked) {
+            this.placeholder = 'Type: Vietcombank, BIDV, Techcombank...';
+        }
+    });
+    
+    bankNameInput.addEventListener('blur', function() {
+        if (!bankNameLocked) {
+            this.placeholder = 'Type to search Vietnamese banks...';
+            validateBankName();
+        }
+    });
+    
+    // Detect when user selects from datalist or types
+    bankNameInput.addEventListener('input', function() {
+        const value = this.value.trim();
+        const datalist = document.getElementById('vietnamBanksList');
+        const options = datalist.querySelectorAll('option');
+        
+        // Check if current value exactly matches any option
+        let exactMatch = false;
+        options.forEach(option => {
+            if (option.value.toLowerCase() === value.toLowerCase()) {
+                exactMatch = true;
+            }
+        });
+        
+        // If locked and user tries to edit
+        if (bankNameLocked && value !== lastLockedValue) {
+            // User is editing locked value - unlock and show warning
+            unlockBankName();
+            if (value.length > 0 && !exactMatch) {
+                showBankNameWarning();
+            } else {
+                hideBankNameWarning();
+            }
+        }
+        
+        // Visual feedback
+        if (value.length > 0) {
+            if (exactMatch) {
+                this.style.borderColor = '#10b981'; // Green border for exact match
+                hideBankNameWarning();
+            } else {
+                this.style.borderColor = '#d1d5db'; // Default border
+            }
+        } else {
+            this.style.borderColor = '#d1d5db';
+            hideBankNameWarning();
+        }
+    });
+    
+    // Detect selection from datalist (using change event)
+    bankNameInput.addEventListener('change', function() {
+        validateAndLockBankName();
+    });
+}
+
+function validateAndLockBankName() {
+    const bankNameInput = document.getElementById('bankName');
+    const value = bankNameInput.value.trim();
+    const datalist = document.getElementById('vietnamBanksList');
+    const options = datalist.querySelectorAll('option');
+    
+    // Check if value exactly matches any option
+    let exactMatch = false;
+    options.forEach(option => {
+        if (option.value.toLowerCase() === value.toLowerCase()) {
+            exactMatch = true;
+        }
+    });
+    
+    // Lock if exact match found
+    if (exactMatch && value.length > 0) {
+        lockBankName(value);
+    }
+}
+
+function validateBankName() {
+    const bankNameInput = document.getElementById('bankName');
+    const value = bankNameInput.value.trim();
+    
+    if (value.length === 0) {
+        hideBankNameWarning();
+        return;
+    }
+    
+    const datalist = document.getElementById('vietnamBanksList');
+    const options = datalist.querySelectorAll('option');
+    
+    let exactMatch = false;
+    options.forEach(option => {
+        if (option.value.toLowerCase() === value.toLowerCase()) {
+            exactMatch = true;
+        }
+    });
+    
+    if (!exactMatch && !bankNameLocked) {
+        showBankNameWarning();
+    } else {
+        hideBankNameWarning();
+    }
+}
+
+function lockBankName(value) {
+    bankNameLocked = true;
+    lastLockedValue = value;
+    
+    const bankNameInput = document.getElementById('bankName');
+    const changeBankBtn = document.getElementById('changeBankBtn');
+    const bankNameLock = document.getElementById('bankNameLocked');
+    
+    bankNameInput.readOnly = true;
+    bankNameInput.style.borderColor = '#10b981';
+    bankNameInput.style.backgroundColor = '#f0fdf4';
+    
+    changeBankBtn.style.display = 'block';
+    bankNameLock.style.display = 'none';
+    
+    hideBankNameWarning();
+}
+
+function unlockBankName() {
+    bankNameLocked = false;
+    lastLockedValue = '';
+    
+    const bankNameInput = document.getElementById('bankName');
+    const changeBankBtn = document.getElementById('changeBankBtn');
+    const bankNameLock = document.getElementById('bankNameLocked');
+    
+    if (bankNameInput) {
+        bankNameInput.readOnly = false;
+        bankNameInput.style.borderColor = '#d1d5db';
+        bankNameInput.style.backgroundColor = '#ffffff';
+    }
+    
+    if (changeBankBtn) changeBankBtn.style.display = 'none';
+    if (bankNameLock) bankNameLock.style.display = 'none';
+}
+
+function showBankNameWarning() {
+    const warning = document.getElementById('bankNameWarning');
+    if (warning) {
+        warning.style.display = 'flex';
+    }
+}
+
+function hideBankNameWarning() {
+    const warning = document.getElementById('bankNameWarning');
+    if (warning) {
+        warning.style.display = 'none';
+    }
+}
+
+// Field Validation Helper - Optimized
+const FieldValidator = {
+    fields: {
+        accountNumber: {
+            inputId: 'accountNumber',
+            errorId: 'accountNumberError',
+            errorTextId: 'accountNumberErrorText',
+            rules: {
+                required: true,
+                pattern: /^\d+$/,
+                patternError: 'Please enter a valid account number (digits only).',
+                minLength: 8,
+                maxLength: 17,
+                lengthError: 'Account number must be between 8 and 17 digits.',
+                digitsOnly: true
+            }
+        },
+        accountHolderName: {
+            inputId: 'accountHolderName',
+            errorId: 'accountHolderNameError',
+            errorTextId: 'accountHolderNameErrorText',
+            rules: {
+                required: true,
+                noWhitespaceOnly: true,
+                whitespaceError: 'Account holder name cannot contain only whitespace.',
+                pattern: /^[a-zA-Z\s]+$/,
+                patternError: 'Name cannot contain special characters.'
+            }
+        },
+        routingNumber: {
+            inputId: 'routingNumber',
+            errorId: 'routingNumberError',
+            errorTextId: 'routingNumberErrorText',
+            rules: {
+                required: false,
+                pattern: /^\d+$/,
+                patternError: 'Please enter a valid routing number (digits only).',
+                maxLength: 50,
+                lengthError: 'Routing number cannot exceed 50 characters.',
+                digitsOnly: true
+            }
+        }
+    },
+
+    // Show error message
+    showError(input, errorDiv, errorText, message) {
+        input.style.borderColor = '#ef4444';
+        errorText.textContent = message;
+        errorDiv.style.display = 'flex';
+    },
+
+    // Show success (green border temporarily)
+    showSuccess(input) {
+        input.style.borderColor = '#10b981';
+        setTimeout(() => {
+            input.style.borderColor = '#d1d5db';
+        }, 1000);
+    },
+
+    // Clear error
+    clearError(input, errorDiv) {
+        input.style.borderColor = '#d1d5db';
+        errorDiv.style.display = 'none';
+    },
+
+    // Validate single field
+    validate(fieldName) {
+        const config = this.fields[fieldName];
+        if (!config) return true;
+
+        const input = document.getElementById(config.inputId);
+        const errorDiv = document.getElementById(config.errorId);
+        const errorText = document.getElementById(config.errorTextId);
+
+        if (!input || !errorDiv || !errorText) return true;
+
+        const value = input.value.trim();
+        const rules = config.rules;
+
+        // Clear previous errors
+        this.clearError(input, errorDiv);
+
+        // Required check
+        if (rules.required && value.length === 0) {
+            return false; // HTML5 required will handle empty
+        }
+
+        // Optional field - empty is valid
+        if (!rules.required && value.length === 0) {
+            return true;
+        }
+
+        // No whitespace only check
+        if (rules.noWhitespaceOnly && /^\s+$/.test(value)) {
+            this.showError(input, errorDiv, errorText, rules.whitespaceError);
+            return false;
+        }
+
+        // Pattern validation
+        if (rules.pattern && !rules.pattern.test(value)) {
+            this.showError(input, errorDiv, errorText, rules.patternError);
+            return false;
+        }
+
+        // Length validation
+        if (rules.minLength && value.length < rules.minLength) {
+            this.showError(input, errorDiv, errorText, rules.lengthError);
+            return false;
+        }
+        if (rules.maxLength && value.length > rules.maxLength) {
+            this.showError(input, errorDiv, errorText, rules.lengthError);
+            return false;
+        }
+
+        // Valid - show success indicator
+        if (rules.required) {
+            this.showSuccess(input);
+        }
+        return true;
+    },
+
+    // Setup event listeners for a field
+    setupField(fieldName) {
+        const config = this.fields[fieldName];
+        if (!config) return;
+
+        const input = document.getElementById(config.inputId);
+        if (!input) return;
+
+        // Input and blur events
+        ['input', 'blur'].forEach(eventType => {
+            input.addEventListener(eventType, () => this.validate(fieldName));
+        });
+
+        // Digits only keypress restriction
+        if (config.rules.digitsOnly) {
+            input.addEventListener('keypress', (e) => {
+                if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+        }
+    },
+
+    // Initialize all fields
+    init() {
+        Object.keys(this.fields).forEach(fieldName => {
+            this.setupField(fieldName);
+        });
+    },
+
+    // Clear all errors
+    clearAll() {
+        Object.values(this.fields).forEach(config => {
+            const input = document.getElementById(config.inputId);
+            const errorDiv = document.getElementById(config.errorId);
+            if (input && errorDiv) {
+                this.clearError(input, errorDiv);
+            }
+        });
+    },
+
+    // Validate all fields (for form submission)
+    validateAll() {
+        return Object.keys(this.fields).every(fieldName => this.validate(fieldName));
+    }
+};
+
+// Form validation on submit
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize field validators
+    FieldValidator.init();
+    
+    const form = document.getElementById('bankAccountForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            let hasErrors = false;
+            let firstErrorField = null;
+            
+            // 1. Validate Bank Name
+            const bankNameInput = document.getElementById('bankName');
+            if (bankNameInput) {
+                const value = bankNameInput.value.trim();
+                if (value.length === 0) {
+                    hasErrors = true;
+                    if (!firstErrorField) firstErrorField = bankNameInput;
+                } else {
+                    // Check if bank name matches datalist
+                    const datalist = document.getElementById('vietnamBanksList');
+                    if (datalist) {
+                        const options = datalist.querySelectorAll('option');
+                        let exactMatch = false;
+                        options.forEach(option => {
+                            if (option.value.toLowerCase() === value.toLowerCase()) {
+                                exactMatch = true;
+                            }
+                        });
+                        
+                        // If not locked and doesn't match, show warning and confirmation
+                        if (!bankNameLocked && !exactMatch) {
+                            showBankNameWarning();
+                            if (!firstErrorField) firstErrorField = bankNameInput;
+                            hasErrors = true;
+                        }
+                    }
+                }
+            }
+            
+            // 2. Validate all form fields
+            const fieldOrder = ['accountHolderName', 'accountNumber', 'routingNumber'];
+            fieldOrder.forEach(fieldName => {
+                if (!FieldValidator.validate(fieldName)) {
+                    hasErrors = true;
+                    if (!firstErrorField) {
+                        const config = FieldValidator.fields[fieldName];
+                        firstErrorField = document.getElementById(config.inputId);
+                    }
+                }
+            });
+            
+            // If there are errors, prevent submission
+            if (hasErrors) {
+                e.preventDefault();
+                
+                // Scroll to first error field
+                if (firstErrorField) {
+                    firstErrorField.focus();
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                // If only bank name warning (not locked), show confirmation
+                const bankNameValue = bankNameInput ? bankNameInput.value.trim() : '';
+                if (bankNameValue.length > 0 && !bankNameLocked) {
+                    const datalist = document.getElementById('vietnamBanksList');
+                    if (datalist) {
+                        const options = datalist.querySelectorAll('option');
+                        let exactMatch = false;
+                        options.forEach(option => {
+                            if (option.value.toLowerCase() === bankNameValue.toLowerCase()) {
+                                exactMatch = true;
+                            }
+                        });
+                        
+                        if (!exactMatch && FieldValidator.validateAll()) {
+                            const proceed = confirm('⚠️ Warning: The bank name you entered is not in our list.\n\nThis may cause issues with bank account verification.\n\nDo you want to continue anyway?\n\n• Click OK to proceed with custom bank name\n• Click Cancel to select from the dropdown');
+                            
+                            if (proceed) {
+                                // User confirmed - submit form
+                                hideBankNameWarning();
+                                form.submit();
+                            } else {
+                                // User cancelled - focus on bank name field
+                                bankNameInput.focus();
+                            }
+                        }
+                    }
+                }
+                
+                return false;
+            }
+        });
+    }
+});
+
+// View refund details
+async function viewRefundDetails(refundId) {
+    const modal = document.getElementById('refundDetailModal');
+    const loading = document.getElementById('refundLoading');
+    const content = document.getElementById('refundContent');
+    
+    // Show modal with loading state
+    modal.style.display = 'block';
+    loading.style.display = 'flex';
+    content.style.display = 'none';
+    
+    try {
+        // Call through PageModel handler to use server-side authentication
+        const response = await fetch(`?handler=RefundDetail&refundId=${refundId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load refund details');
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.message || 'Failed to load refund details');
+        }
+        
+        // Parse the nested JSON response
+        const apiResponse = JSON.parse(result.data);
+        const refund = apiResponse.data;
+        
+        // Hide loading, show content
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        
+        // Populate status banner
+        populateStatusBanner(refund);
+        
+        // Populate order information
+        document.getElementById('refundOrderCode').textContent = refund.orderCode || '-';
+        document.getElementById('refundCreatedDate').textContent = refund.createdAt ? 
+            new Date(refund.createdAt).toLocaleString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }) : '-';
+        document.getElementById('refundProcessedDate').textContent = refund.processedAt ? 
+            new Date(refund.processedAt).toLocaleString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }) : 'Pending';
+        
+        // Populate amount breakdown
+        document.getElementById('refundOriginalAmount').textContent = formatCurrency(refund.originalDepositAmount);
+        
+        const penaltyRow = document.getElementById('penaltyRow');
+        if (refund.totalPenaltyAmount > 0) {
+            penaltyRow.style.display = 'flex';
+            document.getElementById('refundPenaltyAmount').textContent = '-' + formatCurrency(refund.totalPenaltyAmount);
+        } else {
+            penaltyRow.style.display = 'none';
+        }
+        
+        document.getElementById('refundTotalAmount').textContent = formatCurrency(refund.refundAmount);
+        
+        // Populate violations (if any)
+        const violationsSection = document.getElementById('violationsSection');
+        const violationsList = document.getElementById('violationsList');
+        
+        if (refund.violations && refund.violations.length > 0) {
+            violationsSection.style.display = 'block';
+            violationsList.innerHTML = refund.violations.map(v => `
+                <div class="violation-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div class="violation-content">
+                        <div class="violation-type">${v.violationType || 'Violation'}</div>
+                        <div class="violation-description">${v.description || 'No description provided'}</div>
+                        <div class="violation-penalty">Penalty: ${formatCurrency(v.penaltyAmount)}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            violationsSection.style.display = 'none';
+        }
+        
+        // Populate bank account information
+        const bankInfoContent = document.getElementById('bankInfoContent');
+        const noBankInfo = document.getElementById('noBankInfo');
+        
+        if (refund.bankInfo && refund.bankInfo.bankName) {
+            bankInfoContent.style.display = 'block';
+            noBankInfo.style.display = 'none';
+            
+            document.getElementById('refundBankName').textContent = refund.bankInfo.bankName || '-';
+            document.getElementById('refundAccountHolder').textContent = refund.bankInfo.accountHolderName || '-';
+            document.getElementById('refundAccountNumber').textContent = refund.bankInfo.accountNumber || '-';
+            
+            const routingNumberRow = document.getElementById('routingNumberRow');
+            if (refund.bankInfo.routingNumber) {
+                routingNumberRow.style.display = 'flex';
+                document.getElementById('refundRoutingNumber').textContent = refund.bankInfo.routingNumber;
+            } else {
+                routingNumberRow.style.display = 'none';
+            }
+        } else {
+            bankInfoContent.style.display = 'none';
+            noBankInfo.style.display = 'flex';
+        }
+        
+        // Populate admin notes (if any)
+        const adminNotesSection = document.getElementById('adminNotesSection');
+        if (refund.notes) {
+            adminNotesSection.style.display = 'block';
+            document.getElementById('refundAdminNotes').textContent = refund.notes;
+        } else {
+            adminNotesSection.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Error loading refund details:', error);
+        alert('Failed to load refund details. Please try again.');
+        modal.style.display = 'none';
+    }
+}
+
+function populateStatusBanner(refund) {
+    const banner = document.getElementById('refundStatusBanner');
+    const title = document.getElementById('refundStatusTitle');
+    const description = document.getElementById('refundStatusDescription');
+    const icon = banner.querySelector('.status-icon');
+    
+    // Remove existing status classes
+    banner.classList.remove('completed', 'initiated', 'failed');
+    
+    const status = refund.status.toLowerCase();
+    
+    if (status === 'completed') {
+        banner.classList.add('completed');
+        title.textContent = 'Refund Completed ✓';
+        description.textContent = 'Your deposit has been successfully refunded to your bank account.';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else if (status === 'initiated') {
+        banner.classList.add('initiated');
+        title.textContent = 'Refund In Progress';
+        description.textContent = 'Your refund request is being processed by our admin team. Please allow 3-5 business days.';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />';
+    } else if (status === 'failed') {
+        banner.classList.add('failed');
+        title.textContent = 'Refund Failed';
+        description.textContent = 'There was an issue processing your refund. Please contact our support team for assistance.';
+        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+    }
+}
+
+function closeRefundDetailModal() {
+    document.getElementById('refundDetailModal').style.display = 'none';
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const bankModal = document.getElementById('bankAccountModal');
+    const refundModal = document.getElementById('refundDetailModal');
+    const filterModal = document.getElementById('filterModal');
+    
+    if (event.target == bankModal) {
+        bankModal.style.display = 'none';
+    }
+    
+    if (event.target == refundModal) {
+        refundModal.style.display = 'none';
+    }
+    
+    if (event.target == filterModal) {
+        filterModal.style.display = 'none';
+    }
+}
+</script>
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.close-btn:hover {
+    color: #374151;
+}
+
+#bankAccountForm {
+    padding: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+.form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.btn-secondary {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background-color: white;
+    color: #374151;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-secondary:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+    border-color: #9ca3af;
+}
+
+.btn-primary {
+    padding: 0.5rem 1rem;
+    background-color: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background-color: #5b59f6;
+}
+
+.inline-form {
+    display: inline-block;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid;
+}
+
+.action-btn svg {
+    width: 1rem;
+    height: 1rem;
+    stroke-width: 2;
+}
+
+.primary-btn {
+    background-color: #eff6ff;
+    color: #1e40af;
+    border-color: #bfdbfe;
+}
+
+.primary-btn:hover {
+    background-color: #dbeafe;
+    border-color: #93c5fd;
+}
+
+.edit-btn {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border-color: #bbf7d0;
+}
+
+.edit-btn:hover {
+    background-color: #dcfce7;
+    border-color: #86efac;
+}
+
+.delete-btn {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.delete-btn:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6b7280;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon {
+    margin: 0 auto 1rem;
+    width: 48px;
+    height: 48px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: #6b7280;
+    margin: 0;
+}
+
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Refund Detail Modal Styles */
+.refund-detail-modal {
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    margin: 2% auto;
+}
+
+.refund-detail-modal .modal-body {
+    padding: 0;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #6b7280;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 1rem;
+    animation: rotate 1s linear infinite;
+}
+
+.spinner circle {
+    stroke: #8b5cf6;
+    stroke-linecap: round;
+    animation: dash 1.5s ease-in-out infinite;
+}
+
+@@keyframes rotate {
+    100% { transform: rotate(360deg); }
+}
+
+@@keyframes dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -124;
+    }
+}
+
+.refund-status-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    margin: 1.5rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.refund-status-banner.completed {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.refund-status-banner.initiated {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.refund-status-banner.failed {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.refund-status-banner .status-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.refund-status-banner h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.refund-status-banner p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.875rem;
+}
+
+.detail-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.section-title svg {
+    width: 20px;
+    height: 20px;
+    color: #8b5cf6;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.detail-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: #111827;
+    font-weight: 600;
+}
+
+/* Amount Breakdown */
+.amount-breakdown {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+}
+
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.amount-row:last-child {
+    border-bottom: none;
+}
+
+.amount-row.penalty {
+    color: #dc2626;
+}
+
+.amount-row.penalty span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.amount-row.penalty svg {
+    width: 18px;
+    height: 18px;
+}
+
+.amount-row.total {
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 2px solid #d1d5db;
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.amount-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.penalty-amount {
+    color: #dc2626;
+}
+
+.total-amount {
+    font-size: 1.5rem;
+    color: #10b981;
+}
+
+/* Violations */
+.violations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.violation-item {
+    display: flex;
+    align-items: start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+    border-radius: 6px;
+}
+
+.violation-item svg {
+    width: 20px;
+    height: 20px;
+    color: #dc2626;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.violation-content {
+    flex: 1;
+}
+
+.violation-type {
+    font-weight: 600;
+    color: #991b1b;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.violation-description {
+    font-size: 0.875rem;
+    color: #7f1d1d;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.violation-penalty {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #dc2626;
+}
+
+/* Bank Info */
+.bank-info-box {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.bank-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #dcfce7;
+}
+
+.bank-info-row:last-child {
+    border-bottom: none;
+}
+
+.bank-label {
+    font-size: 0.875rem;
+    color: #166534;
+    font-weight: 500;
+}
+
+.bank-value {
+    font-size: 1rem;
+    color: #14532d;
+    font-weight: 600;
+}
+
+.bank-value.account-number {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+.no-bank-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+    background: #fef2f2;
+    border: 1px dashed #fca5a5;
+    border-radius: 8px;
+}
+
+.no-bank-info svg {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 0.75rem;
+    color: #f87171;
+}
+
+.no-bank-info p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #991b1b;
+}
+
+/* Admin Notes */
+.admin-notes-box {
+    background: #fefce8;
+    border: 1px solid #fde047;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.admin-notes-box p {
+    margin: 0;
+    color: #713f12;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* Filter Styles */
+.filter-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.2s ease;
+}
+
+.filter-action-btn:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.filter-action-btn.active {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+    color: #1e40af;
+}
+
+.filter-action-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.active-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+#filterChipsContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    color: #1e40af;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.filter-chip .remove-filter {
+    color: #1e40af;
+    text-decoration: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.filter-chip .remove-filter:hover {
+    color: #1e3a8a;
+}
+
+.clear-filters-btn {
+    padding: 0.375rem 0.75rem;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clear-filters-btn:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.filter-section {
+    padding: 1.5rem;
+}
+
+.filter-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.filter-section-title svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #8b5cf6;
+}
+
+.filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.filter-checkbox:hover {
+    background-color: #f9fafb;
+}
+
+.filter-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.checkbox-custom {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #d1d5db;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.filter-checkbox input[type="checkbox"]:checked + .checkbox-custom {
+    background-color: #8b5cf6;
+    border-color: #8b5cf6;
+}
+
+.filter-checkbox input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: "✓";
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.checkbox-label {
+    flex: 1;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.section-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Clear Filter Button */
+.btn-clear-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-clear-filter:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.btn-clear-filter svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Pagination Styles */
+.pagination-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 0;
+    margin-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.pagination-info strong {
+    color: #111827;
+    font-weight: 600;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #f9fafb;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(.disabled) {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.pagination-number {
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.5rem;
+    background-color: #ffffff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination-number:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.pagination-number.active {
+    background-color: #8b5cf6;
+    color: white;
+    border-color: #8b5cf6;
+}
+
+.pagination-ellipsis {
+    padding: 0 0.5rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+@@media (max-width: 768px) {
+    .pagination-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .pagination-controls {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+

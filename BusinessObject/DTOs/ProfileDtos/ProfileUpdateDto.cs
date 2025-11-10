@@ -9,8 +9,9 @@ namespace BusinessObject.DTOs.ProfileDtos
 {
     public class ProfileUpdateDto
     {
-        [Required(ErrorMessage = "Full name is required.")]
+        [Required(ErrorMessage = "Full Name is required.")]
         [MaxLength(255)]
+        [Display(Name = "Full Name")]
         public string FullName { get; set; }
 
         [MaxLength(50, ErrorMessage = "Phone number cannot exceed 50 characters.")]

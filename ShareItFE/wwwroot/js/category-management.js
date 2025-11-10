@@ -420,6 +420,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
         
+        if (!categoryDescriptionInput.value.trim()) {
+            showToast('error', 'Category description is required');
+            return false;
+        }
+        
         if (categoryDescriptionInput.value.length > 255) {
             showToast('error', 'Description must be 255 characters or less');
             return false;
@@ -1080,6 +1085,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
+                    // Update checkbox state
+                    if (checkbox) {
+                        checkbox.checked = newStatus;
+                    }
+                    
                     // Update data attribute
                     toggleSwitch.dataset.isActive = newStatus.toString();
                     
@@ -1097,12 +1107,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         row.dataset.isActive = newStatus.toString();
                     }
                     
+                    // Update allCategories array
+                    const category = allCategories.find(c => c.id === categoryId);
+                    if (category) {
+                        category.isActive = newStatus;
+                    }
+                    
                     showToast('success', `Category ${newStatus ? 'activated' : 'deactivated'} successfully`);
                     
-                    // Reload after a short delay to update statistics
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                    // Update statistics without reloading page
+                    updateStatistics();
                 } else {
                     // Revert checkbox on error
                     checkbox.checked = currentStatus;
@@ -1111,7 +1125,22 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Revert checkbox on error
                 checkbox.checked = currentStatus;
-                showToast('error', 'Failed to update category status');
+                
+                // Try to parse error response to extract message
+                try {
+                    const errorText = await response.text();
+                    const errorData = JSON.parse(errorText);
+                    
+                    // Check if it's wrapped in ApiResponse format
+                    if (errorData.message) {
+                        showToast('error', errorData.message);
+                    } else {
+                        showToast('error', errorText || 'Failed to update category status');
+                    }
+                } catch (parseError) {
+                    // If parsing fails, show generic error
+                    showToast('error', 'Failed to update category status');
+                }
             }
         } catch (error) {
             console.error('Error toggling status:', error);
@@ -1392,5 +1421,29 @@ document.addEventListener('DOMContentLoaded', function() {
     function getAntiForgeryToken() {
         const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
         return tokenElement ? tokenElement.value : '';
+    }
+    
+    function updateStatistics() {
+        // Count categories from allCategories array (not filtered)
+        let totalCategories = allCategories.length;
+        let activeCategories = 0;
+        let inactiveCategories = 0;
+        
+        allCategories.forEach(cat => {
+            if (cat.isActive) {
+                activeCategories++;
+            } else {
+                inactiveCategories++;
+            }
+        });
+        
+        // Update stat cards
+        const totalCategoriesEl = document.getElementById('totalCategories');
+        const activeCategoriesEl = document.getElementById('activeCategories');
+        const inactiveCategoriesEl = document.getElementById('inactiveCategories');
+        
+        if (totalCategoriesEl) totalCategoriesEl.textContent = totalCategories;
+        if (activeCategoriesEl) activeCategoriesEl.textContent = activeCategories;
+        if (inactiveCategoriesEl) inactiveCategoriesEl.textContent = inactiveCategories;
     }
 });

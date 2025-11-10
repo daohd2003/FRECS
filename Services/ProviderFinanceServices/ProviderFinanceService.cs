@@ -28,7 +28,7 @@ namespace Services.ProviderFinanceServices
 
         public async Task<BankAccount?> GetPrimaryBankAccount(Guid providerId)
         {
-            return await _bankAccountRepo.GetPrimaryAccountByProviderAsync(providerId);
+            return await _bankAccountRepo.GetPrimaryAccountByUserAsync(providerId);
         }
 
         public async Task<IEnumerable<TransactionSummaryDto>> GetTransactionDetails(Guid providerId)
@@ -41,9 +41,9 @@ namespace Services.ProviderFinanceServices
             return await _transactionRepo.GetAllProviderPaymentsSummaryAsync();
         }
 
-        public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync()
+        public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
-            return await _transactionRepo.GetAllProviderPaymentsAsync();
+            return await _transactionRepo.GetAllProviderPaymentsAsync(startDate, endDate);
         }
     }
 }

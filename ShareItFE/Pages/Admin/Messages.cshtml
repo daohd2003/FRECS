@@ -2,6 +2,7 @@
 @model ShareItFE.Pages.Admin.MessagesModel
 @{
     ViewData["Title"] = "Admin Messages";
+    Layout = "_AdminLayout";
 }
 
 <link rel="stylesheet" href="~/css/chat.css" />
@@ -239,8 +240,12 @@
 
             async function loadConversations() {
                 try {
-                    const response = await fetch(`${apiUrl}/conversations`, {
-                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    // ✅ Cache-busting: Force fresh data mỗi lần load
+                    const response = await fetch(`${apiUrl}/conversations?_=${Date.now()}`, {
+                        headers: { 
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Cache-Control': 'no-cache' // ✅ Disable browser cache
+                        }
                     });
                     if (!response.ok) throw new Error("Failed to load conversations");
                     conversations = await response.json();
@@ -465,6 +470,10 @@
                                 convoToUpdate.unreadMessageCount = (convoToUpdate.unreadMessageCount || 0) + 1;
                             }
                             renderConversationList();
+                        } else {
+                            // ✅ NEW: Conversation mới (chưa có trong danh sách) → Reload
+                            console.log("[CHAT] New conversation detected - reloading conversation list");
+                            loadConversations(); // Reload để hiển thị conversation mới
                         }
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {

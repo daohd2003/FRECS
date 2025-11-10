@@ -1,4 +1,5 @@
 ﻿using BusinessObject.DTOs.NotificationDto;
+using BusinessObject.DTOs.PagingDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using Hubs;
@@ -6,6 +7,8 @@ using Microsoft.AspNetCore.SignalR;
 using Repositories.NotificationRepositories;
 using Repositories.RepositoryBase;
 using BusinessObject.Utilities;
+using DataAccess;
+using Microsoft.EntityFrameworkCore;
 
 namespace Services.NotificationServices
 {
@@ -14,12 +17,14 @@ namespace Services.NotificationServices
         private readonly INotificationRepository _notificationRepository;
         private readonly IRepository<Order> _orderRepository;
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ShareItDbContext _context;
 
-        public NotificationService(INotificationRepository notificationRepository, IRepository<Order> orderRepository, IHubContext<NotificationHub> hubContext)
+        public NotificationService(INotificationRepository notificationRepository, IRepository<Order> orderRepository, IHubContext<NotificationHub> hubContext, ShareItDbContext context)
         {
             _notificationRepository = notificationRepository;
             _orderRepository = orderRepository;
             _hubContext = hubContext;
+            _context = context;
         }
 
         public async Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false)
@@ -41,17 +46,43 @@ namespace Services.NotificationServices
             }
 
             // 2. Chuyển đổi (Map) từ Notification sang NotificationResponse
-            var notificationResponses = notifications.Select(n => new NotificationResponse
+            var notificationResponses = new List<NotificationResponse>();
+            
+            foreach (var n in notifications)
             {
-                Id = n.Id,
-                Message = n.Message,
-                IsRead = n.IsRead,
-                CreatedAt = n.CreatedAt,
-                Type = n.Type,
-                OrderId = n.OrderId
-                // Tạo link URL động dựa trên loại thông báo và OrderId
-                /*LinkUrl = GenerateNotificationLink(n.Type, n.OrderId)*/
-            });
+                bool? isUserProvider = null;
+                
+                // Nếu notification có OrderId, kiểm tra user có phải là provider không
+                if (n.OrderId.HasValue && n.OrderId.Value != Guid.Empty)
+                {
+                    var order = await _context.Orders
+                        .Include(o => o.Items)
+                        .ThenInclude(oi => oi.Product)
+                        .FirstOrDefaultAsync(o => o.Id == n.OrderId.Value);
+                    
+                    if (order != null)
+                    {
+                        // Check nếu user là provider của bất kỳ item nào trong order
+                        // (tất cả items trong cùng 1 order thường cùng 1 provider)
+                        var firstItem = order.Items.FirstOrDefault();
+                        if (firstItem?.Product != null)
+                        {
+                            isUserProvider = (firstItem.Product.ProviderId == userId);
+                        }
+                    }
+                }
+                
+                notificationResponses.Add(new NotificationResponse
+                {
+                    Id = n.Id,
+                    Message = n.Message,
+                    IsRead = n.IsRead,
+                    CreatedAt = n.CreatedAt,
+                    Type = n.Type,
+                    OrderId = n.OrderId,
+                    IsUserProvider = isUserProvider
+                });
+            }
 
             return notificationResponses;
         }
@@ -201,14 +232,75 @@ namespace Services.NotificationServices
         public async Task NotifyTransactionFailed(Guid orderId, Guid userId)
         {
             var message = $"Order #{orderId} transaction has been failed.";
-            // Giả sử có lưu notification vào DB
-            await _notificationRepository.AddAsync(new Notification
+            
+            // Save notification to DB
+            var notification = new Notification
             {
                 OrderId = orderId,
                 Message = message,
                 CreatedAt = DateTimeHelper.GetVietnamTime(),
-                UserId = userId
-            });
+                UserId = userId,
+                Type = NotificationType.order,
+                IsRead = false
+            };
+            
+            await _notificationRepository.AddAsync(notification);
+            
+            // Send realtime notification via SignalR
+            await _hubContext.Clients.Group($"notifications-{userId}")
+                .SendAsync("ReceiveNotification", message);
+        }
+
+        public async Task NotifyTransactionFailedByTransactionId(Guid transactionId, Guid userId)
+        {
+            // Query transaction with orders from database
+            var transaction = await _context.Transactions
+                .Include(t => t.Orders)
+                .FirstOrDefaultAsync(t => t.Id == transactionId);
+
+            if (transaction != null && transaction.Orders != null && transaction.Orders.Any())
+            {
+                // Send notification for each order in the transaction
+                foreach (var order in transaction.Orders)
+                {
+                    await NotifyTransactionFailed(order.Id, userId);
+                }
+            }
+        }
+
+        public async Task<PagedResult<NotificationResponse>> GetPagedNotifications(
+            Guid userId,
+            int page,
+            int pageSize,
+            string? searchTerm = null,
+            NotificationType? filterType = null,
+            bool? isRead = null)
+        {
+            var (items, totalCount) = await _notificationRepository.GetPagedNotificationsAsync(
+                userId, page, pageSize, searchTerm, filterType, isRead);
+
+            var notificationResponses = items.Select(n => new NotificationResponse
+            {
+                Id = n.Id,
+                Message = n.Message,
+                IsRead = n.IsRead,
+                CreatedAt = n.CreatedAt,
+                Type = n.Type,
+                OrderId = n.OrderId
+            }).ToList();
+
+            return new PagedResult<NotificationResponse>
+            {
+                Items = notificationResponses,
+                TotalCount = totalCount,
+                PageSize = pageSize,
+                CurrentPage = page
+            };
+        }
+
+        public async Task DeleteNotification(Guid notificationId)
+        {
+            await _notificationRepository.DeleteNotificationAsync(notificationId);
         }
 
         /*/// <summary>

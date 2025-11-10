@@ -52,6 +52,9 @@ namespace ShareItFE.Pages
         [BindProperty]
         public ChangePasswordRequest ChangePassword { get; set; }
 
+        [TempData]
+        public bool ShowChangePasswordForm { get; set; }
+
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
         public string AccessToken { get; set; }
 
@@ -63,24 +66,24 @@ namespace ShareItFE.Pages
             // Handle VNPay payment status from callback
             if (!string.IsNullOrEmpty(paymentStatus))
             {
-                // Clear any existing TempData messages to prevent showing old toast messages
-                TempData.Remove("SuccessMessage");
-                TempData.Remove("ErrorMessage");
-                
+                // Set message in TempData
                 switch (paymentStatus.ToLower())
                 {
                     case "success":
-                        SuccessMessage = "Payment completed successfully! Your order has been confirmed.";
+                        TempData["SuccessMessage"] = "Payment completed successfully! Your order has been confirmed.";
                         break;
                     case "failed":
-                        ErrorMessage = !string.IsNullOrEmpty(vnp_Message) 
+                        TempData["ErrorMessage"] = !string.IsNullOrEmpty(vnp_Message) 
                             ? $"Payment failed: {vnp_Message}" 
                             : "Payment failed. Please try again.";
                         break;
                     case "error":
-                        ErrorMessage = "An error occurred during payment processing. Please contact support if this persists.";
+                        TempData["ErrorMessage"] = "An error occurred during payment processing. Please contact support if this persists.";
                         break;
                 }
+                
+                // Redirect to remove query string from URL (prevents message from reappearing on back navigation)
+                return RedirectToPage("/Profile", new { tab = tab, page = pageNum });
             }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -237,10 +240,18 @@ namespace ShareItFE.Pages
 
         public async Task<IActionResult> OnPostChangePasswordAsync()
         {
+            // Remove Profile validation errors from ModelState
+            ModelState.Remove("Profile.FullName");
+            ModelState.Remove("Profile.Phone");
+            ModelState.Remove("Profile.Address");
+            ModelState.Remove("Profile.Email");
+            ModelState.Remove("Profile.Avatar");
+
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
                 ErrorMessage = string.Join(" ", errors);
+                ShowChangePasswordForm = true;
                 return RedirectToPage(new { tab = "settings" });
             }
 
@@ -264,6 +275,7 @@ namespace ShareItFE.Pages
             {
                 var errorResponse = await response.Content.ReadFromJsonAsync<ApiResponse<string>>();
                 ErrorMessage = errorResponse?.Message ?? "An error occurred while changing the password.";
+                ShowChangePasswordForm = true;
             }
 
             return RedirectToPage(new { tab = "settings" });

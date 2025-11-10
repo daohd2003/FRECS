@@ -9,12 +9,37 @@ let editStatusActive = true;
 $(document).ready(function() {
     loadStaffList();
     initializeEventHandlers();
+    checkUrlParams();
     
     // Initialize Lucide icons
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
 });
+
+// Check URL params for auto-opening detail modal
+function checkUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const staffId = urlParams.get('staffId');
+    const openDetail = urlParams.get('openDetail');
+    
+    if (staffId && openDetail === 'true') {
+        // Wait for staff list to load, then open the edit modal
+        const checkStaffLoaded = setInterval(function() {
+            if (allStaffList && allStaffList.length > 0) {
+                clearInterval(checkStaffLoaded);
+                openEditModal(staffId);
+                // Clean up URL without page reload
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }, 100);
+        
+        // Timeout after 5 seconds
+        setTimeout(function() {
+            clearInterval(checkStaffLoaded);
+        }, 5000);
+    }
+}
 
 // Event handlers
 function initializeEventHandlers() {

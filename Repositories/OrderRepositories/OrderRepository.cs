@@ -127,13 +127,27 @@ namespace Repositories.OrderRepositories
 
         public Task<string?> GetOrderItemId(Guid customerId, Guid productId)
         {
+            // Get OrderItem that:
+            // 1. Belongs to a completed order (returned for rental, in_use for purchase)
+            // 2. Matches the productId
+            // 3. Does NOT have feedback yet (not in Feedbacks table)
+            
+            // Valid statuses for feedback:
+            // - returned: Rental orders that have been returned
+            // - in_use: Orders that customer has confirmed received (both rental & purchase)
+            var validStatuses = new[] { 
+                OrderStatus.returned,      // Rental completed
+                OrderStatus.in_use         // Customer confirmed received
+            };
+            
             var orderItemId = _context.Orders
                 .Include(o => o.Items)
-                .Where(o => o.CustomerId == customerId && o.Status == OrderStatus.returned)
+                .Where(o => o.CustomerId == customerId && validStatuses.Contains(o.Status))
                 .OrderByDescending(o => o.CreatedAt)
-                .SelectMany(o => o.Items
-                    .Where(i => i.ProductId == productId)
-                    .Select(i => i.Id.ToString()))
+                .SelectMany(o => o.Items)
+                .Where(i => i.ProductId == productId && 
+                            !_context.Feedbacks.Any(f => f.OrderItemId == i.Id)) // Filter out items that already have feedback
+                .Select(i => i.Id.ToString())
                 .FirstOrDefault();
 
             return Task.FromResult(orderItemId);
