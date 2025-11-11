@@ -1,0 +1,2643 @@
+@page 
+@model ShareItFE.Pages.Staff.OrderAdministratorModel
+@{
+    ViewData["Title"] = "Order Administrator";
+    Layout = "/Pages/Shared/_Layout.cshtml";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/user-management.css" asp-append-version="true" />
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #e5e5e7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%);
+            z-index: 1;
+        }
+        
+        .modal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .modal-icon {
+            width: 40px;
+            height: 40px;
+            color: #8b5cf6;
+            background: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+        
+        .order-code {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+        
+        .download-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .download-btn:hover {
+            background: #059669;
+        }
+        
+        .download-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #86868b;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        
+        .close-btn:hover {
+            background: #f5f5f7;
+        }
+        
+        .modal-body {
+            padding: 2rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #86868b;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: #dc2626;
+            background: #fee2e2;
+            border-radius: 8px;
+        }
+        
+        .order-detail-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .info-section {
+            background: #fafafa;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 1rem;
+        }
+        
+        .section-title svg {
+            color: #8b5cf6;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .info-label {
+            font-size: 0.875rem;
+            color: #86868b;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            font-size: 0.95rem;
+            color: #1d1d1f;
+        }
+        
+        /* New Modal Design Styles */
+        .info-cards-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr) 1.2fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-card {
+            background: white;
+            border: 1px solid #e5e5e7;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .provider-card {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: none;
+        }
+        
+        .card-header {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        
+        .card-header svg {
+            width: 18px;
+            height: 18px;
+            color: #8b5cf6;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .card-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .card-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .card-label {
+            color: #86868b;
+        }
+        
+        .card-value {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .status-badge-sm {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .provider-info-main {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .provider-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #10b981;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+        
+        .provider-name-large {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1d1d1f;
+        }
+        
+        .provider-email {
+            font-size: 0.875rem;
+            color: #059669;
+            margin-top: 0.25rem;
+        }
+        
+        .products-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .section-header svg {
+            width: 20px;
+            height: 20px;
+            color: #8b5cf6;
+        }
+        
+        .products-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .products-table thead th {
+            text-align: left;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #86868b;
+            border-bottom: 2px solid #e5e5e7;
+        }
+        
+        .products-table tbody td {
+            padding: 1rem 0.75rem;
+            border-bottom: 1px solid #f5f5f7;
+        }
+        
+        .product-info-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .product-thumb {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 0.25rem;
+        }
+        
+        .product-color {
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .product-total {
+            font-weight: 700;
+            color: #8b5cf6;
+        }
+        
+        .summary-statistics-row {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .order-summary-card, .statistics-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        
+        .summary-header, .stats-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: #1d1d1f;
+        }
+        
+        .summary-header svg {
+            width: 20px;
+            height: 20px;
+            color: #8b5cf6;
+        }
+        
+        .summary-body {
+            background: linear-gradient(135deg, #f5f3ff 0%, #faf5ff 100%);
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+        
+        .summary-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .total-item {
+            padding-top: 1rem;
+            border-top: 2px solid #8b5cf6;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .total-value {
+            color: #8b5cf6;
+            font-size: 1.25rem;
+            white-space: nowrap;
+        }
+        
+        .stats-body {
+            background: #fafafa;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .stat-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .footer-info-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .dates-card, .additional-info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid #e5e5e7;
+        }
+        
+        .footer-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .footer-card-header svg {
+            width: 18px;
+            height: 18px;
+            color: #8b5cf6;
+        }
+        
+        .footer-card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .footer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+        
+        .footer-label {
+            color: #86868b;
+            font-weight: 500;
+        }
+        
+        .footer-value {
+            color: #1d1d1f;
+            font-weight: 600;
+            text-align: right;
+        }
+        
+        /* Filter Modal Styles */
+        .filter-modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        
+        .filter-modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+        
+        .filter-modal-body {
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .provider-search {
+            margin-bottom: 1rem;
+        }
+        
+        .provider-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .provider-item {
+            padding: 0.75rem;
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .provider-item:hover {
+            background: #f5f3ff;
+            border-color: #8b5cf6;
+        }
+        
+        .provider-item.selected {
+            background: #f5f3ff;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+        
+        .provider-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .provider-info-filter {
+            flex: 1;
+        }
+        
+        .provider-name-filter {
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 0.25rem;
+        }
+        
+        .provider-count {
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+        
+        .filter-modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid #e5e5e7;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+        
+        .btn-primary {
+            padding: 0.75rem 1.5rem;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background: #7c3aed;
+        }
+        
+        .btn-secondary {
+            padding: 0.75rem 1.5rem;
+            background: white;
+            color: #1d1d1f;
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            background: #f5f5f7;
+        }
+        
+        /* Skeleton Loading Styles */
+        .skeleton-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+            height: 20px;
+        }
+        
+        .skeleton-xs {
+            width: 80px;
+        }
+        
+        .skeleton-sm {
+            width: 120px;
+        }
+        
+        .skeleton-md {
+            width: 150px;
+        }
+        
+        .skeleton-lg {
+            width: 200px;
+            flex: 1;
+        }
+        
+        @@keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+        
+        /* Search Loading Indicator */
+        .search-input-group {
+            position: relative;
+        }
+        
+        .search-loading {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e5e7;
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: none;
+        }
+        
+        .search-loading.active {
+            display: block;
+        }
+        
+        @@keyframes spin {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+        
+        /* Image Lightbox Styles */
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            padding-top: 50px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.9);
+        }
+        
+        .lightbox-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 80vh;
+            object-fit: contain;
+            animation: zoom 0.3s;
+        }
+        
+        @@keyframes zoom {
+            from {transform: scale(0.7)}
+            to {transform: scale(1)}
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .lightbox-close:hover,
+        .lightbox-close:focus {
+            color: #bbb;
+        }
+        
+        .lightbox-caption {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 700px;
+            text-align: center;
+            color: #ccc;
+            padding: 10px 0;
+            height: 50px;
+            font-size: 1rem;
+        }
+        
+        .product-thumbnail {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .product-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Print Styles */
+        @@media print {
+            body * {
+                visibility: hidden;
+            }
+            .modal, .modal * {
+                visibility: visible;
+            }
+            .modal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                background: white !important;
+            }
+            .download-btn,
+            .close-btn {
+                display: none !important;
+            }
+        }
+
+        .order-admin-container {
+            padding: 2rem;
+            background: #f5f5f7;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .header-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .header-section h1 {
+            font-size: 1.75rem;
+            color: #1d1d1f;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Tabs - Purple theme like image */
+        .tabs {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #e5e5e7;
+            background: white;
+            padding: 0 2rem;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .tab {
+            padding: 1rem 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #86868b;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .tab svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .tab.active {
+            color: #8b5cf6;
+            font-weight: 500;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #8b5cf6;
+        }
+
+        .tab-count {
+            background: #f5f5f7;
+            padding: 0.125rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+        }
+
+        .tab.active .tab-count {
+            background: #ede9fe;
+            color: #8b5cf6;
+        }
+
+        /* Filters */
+        .filters-section {
+            background: white;
+            padding: 1.5rem 2rem;
+            border-radius: 0 0 12px 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: #86868b;
+        }
+
+        .filter-select {
+            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386868b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+        }
+
+        /* Table */
+        .orders-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #fafafa;
+        }
+
+        th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        td {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #f5f5f7;
+            font-size: 0.95rem;
+            color: #1d1d1f;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        /* Order ID with icon */
+        .order-id {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #8b5cf6;
+            font-weight: 500;
+        }
+
+        .order-id svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Customer info */
+        .customer-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .customer-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .customer-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Diverse avatar colors */
+        .customer-avatar.color-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .customer-avatar.color-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .customer-avatar.color-green { background: linear-gradient(135deg, #10b981, #059669); }
+        .customer-avatar.color-orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .customer-avatar.color-pink { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .customer-avatar.color-teal { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+        .customer-avatar.color-indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .customer-avatar.color-red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .customer-name {
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+
+        .customer-email {
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+
+        /* Provider */
+        .provider-name {
+            font-weight: 500;
+        }
+
+        .provider-subtitle {
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+
+        /* Amount */
+        .amount {
+            color: #10b981;
+            font-weight: 600;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+
+        /* Rental period */
+        .rental-period {
+            font-size: 0.875rem;
+        }
+
+        .rental-dates {
+            color: #86868b;
+            font-size: 0.8125rem;
+        }
+
+        /* Date */
+        .date-time {
+            color: #1d1d1f;
+        }
+
+        /* View Details Button */
+        .btn-view {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 0.875rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+            white-space: nowrap;
+        }
+
+        .btn-view:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-view svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+        
+        .btn-view-text {
+            display: inline;
+        }
+        
+        @@media (max-width: 1200px) {
+            .btn-view {
+                padding: 0.5rem;
+                gap: 0;
+            }
+            .btn-view-text {
+                display: none;
+            }
+            .btn-view svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+        
+        /* Table Cell Styles */
+        .order-id {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            white-space: nowrap;
+        }
+        
+        .order-id svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: #6366f1;
+        }
+        
+        .order-code-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+        
+        .customer-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .customer-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .customer-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .customer-name {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .customer-email {
+            font-size: 0.875rem;
+            color: #86868b;
+        }
+        
+        .provider-name {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        
+        .provider-subtitle {
+            font-size: 0.875rem;
+            color: #86868b;
+            margin-top: 0.25rem;
+        }
+        
+        .amount {
+            font-weight: 700;
+            color: #10b981;
+            font-size: 1rem;
+        }
+        
+        .rental-period {
+            display: flex;
+            align-items: center;
+            color: #1d1d1f;
+            font-size: 0.875rem;
+        }
+        
+        .rental-dates {
+            font-size: 0.875rem;
+            color: #86868b;
+            margin-top: 0.25rem;
+        }
+        
+        .date-time {
+            color: #1d1d1f;
+            font-size: 0.875rem;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e5e5e7;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: #8b5cf6;
+            color: white;
+            border-color: #8b5cf6;
+        }
+
+        .pagination-info {
+            color: #86868b;
+            font-size: 0.875rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: fit-content;
+        }
+
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-approved { background: #dbeafe; color: #1e40af; }
+        .status-shipping { background: #e0e7ff; color: #4338ca; }
+        .status-in_use { background: #d1fae5; color: #065f46; }
+        .status-returned { background: #d1d5db; color: #374151; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+        .product-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .product-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .product-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #e5e7eb;
+        }
+
+        .product-info {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .product-details h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+        }
+
+        .product-meta {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .product-pricing {
+            text-align: right;
+        }
+
+        .product-price {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+
+        .summary-section {
+            background: #f3f4f6;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .summary-row.total {
+            border-top: 2px solid #d1d5db;
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #7c3aed;
+        }
+    </style>
+}
+<div class="user-management-container">
+    <!-- Header Section -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1 class="page-title">Order Administrator</h1>
+                <p class="page-description">View and manage all orders in the system</p>
+            </div>
+        </div>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger" role="alert" style="margin: 1rem 0; padding: 1rem; background-color: #fee; border: 1px solid #fcc; border-radius: 0.5rem; color: #c00;">
+            <strong>Error:</strong> @Model.ErrorMessage
+        </div>
+    }
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Total Orders</p>
+                    <p class="stat-value">@Model.TotalOrderCount</p>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <circle cx="12" cy="16" r="1"></circle>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Rental Orders</p>
+                    <p class="stat-value">@Model.TotalRentalOrders</p>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label">Purchase Orders</p>
+                    <p class="stat-value">@Model.TotalPurchaseOrders</p>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-header">
+                <div class="stat-icon stat-icon-yellow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <p class="stat-label" id="revenueLabelText">Total Revenue</p>
+                    <p class="stat-value" id="revenueValueText">@Model.TotalRevenue.ToString("N0")đ</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Tabs section -->
+    <div class="tabs-container">
+        <div class="tabs-nav">
+            <button class="tab-btn @(Model.SelectedTab == "all" ? "active" : "")" onclick="changeTab('all')">All Orders (@Model.TotalOrderCount)</button>
+            <button class="tab-btn @(Model.SelectedTab == "rental" ? "active" : "")" onclick="changeTab('rental')">Rental Orders (@Model.TotalRentalOrders)</button>
+            <button class="tab-btn @(Model.SelectedTab == "purchase" ? "active" : "")" onclick="changeTab('purchase')">Purchase Orders (@Model.TotalPurchaseOrders)</button>
+        </div>
+    </div>
+    <!-- Search and filter -->
+    <div class="search-filter-container">
+        <div class="search-section">
+            <div class="search-input-group">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchOrder" name="searchOrder" value="@Model.SearchOrder" placeholder="Search by order ID, customer, or provider..." class="search-input">
+                <div class="search-loading" id="searchLoading"></div>
+            </div>
+        </div>
+        <div class="filter-section">
+            <select id="sortBy" name="sortBy" class="filter-select" onchange="applySorting()">
+                <option value="">Sort By</option>
+                <option value="name-asc">Name: A → Z</option>
+                <option value="name-desc">Name: Z → A</option>
+                <option value="amount-asc">Total Amount: Low → High</option>
+                <option value="amount-desc">Total Amount: High → Low</option>
+                <option value="rental-asc">Rental Period: Shortest</option>
+                <option value="rental-desc">Rental Period: Longest</option>
+                <option value="date-asc">Created Date: Oldest</option>
+                <option value="date-desc">Created Date: Newest</option>
+            </select>
+            <button type="button" class="more-filters-btn" onclick="openFilterModal()">
+                <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"></polygon>
+                </svg>
+                <span>More Filters</span>
+            </button>
+        </div>
+    </div>
+    <!-- Orders Table -->
+    <div class="table-container">
+        <div class="table-wrapper">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>ORDER ID</th>
+                        <th>CUSTOMER</th>
+                        <th>PROVIDER</th>
+                        <th>TOTAL AMOUNT</th>
+                        <th>RENTAL PERIOD</th>
+                        <th>CREATED DATE</th>
+                        <th>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    @if (Model.Orders != null && Model.Orders.Any())
+                    {
+                        foreach (var order in Model.Orders)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="order-id">
+                                        <svg viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M9 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4V3a1 1 0 1 0-2 0v1H9V3a1 1 0 0 0-1-1z"/>
+                                        </svg>
+                                        @order.OrderCode
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="customer-info">
+                                        <div class="customer-avatar">@order.CustomerName.Substring(0, 1).ToUpper()</div>
+                                        <div class="customer-details">
+                                            <div class="customer-name">@order.CustomerName</div>
+                                            <div class="customer-email">@order.CustomerEmail</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="provider-name">@order.ProviderName</div>
+                                    <div class="provider-subtitle">@(order.TransactionType == "rental" ? "Rentals" : "Sales")</div>
+                                </td>
+                                <td><span class="amount">@order.TotalAmount.ToString("N0") đ</span></td>
+                                <td>
+                                    @if (order.TransactionType == "rental" && order.RentalStartDate.HasValue && order.RentalEndDate.HasValue)
+                                    {
+                                        <div class="rental-period">
+                                            <svg style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                                            </svg>
+                                            @order.RentalStartDate.Value.ToString("MM/dd/yyyy")
+                                        </div>
+                                        <div class="rental-dates">to @order.RentalEndDate.Value.ToString("MM/dd/yyyy")</div>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td><span class="date-time">@order.CreatedAt.ToString("MM/dd/yyyy, hh:mm tt")</span></td>
+                                <td>
+                                    <button onclick="viewOrderDetail('@order.Id')" class="btn-view">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                        <span class="btn-view-text">View Details</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="7" style="text-align:center; padding: 3rem; color: #86868b;">No orders found</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="pagination" style="@(Model.TotalPages > 1 ? "" : "display: none;")">
+            <button onclick="changePage(@(Model.CurrentPage - 1))" @(Model.CurrentPage == 1 ? "disabled" : "")>
+                Previous
+            </button>
+            
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <button onclick="changePage(@i)" class="@(i == Model.CurrentPage ? "active" : "")">
+                    @i
+                </button>
+            }
+            
+            <button onclick="changePage(@(Model.CurrentPage + 1))" @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")>
+                Next
+            </button>
+            
+            <span class="pagination-info">
+                Showing @((Model.CurrentPage - 1) * Model.PageSize + 1) to @(Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalItems)) of @Model.TotalItems orders
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Provider Filter Modal -->
+<div id="filterModal" class="modal" style="display:none;" onclick="if(event.target===this) closeFilterModal()">
+    <div class="filter-modal-content">
+        <div class="filter-modal-header">
+            <h3>Filter by Provider</h3>
+            <button class="close-btn" onclick="closeFilterModal()">&times;</button>
+        </div>
+        <div class="filter-modal-body">
+            <div class="provider-search">
+                <input type="text" id="providerSearch" placeholder="Search providers..." class="search-input">
+            </div>
+            <div class="provider-list" id="providerList">
+                <div class="loading">Loading providers...</div>
+            </div>
+        </div>
+        <div class="filter-modal-footer">
+            <button class="btn-secondary" onclick="clearProviderFilter()">Clear Filter</button>
+            <button class="btn-primary" onclick="applyProviderFilter()">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Lightbox Modal -->
+<div id="imageLightbox" class="lightbox-modal" style="display:none;" onclick="closeLightbox()">
+    <span class="lightbox-close">&times;</span>
+    <img class="lightbox-content" id="lightboxImage" onclick="event.stopPropagation()">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<!-- Order Detail Modal -->
+<div id="orderDetailModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-header-left">
+                <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4V3a1 1 0 1 0-2 0v1H9V3a1 1 0 0 0-1-1z"/>
+                </svg>
+                <div>
+                    <h2 id="modalTitle">Purchase Order Details</h2>
+                    <p class="order-code" id="modalOrderCode">Order Code: ORD-P-001</p>
+                </div>
+            </div>
+            <button class="download-btn" onclick="downloadOrderPDF()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download PDF
+            </button>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="loading">Loading...</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- html2pdf.js for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script>
+        let currentTab = '@Model.SelectedTab';
+        let currentPage = @Model.CurrentPage;
+        let searchQuery = '@Model.SearchOrder';
+        let accessToken = '@Model.AccessToken'; // Get token from server-side
+        let apiBaseUrl = '@Model.ApiBaseUrl';
+        let currentSortBy = '';
+        let allOrders = []; // Store all orders for client-side filtering
+        let selectedProviders = new Set(); // Store selected provider IDs
+        let allProviders = []; // Store all unique providers
+        let abortController = null; // For canceling previous requests
+        let isLoading = false; // Track loading state
+        
+        // Revenue data
+        const revenueData = {
+            total: @Model.TotalRevenue,
+            rental: @Model.TotalRentalRevenue,
+            purchase: @Model.TotalPurchaseRevenue
+        };
+        
+        // Make functions globally accessible
+        window.changeTab = async function(tab) {
+            currentTab = tab;
+            currentPage = 1; // Reset to page 1 when changing tabs
+            updateRevenueDisplay(tab);
+            await loadOrders();
+            updateTabUI(tab);
+        }
+        
+        function updateRevenueDisplay(tab) {
+            const revenueLabelEl = document.getElementById('revenueLabelText');
+            const revenueValueEl = document.getElementById('revenueValueText');
+            
+            if (!revenueLabelEl || !revenueValueEl) return;
+            
+            let label, value;
+            
+            switch(tab) {
+                case 'rental':
+                    label = 'Total Rental Revenue';
+                    value = revenueData.rental;
+                    break;
+                case 'purchase':
+                    label = 'Total Purchase Revenue';
+                    value = revenueData.purchase;
+                    break;
+                default: // 'all'
+                    label = 'Total Revenue';
+                    value = revenueData.total;
+                    break;
+            }
+            
+            revenueLabelEl.textContent = label;
+            revenueValueEl.textContent = formatCurrency(value) + 'đ';
+        }
+        
+        window.changePage = async function(page) {
+            currentPage = page;
+            await loadOrders();
+        }
+        
+        window.viewOrderDetail = async function(orderId) {
+            const modal = document.getElementById('orderDetailModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            // Show modal with loading
+            modal.style.display = 'flex';
+            modalBody.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                console.log('Token:', accessToken ? 'exists' : 'missing');
+                console.log('Order ID:', orderId);
+                console.log('Current Tab:', currentTab);
+                
+                const response = await fetch(`${apiBaseUrl}/orders/admin/${orderId}/detail`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`Failed to load order details: ${response.status} - ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Order detail response:', result);
+                
+                if (!result.data) {
+                    throw new Error('No order data received');
+                }
+                
+                const order = result.data;
+                
+                // Build modal content - show all products (no filter by tab)
+                // Use order's actual transaction type for display
+                modalBody.innerHTML = buildOrderDetailHTML(order, 'all');
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                modalBody.innerHTML = `<div class="error">Error loading order details: ${error.message}</div>`;
+            }
+        }
+        
+        window.closeModal = function() {
+            document.getElementById('orderDetailModal').style.display = 'none';
+        }
+        
+        window.openLightbox = function(imgSrc, caption) {
+            const lightbox = document.getElementById('imageLightbox');
+            const lightboxImg = document.getElementById('lightboxImage');
+            const lightboxCaption = document.getElementById('lightboxCaption');
+            
+            lightbox.style.display = 'block';
+            lightboxImg.src = imgSrc;
+            lightboxCaption.textContent = caption || '';
+        }
+        
+        window.closeLightbox = function() {
+            document.getElementById('imageLightbox').style.display = 'none';
+        }
+        
+        window.openFilterModal = function() {
+            const modal = document.getElementById('filterModal');
+            modal.style.display = 'flex';
+            loadProviders();
+        }
+        
+        window.closeFilterModal = function() {
+            document.getElementById('filterModal').style.display = 'none';
+        }
+        
+        function loadProviders() {
+            const providerList = document.getElementById('providerList');
+            
+            // Extract unique providers from allOrders
+            const providerMap = new Map();
+            allOrders.forEach(order => {
+                if (!providerMap.has(order.providerName)) {
+                    providerMap.set(order.providerName, {
+                        name: order.providerName,
+                        email: order.providerEmail,
+                        count: 0
+                    });
+                }
+                providerMap.get(order.providerName).count++;
+            });
+            
+            allProviders = Array.from(providerMap.values());
+            
+            if (allProviders.length === 0) {
+                providerList.innerHTML = '<div class="loading">No providers found</div>';
+                return;
+            }
+            
+            providerList.innerHTML = allProviders.map(provider => `
+                <div class="provider-item ${selectedProviders.has(provider.name) ? 'selected' : ''}" 
+                     onclick="toggleProvider('${provider.name.replace(/'/g, "\\'")}')">
+                    <input type="checkbox" 
+                           ${selectedProviders.has(provider.name) ? 'checked' : ''} 
+                           onclick="event.stopPropagation()">
+                    <div class="provider-info-filter">
+                        <div class="provider-name-filter">${provider.name}</div>
+                        <div class="provider-count">${provider.count} orders</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add search functionality
+            const searchInput = document.getElementById('providerSearch');
+            searchInput.value = '';
+            searchInput.oninput = function(e) {
+                const query = e.target.value.toLowerCase();
+                const items = providerList.querySelectorAll('.provider-item');
+                items.forEach(item => {
+                    const name = item.querySelector('.provider-name-filter').textContent.toLowerCase();
+                    item.style.display = name.includes(query) ? 'flex' : 'none';
+                });
+            };
+        }
+        
+        window.toggleProvider = function(providerName) {
+            if (selectedProviders.has(providerName)) {
+                selectedProviders.delete(providerName);
+            } else {
+                selectedProviders.add(providerName);
+            }
+            loadProviders(); // Refresh UI
+        }
+        
+        window.clearProviderFilter = function() {
+            selectedProviders.clear();
+            loadProviders();
+        }
+        
+        window.applyProviderFilter = function() {
+            closeFilterModal();
+            loadOrders(); // Reload with filter
+        }
+        
+        window.applySorting = function() {
+            currentSortBy = document.getElementById('sortBy').value;
+            applyFiltersAndSort();
+        }
+        
+        function applySortingToOrders(orders) {
+            if (!currentSortBy) return orders;
+            
+            const sorted = [...orders];
+            switch(currentSortBy) {
+                case 'name-asc':
+                    sorted.sort((a, b) => a.customerName.localeCompare(b.customerName));
+                    break;
+                case 'name-desc':
+                    sorted.sort((a, b) => b.customerName.localeCompare(a.customerName));
+                    break;
+                case 'amount-asc':
+                    sorted.sort((a, b) => a.totalAmount - b.totalAmount);
+                    break;
+                case 'amount-desc':
+                    sorted.sort((a, b) => b.totalAmount - a.totalAmount);
+                    break;
+                case 'rental-asc':
+                    sorted.sort((a, b) => {
+                        const daysA = a.rentalStartDate && a.rentalEndDate ? 
+                            Math.ceil((new Date(a.rentalEndDate) - new Date(a.rentalStartDate)) / (1000 * 60 * 60 * 24)) : 0;
+                        const daysB = b.rentalStartDate && b.rentalEndDate ? 
+                            Math.ceil((new Date(b.rentalEndDate) - new Date(b.rentalStartDate)) / (1000 * 60 * 60 * 24)) : 0;
+                        return daysA - daysB;
+                    });
+                    break;
+                case 'rental-desc':
+                    sorted.sort((a, b) => {
+                        const daysA = a.rentalStartDate && a.rentalEndDate ? 
+                            Math.ceil((new Date(a.rentalEndDate) - new Date(a.rentalStartDate)) / (1000 * 60 * 60 * 24)) : 0;
+                        const daysB = b.rentalStartDate && b.rentalEndDate ? 
+                            Math.ceil((new Date(b.rentalEndDate) - new Date(b.rentalStartDate)) / (1000 * 60 * 60 * 24)) : 0;
+                        return daysB - daysA;
+                    });
+                    break;
+                case 'date-asc':
+                    sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                    break;
+                case 'date-desc':
+                    sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+            }
+            return sorted;
+        }
+        
+        function applyFiltersAndSort() {
+            // Reload orders with current filters
+            loadOrders();
+        }
+        
+        window.downloadOrderPDF = function() {
+            const modalBody = document.getElementById('modalBody');
+            const orderCode = document.getElementById('modalOrderCode').textContent.replace('Order Code: ', '');
+            const modalTitle = document.getElementById('modalTitle').textContent;
+            
+            // Clone modal body to modify for PDF
+            const pdfContent = modalBody.cloneNode(true);
+            
+            // Remove click handlers from images in clone
+            const images = pdfContent.querySelectorAll('img');
+            images.forEach(img => {
+                img.style.cursor = 'default';
+                img.removeAttribute('onclick');
+            });
+            
+            // PDF options
+            const opt = {
+                margin: 10,
+                filename: orderCode + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            // Generate PDF
+            html2pdf().set(opt).from(pdfContent).save();
+        }
+        
+        async function loadOrders() {
+            try {
+                // Cancel previous request if exists
+                if (abortController) {
+                    abortController.abort();
+                }
+                
+                // Prevent duplicate calls
+                if (isLoading) {
+                    return;
+                }
+                
+                isLoading = true;
+                console.log('Loading orders with token:', accessToken ? 'exists' : 'missing');
+                
+                // Show loading skeleton
+                const tbody = document.getElementById('ordersTableBody');
+                tbody.innerHTML = getLoadingSkeleton();
+                
+                // Create new AbortController
+                abortController = new AbortController();
+                
+                const response = await fetch(`${apiBaseUrl}/orders/admin/all-orders`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    signal: abortController.signal
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load orders');
+                }
+                
+                const result = await response.json();
+                let orders = result.data || [];
+                
+                // Debug: Log all orders to check data
+                console.log('All orders from API:', orders);
+                orders.forEach(o => {
+                    console.log(`Order ${o.orderCode}: transactionType = ${o.transactionType}, suffix = ${o.orderCode.slice(-2)}`);
+                });
+                
+                // Filter by tab with strict validation
+                if (currentTab === 'rental') {
+                    orders = orders.filter(o => {
+                        // Must have transactionType = 'rental' AND order code ends with -R
+                        const isRental = o.transactionType === 'rental';
+                        const hasRentalSuffix = o.orderCode && o.orderCode.endsWith('-R');
+                        if (isRental && !hasRentalSuffix) {
+                            console.warn(`Order ${o.orderCode} has rental type but wrong suffix`);
+                        }
+                        return isRental;
+                    });
+                } else if (currentTab === 'purchase') {
+                    orders = orders.filter(o => {
+                        // Must have transactionType = 'purchase' AND order code ends with -P
+                        const isPurchase = o.transactionType === 'purchase';
+                        const hasPurchaseSuffix = o.orderCode && o.orderCode.endsWith('-P');
+                        if (isPurchase && !hasPurchaseSuffix) {
+                            console.warn(`Order ${o.orderCode} has purchase type but wrong suffix`);
+                        }
+                        return isPurchase;
+                    });
+                }
+                
+                // Store all orders for filtering
+                allOrders = orders;
+                
+                // Apply search filter (with Vietnamese accent support)
+                let filteredOrders = [...orders];
+                if (searchQuery) {
+                    const query = removeVietnameseAccents(searchQuery);
+                    filteredOrders = filteredOrders.filter(order => {
+                        const orderCode = removeVietnameseAccents(order.orderCode);
+                        const customerName = removeVietnameseAccents(order.customerName);
+                        const providerName = removeVietnameseAccents(order.providerName);
+                        
+                        return orderCode.includes(query) ||
+                               customerName.includes(query) ||
+                               providerName.includes(query);
+                    });
+                }
+                
+                // Apply provider filter
+                if (selectedProviders.size > 0) {
+                    filteredOrders = filteredOrders.filter(order => 
+                        selectedProviders.has(order.providerName)
+                    );
+                }
+                
+                // Apply sorting
+                if (currentSortBy) {
+                    filteredOrders = applySortingToOrders(filteredOrders);
+                }
+                
+                // Apply pagination
+                const pageSize = @Model.PageSize;
+                const totalItems = filteredOrders.length;
+                const totalPages = Math.ceil(totalItems / pageSize);
+                const startIndex = (currentPage - 1) * pageSize;
+                const paginatedOrders = filteredOrders.slice(startIndex, startIndex + pageSize);
+                
+                // Render orders
+                renderOrders(paginatedOrders);
+                renderPagination(currentPage, totalPages, totalItems, pageSize);
+                
+                // Update URL without reload
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', currentTab);
+                url.searchParams.set('page', currentPage);
+                window.history.pushState({}, '', url);
+                
+            } catch (error) {
+                // Ignore abort errors
+                if (error.name === 'AbortError') {
+                    console.log('Request was cancelled');
+                    return;
+                }
+                
+                console.error('Error loading orders:', error);
+                const tbody = document.getElementById('ordersTableBody');
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 3rem; color: #dc2626;">${error.message}</td></tr>`;
+            } finally {
+                isLoading = false;
+            }
+        }
+        
+        function removeVietnameseAccents(str) {
+            if (!str) return '';
+            str = str.toLowerCase();
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
+            str = str.replace(/đ/g, 'd');
+            return str;
+        }
+        
+        function getLoadingSkeleton() {
+            return `
+                <tr>
+                    <td colspan="7" style="padding: 1rem;">
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            ${[1, 2, 3].map(() => `
+                                <div class="skeleton-row">
+                                    <div class="skeleton skeleton-sm"></div>
+                                    <div class="skeleton skeleton-lg"></div>
+                                    <div class="skeleton skeleton-md"></div>
+                                    <div class="skeleton skeleton-md"></div>
+                                    <div class="skeleton skeleton-md"></div>
+                                    <div class="skeleton skeleton-sm"></div>
+                                    <div class="skeleton skeleton-xs"></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        function getAvatarColor(name) {
+            const colors = ['purple', 'blue', 'green', 'orange', 'pink', 'teal', 'indigo', 'red'];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+        
+        function renderOrders(orders) {
+            const tbody = document.getElementById('ordersTableBody');
+            
+            console.log('Rendering orders:', orders.length);
+            if (orders.length > 0) {
+                console.log('First order:', orders[0]);
+            }
+            
+            if (orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 3rem; color: #86868b;">No orders found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = orders.map(order => `
+                <tr>
+                    <td>
+                        <div class="order-id">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4V3a1 1 0 1 0-2 0v1H9V3a1 1 0 0 0-1-1z"/>
+                            </svg>
+                            <span class="order-code-text">${order.orderCode}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="customer-info">
+                            <div class="customer-avatar color-${getAvatarColor(order.customerName)}">${order.customerName.substring(0, 1).toUpperCase()}</div>
+                            <div class="customer-details">
+                                <div class="customer-name">${order.customerName}</div>
+                                <div class="customer-email">${order.customerEmail}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="provider-name">${order.providerName}</div>
+                        <div class="provider-subtitle">${order.transactionType === 'rental' ? 'Rentals' : 'Sales'}</div>
+                    </td>
+                    <td><span class="amount">${formatCurrency(order.totalAmount)} đ</span></td>
+                    <td>
+                        ${order.transactionType === 'rental' && order.rentalStartDate && order.rentalEndDate ? `
+                            <div class="rental-period">
+                                <svg style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                ${formatDate(order.rentalStartDate)}
+                            </div>
+                            <div class="rental-dates">to ${formatDate(order.rentalEndDate)}</div>
+                        ` : '<span>-</span>'}
+                    </td>
+                    <td><span class="date-time">${formatDateTime(order.createdAt)}</span></td>
+                    <td>
+                        <button onclick="viewOrderDetail('${order.id}')" class="btn-view">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <span class="btn-view-text">View Details</span>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function renderPagination(currentPage, totalPages, totalItems, pageSize) {
+            const paginationContainer = document.querySelector('.pagination');
+            
+            if (!paginationContainer || totalPages <= 1) {
+                if (paginationContainer) paginationContainer.style.display = 'none';
+                return;
+            }
+            
+            paginationContainer.style.display = 'flex';
+            
+            let html = `
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    Previous
+                </button>
+            `;
+            
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+            }
+            
+            html += `
+                <button onclick="changePage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>
+                    Next
+                </button>
+                <span class="pagination-info">
+                    Showing ${(currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, totalItems)} of ${totalItems} orders
+                </span>
+            `;
+            
+            paginationContainer.innerHTML = html;
+        }
+        
+        function updateTabUI(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('onclick').includes(`'${tab}'`)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+        }
+        
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + ', ' + 
+                   date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+
+        function buildOrderDetailHTML(order, filterTab = 'all') {
+            // Update modal title
+            const modalTitle = document.getElementById('modalTitle');
+            const modalOrderCode = document.getElementById('modalOrderCode');
+            
+            // Filter items based on current tab
+            // Note: Currently assumes all items in order match order's transaction type
+            // In future, if items have individual transaction types, filter here:
+            // let displayItems = filterTab === 'all' ? order.orderItems : 
+            //     order.orderItems.filter(item => item.transactionType === filterTab);
+            
+            let displayItems = order.orderItems;
+            let displayTypeLabel = 'Order';
+            
+            // Filter logic based on tab
+            if (filterTab === 'rental' && order.transactionType === 'rental') {
+                displayItems = order.orderItems; // Show all items for rental orders in rental tab
+                displayTypeLabel = 'Rental Order';
+            } else if (filterTab === 'purchase' && order.transactionType === 'purchase') {
+                displayItems = order.orderItems; // Show all items for purchase orders in purchase tab
+                displayTypeLabel = 'Purchase Order';
+            } else if (filterTab === 'all') {
+                displayItems = order.orderItems; // Show all items in all tab
+                displayTypeLabel = order.transactionType === 'rental' ? 'Rental Order' : 'Purchase Order';
+            } else {
+                // If viewing rental order in purchase tab or vice versa, show empty
+                displayItems = [];
+                displayTypeLabel = filterTab === 'rental' ? 'Rental Order' : 'Purchase Order';
+            }
+            
+            modalTitle.textContent = `${displayTypeLabel} Details`;
+            modalOrderCode.textContent = `Order Code: ${order.orderCode}`;
+            
+            // Calculate based on displayed items
+            const totalProducts = displayItems.length;
+            const totalQuantity = displayItems.reduce((sum, item) => sum + item.quantity, 0);
+            const calculatedSubtotal = displayItems.reduce((sum, item) => sum + item.totalPrice, 0);
+            const totalDeposit = displayItems.reduce((sum, item) => sum + (item.totalDeposit || 0), 0);
+            const shippingFee = order.shippingFee || 0;
+            const discountAmount = order.discountAmount || 0;
+            const finalTotal = calculatedSubtotal + totalDeposit + shippingFee - discountAmount;
+            const averageValue = totalProducts > 0 ? calculatedSubtotal / totalProducts : 0;
+
+            return `
+                <div class="order-detail-content">
+                    <!-- Three Column Info Cards -->
+                    <div class="info-cards-row">
+                        <!-- Order Information Card -->
+                        <div class="info-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 2a1 1 0 0 0-1 1v1H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4V3a1 1 0 1 0-2 0v1H9V3a1 1 0 0 0-1-1z"/>
+                                </svg>
+                                Order Information
+                            </div>
+                            <div class="card-body">
+                                <div class="card-item">
+                                    <span class="card-label">Order Code:</span>
+                                    <span class="card-value">${order.orderCode}</span>
+                                </div>
+                                <div class="card-item">
+                                    <span class="card-label">Status:</span>
+                                    <span class="status-badge-sm status-${order.status.toLowerCase()}">${order.status}</span>
+                                </div>
+                                <div class="card-item">
+                                    <span class="card-label">Order Type:</span>
+                                    <span class="card-value">${order.transactionType === 'rental' ? 'Rental' : 'Purchase'}</span>
+                                </div>
+                                <div class="card-item">
+                                    <span class="card-label">Created Date:</span>
+                                    <span class="card-value">${formatDate(order.createdAt)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Information Card -->
+                        <div class="info-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                                Customer Information
+                            </div>
+                            <div class="card-body">
+                                <div class="card-item">
+                                    <span class="card-label">Name:</span>
+                                    <span class="card-value">${order.customerName}</span>
+                                </div>
+                                <div class="card-item">
+                                    <span class="card-label">Email:</span>
+                                    <span class="card-value">${order.customerEmail}</span>
+                                </div>
+                                <div class="card-item">
+                                    <span class="card-label">Phone:</span>
+                                    <span class="card-value">${order.customerPhone}</span>
+                                </div>
+                                <div class="card-item">
+                                    <span class="card-label">Address:</span>
+                                    <span class="card-value">${order.customerAddress}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Provider Information Card -->
+                        <div class="info-card provider-card">
+                            <div class="card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                </svg>
+                                Provider
+                            </div>
+                            <div class="card-body">
+                                <div class="provider-info-main">
+                                    <div class="provider-avatar">
+                                        ${order.providerName.substring(0, 1).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div class="provider-name-large">${order.providerName}</div>
+                                        <div class="provider-email">${order.providerEmail}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product List -->
+                    <div class="products-section">
+                        <div class="section-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                            Product List (${totalProducts} product${totalProducts !== 1 ? 's' : ''})
+                        </div>
+                        ${displayItems.length > 0 ? `
+                        <div class="products-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>PRODUCT</th>
+                                        <th style="text-align: center;">QUANTITY</th>
+                                        <th style="text-align: right;">UNIT PRICE</th>
+                                        <th style="text-align: right;">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${displayItems.map(item => {
+                                        // Use item's transaction type if available, otherwise fall back to order level
+                                        const isRental = (item.transactionType === 'rental') || (order.transactionType === 'rental');
+                                        const rentalDays = item.rentalDays || (isRental && order.rentalStartDate && order.rentalEndDate 
+                                            ? Math.ceil((new Date(order.rentalEndDate) - new Date(order.rentalStartDate)) / (1000 * 60 * 60 * 24))
+                                            : 0);
+                                        const hasDeposit = item.totalDeposit && item.totalDeposit > 0;
+                                        
+                                        return `
+                                        <tr>
+                                            <td>
+                                                <div class="product-info-row">
+                                                    <img src="${item.productImage || '/images/placeholder.png'}" 
+                                                         alt="${item.productName}" 
+                                                         class="product-thumb product-thumbnail" 
+                                                         onclick="openLightbox('${item.productImage || '/images/placeholder.png'}', '${item.productName}')" 
+                                                         title="Click to zoom" />
+                                                    <div style="flex: 1;">
+                                                        <div class="product-name">${item.productName}</div>
+                                                        <div class="product-color">Color: ${item.color}</div>
+                                                        ${isRental ? `
+                                                            <div style="font-size: 0.8125rem; color: #6366f1; margin-top: 0.25rem;">
+                                                                <strong>Type:</strong> Rental
+                                                            </div>
+                                                            <div style="font-size: 0.8125rem; color: #86868b; margin-top: 0.125rem;">
+                                                                From ${formatDate(order.rentalStartDate)} to ${formatDate(order.rentalEndDate)}
+                                                            </div>
+                                                            <div style="font-size: 0.8125rem; color: #10b981; margin-top: 0.125rem; font-weight: 500;">
+                                                                Rental Duration: ${rentalDays} day${rentalDays !== 1 ? 's' : ''}
+                                                            </div>
+                                                        ` : `
+                                                            <div style="font-size: 0.8125rem; color: #8b5cf6; margin-top: 0.25rem;">
+                                                                <strong>Type:</strong> Purchase
+                                                            </div>
+                                                        `}
+                                                        ${hasDeposit ? `
+                                                            <div style="font-size: 0.8125rem; color: #f59e0b; margin-top: 0.25rem; background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block;">
+                                                                <strong>Security Deposit:</strong> +${formatCurrency(item.totalDeposit)} đ
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style="text-align: center;">${item.quantity}</td>
+                                            <td style="text-align: right;">
+                                                ${formatCurrency(item.unitPrice)} đ
+                                                ${isRental ? `<div style="font-size: 0.75rem; color: #86868b;">/day</div>` : ''}
+                                            </td>
+                                            <td style="text-align: right;" class="product-total">${formatCurrency(item.totalPrice)} đ</td>
+                                        </tr>
+                                    `}).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        ` : `
+                        <div style="text-align: center; padding: 2rem; color: #86868b; background: #fafafa; border-radius: 8px;">
+                            <svg style="width: 48px; height: 48px; margin: 0 auto 1rem; color: #d1d5db;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <p>No ${filterTab === 'rental' ? 'rental' : filterTab === 'purchase' ? 'purchase' : ''} products found in this order</p>
+                        </div>
+                        `}
+                    </div>
+
+                    <!-- Order Summary and Statistics -->
+                    <div class="summary-statistics-row">
+                        <div class="order-summary-card">
+                            <div class="summary-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Order Summary
+                            </div>
+                            <div class="summary-body">
+                                <!-- Subtotal -->
+                                <div class="summary-item">
+                                    <span>Subtotal:</span>
+                                    <span style="font-weight: 600; white-space: nowrap;">${formatCurrency(calculatedSubtotal)} đ</span>
+                                </div>
+                                <div class="summary-item" style="font-size: 0.75rem; color: #86868b; margin-top: -0.5rem; margin-bottom: 0.75rem;">
+                                    <span style="font-style: italic;">Sum of all products</span>
+                                    <span style="font-family: monospace;">Σ(Product Totals)</span>
+                                </div>
+                                
+                                <!-- Shipping Fee -->
+                                <div class="summary-item">
+                                    <span>Shipping fee:</span>
+                                    <span style="font-weight: 600; color: ${shippingFee === 0 ? '#10b981' : '#1d1d1f'}; white-space: nowrap;">${shippingFee === 0 ? 'FREE' : formatCurrency(shippingFee) + ' đ'}</span>
+                                </div>
+                                
+                                <!-- Discount -->
+                                <div class="summary-item">
+                                    <span>Discount:</span>
+                                    <span style="font-weight: 600; color: ${discountAmount > 0 ? '#ef4444' : '#86868b'}; white-space: nowrap;">${discountAmount > 0 ? '-' : ''}${formatCurrency(discountAmount)} đ</span>
+                                </div>
+                                
+                                <!-- Security Deposit (if rental) -->
+                                ${totalDeposit > 0 ? `
+                                    <div class="summary-item" style="background: #fef3c7; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                        <span style="color: #92400e;">
+                                            <strong>Security Deposit</strong>
+                                            <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.125rem;">(refundable)</div>
+                                        </span>
+                                        <span style="font-weight: 700; color: #f59e0b; white-space: nowrap;">+${formatCurrency(totalDeposit)} đ</span>
+                                    </div>
+                                ` : ''}
+                                
+                                <!-- Calculation Formula -->
+                                <div class="summary-item" style="font-size: 0.75rem; color: #86868b; margin: 0.75rem 0; padding: 0.5rem; background: #f9fafb; border-radius: 4px; border-left: 3px solid #8b5cf6;">
+                                    <span style="font-style: italic;">Formula:</span>
+                                    <span style="font-family: monospace; font-size: 0.7rem;">
+                                        ${calculatedSubtotal > 0 ? formatCurrency(calculatedSubtotal) : '0'} 
+                                        ${totalDeposit > 0 ? ' + ' + formatCurrency(totalDeposit) : ''} 
+                                        ${shippingFee > 0 ? ' + ' + formatCurrency(shippingFee) : ''} 
+                                        ${discountAmount > 0 ? ' - ' + formatCurrency(discountAmount) : ''}
+                                    </span>
+                                </div>
+                                
+                                <!-- Total -->
+                                <div class="summary-item total-item" style="margin-top: 0.5rem;">
+                                    <span><strong>Total ${totalDeposit > 0 ? '(incl. deposit)' : ''}</strong></span>
+                                    <span class="total-value">${formatCurrency(finalTotal)} đ</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="statistics-card">
+                            <div class="stats-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                    <path d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                </svg>
+                                Statistics (Displayed Items)
+                            </div>
+                            <div class="stats-body">
+                                <div class="stat-item">
+                                    <span>Number of products:</span>
+                                    <span><strong>${totalProducts}</strong></span>
+                                </div>
+                                <div class="stat-item">
+                                    <span>Total quantity:</span>
+                                    <span><strong>${totalQuantity}</strong></span>
+                                </div>
+                                <div class="stat-item" style="border-top: 1px dashed #e5e5e7; padding-top: 0.75rem; margin-top: 0.5rem;">
+                                    <span>Average value per product:</span>
+                                    <span><strong>${formatCurrency(averageValue)} đ</strong></span>
+                                </div>
+                                <div class="stat-item" style="font-size: 0.75rem; color: #86868b; margin-top: -0.5rem;">
+                                    <span style="font-style: italic;">Subtotal ÷ Products</span>
+                                    <span style="font-family: monospace;">${totalProducts > 0 ? formatCurrency(calculatedSubtotal) + ' ÷ ' + totalProducts : 'N/A'}</span>
+                                </div>
+                                ${totalDeposit > 0 ? `
+                                    <div class="stat-item" style="border-top: 1px dashed #e5e5e7; padding-top: 0.75rem; margin-top: 0.75rem; background: #fef3c7; padding: 0.5rem; border-radius: 4px;">
+                                        <span style="color: #92400e;">Total Security Deposit:</span>
+                                        <span style="font-weight: 700; color: #f59e0b;">${formatCurrency(totalDeposit)} đ</span>
+                                    </div>
+                                ` : ''}
+                                ${order.transactionType === 'rental' ? `
+                                    <div class="stat-item" style="margin-top: 0.5rem; color: #6366f1;">
+                                        <span>Order Type:</span>
+                                        <span><strong>Rental</strong></span>
+                                    </div>
+                                ` : `
+                                    <div class="stat-item" style="margin-top: 0.5rem; color: #8b5cf6;">
+                                        <span>Order Type:</span>
+                                        <span><strong>Purchase</strong></span>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Important Dates and Additional Info -->
+                    <div class="footer-info-row">
+                        <div class="dates-card">
+                            <div class="footer-card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                Important Dates
+                            </div>
+                            <div class="footer-card-body">
+                                <div class="footer-item">
+                                    <span class="footer-label">Created Date:</span>
+                                    <span class="footer-value">${formatDateTime(order.createdAt)}</span>
+                                </div>
+                                ${order.transactionType === 'rental' && order.rentalStartDate ? `
+                                    <div class="footer-item">
+                                        <span class="footer-label">Rental Period:</span>
+                                        <span class="footer-value">${formatDate(order.rentalStartDate)} - ${formatDate(order.rentalEndDate)}</span>
+                                    </div>
+                                    <div class="footer-item">
+                                        <span class="footer-label">Expected Return:</span>
+                                        <span class="footer-value">${formatDate(order.rentalEndDate)}</span>
+                                    </div>
+                                ` : ''}
+                                <div class="footer-item">
+                                    <span class="footer-label">Last Updated:</span>
+                                    <span class="footer-value">${order.updatedAt ? formatDateTime(order.updatedAt) : 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="additional-info-card">
+                            <div class="footer-card-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                Additional Information
+                            </div>
+                            <div class="footer-card-body">
+                                <div class="footer-item">
+                                    <span class="footer-label">Payment Method:</span>
+                                    <span class="footer-value">${order.paymentMethod || 'Cash on Delivery'}</span>
+                                </div>
+                                <div class="footer-item">
+                                    <span class="footer-label">Payment Status:</span>
+                                    <span class="footer-value">
+                                        ${order.isPaid 
+                                            ? '<span style="color: #10b981; font-weight: 700;">✓ Paid</span>' 
+                                            : '<span style="color: #f59e0b; font-weight: 700;">⊘ Unpaid</span>'}
+                                    </span>
+                                </div>
+                                <div class="footer-item">
+                                    <span class="footer-label">Shipping Address:</span>
+                                    <span class="footer-value">${order.customerAddress}</span>
+                                </div>
+                                ${order.note ? `
+                                    <div class="footer-item">
+                                        <span class="footer-label">Notes:</span>
+                                        <span class="footer-value">${order.note}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatCurrency(amount) {
+            // Format as Vietnamese number (no decimals, comma separated)
+            return new Intl.NumberFormat('vi-VN', { 
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0 
+            }).format(amount);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('orderDetailModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded. Token:', accessToken ? 'exists' : 'missing');
+            console.log('API Base URL:', apiBaseUrl);
+            console.log('Current tab:', currentTab);
+            console.log('Current page:', currentPage);
+            
+            // Update revenue display based on initial tab
+            updateRevenueDisplay(currentTab);
+            
+            // ESC key to close lightbox
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeLightbox();
+                }
+            });
+            
+            // Search input real-time with optimized debounce
+            const searchInput = document.getElementById('searchOrder');
+            const searchLoading = document.getElementById('searchLoading');
+            if (searchInput) {
+                let searchTimeout;
+                searchInput.addEventListener('input', function(e) {
+                    clearTimeout(searchTimeout);
+                    const newQuery = e.target.value.trim();
+                    
+                    // Only update if query actually changed
+                    if (newQuery === searchQuery) {
+                        return;
+                    }
+                    
+                    searchQuery = newQuery;
+                    
+                    // Show loading spinner
+                    if (searchLoading) {
+                        searchLoading.classList.add('active');
+                    }
+                    
+                    // Visual feedback: disable controls
+                    const sortSelect = document.getElementById('sortBy');
+                    if (sortSelect) {
+                        sortSelect.disabled = true;
+                    }
+                    
+                    // Debounce: wait 800ms after user stops typing
+                    searchTimeout = setTimeout(() => {
+                        currentPage = 1; // Reset to page 1 on new search
+                        loadOrders().finally(() => {
+                            // Hide loading spinner
+                            if (searchLoading) {
+                                searchLoading.classList.remove('active');
+                            }
+                            // Re-enable controls
+                            if (sortSelect) {
+                                sortSelect.disabled = false;
+                            }
+                        });
+                    }, 800);
+                });
+            }
+        });
+    </script>
+}

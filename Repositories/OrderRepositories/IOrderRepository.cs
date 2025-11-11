@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.OrdersDto;
+using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using Repositories.RepositoryBase;
@@ -15,5 +15,8 @@ namespace Repositories.OrderRepositories
         Task<bool> UpdateOrderContactInfoAsync(Order order);
 
         Task<string> GetOrderItemId(Guid customerId, Guid productId);
+        
+        Task<IEnumerable<Order>> GetAllOrdersWithDetailsAsync();
+        Task<Order> GetOrderWithFullDetailsAsync(Guid orderId);
     }
 }
