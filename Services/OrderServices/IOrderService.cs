@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.DTOs.OrdersDto;
@@ -54,5 +54,15 @@ namespace Services.OrderServices
         /// This is a utility method to fix existing orders
         /// </summary>
         Task UpdateOrderSubtotalsAsync();
+        
+        /// <summary>
+        /// Get all orders for admin management with essential information
+        /// </summary>
+        Task<IEnumerable<AdminOrderListDto>> GetAllOrdersForAdminAsync();
+        
+        /// <summary>
+        /// Get detailed order information for admin view
+        /// </summary>
+        Task<AdminOrderDetailDto> GetOrderDetailForAdminAsync(Guid orderId);
     }
 }

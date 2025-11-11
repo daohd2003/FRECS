@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.Enums;
@@ -153,5 +153,30 @@ namespace Repositories.OrderRepositories
             return Task.FromResult(orderItemId);
         }
 
+        public async Task<IEnumerable<Order>> GetAllOrdersWithDetailsAsync()
+        {
+            return await _context.Orders
+                .Include(o => o.Customer)
+                    .ThenInclude(c => c.Profile)
+                .Include(o => o.Provider)
+                    .ThenInclude(p => p.Profile)
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<Order> GetOrderWithFullDetailsAsync(Guid orderId)
+        {
+            return await _context.Orders
+                .Include(o => o.Customer)
+                    .ThenInclude(c => c.Profile)
+                .Include(o => o.Provider)
+                    .ThenInclude(p => p.Profile)
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                        .ThenInclude(p => p.Images)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+        }
     }
 }

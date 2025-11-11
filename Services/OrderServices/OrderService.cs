@@ -1290,5 +1290,166 @@ namespace Services.OrderServices
                 }
             }
         }
+
+        public async Task<IEnumerable<AdminOrderListDto>> GetAllOrdersForAdminAsync()
+        {
+            var orders = await _orderRepo.GetAllOrdersWithDetailsAsync();
+            
+            // Filter: only show orders with status = returned
+            var validOrders = orders.Where(o => o.Status == OrderStatus.returned);
+            
+            var result = new List<AdminOrderListDto>();
+            
+            foreach (var order in validOrders)
+            {
+                // Use consistent logic with GetOrderDetailForAdminAsync
+                var transactionType = DetermineTransactionType(order);
+                
+                // Group items by transaction type for calculation
+                // But respect the order-level transaction type determination
+                var rentalItems = order.Items?.Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental).ToList();
+                var purchaseItems = order.Items?.Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase).ToList();
+                
+                // If order is determined as rental, only create rental entry
+                if (transactionType == "rental")
+                {
+                    // Calculate total from all items (treat as rental)
+                    var rentalTotal = order.Items?.Sum(i => i.DailyRate * (i.RentalDays ?? 1) * i.Quantity) ?? 0;
+                    result.Add(new AdminOrderListDto
+                    {
+                        Id = order.Id,
+                        OrderCode = GenerateOrderCode(order) + "-R",
+                        CustomerName = order.Customer?.Profile?.FullName ?? order.CustomerFullName ?? "N/A",
+                        CustomerEmail = order.Customer?.Email ?? order.CustomerEmail ?? "N/A",
+                        ProviderName = order.Provider?.Profile?.FullName ?? "N/A",
+                        ProviderEmail = order.Provider?.Email ?? "N/A",
+                        TransactionType = "rental",
+                        RentalStartDate = order.RentalStart,
+                        RentalEndDate = order.RentalEnd,
+                        Status = order.Status,
+                        TotalAmount = rentalTotal,
+                        CreatedAt = order.CreatedAt
+                    });
+                }
+                // If order is determined as purchase, only create purchase entry
+                else
+                {
+                    // Calculate total from all items (treat as purchase)
+                    var purchaseTotal = order.Items?.Sum(i => i.DailyRate * i.Quantity) ?? 0;
+                    result.Add(new AdminOrderListDto
+                    {
+                        Id = order.Id,
+                        OrderCode = GenerateOrderCode(order) + "-P",
+                        CustomerName = order.Customer?.Profile?.FullName ?? order.CustomerFullName ?? "N/A",
+                        CustomerEmail = order.Customer?.Email ?? order.CustomerEmail ?? "N/A",
+                        ProviderName = order.Provider?.Profile?.FullName ?? "N/A",
+                        ProviderEmail = order.Provider?.Email ?? "N/A",
+                        TransactionType = "purchase",
+                        RentalStartDate = null,
+                        RentalEndDate = null,
+                        Status = order.Status,
+                        TotalAmount = purchaseTotal,
+                        CreatedAt = order.CreatedAt
+                    });
+                }
+            }
+            
+            return result.OrderByDescending(o => o.CreatedAt).ToList();
+        }
+
+        private string GenerateOrderCode(Order order)
+        {
+            return $"ORD-{order.Id.ToString().Substring(0, 8).ToUpper()}";
+        }
+
+        private string DetermineTransactionType(Order order)
+        {
+            // Check if order has rental dates
+            if (order.RentalStart.HasValue && order.RentalEnd.HasValue)
+                return "rental";
+            
+            // Check order items transaction type
+            if (order.Items != null && order.Items.Any())
+            {
+                var firstItem = order.Items.First();
+                return firstItem.TransactionType == BusinessObject.Enums.TransactionType.rental ? "rental" : "purchase";
+            }
+            
+            return "purchase"; // default
+        }
+
+        public async Task<AdminOrderDetailDto> GetOrderDetailForAdminAsync(Guid orderId)
+        {
+            var order = await _orderRepo.GetOrderWithFullDetailsAsync(orderId);
+            
+            if (order == null)
+                return null;
+
+            var transactionType = DetermineTransactionType(order);
+            var rentalDays = order.RentalStart.HasValue && order.RentalEnd.HasValue 
+                ? (int)(order.RentalEnd.Value - order.RentalStart.Value).TotalDays 
+                : (int?)null;
+
+            return new AdminOrderDetailDto
+            {
+                Id = order.Id,
+                OrderCode = GenerateOrderCode(order),
+                Status = order.Status,
+                TransactionType = transactionType,
+                CreatedAt = order.CreatedAt,
+                
+                // Customer Information
+                CustomerId = order.CustomerId,
+                CustomerName = order.Customer?.Profile?.FullName ?? order.CustomerFullName ?? "N/A",
+                CustomerEmail = order.Customer?.Email ?? order.CustomerEmail ?? "N/A",
+                CustomerPhone = order.CustomerPhoneNumber ?? order.Customer?.Profile?.Phone ?? "N/A",
+                CustomerAddress = order.DeliveryAddress ?? "N/A",
+                
+                // Provider Information
+                ProviderId = order.ProviderId,
+                ProviderName = order.Provider?.Profile?.FullName ?? "N/A",
+                ProviderEmail = order.Provider?.Email ?? "N/A",
+                ProviderPhone = order.Provider?.Profile?.Phone ?? "N/A",
+                
+                // Rental Information
+                RentalStartDate = order.RentalStart,
+                RentalEndDate = order.RentalEnd,
+                RentalDays = rentalDays,
+                
+                // Order Items
+                OrderItems = order.Items?.Select(item => new AdminOrderItemDto
+                {
+                    Id = item.Id,
+                    ProductId = item.ProductId,
+                    ProductName = item.Product?.Name ?? "N/A",
+                    ProductImage = item.Product?.Images?.FirstOrDefault()?.ImageUrl ?? "",
+                    Color = item.Product?.Color ?? "N/A",
+                    Quantity = item.Quantity,
+                    UnitPrice = item.DailyRate,
+                    TotalPrice = item.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                        ? item.DailyRate * item.Quantity
+                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity,
+                    TransactionType = item.TransactionType == BusinessObject.Enums.TransactionType.rental ? "rental" : "purchase",
+                    TotalDeposit = item.TransactionType == BusinessObject.Enums.TransactionType.rental 
+                        ? item.DepositPerUnit * item.Quantity 
+                        : null,
+                    RentalDays = item.RentalDays
+                }).ToList() ?? new List<AdminOrderItemDto>(),
+                
+                // Financial Information
+                Subtotal = order.Subtotal,
+                ShippingFee = 0,
+                DiscountAmount = order.DiscountAmount,
+                TotalAmount = order.TotalAmount,
+                
+                // Payment Information
+                PaymentMethod = "N/A",
+                IsPaid = order.Status == OrderStatus.approved || order.Status == OrderStatus.in_transit || order.Status == OrderStatus.in_use || order.Status == OrderStatus.returned,
+                
+                // Additional Information
+                Note = null,
+                UpdatedAt = order.UpdatedAt
+            };
+        }
     }
 }
