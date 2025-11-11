@@ -252,37 +252,64 @@
         color: #48bb78 !important;
     }
 
+    .btn-select-files {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-select-files:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-select-files:active {
+        transform: translateY(0);
+    }
+
+    .btn-select-files i {
+        font-size: 16px;
+    }
+
     .file-upload-area {
-        border: 2px dashed #cbd5e0;
+        border: 2px dashed #3b82f6;
         border-radius: 8px;
         padding: 30px;
         text-align: center;
-        cursor: pointer;
         transition: all 0.3s;
-        background: white;
+        background: #dbeafe;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
 
-    .file-upload-area:hover {
-        border-color: #667eea;
-        background: #f7fafc;
-    }
-
-    .file-upload-area.dragover {
-        border-color: #667eea;
-        background: #ebf4ff;
-    }
-
-    .file-upload-area i {
-        font-size: 48px;
-        color: #a0aec0;
-        margin-bottom: 10px;
-    }
-
-    .preview-container {
+    .file-upload-area.has-files {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 15px;
-        margin-top: 15px;
+        padding: 20px;
+        justify-content: start;
+        align-items: start;
+        min-height: auto;
+    }
+
+    .file-upload-area .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
 
     .preview-item {
@@ -477,6 +504,15 @@
         color: #2c5282;
     }
 
+    .guidelines-box {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #bae6fd;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(56, 189, 248, 0.1);
+    }
+
     .small-text {
         font-size: 12px;
         color: #718096;
@@ -519,14 +555,17 @@
         </div>
     }
 
-    <!-- Guidelines -->
-    <div class="alert alert-info">
-        <strong>💡 Penalty Guidelines:</strong>
-        <ul style="margin: 10px 0 0 20px; padding: 0;">
-            <li>Minor damage (&lt; 30%): Penalize 25-50% of deposit</li>
-            <li>Moderate damage (30-70%): Penalize 50-75% of deposit</li>
-            <li>Severe damage (&gt; 70%): Penalize 75-100% of deposit</li>
-            <li>Not returned: Penalize 100% of deposit</li>
+    <!-- Guidelines - Static Info Box -->
+    <div class="guidelines-box">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="font-size: 24px;">💡</span>
+            <strong style="font-size: 16px; color: #2d3748;">Penalty Guidelines:</strong>
+        </div>
+        <ul style="margin: 0; padding: 0 0 0 36px; list-style-type: disc;">
+            <li style="margin: 6px 0; color: #4a5568; font-size: 14px;">Minor damage (&lt; 30%): Penalize 25-50% of deposit</li>
+            <li style="margin: 6px 0; color: #4a5568; font-size: 14px;">Moderate damage (30-70%): Penalize 50-75% of deposit</li>
+            <li style="margin: 6px 0; color: #4a5568; font-size: 14px;">Severe damage (&gt; 70%): Penalize 75-100% of deposit</li>
+            <li style="margin: 6px 0; color: #4a5568; font-size: 14px;">Not returned: Penalize 100% of deposit</li>
         </ul>
     </div>
 
@@ -546,13 +585,18 @@
         <div class="order-items-list">
             @if (Model.Order.Items != null && Model.Order.Items.Any())
             {
-                var availableItems = Model.Order.Items.Where(item => !Model.ReportedOrderItemIds.Contains(item.Id)).ToList();
+                // Chỉ lấy sản phẩm RENTAL (không lấy sản phẩm đã mua)
+                var availableItems = Model.Order.Items.Where(item => 
+                    !Model.ReportedOrderItemIds.Contains(item.Id) && 
+                    item.TransactionType == BusinessObject.Enums.TransactionType.rental
+                ).ToList();
                 
                 @if (!availableItems.Any())
                 {
-                    <div class="alert alert-info">
-                        <p><strong>ℹ️ All items have been reported</strong></p>
-                        <p>All items in this order have already been reported for violations. No more items available to report.</p>
+                    <div class="info-box" style="background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 12px; padding: 24px; text-align: center; margin: 20px 0;">
+                        <i class="fas fa-info-circle" style="font-size: 48px; color: #0ea5e9; margin-bottom: 16px;"></i>
+                        <h3 style="color: #0c4a6e; font-size: 18px; font-weight: 600; margin: 0 0 8px 0;">No rental items to report</h3>
+                        <p style="color: #0369a1; font-size: 14px; margin: 0;">All rental items in this order have been reported, or this order only contains purchased items (which cannot be reported for violations).</p>
                     </div>
                 }
                 else
@@ -637,9 +681,18 @@
 
                             <!-- File Upload -->
                             <div class="form-group">
-                                <label>
-                                    Evidence (Images/Videos) <span class="required">*</span>
-                                </label>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <label style="margin: 0;">
+                                        Evidence (Images/Videos) <span class="required">*</span>
+                                    </label>
+                                    <button type="button" 
+                                            class="btn-select-files"
+                                            onclick="document.getElementById('files_@item.Id').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        Click to select files
+                                    </button>
+                                </div>
+                                
                                 <input type="file" 
                                        name="violations[@item.Id].EvidenceFiles"
                                        id="files_@item.Id"
@@ -648,15 +701,13 @@
                                        accept="image/*,video/*"
                                        onchange="previewFiles(this, '@item.Id')" />
                                 
-                                <div class="file-upload-area" onclick="document.getElementById('files_@item.Id').click()">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                    <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
-                                        <strong>Click to select files</strong> or drag and drop here
-                                    </p>
-                                    <p class="small-text">Supported: JPG, PNG, MP4, MOV (Maximum 10 files)</p>
+                                <div id="preview_@item.Id" class="file-upload-area">
+                                    <div class="empty-state">
+                                        <i class="fas fa-images" style="font-size: 48px; color: #94a3b8; margin-bottom: 12px;"></i>
+                                        <p style="margin: 0; color: #64748b; font-size: 14px;">No files selected yet</p>
+                                        <p class="small-text" style="margin-top: 8px;">Supported: JPG, PNG, MP4, MOV (Maximum 10 files)</p>
+                                    </div>
                                 </div>
-                                
-                                <div id="preview_@item.Id" class="preview-container"></div>
                             </div>
 
                             <!-- Penalty Calculation -->

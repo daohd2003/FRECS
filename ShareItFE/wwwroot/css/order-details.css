@@ -127,6 +127,11 @@
     color: #374151;
 }
 
+.status-returned-with-issue {
+    background-color: #fed7aa;
+    color: #c2410c;
+}
+
 .status-cancelled {
     background-color: #fee2e2;
     color: #991b1b;
