@@ -20,7 +20,12 @@ namespace ShareItAPI.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Get revenue statistics for the current user (Provider)
+        /// NOTE: Front-end should handle 401 Unauthorized responses by redirecting to the login page.
+        /// </summary>
         [HttpGet("stats")]
+        [Authorize(Roles = "provider")]
         public async Task<ActionResult<RevenueStatsDto>> GetRevenueStats([FromQuery] string period = "month", [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             try
@@ -33,6 +38,11 @@ namespace ShareItAPI.Controllers
 
                 var stats = await _revenueService.GetRevenueStatsAsync(userId, period, startDate, endDate);
                 return Ok(stats);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid date range provided by user");
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -52,6 +62,11 @@ namespace ShareItAPI.Controllers
             {
                 var stats = await _revenueService.GetRevenueStatsAsync(providerId, period, startDate, endDate);
                 return Ok(stats);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid date range provided for provider {ProviderId}", providerId);
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
