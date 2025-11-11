@@ -262,6 +262,7 @@ namespace ShareItAPI.Controllers
 
         // GET: api/orders/{orderId}/details
         [HttpGet("{orderId:guid}/details")]
+        [Authorize(Roles = "customer")]
         public async Task<IActionResult> GetOrderDetails(Guid orderId)
         {
             var orderDetails = await _orderService.GetOrderDetailsAsync(orderId);
@@ -269,6 +270,26 @@ namespace ShareItAPI.Controllers
             if (orderDetails == null)
             {
                 return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            // Verify the authenticated customer owns this order
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized(new ApiResponse<object>("User not authenticated.", null));
+            }
+
+            // Get the order entity to check CustomerId
+            var orderEntity = await _orderService.GetOrderEntityByIdAsync(orderId);
+            if (orderEntity == null)
+            {
+                return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            // Verify the order belongs to the current customer
+            if (orderEntity.CustomerId.ToString() != currentUserId)
+            {
+                return Forbid();
             }
 
             return Ok(new ApiResponse<OrderDetailsDto>("Order details retrieved successfully.", orderDetails));
