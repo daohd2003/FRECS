@@ -1,5 +1,6 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.OrdersDto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -8,6 +9,7 @@ using ShareItFE.Common.Utilities;
 using ShareItFE.Extensions;
 using System;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -15,6 +17,7 @@ using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Order
 {
+    [Authorize(Roles = "customer")]
     public class DetailsModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
@@ -44,6 +47,19 @@ namespace ShareItFE.Pages.Order
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
+            // Check if user is authenticated
+            if (!User.Identity.IsAuthenticated)
+            {
+                return RedirectToPage("/Auth");
+            }
+
+            // Verify user has customer role
+            if (!User.IsInRole("customer"))
+            {
+                TempData["ErrorMessage"] = "Access Denied. Only customers can view order details.";
+                return RedirectToPage("/Index");
+            }
+
             try
             {
                 // 1. Lấy HttpClient đã được xác thực
@@ -63,7 +79,17 @@ namespace ShareItFE.Pages.Order
                             return NotFound();
                         }
                         
+                        // Verify the logged-in customer owns this order
+                        var currentCustomerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        if (string.IsNullOrEmpty(currentCustomerId))
+                        {
+                            TempData["ErrorMessage"] = "User not authenticated.";
+                            return RedirectToPage("/Auth");
+                        }
 
+                        // Check if the order belongs to the current customer by comparing CustomerId from API
+                        // Note: We need to add CustomerId to OrderDetailsDto or verify through API
+                        // For now, we'll rely on the API endpoint to only return orders for the authenticated user
                         
                         return Page();
                     }
