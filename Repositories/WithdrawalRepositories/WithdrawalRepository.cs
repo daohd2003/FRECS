@@ -30,6 +30,7 @@ namespace Repositories.WithdrawalRepositories
         public async Task<WithdrawalRequest?> GetByIdWithDetailsAsync(Guid id)
         {
             return await _context.WithdrawalRequests
+                .AsNoTracking()  // Read-only query optimization
                 .Include(w => w.Provider)
                     .ThenInclude(p => p.Profile)
                 .Include(w => w.BankAccount)
@@ -66,6 +67,7 @@ namespace Repositories.WithdrawalRepositories
         public async Task<decimal> GetTotalPendingAmountAsync(Guid providerId)
         {
             return await _context.WithdrawalRequests
+                .AsNoTracking()  // Read-only query optimization
                 .Where(w => w.ProviderId == providerId && w.Status == WithdrawalStatus.Initiated)
                 .SumAsync(w => w.Amount);
         }
@@ -73,6 +75,7 @@ namespace Repositories.WithdrawalRepositories
         public async Task<decimal> GetTotalCompletedAmountAsync(Guid providerId)
         {
             return await _context.WithdrawalRequests
+                .AsNoTracking()  // Read-only query optimization
                 .Where(w => w.ProviderId == providerId && w.Status == WithdrawalStatus.Completed)
                 .SumAsync(w => w.Amount);
         }

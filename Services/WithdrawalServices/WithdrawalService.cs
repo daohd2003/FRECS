@@ -38,11 +38,23 @@ namespace Services.WithdrawalServices
 
         public async Task<WithdrawalResponseDto> RequestPayoutAsync(Guid providerId, WithdrawalRequestDto dto)
         {
+            // Validate amount is provided (not null/default)
+            if (dto.Amount == 0)
+            {
+                throw new InvalidOperationException("Please enter a withdrawal amount.");
+            }
+
+            // Validate amount is positive
+            if (dto.Amount < 0)
+            {
+                throw new InvalidOperationException("Withdrawal amount must be a positive number.");
+            }
+
             // Validate minimum amount
             const decimal minAmount = 50000;
             if (dto.Amount < minAmount)
             {
-                throw new InvalidOperationException($"Minimum withdrawal amount is {minAmount:N0} VND");
+                throw new InvalidOperationException($"Withdrawal amount must be greater than {minAmount:N0} VND.");
             }
 
             // Validate bank account belongs to provider
