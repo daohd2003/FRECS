@@ -178,7 +178,7 @@
                                                     <span>@item.PricePerUnit.ToString("N0") VND/day</span>
                                                     @if (item.TotalDepositAmount > 0)
                                                     {
-                                                        <div class="text-xs text-orange-600 mt-1">
+                                                        <div class="text-xs text-orange-600 mt-1" id="deposit-@item.ItemId" data-deposit-per-unit="@item.DepositPerUnit">
                                                             +@item.TotalDepositAmount.ToString("N0") VND deposit
                                                         </div>
                                                     }
@@ -503,6 +503,14 @@
                         itemTotalElement.textContent = newTotal.toLocaleString() + ' VND';
                     }
 
+                    // Update item deposit display (for rental items)
+                    const itemDepositElement = document.getElementById(`deposit-${itemId}`);
+                    if (itemDepositElement) {
+                        const depositPerUnit = parseFloat(itemDepositElement.getAttribute('data-deposit-per-unit')) || 0;
+                        const newItemDeposit = depositPerUnit * newQuantity;
+                        itemDepositElement.textContent = `+${newItemDeposit.toLocaleString()} VND deposit`;
+                    }
+
                     // Recalculate cart totals (you might need to fetch this from server or calculate client-side)
                     updateCartTotals();
                     
@@ -567,33 +575,18 @@
                 await window.removeDiscountIfNeeded(newRentalSubtotal, newPurchaseSubtotal);
             }
 
-            // Calculate total deposit (this is a simplified approach - ideally would need server call for accuracy)
-            // For now, we'll make a server call to get accurate totals
-            fetch('@Url.Page("/CartPage/Cart")')
-                .then(response => response.text())
-                .then(html => {
-                    // Parse the response to extract deposit amount
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const depositElement = doc.getElementById('cart-deposit');
-                    
-                    if (depositElement) {
-                        const depositText = depositElement.textContent.replace(/[^\d]/g, '');
-                        newDeposit = parseInt(depositText) || 0;
-                        
-                        // Update deposit display
-                        const currentDepositElement = document.getElementById('cart-deposit');
-                        if (currentDepositElement) {
-                            currentDepositElement.textContent = newDeposit.toLocaleString() + ' VND';
-                        }
-                    }
-                    
-                    // Recalculate discount with new subtotals
-                    if (window.recalculateDiscount) {
-                        window.recalculateDiscount(currentRentalSubtotal, currentPurchaseSubtotal, currentSubtotal, newDeposit);
-                    }
-                })
-                .catch(error => console.log('Could not update deposit:', error));
+            // Calculate total deposit from all rental items
+            document.querySelectorAll('[id^="deposit-"]').forEach(element => {
+                const depositText = element.textContent.replace(/[^\d]/g, '');
+                const itemDeposit = parseInt(depositText) || 0;
+                newDeposit += itemDeposit;
+            });
+            
+            // Update deposit display
+            const currentDepositElement = document.getElementById('cart-deposit');
+            if (currentDepositElement) {
+                currentDepositElement.textContent = newDeposit.toLocaleString() + ' VND';
+            }
 
             // Update subtotal display
             const subtotalElement = document.getElementById('cart-subtotal');
@@ -601,7 +594,10 @@
                 subtotalElement.textContent = newSubtotal.toLocaleString() + ' VND';
             }
 
-            // Total is updated in the fetch callback above to include accurate deposit calculation
+            // Recalculate discount with new subtotals
+            if (window.recalculateDiscount) {
+                window.recalculateDiscount(currentRentalSubtotal, currentPurchaseSubtotal, currentSubtotal, newDeposit);
+            }
         }
 
         // Function to update product count in cart header
