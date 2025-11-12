@@ -21,6 +21,8 @@ namespace ShareItAPI.Controllers
 
         /// <summary>
         /// Provider requests a payout/withdrawal
+        /// NOTE: Front-end should clear the form state when user navigates away or cancels the action
+        /// to prevent previously entered amounts from remaining in the input field.
         /// </summary>
         [HttpPost("request")]
         [Authorize(Roles = "provider")]
@@ -28,6 +30,23 @@ namespace ShareItAPI.Controllers
         {
             try
             {
+                // Check for model validation errors (handles non-numeric and special character inputs)
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .FirstOrDefault();
+                    
+                    // Provide user-friendly message for invalid number format
+                    if (errors == null || errors.Contains("valid") || errors.Contains("format"))
+                    {
+                        return BadRequest(new ApiResponse<string>("Please enter a valid number without special characters.", null));
+                    }
+                    
+                    return BadRequest(new ApiResponse<string>(errors ?? "Invalid input.", null));
+                }
+
                 var providerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var result = await _withdrawalService.RequestPayoutAsync(providerId, dto);
                 return Ok(new ApiResponse<WithdrawalResponseDto>("Withdrawal request submitted successfully", result));
@@ -44,6 +63,7 @@ namespace ShareItAPI.Controllers
 
         /// <summary>
         /// Provider gets their withdrawal history
+        /// NOTE: Front-end should handle 401 Unauthorized responses by redirecting to the login page.
         /// </summary>
         [HttpGet("history")]
         [Authorize(Roles = "provider")]
@@ -81,9 +101,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// Get withdrawal request details by ID
+        /// Get withdrawal request details by ID (Provider can only view their own, Admin can view all)
         /// </summary>
         [HttpGet("{id}")]
+        [Authorize(Roles = "provider,admin")]
         public async Task<IActionResult> GetWithdrawalById(Guid id)
         {
             try

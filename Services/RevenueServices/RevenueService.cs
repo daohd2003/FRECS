@@ -33,6 +33,12 @@ namespace Services.RevenueServices
 
         public async Task<RevenueStatsDto> GetRevenueStatsAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null)
         {
+            // Validate date range if both dates are provided
+            if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
+            {
+                throw new ArgumentException("Start date cannot be later than end date. Please select a valid date range.");
+            }
+
             var now = DateTime.UtcNow;
             DateTime currentPeriodStart, currentPeriodEnd, previousPeriodStart, previousPeriodEnd;
 

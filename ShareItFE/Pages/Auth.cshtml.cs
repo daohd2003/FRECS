@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.Login;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -48,8 +48,13 @@ namespace ShareItFE.Pages
             // Only show error message if it's auth-related (not from other pages like product detail)
             if (TempData["ErrorMessage"] is string errorMsg)
             {
-                // Ignore messages related to "cart" as they should stay on product pages
-                if (!errorMsg.Contains("cart", StringComparison.OrdinalIgnoreCase))
+                // Ignore messages from other pages that should not appear on login page
+                bool isCartMessage = errorMsg.Contains("cart", StringComparison.OrdinalIgnoreCase);
+                bool isRevenueMessage = errorMsg.Contains("revenue", StringComparison.OrdinalIgnoreCase) || 
+                                       errorMsg.Contains("provider", StringComparison.OrdinalIgnoreCase) ||
+                                       errorMsg.Contains("access denied", StringComparison.OrdinalIgnoreCase);
+                
+                if (!isCartMessage && !isRevenueMessage)
                 {
                     ErrorMessage = errorMsg;
                 }
