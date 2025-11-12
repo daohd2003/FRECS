@@ -6,6 +6,7 @@ using Repositories.RevenueRepositories;
 using Repositories.TransactionRepositories;
 using Repositories.BankAccountRepositories;
 using Repositories.WithdrawalRepositories;
+using Repositories.SystemConfigRepositories;
 
 namespace Services.RevenueServices
 {
@@ -15,6 +16,7 @@ namespace Services.RevenueServices
         private readonly ITransactionRepository _transactionRepository;
         private readonly IBankAccountRepository _bankAccountRepository;
         private readonly IWithdrawalRepository _withdrawalRepository;
+        private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly IMapper _mapper;
 
         public RevenueService(
@@ -22,12 +24,14 @@ namespace Services.RevenueServices
             ITransactionRepository transactionRepository,
             IBankAccountRepository bankAccountRepository,
             IWithdrawalRepository withdrawalRepository,
+            ISystemConfigRepository systemConfigRepository,
             IMapper mapper)
         {
             _revenueRepository = revenueRepository;
             _transactionRepository = transactionRepository;
             _bankAccountRepository = bankAccountRepository;
             _withdrawalRepository = withdrawalRepository;
+            _systemConfigRepository = systemConfigRepository;
             _mapper = mapper;
         }
 
@@ -92,9 +96,9 @@ namespace Services.RevenueServices
             var previousAvgOrderValue = previousReturnedCount > 0 ? previousRevenue / previousReturnedCount : 0;
             var avgOrderValueGrowth = previousAvgOrderValue > 0 ? ((currentAvgOrderValue - previousAvgOrderValue) / previousAvgOrderValue) * 100 : 0;
 
-            // Calculate platform commission breakdown (Rental: 20%, Purchase: 10%)
-            var currentCommissionBreakdown = CalculateCommissionBreakdown(currentReturnedOrders);
-            var previousCommissionBreakdown = CalculateCommissionBreakdown(previousReturnedOrders);
+            // Calculate platform commission breakdown using rates from database
+            var currentCommissionBreakdown = await CalculateCommissionBreakdownAsync(currentReturnedOrders);
+            var previousCommissionBreakdown = await CalculateCommissionBreakdownAsync(previousReturnedOrders);
             
             var currentPlatformFee = currentCommissionBreakdown.TotalFee;
             var previousPlatformFee = previousCommissionBreakdown.TotalFee;
@@ -358,9 +362,9 @@ namespace Services.RevenueServices
 
         /// <summary>
         /// Calculate platform commission breakdown from OrderItems
-        /// Rental: 20% commission, Purchase: 10% commission
+        /// Uses commission rates from database configuration
         /// </summary>
-        private CommissionBreakdown CalculateCommissionBreakdown(List<Order> orders)
+        private async Task<CommissionBreakdown> CalculateCommissionBreakdownAsync(List<Order> orders)
         {
             decimal rentalRevenue = 0;
             decimal purchaseRevenue = 0;
@@ -384,11 +388,12 @@ namespace Services.RevenueServices
                 }
             }
 
-            const decimal RENTAL_COMMISSION_RATE = 0.20m;  // 20%
-            const decimal PURCHASE_COMMISSION_RATE = 0.10m; // 10%
+            // Get commission rates from database
+            var rentalCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
+            var purchaseCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
 
-            var rentalFee = rentalRevenue * RENTAL_COMMISSION_RATE;
-            var purchaseFee = purchaseRevenue * PURCHASE_COMMISSION_RATE;
+            var rentalFee = rentalRevenue * rentalCommissionRate;
+            var purchaseFee = purchaseRevenue * purchaseCommissionRate;
 
             return new CommissionBreakdown
             {

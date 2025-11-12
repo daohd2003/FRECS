@@ -1,10 +1,11 @@
-﻿using AutoMapper;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
+using Repositories.SystemConfigRepositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,11 +18,13 @@ namespace Repositories.TransactionRepositories
     {
         private readonly ShareItDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
-        public TransactionRepository(ShareItDbContext context, IMapper mapper)
+        public TransactionRepository(ShareItDbContext context, IMapper mapper, ISystemConfigRepository systemConfigRepository)
         {
             _context = context;
             _mapper = mapper;
+            _systemConfigRepository = systemConfigRepository;
         }
 
         public async Task<IEnumerable<TransactionSummaryDto>> GetTransactionsByProviderAsync(Guid providerId)
@@ -50,7 +53,7 @@ namespace Repositories.TransactionRepositories
                 // Add gross revenue (Subtotal excludes deposit)
                 totalGrossRevenue += order.Subtotal;
 
-                // Calculate platform fee for each item
+                // Calculate platform fee for each item using rates from database
                 foreach (var item in order.Items)
                 {
                     decimal itemRevenue = 0;
@@ -58,12 +61,14 @@ namespace Repositories.TransactionRepositories
                     if (item.TransactionType == TransactionType.rental)
                     {
                         itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                        totalPlatformFee += itemRevenue * 0.20m; // 20% commission
+                        var rentalRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
+                        totalPlatformFee += itemRevenue * rentalRate;
                     }
                     else if (item.TransactionType == TransactionType.purchase)
                     {
                         itemRevenue = item.DailyRate * item.Quantity;
-                        totalPlatformFee += itemRevenue * 0.10m; // 10% commission
+                        var purchaseRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
+                        totalPlatformFee += itemRevenue * purchaseRate;
                     }
                 }
             }
@@ -127,7 +132,7 @@ namespace Repositories.TransactionRepositories
                     // Add gross revenue (Subtotal excludes deposit)
                     totalGrossRevenue += order.Subtotal;
 
-                    // Calculate platform fee for each item
+                    // Calculate platform fee for each item using rates from database
                     foreach (var item in order.Items)
                     {
                         decimal itemRevenue = 0;
@@ -135,12 +140,14 @@ namespace Repositories.TransactionRepositories
                         if (item.TransactionType == TransactionType.rental)
                         {
                             itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                            totalPlatformFee += itemRevenue * 0.20m; // 20% commission
+                            var rentalRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
+                            totalPlatformFee += itemRevenue * rentalRate;
                         }
                         else if (item.TransactionType == TransactionType.purchase)
                         {
                             itemRevenue = item.DailyRate * item.Quantity;
-                            totalPlatformFee += itemRevenue * 0.10m; // 10% commission
+                            var purchaseRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
+                            totalPlatformFee += itemRevenue * purchaseRate;
                         }
                     }
                 }

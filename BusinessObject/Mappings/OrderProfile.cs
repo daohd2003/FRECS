@@ -91,7 +91,10 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
                 .ForMember(dest => dest.PricePerDay, opt => opt.MapFrom(src => src.DailyRate))
                 .ForMember(dest => dest.TransactionType, opt => opt.MapFrom(src => src.TransactionType))
-                .ForMember(dest => dest.DepositPerUnit, opt => opt.MapFrom(src => src.DepositPerUnit));
+                .ForMember(dest => dest.DepositPerUnit, opt => opt.MapFrom(src => src.DepositPerUnit))
+                .ForMember(dest => dest.RentalCommissionRate, opt => opt.MapFrom(src => src.RentalCommissionRate))
+                .ForMember(dest => dest.PurchaseCommissionRate, opt => opt.MapFrom(src => src.PurchaseCommissionRate))
+                .ForMember(dest => dest.CommissionAmount, opt => opt.MapFrom(src => src.CommissionAmount));
 
             // Mapping cho Profile -> ShippingAddressDto
             CreateMap<Models.Profile, ShippingAddressDto>();

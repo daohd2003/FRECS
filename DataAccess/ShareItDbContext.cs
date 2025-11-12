@@ -1,4 +1,4 @@
-﻿using BusinessObject.Models;
+using BusinessObject.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -44,6 +44,9 @@ namespace DataAccess
 
         // Withdrawal Request table
         public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+
+        // System Configuration table
+        public DbSet<SystemConfig> SystemConfigs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

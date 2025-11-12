@@ -1,4 +1,4 @@
-﻿using BusinessObject.Enums;
+using BusinessObject.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,5 +22,10 @@ namespace BusinessObject.DTOs.OrdersDto
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public TransactionType TransactionType { get; set; } // Từ OrderItem.TransactionType        
         public decimal DepositPerUnit { get; set; } = 0m;    // Từ OrderItem.DepositPerUnit
+        
+        // Commission fields
+        public decimal? RentalCommissionRate { get; set; }    // Từ OrderItem.RentalCommissionRate
+        public decimal? PurchaseCommissionRate { get; set; }  // Từ OrderItem.PurchaseCommissionRate
+        public decimal CommissionAmount { get; set; } = 0m;   // Từ OrderItem.CommissionAmount
     }
 }

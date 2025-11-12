@@ -103,6 +103,14 @@
                         <span>Discount Codes</span>
                     </a>
 
+                    @if (userRole == "admin")
+                    {
+                        <a asp-page="/Admin/CommissionRates" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/CommissionRates" ? "active" : "")">
+                            <i class="bi bi-percent"></i>
+                            <span>Commission Rates</span>
+                        </a>
+                    }
+
                     <a asp-page="/ReportManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/ReportManagement" ? "active" : "")">
                         <i class="bi bi-flag-fill"></i>
                         <span>Reports</span>
