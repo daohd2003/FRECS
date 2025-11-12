@@ -78,6 +78,10 @@
 
     // Check if current user is admin (read-only mode)
     var isAdmin = User.IsInRole("admin");
+    
+    // Check if current user is customer or provider (both can place orders)
+    var isCustomer = User.IsInRole("customer");
+    var isProvider = User.IsInRole("provider");
 
     // --- Helper functions ---
     Func<BusinessObject.Enums.OrderStatus, string> GetStatusColor = status =>
@@ -223,13 +227,17 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title">Order Status</h2>
-                @if (!isAdmin)
+                <h2 class="card-title">Order Actions</h2>
+                @if (!isAdmin && (isCustomer || isProvider))
                 {
                     <div class="actions-grid">
-                        <button type="button" class="btn btn-primary" id="contact-support-order-status-btn">
-                            <i class="bi bi-headset"></i> Contact Support
-                        </button>
+                        @* Contact Support - Only show when order is in_use (user has received the items) *@
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use)
+                        {
+                            <button type="button" class="btn btn-primary" id="contact-support-order-status-btn">
+                                <i class="bi bi-headset"></i> Contact Support
+                            </button>
+                        }
 
                         @if (isPurchaseOnly)
                     {
