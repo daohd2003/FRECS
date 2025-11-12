@@ -115,9 +115,9 @@ namespace Services.CartServices
                     : 1;
                 
                 // Validate rental days maximum limit
-                if (rentalDays > 30)
+                if (rentalDays > 7)
                 {
-                    throw new ArgumentException("Rental Days cannot exceed 30 days.");
+                    throw new ArgumentException("Rental Days cannot exceed 7 days.");
                 }
                 
                 DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
@@ -309,9 +309,9 @@ namespace Services.CartServices
                         {
                             throw new ArgumentException("Rental Days must be at least 1.");
                         }
-                        if (updateDto.RentalDays.Value > 30)
+                        if (updateDto.RentalDays.Value > 7)
                         {
-                            throw new ArgumentException("Rental Days cannot exceed 30 days.");
+                            throw new ArgumentException("Rental Days cannot exceed 7 days.");
                         }
                         item.RentalDays = updateDto.RentalDays.Value;
                         item.EndDate = item.StartDate.HasValue && item.RentalDays.HasValue 
@@ -511,12 +511,12 @@ namespace Services.CartServices
         }
 
         /// <summary>
-        /// Validates that the total cart cost does not exceed 50,000,000 VND
+        /// Validates that the total cart cost does not exceed 10,000,000 VND
         /// Total includes rental/purchase price + deposit for rental items
         /// </summary>
         private async Task ValidateCartTotalCostAsync(Guid customerId)
         {
-            const decimal MAX_CART_COST = 50_000_000m;
+            const decimal MAX_CART_COST = 10_000_000m;
             
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null || !cart.Items.Any())

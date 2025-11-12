@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.ReportDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
@@ -48,17 +48,20 @@ namespace Repositories.ReportRepositories
                 .Include(r => r.Reporter).ThenInclude(u => u.Profile)
                 .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile) // Lấy cả thông tin admin được gán
+                .Include(r => r.Order).ThenInclude(o => o.Items).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images) // Lấy thông tin order, products và images
                 .FirstOrDefaultAsync(r => r.Id == reportId);
         }
 
         public async Task CreateReportAsync(ReportDTO dto)
         {
-            // Logic tạo Report giữ nguyên
+            // Logic tạo Report với hỗ trợ OrderId và ReportType
             var report = new Report
             {
                 Id = Guid.NewGuid(),
                 ReporterId = dto.ReporterId,
                 ReporteeId = dto.ReporteeId,
+                OrderId = dto.OrderId,
+                ReportType = dto.ReportType,
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
@@ -82,6 +85,7 @@ namespace Repositories.ReportRepositories
                 .Include(r => r.Reporter).ThenInclude(u => u.Profile)
                 .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile)
+                .Include(r => r.Order).ThenInclude(o => o.Items).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images) // Lấy thông tin order, products và images
                 .AsQueryable();
         }
     }

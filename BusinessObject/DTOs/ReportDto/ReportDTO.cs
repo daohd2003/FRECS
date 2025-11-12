@@ -1,4 +1,4 @@
-﻿using BusinessObject.Enums;
+using BusinessObject.Enums;
 
 namespace BusinessObject.DTOs.ReportDto
 {
@@ -9,6 +9,10 @@ namespace BusinessObject.DTOs.ReportDto
         public Guid ReporterId { get; set; }  // Người thực hiện báo cáo
 
         public Guid? ReporteeId { get; set; } = null; // Người bị báo cáo
+
+        public Guid? OrderId { get; set; }  // ID đơn hàng (nếu là report liên quan đến order)
+
+        public ReportType ReportType { get; set; } = ReportType.General;  // Loại báo cáo
 
         public string Subject { get; set; }  // Chủ đề/nguyên nhân báo cáo (Ví dụ: Spam, Lừa đảo)
 

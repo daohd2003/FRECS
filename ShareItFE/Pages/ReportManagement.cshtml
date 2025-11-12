@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model ShareItFE.Pages.ReportManagementModel
 @{
     ViewData["Title"] = "Report Management";
@@ -230,6 +230,19 @@
                                 </div>
                             </div>
                             <button type="button" id="btn-message-reportee" class="btn btn-sm btn-outline-primary">Message</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Information Section (only for OrderRelated reports) -->
+                    <div class="modal-section" id="order-info-section" style="display:none;">
+                        <h3><i class="bi bi-box-seam"></i> Order Information</h3>
+                        <div class="info-card">
+                            <div><label>Order Code</label><p id="modal-order-code"></p></div>
+                            <div><label>Report Type</label><p id="modal-report-type"></p></div>
+                        </div>
+                        <div id="order-products-container" style="margin-top: 1rem;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Products in Order</label>
+                            <div id="order-products-list"></div>
                         </div>
                     </div>
                 </div>
@@ -491,6 +504,52 @@
                 document.getElementById('modal-status-select').value = statusValue;
                 const adminSelect = document.getElementById('modal-admin-select');
                 adminSelect.value = report.assignedAdminId ?? '';
+
+                // Order Information (for OrderRelated reports)
+                const reportType = report.reportType ?? report.ReportType;
+                const orderInfoSection = document.getElementById('order-info-section');
+                
+                console.log('Report Type:', reportType);
+                console.log('Full Report Data:', report);
+                console.log('Order ID:', report.orderId ?? report.OrderId);
+                console.log('Order Code:', report.orderCode ?? report.OrderCode);
+                
+                // Check if report is order-related (handle both string and number formats)
+                const isOrderRelated = reportType === 'OrderRelated' || 
+                                      reportType === 1 || 
+                                      reportType?.toLowerCase() === 'orderrelated' ||
+                                      (report.orderId ?? report.OrderId) != null;
+                
+                if (isOrderRelated) {
+                    console.log('Showing order info section');
+                    orderInfoSection.style.display = 'block';
+                    document.getElementById('modal-order-code').textContent = getValue('orderCode') || 'N/A';
+                    document.getElementById('modal-report-type').textContent = 'Order Related';
+                    
+                    // Display products
+                    const orderProducts = report.orderProducts ?? report.OrderProducts ?? [];
+                    console.log('Order Products:', orderProducts);
+                    const productsListDiv = document.getElementById('order-products-list');
+                    
+                    if (orderProducts && orderProducts.length > 0) {
+                        productsListDiv.innerHTML = orderProducts.map(product => `
+                            <div style="display: flex; gap: 12px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; background: #f9fafb;">
+                                <img src="${product.primaryImageUrl || product.PrimaryImageUrl || '/images/placeholder.png'}" 
+                                     alt="${product.productName || product.ProductName}" 
+                                     style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                                <div style="flex: 1;">
+                                    <p style="font-weight: 600; margin: 0;">${product.productName || product.ProductName}</p>
+                                    <p style="color: #6b7280; font-size: 0.875rem; margin: 4px 0;">Quantity: ${product.quantity || product.Quantity}</p>
+                                    <p style="color: #059669; font-weight: 600; margin: 0;">${(product.price || product.Price).toLocaleString('vi-VN')} VND</p>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        productsListDiv.innerHTML = '<p style="color: #6b7280; font-style: italic;">No products found</p>';
+                    }
+                } else {
+                    orderInfoSection.style.display = 'none';
+                }
 
             }
 

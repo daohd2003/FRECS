@@ -230,10 +230,10 @@ namespace ShareItFE.Pages.CartPage
             if (action == "increase")
             {
                 newRentalDays = currentRentalDays + 1;
-                if (newRentalDays > 30)
+                if (newRentalDays > 7)
                 {
-                    newRentalDays = 30; // Cap at maximum 30 days
-                    ErrorMessage = "Rental days cannot exceed 30 days.";
+                    newRentalDays = 7; // Cap at maximum 7 days
+                    ErrorMessage = "Rental days cannot exceed 7 days.";
                     return RedirectToPage();
                 }
             }
@@ -299,7 +299,7 @@ namespace ShareItFE.Pages.CartPage
             }
             else if (rentalDays.HasValue && action is "increaseDays")
             {
-                rentalDays = Math.Min(30, Math.Max(1, rentalDays.Value + 1));
+                rentalDays = Math.Min(7, Math.Max(1, rentalDays.Value + 1));
             }
             else if (rentalDays.HasValue && action is "decreaseDays")
             {
@@ -307,9 +307,9 @@ namespace ShareItFE.Pages.CartPage
             }
             
             // Validate rental days limit
-            if (rentalDays.HasValue && rentalDays.Value > 30)
+            if (rentalDays.HasValue && rentalDays.Value > 7)
             {
-                ErrorMessage = "Rental days cannot exceed 30 days.";
+                ErrorMessage = "Rental days cannot exceed 7 days.";
                 return RedirectToPage();
             }
 

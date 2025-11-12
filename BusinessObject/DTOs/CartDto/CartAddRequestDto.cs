@@ -24,9 +24,9 @@ namespace BusinessObject.DTOs.CartDto
 
         /// <summary>
         /// Số ngày thuê (chỉ áp dụng cho Rental)
-        /// Giới hạn tối đa 30 ngày
+        /// Giới hạn tối đa 7 ngày
         /// </summary>
-        [Range(1, 30, ErrorMessage = "Rental Days must be between 1 and 30.")]
+        [Range(1, 7, ErrorMessage = "Rental Days must be between 1 and 7.")]
         public int? RentalDays { get; set; }
 
         /// <summary>

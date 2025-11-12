@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.ReportDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;

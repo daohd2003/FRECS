@@ -1,4 +1,4 @@
-﻿using BusinessObject.Enums;
+using BusinessObject.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -20,8 +20,16 @@ namespace BusinessObject.Models
 
         public Guid? ReporteeId { get; set; }  // Người bị báo cáo
 
+        public Guid? OrderId { get; set; }  // ID đơn hàng (nếu là report liên quan đến order)
+
+        [Required]
+        public ReportType ReportType { get; set; } = ReportType.General;  // Loại báo cáo
+
         [ForeignKey(nameof(ReporterId))]
         public User Reporter { get; set; }
+
+        [ForeignKey(nameof(OrderId))]
+        public Order? Order { get; set; }  // Đơn hàng liên quan (nếu có)
 
         [ForeignKey(nameof(ReporteeId))]
         public User? Reportee { get; set; }
