@@ -62,6 +62,10 @@ namespace DataAccess
                 .Property(r => r.Status)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<Report>()
+                .Property(r => r.ReportType)
+                .HasConversion<string>();
+
             modelBuilder.Entity<Transaction>()
                 .Property(t => t.Status)
                 .HasConversion<string>();

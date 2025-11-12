@@ -1,17 +1,17 @@
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.RevenueDtos;
 using BusinessObject.DTOs.WithdrawalDto;
-using BusinessObject.DTOs.ApiResponses;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
 using System.Security.Claims;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace ShareItFE.Pages
 {
-    [Authorize]
+    // Note: [Authorize] removed to allow manual authentication check
+    // This prevents 401 error and allows custom redirect logic for different user types
     public class RevenueModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
@@ -41,6 +41,12 @@ namespace ShareItFE.Pages
         [BindProperty(SupportsGet = true)]
         public string Tab { get; set; } = "overview";
 
+        [BindProperty(SupportsGet = true)]
+        public DateTime? StartDate { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public DateTime? EndDate { get; set; }
+
         [TempData]
         public string SuccessMessage { get; set; }
 
@@ -59,11 +65,11 @@ namespace ShareItFE.Pages
 
             // Determine user role
             UserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "customer";
-            
+
             // Only providers can access revenue dashboard
+            // Silently redirect non-providers to home page without error message
             if (!string.Equals(UserRole, "provider", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["ErrorMessage"] = "Access denied. Revenue dashboard is only available for providers.";
                 return RedirectToPage("/Index");
             }
 
@@ -71,24 +77,65 @@ namespace ShareItFE.Pages
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
 
-                // Get revenue statistics
-                var revenueResponse = await client.GetAsync($"api/revenue/stats?period={Period}");
+                // Build revenue stats URL with optional date filters
+                var revenueUrl = $"api/revenue/stats?period={Period}";
+                if (StartDate.HasValue && EndDate.HasValue)
+                {
+                    revenueUrl += $"&startDate={StartDate.Value:yyyy-MM-dd}&endDate={EndDate.Value:yyyy-MM-dd}";
+                }
+
+                // Execute all API calls in parallel for better performance
+                var revenueTask = client.GetAsync(revenueUrl);
+                var payoutTask = client.GetAsync("api/revenue/payout-summary");
+                var bankTask = client.GetAsync("api/revenue/bank-accounts");
+                var withdrawalHistoryTask = client.GetAsync("api/withdrawals/history");
+                var balanceTask = client.GetAsync("api/withdrawals/available-balance");
+
+                // Wait for all requests to complete
+                await Task.WhenAll(revenueTask, payoutTask, bankTask, withdrawalHistoryTask, balanceTask);
+
+                // Process revenue statistics
+                var revenueResponse = await revenueTask;
+
+                // If any API returns 401/403, user doesn't have access - redirect to home
+                if (revenueResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    revenueResponse.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return RedirectToPage("/Index");
+                }
+
                 if (revenueResponse.IsSuccessStatusCode)
                 {
                     var revenueJson = await revenueResponse.Content.ReadAsStringAsync();
                     RevenueStats = JsonSerializer.Deserialize<RevenueStatsDto>(revenueJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new RevenueStatsDto();
                 }
 
-                // Get payout summary
-                var payoutResponse = await client.GetAsync("api/revenue/payout-summary");
+                // Process payout summary
+                var payoutResponse = await payoutTask;
+
+                // Check for unauthorized access
+                if (payoutResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    payoutResponse.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return RedirectToPage("/Index");
+                }
+
                 if (payoutResponse.IsSuccessStatusCode)
                 {
                     var payoutJson = await payoutResponse.Content.ReadAsStringAsync();
                     PayoutSummary = JsonSerializer.Deserialize<PayoutSummaryDto>(payoutJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new PayoutSummaryDto();
                 }
 
-                // Get bank accounts and sort by primary first
-                var bankResponse = await client.GetAsync("api/revenue/bank-accounts");
+                // Process bank accounts
+                var bankResponse = await bankTask;
+
+                // Check for unauthorized access
+                if (bankResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    bankResponse.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return RedirectToPage("/Index");
+                }
+
                 if (bankResponse.IsSuccessStatusCode)
                 {
                     var bankJson = await bankResponse.Content.ReadAsStringAsync();
@@ -97,8 +144,16 @@ namespace ShareItFE.Pages
                     BankAccounts = accounts.OrderByDescending(a => a.IsPrimary).ToList();
                 }
 
-                // Get withdrawal history (New system using WithdrawalRequests table)
-                var withdrawalHistoryResponse = await client.GetAsync("api/withdrawals/history");
+                // Process withdrawal history
+                var withdrawalHistoryResponse = await withdrawalHistoryTask;
+
+                // Check for unauthorized access
+                if (withdrawalHistoryResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    withdrawalHistoryResponse.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return RedirectToPage("/Index");
+                }
+
                 if (withdrawalHistoryResponse.IsSuccessStatusCode)
                 {
                     var withdrawalJson = await withdrawalHistoryResponse.Content.ReadAsStringAsync();
@@ -106,14 +161,29 @@ namespace ShareItFE.Pages
                     WithdrawalHistory = apiResponse?.Data?.ToList() ?? new List<WithdrawalHistoryDto>();
                 }
 
-                // Get available balance
-                var balanceResponse = await client.GetAsync("api/withdrawals/available-balance");
+                // Process available balance
+                var balanceResponse = await balanceTask;
+
+                // Check for unauthorized access
+                if (balanceResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    balanceResponse.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    return RedirectToPage("/Index");
+                }
+
                 if (balanceResponse.IsSuccessStatusCode)
                 {
                     var balanceJson = await balanceResponse.Content.ReadAsStringAsync();
                     var apiResponse = JsonSerializer.Deserialize<ApiResponse<decimal>>(balanceJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     AvailableBalance = apiResponse?.Data ?? 0;
                 }
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                                                   ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                // User doesn't have permission to access revenue data - redirect to home
+                _logger.LogWarning(ex, "Unauthorized access attempt to revenue page by user {UserId} with role {Role}", userId, UserRole);
+                return RedirectToPage("/Index");
             }
             catch (Exception ex)
             {
@@ -136,7 +206,7 @@ namespace ShareItFE.Pages
             {
                 ModelState.Remove(key);
             }
-            
+
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
@@ -185,7 +255,7 @@ namespace ShareItFE.Pages
             {
                 ModelState.Remove(key);
             }
-            
+
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
@@ -227,7 +297,7 @@ namespace ShareItFE.Pages
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 var response = await client.DeleteAsync($"api/revenue/bank-accounts/{accountId}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Bank account deleted successfully!";
@@ -255,7 +325,7 @@ namespace ShareItFE.Pages
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 var response = await client.PostAsync($"api/revenue/bank-accounts/{accountId}/set-primary", null);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Primary account updated successfully!";
@@ -286,7 +356,7 @@ namespace ShareItFE.Pages
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await client.PostAsync("api/revenue/request-payout", content);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Payout request submitted successfully!";
@@ -335,7 +405,7 @@ namespace ShareItFE.Pages
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await client.PostAsync("api/withdrawals/request", content);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     SuccessMessage = "Withdrawal request submitted successfully! Status: Initiated";
@@ -358,6 +428,113 @@ namespace ShareItFE.Pages
             }
 
             return RedirectToPage(new { Tab = "payout" });
+        }
+
+        public async Task<IActionResult> OnPostExportReport()
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return RedirectToPage("/Auth");
+                }
+
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+
+                // Build revenue stats URL with date filters
+                var revenueUrl = $"api/revenue/stats?period={Period}";
+                if (StartDate.HasValue && EndDate.HasValue)
+                {
+                    revenueUrl += $"&startDate={StartDate.Value:yyyy-MM-dd}&endDate={EndDate.Value:yyyy-MM-dd}";
+                }
+
+                var response = await client.GetAsync(revenueUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    ErrorMessage = "Failed to export report. Please try again.";
+                    return RedirectToPage(new { Tab = "overview", Period });
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                var stats = JsonSerializer.Deserialize<RevenueStatsDto>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (stats == null)
+                {
+                    ErrorMessage = "No data available to export.";
+                    return RedirectToPage(new { Tab = "overview", Period });
+                }
+
+                // Generate CSV content
+                var csv = new StringBuilder();
+                csv.AppendLine("Revenue Report");
+                csv.AppendLine($"Period,{Period}");
+
+                // Calculate date range based on period or custom dates
+                DateTime calculatedStartDate, calculatedEndDate;
+                if (StartDate.HasValue && EndDate.HasValue)
+                {
+                    calculatedStartDate = StartDate.Value;
+                    calculatedEndDate = EndDate.Value;
+                }
+                else
+                {
+                    var now = DateTime.Now;
+                    switch (Period.ToLower())
+                    {
+                        case "week":
+                            var dayOfWeek = (int)now.DayOfWeek;
+                            var diff = dayOfWeek == 0 ? -6 : 1 - dayOfWeek; // Monday start
+                            calculatedStartDate = now.Date.AddDays(diff);
+                            calculatedEndDate = calculatedStartDate.AddDays(6); // Sunday end
+                            break;
+                        case "year":
+                            calculatedStartDate = new DateTime(now.Year, 1, 1);
+                            calculatedEndDate = new DateTime(now.Year, 12, 31);
+                            break;
+                        default: // month
+                            calculatedStartDate = new DateTime(now.Year, now.Month, 1);
+                            calculatedEndDate = calculatedStartDate.AddMonths(1).AddDays(-1);
+                            break;
+                    }
+                }
+
+                csv.AppendLine($"Date Range,{calculatedStartDate:dd-MM-yyyy} -> {calculatedEndDate:dd-MM-yyyy}");
+                csv.AppendLine($"Generated,{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                csv.AppendLine();
+
+                // Summary Section
+                csv.AppendLine("SUMMARY");
+                csv.AppendLine("Metric,Current Period,Previous Period,Growth %");
+                csv.AppendLine($"Revenue (VND),{stats.CurrentPeriodRevenue:F0},{stats.PreviousPeriodRevenue:F0},{stats.RevenueGrowthPercentage:F2}");
+                csv.AppendLine($"Orders,{stats.CurrentPeriodOrders},{stats.PreviousPeriodOrders},{stats.OrderGrowthPercentage:F2}");
+                csv.AppendLine($"Net Revenue (VND),{stats.NetRevenue:F0},{stats.PreviousNetRevenue:F0},{stats.NetRevenueGrowthPercentage:F2}");
+                csv.AppendLine($"Platform Fee (VND),{stats.PlatformFee:F0},{stats.PreviousPlatformFee:F0},{stats.PlatformFeeGrowthPercentage:F2}");
+                csv.AppendLine($"Average Order Value (VND),{stats.AverageOrderValue:F0},{stats.PreviousAverageOrderValue:F0},{stats.AvgOrderValueGrowthPercentage:F2}");
+                csv.AppendLine();
+
+                // Chart Data Section
+                if (stats.ChartData != null && stats.ChartData.Any())
+                {
+                    csv.AppendLine("DETAILED DATA");
+                    csv.AppendLine("Period,Revenue (VND),Order Count");
+                    foreach (var data in stats.ChartData)
+                    {
+                        csv.AppendLine($"{data.Period},{data.Revenue:F0},{data.OrderCount}");
+                    }
+                }
+
+                // Return CSV file
+                var fileName = $"Revenue_Report_{Period}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+                var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+                return File(bytes, "text/csv", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting revenue report");
+                ErrorMessage = "An error occurred while exporting. Please try again.";
+                return RedirectToPage(new { Tab = "overview", Period });
+            }
         }
     }
 }

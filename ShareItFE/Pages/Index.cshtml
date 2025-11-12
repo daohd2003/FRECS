@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model ShareItFE.Pages.IndexModel   
 @{
     ViewData["Title"] = "FRECS - Luxury Fashion Rentals & Sales | Designer Dresses & Suits";
@@ -94,9 +94,13 @@
                     </div>
                 </div>
                 <div class="hero-image-card">
-                    <img src="https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=600&h=800&fit=crop"
+                    <img src="https://res.cloudinary.com/dqyr7q2wa/image/upload/f_auto,q_auto:good,w_800,h_1000,c_fill/v1762834826/pexels-photo-1536619_ttxomm.jpg"
                          alt="Featured dress"
-                         class="hero-image" />
+                         class="hero-image"
+                         loading="eager"
+                         fetchpriority="high"
+                         width="800"
+                         height="1000" />
                     @* <div class="hero-image-details">
                         <h3 class="hero-image-title">Designer Evening Gown</h3>
                         <p class="hero-image-price">From $95/day</p>

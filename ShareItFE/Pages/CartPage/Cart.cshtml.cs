@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.ProductDto; // Ensure this is available for Product image and price
 using Microsoft.AspNetCore.Mvc;
@@ -191,14 +191,30 @@ namespace ShareItFE.Pages.CartPage
 
             if (response.IsSuccessStatusCode)
             {
-                SuccessMessage = "Product quantity in cart has been updated successfully.";
+                return new JsonResult(new { success = true, message = "Product quantity updated successfully." });
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Could not update quantity: {errorContent}";
+                try
+                {
+                    // Try to parse error response to extract clean message
+                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return new JsonResult(new { success = false, message = errorResponse?.Message ?? errorContent }) 
+                    { 
+                        StatusCode = (int)response.StatusCode 
+                    };
+                }
+                catch
+                {
+                    // If parsing fails, use raw content
+                    return new JsonResult(new { success = false, message = errorContent }) 
+                    { 
+                        StatusCode = (int)response.StatusCode 
+                    };
+                }
             }
-            return RedirectToPage();
         }
 
         // --- RENAMED: Page Handler để cập nhật RENTAL DAYS ---
@@ -214,6 +230,12 @@ namespace ShareItFE.Pages.CartPage
             if (action == "increase")
             {
                 newRentalDays = currentRentalDays + 1;
+                if (newRentalDays > 7)
+                {
+                    newRentalDays = 7; // Cap at maximum 7 days
+                    ErrorMessage = "Rental days cannot exceed 7 days.";
+                    return RedirectToPage();
+                }
             }
             else if (action == "decrease")
             {
@@ -247,7 +269,18 @@ namespace ShareItFE.Pages.CartPage
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Could not update rental days: {errorContent}";
+                try
+                {
+                    // Try to parse error response to extract clean message
+                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    ErrorMessage = errorResponse?.Message ?? errorContent;
+                }
+                catch
+                {
+                    // If parsing fails, use raw content
+                    ErrorMessage = errorContent;
+                }
             }
             return RedirectToPage();
         }
@@ -266,11 +299,18 @@ namespace ShareItFE.Pages.CartPage
             }
             else if (rentalDays.HasValue && action is "increaseDays")
             {
-                rentalDays = Math.Max(1, rentalDays.Value + 1);
+                rentalDays = Math.Min(7, Math.Max(1, rentalDays.Value + 1));
             }
             else if (rentalDays.HasValue && action is "decreaseDays")
             {
                 rentalDays = Math.Max(1, rentalDays.Value - 1);
+            }
+            
+            // Validate rental days limit
+            if (rentalDays.HasValue && rentalDays.Value > 7)
+            {
+                ErrorMessage = "Rental days cannot exceed 7 days.";
+                return RedirectToPage();
             }
 
             var updateDto = new CartUpdateRequestDto
@@ -288,7 +328,18 @@ namespace ShareItFE.Pages.CartPage
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Could not update cart schedule: {errorContent}";
+                try
+                {
+                    // Try to parse error response to extract clean message
+                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    ErrorMessage = errorResponse?.Message ?? errorContent;
+                }
+                catch
+                {
+                    // If parsing fails, use raw content
+                    ErrorMessage = errorContent;
+                }
             }
 
             return RedirectToPage();
@@ -323,7 +374,18 @@ namespace ShareItFE.Pages.CartPage
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                ErrorMessage = $"Could not update start date: {errorContent}";
+                try
+                {
+                    // Try to parse error response to extract clean message
+                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(errorContent, 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    ErrorMessage = errorResponse?.Message ?? errorContent;
+                }
+                catch
+                {
+                    // If parsing fails, use raw content
+                    ErrorMessage = errorContent;
+                }
             }
 
             return RedirectToPage();

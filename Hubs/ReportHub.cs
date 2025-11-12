@@ -1,4 +1,4 @@
-﻿using DataAccess;
+using DataAccess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace Hubs
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,staff")]
     public class ReportHub : Hub
     {
         private static readonly ConcurrentDictionary<string, string> UserConnections = new();
@@ -29,7 +29,8 @@ namespace Hubs
 
                 await Groups.AddToGroupAsync(connectionId, "Admins");
 
-                Console.WriteLine($"--> Admin connected: {Context.User.Identity?.Name} with ConnectionId: {connectionId}");
+                var userRole = Context.User?.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
+                Console.WriteLine($"--> {userRole} connected: {Context.User.Identity?.Name} with ConnectionId: {connectionId}");
 
                 // Gửi danh sách report chưa được gán cho bất kỳ ai (Pending)
                 var reports = await _context.Reports
@@ -63,7 +64,8 @@ namespace Hubs
             {
                 UserConnections.TryRemove(userId, out _);
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, "Admins");
-                Console.WriteLine($"--> Admin disconnected: {Context.User.Identity?.Name}");
+                var userRole = Context.User?.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
+                Console.WriteLine($"--> {userRole} disconnected: {Context.User.Identity?.Name}");
             }
 
             await base.OnDisconnectedAsync(exception);

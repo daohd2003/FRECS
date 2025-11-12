@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model ShareItFE.Pages.CartPage.CartModel
 @{
     ViewData["Title"] = "Giỏ hàng của tôi";
@@ -81,7 +81,7 @@
                                             <button type="submit" name="action" value="decreaseDays" class="h-10 px-3 border border-gray-300 rounded-lg hover:bg-gray-50" aria-label="Decrease rental days">
                                                 <i class="bi bi-dash-lg w-4 h-4"></i>
                                             </button>
-                                            <input id="globalRentalDays" type="number" name="rentalDays" value="@firstRentalItem.RentalDays" min="1" class="h-10 w-24 text-center px-3 border border-gray-300 rounded-lg" />
+                                            <input id="globalRentalDays" type="number" name="rentalDays" value="@firstRentalItem.RentalDays" min="1" max="7" class="h-10 w-24 text-center px-3 border border-gray-300 rounded-lg" />
                                             <button type="submit" name="action" value="increaseDays" class="h-10 px-3 border border-gray-300 rounded-lg hover:bg-gray-50" aria-label="Increase rental days">
                                                 <i class="bi bi-plus-lg w-4 h-4"></i>
                                             </button>
@@ -178,7 +178,7 @@
                                                     <span>@item.PricePerUnit.ToString("N0") VND/day</span>
                                                     @if (item.TotalDepositAmount > 0)
                                                     {
-                                                        <div class="text-xs text-orange-600 mt-1">
+                                                        <div class="text-xs text-orange-600 mt-1" id="deposit-@item.ItemId" data-deposit-per-unit="@item.DepositPerUnit">
                                                             +@item.TotalDepositAmount.ToString("N0") VND deposit
                                                         </div>
                                                     }
@@ -277,21 +277,13 @@
                             </div>
                         </div>
 
-                        @* @if (Model.DeliveryFee > 0)
-                            {
-                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                                    <p class="text-sm text-blue-800">
-                                        Thêm @((100000 - Model.Subtotal).ToString("N0")) VND nữa để được miễn phí giao hàng!
-                                    </p>
-                                </div>
-                            } *@
-
                         @* Policy Agreement Section *@
                         <div class="mb-6">
                             <input type="checkbox" id="hasAgreedToPolicies" name="HasAgreedToPolicies" value="true"
-                                   class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
-                            <label for="hasAgreedToPolicies" class="ml-2 text-sm text-gray-700">
-                                I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="text-purple-600 hover:underline">Rental and Sales Policy</a>.
+                                   class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                   @(Model.Total > 50_000_000 ? "disabled" : "")>
+                            <label for="hasAgreedToPolicies" class="ml-2 text-sm @(Model.Total > 50_000_000 ? "text-gray-400" : "text-gray-700")">
+                                I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="@(Model.Total > 50_000_000 ? "text-gray-400 pointer-events-none" : "text-purple-600 hover:underline")">Rental and Sales Policy</a>.
                             </label>
                             <div id="policy-error" class="text-red-600 text-sm mt-1 hidden">
                                 Please read the rental and purchase policy carefully and tick the checkbox to continue.
@@ -300,7 +292,7 @@
 
                         <a href="#" onclick="handleMakePayment(event)"
                            id="makePaymentButton"
-                           class="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors text-center block mb-4 flex items-center justify-center space-x-2">
+                           class="w-full py-3 px-6 rounded-lg font-semibold transition-colors text-center block mb-4 flex items-center justify-center space-x-2 @(Model.Total > 50_000_000 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-purple-600 text-white hover:bg-purple-700")">
                             <i class="bi bi-lock-fill h-5 w-5"></i>
                             <span>Make payment</span>
                         </a>
@@ -369,9 +361,17 @@
             if (globalForm && startInput && daysInput) {
                 const submit = () => globalForm.requestSubmit();
                 startInput.addEventListener('change', submit);
+                daysInput.addEventListener('input', () => {
+                    let v = parseInt(daysInput.value || '1', 10);
+                    if (isNaN(v) || v < 1) v = 1;
+                    if (v > 30) v = 30;
+                    daysInput.value = v;
+                });
                 daysInput.addEventListener('change', () => {
-                    const v = parseInt(daysInput.value || '1', 10);
-                    if (v < 1) daysInput.value = '1';
+                    let v = parseInt(daysInput.value || '1', 10);
+                    if (isNaN(v) || v < 1) v = 1;
+                    if (v > 30) v = 30;
+                    daysInput.value = v;
                     submit();
                 });
             }
@@ -384,6 +384,13 @@
 
         function handleMakePayment(event) {
             event.preventDefault();
+
+            // Check if cart total exceeds limit
+            const cartTotal = @Model.Total;
+            if (cartTotal > 10000000) {
+                showToast('Cart total exceeds 10,000,000 VND limit. Please reduce quantity or rental days.', 'error');
+                return false;
+            }
 
             const policyCheckbox = document.getElementById('hasAgreedToPolicies');
             const errorDiv = document.getElementById('policy-error');
@@ -470,7 +477,9 @@
                     body: formData
                 });
 
-                if (response.ok) {
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
                     // Update quantity display
                     const quantitySpan = document.getElementById(`quantity-${itemId}`);
                     if (quantitySpan) {
@@ -494,6 +503,14 @@
                         itemTotalElement.textContent = newTotal.toLocaleString() + ' VND';
                     }
 
+                    // Update item deposit display (for rental items)
+                    const itemDepositElement = document.getElementById(`deposit-${itemId}`);
+                    if (itemDepositElement) {
+                        const depositPerUnit = parseFloat(itemDepositElement.getAttribute('data-deposit-per-unit')) || 0;
+                        const newItemDeposit = depositPerUnit * newQuantity;
+                        itemDepositElement.textContent = `+${newItemDeposit.toLocaleString()} VND deposit`;
+                    }
+
                     // Recalculate cart totals (you might need to fetch this from server or calculate client-side)
                     updateCartTotals();
                     
@@ -501,11 +518,10 @@
                     updateProductCount();
 
                     // Show success message
-                    showToast('Product quantity updated successfully!', 'success');
+                    showToast(result.message || 'Product quantity updated successfully!', 'success');
                 } else {
-                    const errorText = await response.text();
-                    console.error('Error updating quantity:', errorText);
-                    showToast('Failed to update quantity. Please try again.', 'error');
+                    // Show error message from backend
+                    showToast(result.message || 'Failed to update quantity. Please try again.', 'error');
                 }
             } catch (error) {
                 console.error('Error updating quantity:', error);
@@ -559,33 +575,18 @@
                 await window.removeDiscountIfNeeded(newRentalSubtotal, newPurchaseSubtotal);
             }
 
-            // Calculate total deposit (this is a simplified approach - ideally would need server call for accuracy)
-            // For now, we'll make a server call to get accurate totals
-            fetch('@Url.Page("/CartPage/Cart")')
-                .then(response => response.text())
-                .then(html => {
-                    // Parse the response to extract deposit amount
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const depositElement = doc.getElementById('cart-deposit');
-                    
-                    if (depositElement) {
-                        const depositText = depositElement.textContent.replace(/[^\d]/g, '');
-                        newDeposit = parseInt(depositText) || 0;
-                        
-                        // Update deposit display
-                        const currentDepositElement = document.getElementById('cart-deposit');
-                        if (currentDepositElement) {
-                            currentDepositElement.textContent = newDeposit.toLocaleString() + ' VND';
-                        }
-                    }
-                    
-                    // Recalculate discount with new subtotals
-                    if (window.recalculateDiscount) {
-                        window.recalculateDiscount(currentRentalSubtotal, currentPurchaseSubtotal, currentSubtotal, newDeposit);
-                    }
-                })
-                .catch(error => console.log('Could not update deposit:', error));
+            // Calculate total deposit from all rental items
+            document.querySelectorAll('[id^="deposit-"]').forEach(element => {
+                const depositText = element.textContent.replace(/[^\d]/g, '');
+                const itemDeposit = parseInt(depositText) || 0;
+                newDeposit += itemDeposit;
+            });
+            
+            // Update deposit display
+            const currentDepositElement = document.getElementById('cart-deposit');
+            if (currentDepositElement) {
+                currentDepositElement.textContent = newDeposit.toLocaleString() + ' VND';
+            }
 
             // Update subtotal display
             const subtotalElement = document.getElementById('cart-subtotal');
@@ -593,7 +594,10 @@
                 subtotalElement.textContent = newSubtotal.toLocaleString() + ' VND';
             }
 
-            // Total is updated in the fetch callback above to include accurate deposit calculation
+            // Recalculate discount with new subtotals
+            if (window.recalculateDiscount) {
+                window.recalculateDiscount(currentRentalSubtotal, currentPurchaseSubtotal, currentSubtotal, newDeposit);
+            }
         }
 
         // Function to update product count in cart header
@@ -608,19 +612,15 @@
             }
         }
 
-        // Function to show toast messages
+        // Function to show toast messages - use global toast manager
         function showToast(message, type) {
-            // Create toast element
-            const toast = document.createElement('div');
-            toast.className = `toast-message ${type === 'success' ? 'bg-success' : 'bg-danger'} text-white p-3 position-fixed top-0 end-0 m-3 rounded`;
-            toast.textContent = message;
-            
-            document.body.appendChild(toast);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
+            if (window.toastManager) {
+                window.toastManager.show(message, type, 5000);
+            } else {
+                // Fallback if toast manager not loaded
+                console.warn('Toast manager not available:', message);
+                alert(message);
+            }
         }
 
         // Function to remove item from cart via AJAX

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.ReportDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
@@ -6,6 +6,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
 using BusinessObject.Utilities;
+using System.Text.Json;
 
 namespace Repositories.ReportRepositories
 {
@@ -48,22 +49,50 @@ namespace Repositories.ReportRepositories
                 .Include(r => r.Reporter).ThenInclude(u => u.Profile)
                 .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile) // Lấy cả thông tin admin được gán
+                .Include(r => r.Order).ThenInclude(o => o.Items).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images) // Lấy thông tin order, products và images
+                .Include(r => r.OrderItem).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images) // Lấy thông tin OrderItem cụ thể
                 .FirstOrDefaultAsync(r => r.Id == reportId);
         }
 
         public async Task CreateReportAsync(ReportDTO dto)
         {
-            // Logic tạo Report giữ nguyên
+            // Kiểm tra nếu report về OrderItem, cần validate trạng thái đơn hàng
+            if (dto.ReportType == ReportType.OrderItem)
+            {
+                if (!dto.OrderItemId.HasValue)
+                    throw new ArgumentException("OrderItemId is required for OrderItem reports");
+
+                var orderItem = await _context.OrderItems
+                    .Include(oi => oi.Order)
+                    .FirstOrDefaultAsync(oi => oi.Id == dto.OrderItemId.Value);
+                
+                if (orderItem == null)
+                    throw new ArgumentException("OrderItem not found");
+                
+                if (orderItem.Order.Status != OrderStatus.in_use)
+                    throw new InvalidOperationException("Can only report products when order is in use");
+                
+                // Tự động set OrderId từ OrderItem
+                dto.OrderId = orderItem.OrderId;
+            }
+
+            // Logic tạo Report với hỗ trợ OrderId, OrderItemId và EvidenceImages
             var report = new Report
             {
                 Id = Guid.NewGuid(),
                 ReporterId = dto.ReporterId,
                 ReporteeId = dto.ReporteeId,
+                OrderId = dto.OrderId,
+                OrderItemId = dto.OrderItemId,
+                ReportType = dto.ReportType,
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
                 CreatedAt = DateTime.UtcNow,
-                Priority = dto.Priority
+                Priority = dto.Priority,
+                EvidenceImages = dto.EvidenceImages != null && dto.EvidenceImages.Any() 
+                    ? JsonSerializer.Serialize(dto.EvidenceImages) 
+                    : null
             };
             await AddAsync(report);
         }
@@ -82,6 +111,7 @@ namespace Repositories.ReportRepositories
                 .Include(r => r.Reporter).ThenInclude(u => u.Profile)
                 .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile)
+                .Include(r => r.Order).ThenInclude(o => o.Items).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images) // Lấy thông tin order, products và images
                 .AsQueryable();
         }
     }

@@ -10,7 +10,7 @@ namespace ShareItAPI.Controllers
 {
     [ApiController]
     [Route("api/orders")]
-    [Authorize(Roles = "customer,provider,admin")]
+    [Authorize(Roles = "customer,provider,admin,staff")]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -262,6 +262,7 @@ namespace ShareItAPI.Controllers
 
         // GET: api/orders/{orderId}/details
         [HttpGet("{orderId:guid}/details")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetOrderDetails(Guid orderId)
         {
             var orderDetails = await _orderService.GetOrderDetailsAsync(orderId);
@@ -269,6 +270,26 @@ namespace ShareItAPI.Controllers
             if (orderDetails == null)
             {
                 return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            // Verify the authenticated user (customer or provider acting as customer) owns this order
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized(new ApiResponse<object>("User not authenticated.", null));
+            }
+
+            // Get the order entity to check CustomerId
+            var orderEntity = await _orderService.GetOrderEntityByIdAsync(orderId);
+            if (orderEntity == null)
+            {
+                return NotFound(new ApiResponse<object>($"Order with ID {orderId} not found.", null));
+            }
+
+            // Verify the order belongs to the current user (as customer)
+            if (orderEntity.CustomerId.ToString() != currentUserId)
+            {
+                return Forbid();
             }
 
             return Ok(new ApiResponse<OrderDetailsDto>("Order details retrieved successfully.", orderDetails));
@@ -416,6 +437,48 @@ namespace ShareItAPI.Controllers
                 throw new InvalidOperationException("User ID from authentication token is missing or invalid.");
             }
             return userId;
+        }
+
+        /// <summary>
+        /// Get all orders for admin management
+        /// </summary>
+        [HttpGet("admin/all-orders")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> GetAllOrdersForAdmin()
+        {
+            try
+            {
+                var orders = await _orderService.GetAllOrdersForAdminAsync();
+                return Ok(new ApiResponse<IEnumerable<AdminOrderListDto>>("All orders retrieved successfully", orders));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error retrieving orders: {ex.Message}", null));
+            }
+        }
+
+        /// <summary>
+        /// Get detailed order information for admin
+        /// </summary>
+        [HttpGet("admin/{orderId:guid}/detail")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> GetOrderDetailForAdmin(Guid orderId)
+        {
+            try
+            {
+                var orderDetail = await _orderService.GetOrderDetailForAdminAsync(orderId);
+                
+                if (orderDetail == null)
+                {
+                    return NotFound(new ApiResponse<string>($"Order with ID {orderId} not found", null));
+                }
+                
+                return Ok(new ApiResponse<AdminOrderDetailDto>("Order detail retrieved successfully", orderDetail));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error retrieving order detail: {ex.Message}", null));
+            }
         }
     }
 }

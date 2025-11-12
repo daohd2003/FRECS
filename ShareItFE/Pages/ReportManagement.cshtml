@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model ShareItFE.Pages.ReportManagementModel
 @{
     ViewData["Title"] = "Report Management";
@@ -35,6 +35,320 @@
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="~/css/report-management.css" asp-append-version="true" />
+
+<style>
+    /* Product Card Styles */
+    .product-card {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #ffffff;
+        transition: all 0.2s ease;
+    }
+    
+    .product-card.reported-product {
+        border: 2px solid #dc2626;
+        background: #fef2f2;
+        position: relative;
+    }
+    
+    .product-card.reported-product::before {
+        content: "REPORTED";
+        position: absolute;
+        top: -8px;
+        right: 12px;
+        background: #dc2626;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .product-card.clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-color: #3b82f6;
+    }
+    
+    .product-card.clickable:hover .product-name {
+        color: #3b82f6;
+    }
+    
+    .product-image {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        flex-shrink: 0;
+    }
+    
+    .product-details {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .product-name {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0 0 4px 0;
+        color: #111827;
+        line-height: 1.4;
+    }
+    
+    .product-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 8px 0;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .product-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .product-price {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #059669;
+        margin: 4px 0 0 0;
+    }
+    
+    /* Evidence Gallery Styles */
+    .evidence-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+    }
+    
+    .evidence-item {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #e5e7eb;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .evidence-item:hover {
+        border-color: #3b82f6;
+        transform: scale(1.02);
+    }
+    
+    .evidence-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .evidence-item .overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .evidence-item:hover .overlay {
+        opacity: 1;
+    }
+    
+    .evidence-item .overlay i {
+        color: white;
+        font-size: 1.5rem;
+    }
+    
+    /* Products List Styles */
+    .products-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .product-card.normal {
+        border-color: #e5e7eb;
+        background: #f9fafb;
+    }
+    
+    /* Image Modal Styles */
+    .image-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .image-modal.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .image-modal img {
+        max-width: 90vw;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+    
+    .image-modal .close-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease;
+    }
+    
+    .image-modal .close-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Modal Layout - Keep 1:1 columns, but move Order Information to right column above Actions */
+    .modal-grid.has-order-info {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+    
+    /* Evidence Counter Styles */
+    .evidence-counter {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .multiple-evidence .overlay {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+    
+    /* Evidence Carousel Modal */
+    .evidence-carousel-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    }
+    
+    .carousel-container {
+        position: relative;
+        max-width: 90%;
+        max-height: 90%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .carousel-image {
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+    
+    .carousel-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 24px;
+        padding: 10px 15px;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: background 0.2s ease;
+    }
+    
+    .carousel-nav:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .carousel-nav.prev {
+        left: -60px;
+    }
+    
+    .carousel-nav.next {
+        right: -60px;
+    }
+    
+    .carousel-close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 24px;
+        padding: 10px 15px;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: background 0.2s ease;
+    }
+    
+    .carousel-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .carousel-counter {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+    }
+</style>
 @Html.AntiForgeryToken()
 
 <div class="page-container">
@@ -232,6 +546,44 @@
                             <button type="button" id="btn-message-reportee" class="btn btn-sm btn-outline-primary">Message</button>
                         </div>
                     </div>
+                    
+                    <!-- Order Information Section (only for OrderItem reports) -->
+                    <div class="modal-section" id="order-info-section" style="display:none;">
+                        <h3><i class="bi bi-box-seam"></i> Order Information</h3>
+                        <div class="info-card">
+                            <div><label>Order Code</label><p id="modal-order-code"></p></div>
+                            <div><label>Report Type</label><p id="modal-report-type"></p></div>
+                        </div>
+                        
+                        <!-- Reported Product (for OrderItem reports) -->
+                        <div id="reported-product-container" style="margin-top: 1rem; display: none;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #dc2626;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Reported Product
+                            </label>
+                            <div id="reported-product-info" class="product-card reported-product">
+                                <!-- Content will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <!-- Evidence Images -->
+                        <div id="evidence-images-container" style="margin-top: 1rem; display: none;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #059669;">
+                                <i class="bi bi-camera-fill"></i> Evidence Images
+                            </label>
+                            <div id="evidence-images-list" class="evidence-gallery">
+                                <!-- Content will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <div id="order-products-container" style="margin-top: 1rem;">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block; color: #374151;">
+                                <i class="bi bi-box-seam"></i> All Products in Order
+                            </label>
+                            <div id="order-products-list" class="products-list">
+                                <!-- Content will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-col">
                     <div class="modal-section">
@@ -283,6 +635,30 @@
     </div>
 </div>
 
+<!-- Image Modal for Evidence Photos -->
+<div id="image-modal" class="image-modal">
+    <button class="close-btn" onclick="closeImageModal()">&times;</button>
+    <img id="modal-image" src="" alt="Evidence Image">
+</div>
+
+<!-- Evidence Carousel Modal -->
+<div id="evidence-carousel-modal" class="evidence-carousel-modal" style="display: none;">
+    <div class="carousel-container">
+        <button class="carousel-nav prev" onclick="prevEvidenceImage()">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <img id="carousel-image" class="carousel-image" src="" alt="Evidence">
+        <button class="carousel-nav next" onclick="nextEvidenceImage()">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+        <button class="carousel-close" onclick="closeEvidenceCarousel()">
+            <i class="bi bi-x"></i>
+        </button>
+        <div class="carousel-counter">
+            <span id="carousel-current">1</span> / <span id="carousel-total">1</span>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="~/js/dist/browser/signalr.js"></script>
@@ -492,6 +868,154 @@
                 const adminSelect = document.getElementById('modal-admin-select');
                 adminSelect.value = report.assignedAdminId ?? '';
 
+                // Order Information (for OrderItem reports)
+                const reportType = report.reportType ?? report.ReportType;
+                const orderInfoSection = document.getElementById('order-info-section');
+                const modalGrid = document.querySelector('.modal-grid');
+                
+                console.log('Report Type:', reportType);
+                console.log('Full Report Data:', report);
+                console.log('Order ID:', report.orderId ?? report.OrderId);
+                console.log('Order Code:', report.orderCode ?? report.OrderCode);
+                
+                // Check if report is order-related (handle both string and number formats)
+                const isOrderItem = reportType === 'OrderItem' || 
+                                   reportType === 1 || 
+                                   reportType?.toLowerCase() === 'orderitem' ||
+                                   (report.orderItemId ?? report.OrderItemId) != null;
+                
+                // Toggle modal layout based on Order Information presence
+                if (isOrderItem) {
+                    modalGrid.classList.add('has-order-info');
+                    // Move Order Information to right column (above Actions)
+                    const orderInfoSection = document.getElementById('order-info-section');
+                    const rightColumn = document.querySelector('.modal-col:last-child');
+                    const actionsSection = rightColumn.querySelector('.modal-section');
+                    rightColumn.insertBefore(orderInfoSection, actionsSection);
+                } else {
+                    modalGrid.classList.remove('has-order-info');
+                    // Move Order Information back to left column if needed
+                    const orderInfoSection = document.getElementById('order-info-section');
+                    const leftColumn = document.querySelector('.modal-col:first-child');
+                    leftColumn.appendChild(orderInfoSection);
+                }
+                
+                if (isOrderItem) {
+                    console.log('Showing order info section');
+                    orderInfoSection.style.display = 'block';
+                    document.getElementById('modal-order-code').textContent = getValue('orderCode') || 'N/A';
+                    document.getElementById('modal-report-type').textContent = 'Order Item Report';
+                    
+                    // Display reported product (specific product being reported)
+                    const reportedProduct = report.reportedProduct ?? report.ReportedProduct;
+                    const reportedProductContainer = document.getElementById('reported-product-container');
+                    const reportedProductInfo = document.getElementById('reported-product-info');
+                    
+                    if (reportedProduct) {
+                        reportedProductContainer.style.display = 'block';
+                        
+                        // Determine rental type and details
+                        console.log('Reported Product Data:', reportedProduct);
+                        const transactionType = reportedProduct.transactionType || reportedProduct.TransactionType;
+                        const rentalDays = reportedProduct.rentalDays || reportedProduct.RentalDays;
+                        const isRental = transactionType === 0 || transactionType === 'rental' || transactionType === 'Rental'; // 0 = rental enum value
+                        const rentalInfo = isRental 
+                            ? `<span><i class="bi bi-calendar-check"></i> Rental: ${rentalDays || 1} days</span>`
+                            : `<span><i class="bi bi-cart-check"></i> Purchase</span>`;
+                        
+                        const depositPerUnit = reportedProduct.depositAmount || reportedProduct.DepositAmount || 0;
+                        const quantity = reportedProduct.quantity || reportedProduct.Quantity || 1;
+                        const totalDeposit = depositPerUnit * quantity;
+                        const depositInfo = totalDeposit > 0
+                            ? `<span><i class="bi bi-shield-check"></i> Deposit: ${totalDeposit.toLocaleString('vi-VN')} VND</span>`
+                            : '';
+                        
+                        const totalAmount = isRental 
+                            ? (reportedProduct.price || reportedProduct.Price) * (rentalDays || 1) * quantity
+                            : (reportedProduct.price || reportedProduct.Price) * quantity;
+                        
+                        reportedProductInfo.innerHTML = `
+                            <img src="${reportedProduct.primaryImageUrl || reportedProduct.PrimaryImageUrl || '/images/placeholder.png'}" 
+                                 alt="${reportedProduct.productName || reportedProduct.ProductName}" 
+                                 class="product-image">
+                            <div class="product-details">
+                                <h4 class="product-name">${reportedProduct.productName || reportedProduct.ProductName}</h4>
+                                <div class="product-meta">
+                                    <span><i class="bi bi-box"></i> Qty: ${reportedProduct.quantity || reportedProduct.Quantity}</span>
+                                    ${rentalInfo}
+                                    ${depositInfo}
+                                </div>
+                                <div class="product-price">Subtotal: ${totalAmount.toLocaleString('vi-VN')} VND</div>
+                            </div>
+                        `;
+                    } else {
+                        reportedProductContainer.style.display = 'none';
+                    }
+                    
+                    // Display evidence images
+                    const evidenceImages = report.evidenceImages ?? report.EvidenceImages ?? [];
+                    const evidenceContainer = document.getElementById('evidence-images-container');
+                    const evidenceList = document.getElementById('evidence-images-list');
+                    
+                    if (evidenceImages && evidenceImages.length > 0) {
+                        evidenceContainer.style.display = 'block';
+                        
+                        if (evidenceImages.length === 1) {
+                            // Single image - show normally
+                            evidenceList.innerHTML = `
+                                <div class="evidence-item single-evidence" onclick="openEvidenceCarousel(${JSON.stringify(evidenceImages).replace(/"/g, '&quot;')}, 0)">
+                                    <img src="${evidenceImages[0]}" alt="Evidence">
+                                    <div class="overlay">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // Multiple images - show first image with counter
+                            evidenceList.innerHTML = `
+                                <div class="evidence-item multiple-evidence" onclick="openEvidenceCarousel(${JSON.stringify(evidenceImages).replace(/"/g, '&quot;')}, 0)">
+                                    <img src="${evidenceImages[0]}" alt="Evidence 1">
+                                    <div class="overlay">
+                                        <i class="bi bi-images"></i>
+                                        <span class="evidence-counter">+${evidenceImages.length - 1}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        evidenceContainer.style.display = 'none';
+                    }
+                    
+                    // Display all products in order
+                    const orderProducts = report.orderProducts ?? report.OrderProducts ?? [];
+                    console.log('Order Products:', orderProducts);
+                    const productsListDiv = document.getElementById('order-products-list');
+                    
+                    if (orderProducts && orderProducts.length > 0) {
+                        productsListDiv.innerHTML = orderProducts.map(product => `
+                            <div class="product-card normal clickable" onclick="window.open('/Products/Detail/${product.productId || product.ProductId}', '_blank')" style="cursor: pointer;">
+                                <img src="${product.primaryImageUrl || product.PrimaryImageUrl || '/images/placeholder.png'}" 
+                                     alt="${product.productName || product.ProductName}" 
+                                     class="product-image">
+                                <div class="product-details">
+                                    <h4 class="product-name">${product.productName || product.ProductName}</h4>
+                                    <div class="product-meta">
+                                        <span><i class="bi bi-tag"></i> ID: ${(product.productId || product.ProductId || '').toString().substring(0, 8)}</span>
+                                        <span><i class="bi bi-arrow-up-right-square"></i> Click to view details</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        productsListDiv.innerHTML = '<p style="color: #6b7280; font-style: italic; text-align: center; padding: 2rem;">No products found in this order</p>';
+                    }
+                } else {
+                    orderInfoSection.style.display = 'none';
+                    // Ẩn các container con khi không phải OrderItem report
+                    document.getElementById('reported-product-container').style.display = 'none';
+                    document.getElementById('evidence-images-container').style.display = 'none';
+                }
+
             }
 
             // --- Event Listeners ---
@@ -590,6 +1114,114 @@
                     default: return 'bi-question-circle';
                 }
             }
+            
+            // Image Modal Functions
+            window.openImageModal = function(imageUrl) {
+                const modal = document.getElementById('image-modal');
+                const modalImage = document.getElementById('modal-image');
+                modalImage.src = imageUrl;
+                modal.classList.add('show');
+                
+                // Close on click outside image
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        closeImageModal();
+                    }
+                };
+                
+                // Close on Escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        closeImageModal();
+                    }
+                });
+            };
+            
+            window.closeImageModal = function() {
+                const modal = document.getElementById('image-modal');
+                modal.classList.remove('show');
+                document.getElementById('modal-image').src = '';
+            };
+            
+            // Evidence Carousel Functions
+            let currentEvidenceImages = [];
+            let currentEvidenceIndex = 0;
+            
+            window.openEvidenceCarousel = function(images, startIndex = 0) {
+                currentEvidenceImages = images;
+                currentEvidenceIndex = startIndex;
+                
+                const modal = document.getElementById('evidence-carousel-modal');
+                const carouselImage = document.getElementById('carousel-image');
+                const currentSpan = document.getElementById('carousel-current');
+                const totalSpan = document.getElementById('carousel-total');
+                
+                // Update image and counter
+                carouselImage.src = currentEvidenceImages[currentEvidenceIndex];
+                currentSpan.textContent = currentEvidenceIndex + 1;
+                totalSpan.textContent = currentEvidenceImages.length;
+                
+                // Show/hide navigation buttons
+                const prevBtn = document.querySelector('.carousel-nav.prev');
+                const nextBtn = document.querySelector('.carousel-nav.next');
+                
+                if (currentEvidenceImages.length <= 1) {
+                    prevBtn.style.display = 'none';
+                    nextBtn.style.display = 'none';
+                } else {
+                    prevBtn.style.display = 'block';
+                    nextBtn.style.display = 'block';
+                }
+                
+                modal.style.display = 'flex';
+            };
+            
+            window.closeEvidenceCarousel = function() {
+                const modal = document.getElementById('evidence-carousel-modal');
+                modal.style.display = 'none';
+                currentEvidenceImages = [];
+                currentEvidenceIndex = 0;
+            };
+            
+            window.nextEvidenceImage = function() {
+                if (currentEvidenceIndex < currentEvidenceImages.length - 1) {
+                    currentEvidenceIndex++;
+                } else {
+                    currentEvidenceIndex = 0; // Loop to first image
+                }
+                updateCarouselImage();
+            };
+            
+            window.prevEvidenceImage = function() {
+                if (currentEvidenceIndex > 0) {
+                    currentEvidenceIndex--;
+                } else {
+                    currentEvidenceIndex = currentEvidenceImages.length - 1; // Loop to last image
+                }
+                updateCarouselImage();
+            };
+            
+            function updateCarouselImage() {
+                const carouselImage = document.getElementById('carousel-image');
+                const currentSpan = document.getElementById('carousel-current');
+                
+                carouselImage.src = currentEvidenceImages[currentEvidenceIndex];
+                currentSpan.textContent = currentEvidenceIndex + 1;
+            }
+            
+            // Keyboard navigation for carousel
+            document.addEventListener('keydown', function(e) {
+                const modal = document.getElementById('evidence-carousel-modal');
+                if (modal.style.display === 'flex') {
+                    if (e.key === 'ArrowLeft') {
+                        prevEvidenceImage();
+                    } else if (e.key === 'ArrowRight') {
+                        nextEvidenceImage();
+                    } else if (e.key === 'Escape') {
+                        closeEvidenceCarousel();
+                    }
+                }
+            });
         });
     </script>
 }

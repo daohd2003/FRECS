@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -24,8 +24,9 @@ namespace BusinessObject.DTOs.CartDto
 
         /// <summary>
         /// Số ngày thuê (chỉ áp dụng cho Rental)
+        /// Giới hạn tối đa 7 ngày
         /// </summary>
-        [Range(1, int.MaxValue, ErrorMessage = "Rental Days must be at least 1.")]
+        [Range(1, 7, ErrorMessage = "Rental Days must be between 1 and 7.")]
         public int? RentalDays { get; set; }
 
         /// <summary>

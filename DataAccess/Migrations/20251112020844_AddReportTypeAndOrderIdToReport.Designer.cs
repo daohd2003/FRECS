@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251112020844_AddReportTypeAndOrderIdToReport")]
+    partial class AddReportTypeAndOrderIdToReport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -57,7 +60,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("BankAccounts", (string)null);
+                    b.ToTable("BankAccounts");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.BlacklistedToken", b =>
@@ -78,7 +81,7 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BlacklistedTokens", (string)null);
+                    b.ToTable("BlacklistedTokens");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Cart", b =>
@@ -97,7 +100,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("Carts", (string)null);
+                    b.ToTable("Carts");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.CartItem", b =>
@@ -134,7 +137,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("CartItems", (string)null);
+                    b.ToTable("CartItems");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Category", b =>
@@ -168,7 +171,7 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Categories", (string)null);
+                    b.ToTable("Categories");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Conversation", b =>
@@ -199,7 +202,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("User2Id");
 
-                    b.ToTable("Conversations", (string)null);
+                    b.ToTable("Conversations");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.DepositRefund", b =>
@@ -258,7 +261,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("RefundBankAccountId");
 
-                    b.ToTable("DepositRefunds", (string)null);
+                    b.ToTable("DepositRefunds");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.DiscountCode", b =>
@@ -307,7 +310,7 @@ namespace DataAccess.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("DiscountCodes", (string)null);
+                    b.ToTable("DiscountCodes");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
@@ -325,7 +328,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("Favorites", (string)null);
+                    b.ToTable("Favorites");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Feedback", b =>
@@ -385,7 +388,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProviderResponseById");
 
-                    b.ToTable("Feedbacks", (string)null);
+                    b.ToTable("Feedbacks");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Message", b =>
@@ -448,7 +451,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("Messages", (string)null);
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Notification", b =>
@@ -483,7 +486,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Order", b =>
@@ -555,7 +558,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("Orders", (string)null);
+                    b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.OrderItem", b =>
@@ -592,7 +595,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderItems", (string)null);
+                    b.ToTable("OrderItems");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Product", b =>
@@ -691,7 +694,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("RentCount");
 
-                    b.ToTable("Products", (string)null);
+                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.ProductImage", b =>
@@ -714,7 +717,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("ProductImages", (string)null);
+                    b.ToTable("ProductImages");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Profile", b =>
@@ -749,7 +752,7 @@ namespace DataAccess.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Profiles", (string)null);
+                    b.ToTable("Profiles");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.ProviderApplication", b =>
@@ -809,7 +812,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ProviderApplications", (string)null);
+                    b.ToTable("ProviderApplications");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.RentalViolation", b =>
@@ -860,7 +863,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("OrderItemId");
 
-                    b.ToTable("RentalViolations", (string)null);
+                    b.ToTable("RentalViolations");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.RentalViolationImage", b =>
@@ -892,7 +895,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ViolationId");
 
-                    b.ToTable("RentalViolationImages", (string)null);
+                    b.ToTable("RentalViolationImages");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Report", b =>
@@ -913,13 +916,7 @@ namespace DataAccess.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("EvidenceImages")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid?>("OrderId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("OrderItemId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Priority")
@@ -950,13 +947,11 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("OrderItemId");
-
                     b.HasIndex("ReporteeId");
 
                     b.HasIndex("ReporterId");
 
-                    b.ToTable("Reports", (string)null);
+                    b.ToTable("Reports");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Transaction", b =>
@@ -987,7 +982,7 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Transactions", (string)null);
+                    b.ToTable("Transactions");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.UsedDiscountCode", b =>
@@ -1016,7 +1011,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UsedDiscountCodes", (string)null);
+                    b.ToTable("UsedDiscountCodes");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.User", b =>
@@ -1077,7 +1072,7 @@ namespace DataAccess.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.WithdrawalRequest", b =>
@@ -1132,7 +1127,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("WithdrawalRequests", (string)null);
+                    b.ToTable("WithdrawalRequests");
                 });
 
             modelBuilder.Entity("OrderTransaction", b =>
@@ -1147,7 +1142,7 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("TransactionsId");
 
-                    b.ToTable("OrderTransaction", (string)null);
+                    b.ToTable("OrderTransaction");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.BankAccount", b =>
@@ -1490,10 +1485,6 @@ namespace DataAccess.Migrations
                         .WithMany()
                         .HasForeignKey("OrderId");
 
-                    b.HasOne("BusinessObject.Models.OrderItem", "OrderItem")
-                        .WithMany()
-                        .HasForeignKey("OrderItemId");
-
                     b.HasOne("BusinessObject.Models.User", "Reportee")
                         .WithMany("ReportsReceived")
                         .HasForeignKey("ReporteeId")
@@ -1508,8 +1499,6 @@ namespace DataAccess.Migrations
                     b.Navigation("AssignedAdmin");
 
                     b.Navigation("Order");
-
-                    b.Navigation("OrderItem");
 
                     b.Navigation("Reportee");
 

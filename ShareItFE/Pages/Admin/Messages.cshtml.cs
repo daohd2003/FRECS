@@ -7,7 +7,7 @@ using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Admin
 {
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,staff")]
     public class MessagesModel : PageModel
     {
         private readonly IConfiguration _configuration;

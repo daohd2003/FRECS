@@ -20,6 +20,7 @@ namespace Repositories.RevenueRepositories
         public async Task<List<Order>> GetOrdersInPeriodAsync(Guid providerId, DateTime start, DateTime end)
         {
             return await _context.Orders
+                .AsNoTracking()  // Read-only query optimization
                 .Include(o => o.Items)  // Include OrderItems for commission calculation
                 .Where(o => o.ProviderId == providerId
                     && o.CreatedAt >= start
@@ -31,6 +32,7 @@ namespace Repositories.RevenueRepositories
         public async Task<List<Order>> GetAllOrdersInPeriodAsync(Guid providerId, DateTime start, DateTime end)
         {
             return await _context.Orders
+                .AsNoTracking()  // Read-only query optimization
                 .Include(o => o.Items)  // Include OrderItems for status breakdown
                 .Where(o => o.ProviderId == providerId
                     && o.CreatedAt >= start
@@ -41,6 +43,7 @@ namespace Repositories.RevenueRepositories
         public async Task<List<Order>> GetOrdersByProviderIdAsync(Guid providerId)
         {
             return await _context.Orders
+                .AsNoTracking()  // Read-only query optimization
                 .Where(o => o.ProviderId == providerId)
                 .ToListAsync();
         }
@@ -49,6 +52,7 @@ namespace Repositories.RevenueRepositories
         {
             // Get all returned orders
             var orders = await _context.Orders
+                .AsNoTracking()  // Read-only query optimization
                 .Include(o => o.Items)
                 .Where(o => o.ProviderId == providerId && o.Status == OrderStatus.returned)
                 .ToListAsync();
@@ -89,6 +93,7 @@ namespace Repositories.RevenueRepositories
 
             // Get penalty revenue (all time)
             var penaltyRevenue = await _context.RentalViolations
+                .AsNoTracking()  // Read-only query optimization
                 .Include(rv => rv.OrderItem)
                     .ThenInclude(oi => oi.Order)
                 .Where(rv => rv.OrderItem.Order.ProviderId == providerId
@@ -102,6 +107,7 @@ namespace Repositories.RevenueRepositories
         public async Task<decimal> GetPendingAmountAsync(Guid providerId)
         {
             return await _context.Orders
+                .AsNoTracking()  // Read-only query optimization
                 .Where(o => o.ProviderId == providerId && o.Status == OrderStatus.returned)
                 .SumAsync(o => o.Subtotal);  // Use Subtotal (excludes deposit)
         }
@@ -113,6 +119,7 @@ namespace Repositories.RevenueRepositories
             // 2. Status is CUSTOMER_ACCEPTED or RESOLVED
             // 3. Created within the period
             var penaltyRevenue = await _context.RentalViolations
+                .AsNoTracking()  // Read-only query optimization
                 .Include(rv => rv.OrderItem)
                     .ThenInclude(oi => oi.Order)
                 .Where(rv => rv.OrderItem.Order.ProviderId == providerId
