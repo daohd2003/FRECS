@@ -1,6 +1,78 @@
 @page "{id:guid}"
 @model ShareItFE.Pages.Order.DetailsModel
 @using System.Security.Claims
+
+<style>
+    .product-selection {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f9fafb;
+    }
+    
+    .product-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .product-option:hover {
+        border-color: #e5e7eb;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .product-option input[type="radio"]:checked + .product-label {
+        background: #fef2f2;
+        border-color: #dc2626;
+    }
+    
+    .product-label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+    
+    .product-thumb {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .product-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .product-info strong {
+        color: #374151;
+        font-size: 14px;
+    }
+    
+    .product-info small {
+        color: #6b7280;
+        font-size: 12px;
+    }
+</style>
 @{
     ViewData["Title"] = Model.Order != null ? $"Order Details - {Model.Order.OrderCode}" : "Order Details";
 
@@ -143,15 +215,6 @@
                                             <i class="bi bi-star"></i> Review
                                         </a>
                                     }
-                                    @if (canReport)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-danger report-item-btn" 
-                                                data-item-id="@item.Id" 
-                                                data-product-name="@item.ProductName"
-                                                data-product-image="@item.PrimaryImageUrl">
-                                            <i class="bi bi-exclamation-triangle"></i> Report Issue
-                                        </button>
-                                    }
                                 </div>
                             </div>
                         </div>
@@ -164,8 +227,8 @@
                 @if (!isAdmin)
                 {
                     <div class="actions-grid">
-                        <button type="button" class="btn btn-primary" onclick="openReportModal()">
-                            <i class="bi bi-chat-dots"></i> Contact Support
+                        <button type="button" class="btn btn-primary" id="contact-support-order-status-btn">
+                            <i class="bi bi-headset"></i> Contact Support
                         </button>
 
                         @if (isPurchaseOnly)
@@ -391,78 +454,38 @@
     }
 </div>
 
-<!-- Report Order Issue Modal -->
-<div id="report-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">Report Order Issue</h3>
-            <button id="report-close-btn" class="modal-close-btn" onclick="closeReportModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="report-form">
-                <input type="hidden" id="report-order-id" value="@Model.Order?.Id" />
-                <input type="hidden" id="report-provider-id" value="@Model.Order?.ProviderId" />
-                
-                <div class="form-group">
-                    <label for="report-subject">Issue Type <span class="text-danger">*</span></label>
-                    <select id="report-subject" class="form-control" required>
-                        <option value="">-- Select Issue Type --</option>
-                        <option value="Product Quality Issue">Product Quality Issue</option>
-                        <option value="Wrong Item Received">Wrong Item Received</option>
-                        <option value="Missing Items">Missing Items</option>
-                        <option value="Damaged Product">Damaged Product</option>
-                        <option value="Late Delivery">Late Delivery</option>
-                        <option value="Provider Unresponsive">Provider Unresponsive</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="report-description">Description <span class="text-danger">*</span></label>
-                    <textarea id="report-description" class="form-control" rows="5" placeholder="Please describe the issue in detail..." required></textarea>
-                    <small class="text-muted">Minimum 20 characters</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="report-priority">Priority</label>
-                    <select id="report-priority" class="form-control">
-                        <option value="Low">Low</option>
-                        <option value="Medium" selected>Medium</option>
-                        <option value="High">High</option>
-                    </select>
-                </div>
-            </form>
-        </div>
-        <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" onclick="closeReportModal()">Cancel</button>
-            <button type="button" class="btn btn-warning" onclick="submitReport()">
-                <i class="bi bi-send"></i> Submit Report
-            </button>
-        </div>
-    </div>
-</div>
 
 <!-- Report OrderItem Issue Modal -->
 <div id="report-item-modal" class="modal-overlay hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 class="modal-title">Report Product Issue</h3>
-            <button id="report-item-close-btn" class="modal-close-btn" onclick="closeReportItemModal()">&times;</button>
+            <h3><i class="bi bi-headset"></i> Contact Support</h3>
+            <button type="button" onclick="closeReportItemModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- Product Info -->
-            <div class="reported-product-info" style="display: flex; gap: 12px; padding: 12px; border: 2px solid #dc2626; border-radius: 8px; background: #fef2f2; margin-bottom: 1rem;">
-                <img id="report-item-image" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
-                <div>
-                    <h4 id="report-item-name" style="margin: 0; color: #dc2626;"></h4>
-                    <p style="margin: 0; color: #6b7280; font-size: 0.875rem;">Reporting issue with this product</p>
-                </div>
-            </div>
-            
             <form id="report-item-form">
                 <input type="hidden" id="report-item-order-id" value="@Model.Order?.Id" />
                 <input type="hidden" id="report-item-id" value="" />
                 <input type="hidden" id="report-provider-id-item" value="@Model.Order?.ProviderId" />
+                
+                <div class="form-group">
+                    <label>Select Product to Report <span class="text-danger">*</span></label>
+                    <div class="product-selection">
+                        @foreach (var item in Model.Order.Items)
+                        {
+                            <div class="product-option">
+                                <input type="radio" id="product-@item.Id" name="selectedProduct" value="@item.Id" class="form-check-input" />
+                                <label for="product-@item.Id" class="product-label">
+                                    <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")" alt="@item.ProductName" class="product-thumb" />
+                                    <div class="product-info">
+                                        <strong>@item.ProductName</strong>
+                                        <small>Qty: @item.Quantity</small>
+                                    </div>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
                 
                 <div class="form-group">
                     <label for="report-item-subject">Issue Type <span class="text-danger">*</span></label>
@@ -1028,101 +1051,28 @@
                 });
             });
             
-            // Report Order Issue Modal Functions
-            window.openReportModal = function() {
-                document.getElementById('report-modal').classList.remove('hidden');
-            };
             
-            window.closeReportModal = function() {
-                document.getElementById('report-modal').classList.add('hidden');
-                document.getElementById('report-form').reset();
-            };
-            
-            window.submitReport = async function() {
-                const subject = document.getElementById('report-subject').value;
-                const description = document.getElementById('report-description').value;
-                const priority = document.getElementById('report-priority').value;
-                const orderId = document.getElementById('report-order-id').value;
-                const providerId = document.getElementById('report-provider-id').value;
-                
-                // Validation
-                if (!subject) {
-                    alert('Please select an issue type');
-                    return;
-                }
-                
-                if (!description || description.trim().length < 20) {
-                    alert('Please provide a detailed description (minimum 20 characters)');
-                    return;
-                }
-                
-                try {
-                    const accessToken = '@(Request.Cookies["AccessToken"])';
-                    const headers = {
-                        'Content-Type': 'application/json'
-                    };
-                    
-                    if (accessToken) {
-                        headers['Authorization'] = `Bearer ${accessToken}`;
-                    }
-                    
-                    const reportData = {
-                        reporteeId: providerId,
-                        orderId: orderId,
-                        reportType: 'General',
-                        subject: subject,
-                        description: description.trim(),
-                        priority: priority
-                    };
-                    
-                    const response = await fetch('@Model.ApiBaseUrl/report', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify(reportData)
-                    });
-                    
-                    if (response.ok) {
-                        alert('Your report has been submitted successfully. Our team will review it shortly.');
-                        closeReportModal();
-                    } else {
-                        const errorData = await response.json().catch(() => ({ message: 'Failed to submit report' }));
-                        alert(errorData.message || 'Failed to submit report. Please try again.');
-                    }
-                } catch (error) {
-                    console.error('Error submitting report:', error);
-                    alert('An error occurred while submitting your report. Please try again.');
-                }
-            };
-            
-            // Close modal when clicking outside
-            document.getElementById('report-modal')?.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeReportModal();
-                }
-            });
-            
-            // OrderItem Report Functions
+            // Contact Support Functions
             let selectedEvidenceFiles = [];
             
-            // Handle report item button clicks
-            document.querySelectorAll('.report-item-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const itemId = this.dataset.itemId;
-                    const productName = this.dataset.productName;
-                    const productImage = this.dataset.productImage || '/images/placeholder.jpg';
-                    
-                    // Populate modal with item info
-                    document.getElementById('report-item-id').value = itemId;
-                    document.getElementById('report-item-name').textContent = productName;
-                    document.getElementById('report-item-image').src = productImage;
-                    document.getElementById('report-item-image').alt = productName;
-                    
-                    // Reset form and show modal
-                    document.getElementById('report-item-form').reset();
-                    selectedEvidenceFiles = [];
-                    document.getElementById('evidence-preview').innerHTML = '';
-                    updateEvidenceCounter();
-                    document.getElementById('report-item-modal').classList.remove('hidden');
+            // Handle contact support button click (order status only)
+            function openContactSupportModal() {
+                // Reset form and show modal
+                document.getElementById('report-item-form').reset();
+                selectedEvidenceFiles = [];
+                document.getElementById('evidence-preview').innerHTML = '';
+                updateEvidenceCounter();
+                document.getElementById('report-item-modal').classList.remove('hidden');
+            }
+            
+            document.getElementById('contact-support-order-status-btn')?.addEventListener('click', openContactSupportModal);
+            
+            // Handle product selection change
+            document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.checked) {
+                        document.getElementById('report-item-id').value = this.value;
+                    }
                 });
             });
             
@@ -1231,6 +1181,11 @@
                 document.getElementById('report-item-form').reset();
                 selectedEvidenceFiles = [];
                 document.getElementById('evidence-preview').innerHTML = '';
+                document.getElementById('report-item-id').value = '';
+                // Uncheck all radio buttons
+                document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
+                    radio.checked = false;
+                });
                 updateEvidenceCounter();
             };
             
@@ -1243,6 +1198,11 @@
                 const providerId = document.getElementById('report-provider-id-item').value;
                 
                 // Validation
+                if (!itemId) {
+                    alert('Please select a product to report');
+                    return;
+                }
+                
                 if (!subject) {
                     alert('Please select an issue type');
                     return;
