@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using BusinessObject.Utilities;
@@ -21,7 +21,13 @@ namespace Repositories.ProductRepositories
 
         public IQueryable<Product> GetAllWithIncludes()
         {
-            return _context.Products.AsNoTracking();
+            return _context.Products
+                .AsNoTracking()
+                .Include(p => p.Images.Where(img => img.IsPrimary || img.ImageUrl != null))
+                .Include(p => p.Category)
+                .Include(p => p.Provider)
+                    .ThenInclude(u => u.Profile)
+                .Where(p => p.AvailabilityStatus == AvailabilityStatus.available); // Only available products
         }
 
         public async Task<IEnumerable<Product>> GetProductsWithImagesAsync()

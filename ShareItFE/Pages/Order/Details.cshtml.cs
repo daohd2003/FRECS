@@ -17,7 +17,7 @@ using System.Text.Json.Serialization;
 
 namespace ShareItFE.Pages.Order
 {
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class DetailsModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;
@@ -53,10 +53,10 @@ namespace ShareItFE.Pages.Order
                 return RedirectToPage("/Auth");
             }
 
-            // Verify user has customer role
-            if (!User.IsInRole("customer"))
+            // Verify user has customer or provider role (providers can also be customers)
+            if (!User.IsInRole("customer") && !User.IsInRole("provider"))
             {
-                TempData["ErrorMessage"] = "Access Denied. Only customers can view order details.";
+                TempData["ErrorMessage"] = "Access Denied. Only customers and providers can view order details.";
                 return RedirectToPage("/Index");
             }
 

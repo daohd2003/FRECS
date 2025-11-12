@@ -1,4 +1,4 @@
-﻿using BusinessObject.Models;
+using BusinessObject.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -57,6 +57,10 @@ namespace DataAccess
 
             modelBuilder.Entity<Report>()
                 .Property(r => r.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Report>()
+                .Property(r => r.ReportType)
                 .HasConversion<string>();
 
             modelBuilder.Entity<Transaction>()

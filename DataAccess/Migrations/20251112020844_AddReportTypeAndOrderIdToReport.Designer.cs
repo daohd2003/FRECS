@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251112020844_AddReportTypeAndOrderIdToReport")]
+    partial class AddReportTypeAndOrderIdToReport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -913,13 +916,7 @@ namespace DataAccess.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("EvidenceImages")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid?>("OrderId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("OrderItemId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Priority")
@@ -949,8 +946,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("AssignedAdminId");
 
                     b.HasIndex("OrderId");
-
-                    b.HasIndex("OrderItemId");
 
                     b.HasIndex("ReporteeId");
 
@@ -1490,10 +1485,6 @@ namespace DataAccess.Migrations
                         .WithMany()
                         .HasForeignKey("OrderId");
 
-                    b.HasOne("BusinessObject.Models.OrderItem", "OrderItem")
-                        .WithMany()
-                        .HasForeignKey("OrderItemId");
-
                     b.HasOne("BusinessObject.Models.User", "Reportee")
                         .WithMany("ReportsReceived")
                         .HasForeignKey("ReporteeId")
@@ -1508,8 +1499,6 @@ namespace DataAccess.Migrations
                     b.Navigation("AssignedAdmin");
 
                     b.Navigation("Order");
-
-                    b.Navigation("OrderItem");
 
                     b.Navigation("Reportee");
 
