@@ -6,6 +6,6 @@ namespace BusinessObject.Enums
     public enum ReportType
     {
         General,        // Báo cáo chung từ trang Contact
-        OrderRelated    // Báo cáo liên quan đến đơn hàng cụ thể
+        OrderItem       // Báo cáo về sản phẩm cụ thể trong đơn hàng
     }
 }

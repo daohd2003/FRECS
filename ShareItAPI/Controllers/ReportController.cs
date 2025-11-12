@@ -30,11 +30,37 @@ namespace ShareItAPI.Controllers
         [Authorize(Roles = "customer,provider")] // Chỉ customer hoặc provider mới được tạo report
         public async Task<IActionResult> CreateReport([FromBody] ReportDTO reportDto)
         {
-            var reporterId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            reportDto.ReporterId = reporterId;
+            try
+            {
+                var reporterId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                reportDto.ReporterId = reporterId;
 
-            await _reportService.CreateReportAsync(reportDto);
-            return Ok(new ApiResponse<string>("Report submitted successfully. We will review it shortly.", null));
+                // Validation: Nếu report về OrderItem thì phải có OrderItemId
+                if (reportDto.ReportType == ReportType.OrderItem)
+                {
+                    if (!reportDto.OrderItemId.HasValue)
+                    {
+                        return BadRequest(new ApiResponse<string>("OrderItemId is required when reporting about a specific product.", null));
+                    }
+                }
+                else if (reportDto.ReportType == ReportType.General)
+                {
+                    // General reports không cần OrderId hoặc OrderItemId
+                    reportDto.OrderId = null;
+                    reportDto.OrderItemId = null;
+                }
+
+                await _reportService.CreateReportAsync(reportDto);
+                return Ok(new ApiResponse<string>("Report submitted successfully. We will review it shortly.", null));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
         }
 
         

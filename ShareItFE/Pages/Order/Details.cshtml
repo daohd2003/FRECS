@@ -130,15 +130,29 @@
                                         canReview = false;
                                     }
                                 }
-                                @if (canReview)
-                                {
-                                    <div class="item-actions">
+                                @{
+                                    // Logic for Report button - only show when order is in_use
+                                    var canReport = Model.Order.Status == BusinessObject.Enums.OrderStatus.in_use && !isAdmin;
+                                }
+                                
+                                <div class="item-actions">
+                                    @if (canReview)
+                                    {
                                         <a asp-page="/Products/Detail" asp-route-id="@item.ProductId" asp-route-fromOrder="true"
                                            class="btn btn-sm btn-success review-btn">
                                             <i class="bi bi-star"></i> Review
                                         </a>
-                                    </div>
-                                }
+                                    }
+                                    @if (canReport)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-danger report-item-btn" 
+                                                data-item-id="@item.Id" 
+                                                data-product-name="@item.ProductName"
+                                                data-product-image="@item.PrimaryImageUrl">
+                                            <i class="bi bi-exclamation-triangle"></i> Report Issue
+                                        </button>
+                                    }
+                                </div>
                             </div>
                         </div>
                     }
@@ -422,6 +436,80 @@
         <div class="modal-actions">
             <button type="button" class="btn btn-secondary" onclick="closeReportModal()">Cancel</button>
             <button type="button" class="btn btn-warning" onclick="submitReport()">
+                <i class="bi bi-send"></i> Submit Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Report OrderItem Issue Modal -->
+<div id="report-item-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Report Product Issue</h3>
+            <button id="report-item-close-btn" class="modal-close-btn" onclick="closeReportItemModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Product Info -->
+            <div class="reported-product-info" style="display: flex; gap: 12px; padding: 12px; border: 2px solid #dc2626; border-radius: 8px; background: #fef2f2; margin-bottom: 1rem;">
+                <img id="report-item-image" src="" alt="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                <div>
+                    <h4 id="report-item-name" style="margin: 0; color: #dc2626;"></h4>
+                    <p style="margin: 0; color: #6b7280; font-size: 0.875rem;">Reporting issue with this product</p>
+                </div>
+            </div>
+            
+            <form id="report-item-form">
+                <input type="hidden" id="report-item-order-id" value="@Model.Order?.Id" />
+                <input type="hidden" id="report-item-id" value="" />
+                <input type="hidden" id="report-provider-id-item" value="@Model.Order?.ProviderId" />
+                
+                <div class="form-group">
+                    <label for="report-item-subject">Issue Type <span class="text-danger">*</span></label>
+                    <select id="report-item-subject" class="form-control" required>
+                        <option value="">-- Select Issue Type --</option>
+                        <option value="Product Quality Issue">Product Quality Issue</option>
+                        <option value="Wrong Item Received">Wrong Item Received</option>
+                        <option value="Damaged Product">Damaged Product</option>
+                        <option value="Missing Parts/Accessories">Missing Parts/Accessories</option>
+                        <option value="Product Not as Described">Product Not as Described</option>
+                        <option value="Hygiene/Cleanliness Issue">Hygiene/Cleanliness Issue</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="report-item-description">Description <span class="text-danger">*</span></label>
+                    <textarea id="report-item-description" class="form-control" rows="4" placeholder="Please describe the issue with this specific product..." required></textarea>
+                    <small class="text-muted">Minimum 5 characters</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Evidence Photos (Optional)</label>
+                    <input type="file" id="report-item-evidence" class="form-control" style="display: none;" accept="image/*" />
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <button type="button" id="add-evidence-btn" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Add Images
+                        </button>
+                        <span id="evidence-count" class="text-muted">0/5 images</span>
+                    </div>
+                    <small class="text-muted">Click "Add Images" to select photos one by one (max 5 images, 5MB each)</small>
+                    <div id="evidence-preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="report-item-priority">Priority</label>
+                    <select id="report-item-priority" class="form-control">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeReportItemModal()">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="submitItemReport()">
                 <i class="bi bi-send"></i> Submit Report
             </button>
         </div>
@@ -981,7 +1069,7 @@
                     const reportData = {
                         reporteeId: providerId,
                         orderId: orderId,
-                        reportType: 'OrderRelated',
+                        reportType: 'General',
                         subject: subject,
                         description: description.trim(),
                         priority: priority
@@ -1010,6 +1098,251 @@
             document.getElementById('report-modal')?.addEventListener('click', function(e) {
                 if (e.target === this) {
                     closeReportModal();
+                }
+            });
+            
+            // OrderItem Report Functions
+            let selectedEvidenceFiles = [];
+            
+            // Handle report item button clicks
+            document.querySelectorAll('.report-item-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const itemId = this.dataset.itemId;
+                    const productName = this.dataset.productName;
+                    const productImage = this.dataset.productImage || '/images/placeholder.jpg';
+                    
+                    // Populate modal with item info
+                    document.getElementById('report-item-id').value = itemId;
+                    document.getElementById('report-item-name').textContent = productName;
+                    document.getElementById('report-item-image').src = productImage;
+                    document.getElementById('report-item-image').alt = productName;
+                    
+                    // Reset form and show modal
+                    document.getElementById('report-item-form').reset();
+                    selectedEvidenceFiles = [];
+                    document.getElementById('evidence-preview').innerHTML = '';
+                    updateEvidenceCounter();
+                    document.getElementById('report-item-modal').classList.remove('hidden');
+                });
+            });
+            
+            // Handle Add Images button click
+            document.getElementById('add-evidence-btn').addEventListener('click', function() {
+                if (selectedEvidenceFiles.length >= 5) {
+                    alert('Maximum 5 images allowed');
+                    return;
+                }
+                document.getElementById('report-item-evidence').click();
+            });
+            
+            // Handle evidence file selection (single file at a time)
+            document.getElementById('report-item-evidence').addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                
+                files.forEach((file) => {
+                    // Check if we already have 5 images
+                    if (selectedEvidenceFiles.length >= 5) {
+                        alert('Maximum 5 images allowed');
+                        return;
+                    }
+                    
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert(`File ${file.name} is too large. Maximum 5MB per image.`);
+                        return;
+                    }
+                    
+                    if (!file.type.startsWith('image/')) {
+                        alert(`File ${file.name} is not an image.`);
+                        return;
+                    }
+                    
+                    selectedEvidenceFiles.push(file);
+                    addEvidencePreview(file);
+                    updateEvidenceCounter();
+                });
+                
+                // Clear the input so the same file can be selected again if needed
+                e.target.value = '';
+            });
+            
+            // Function to add evidence preview
+            function addEvidencePreview(file) {
+                const preview = document.getElementById('evidence-preview');
+                const index = selectedEvidenceFiles.length - 1;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewDiv = document.createElement('div');
+                    previewDiv.style.cssText = 'position: relative; display: inline-block;';
+                    previewDiv.innerHTML = `
+                        <img src="${e.target.result}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                        <button type="button" onclick="removeEvidenceFile(${index})" style="position: absolute; top: -5px; right: -5px; background: #dc2626; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">&times;</button>
+                    `;
+                    preview.appendChild(previewDiv);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // Function to update evidence counter
+            function updateEvidenceCounter() {
+                const counter = document.getElementById('evidence-count');
+                const count = selectedEvidenceFiles.length;
+                counter.textContent = `${count}/5 images`;
+                
+                // Update button state
+                const addBtn = document.getElementById('add-evidence-btn');
+                if (count >= 5) {
+                    addBtn.disabled = true;
+                    addBtn.innerHTML = '<i class="bi bi-check-circle"></i> Max Images';
+                } else {
+                    addBtn.disabled = false;
+                    addBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Add Images';
+                }
+            }
+            
+            window.removeEvidenceFile = function(index) {
+                selectedEvidenceFiles.splice(index, 1);
+                refreshEvidencePreview();
+                updateEvidenceCounter();
+            };
+            
+            // Function to refresh all evidence previews
+            function refreshEvidencePreview() {
+                const preview = document.getElementById('evidence-preview');
+                preview.innerHTML = '';
+                
+                selectedEvidenceFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewDiv = document.createElement('div');
+                        previewDiv.style.cssText = 'position: relative; display: inline-block;';
+                        previewDiv.innerHTML = `
+                            <img src="${e.target.result}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                            <button type="button" onclick="removeEvidenceFile(${index})" style="position: absolute; top: -5px; right: -5px; background: #dc2626; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">&times;</button>
+                        `;
+                        preview.appendChild(previewDiv);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            window.closeReportItemModal = function() {
+                document.getElementById('report-item-modal').classList.add('hidden');
+                document.getElementById('report-item-form').reset();
+                selectedEvidenceFiles = [];
+                document.getElementById('evidence-preview').innerHTML = '';
+                updateEvidenceCounter();
+            };
+            
+            window.submitItemReport = async function() {
+                const itemId = document.getElementById('report-item-id').value;
+                const subject = document.getElementById('report-item-subject').value;
+                const description = document.getElementById('report-item-description').value;
+                const priority = document.getElementById('report-item-priority').value;
+                const orderId = document.getElementById('report-item-order-id').value;
+                const providerId = document.getElementById('report-provider-id-item').value;
+                
+                // Validation
+                if (!subject) {
+                    alert('Please select an issue type');
+                    return;
+                }
+                
+                if (!description || description.trim().length < 5) {
+                    alert('Please provide a detailed description (minimum 5 characters)');
+                    return;
+                }
+                
+                try {
+                    // Show loading state
+                    const submitBtn = document.querySelector('#report-item-modal .btn-danger');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Uploading...';
+                    
+                    // First upload evidence images via API if any
+                    let evidenceUrls = [];
+                    if (selectedEvidenceFiles.length > 0) {
+                        const formData = new FormData();
+                        selectedEvidenceFiles.forEach(file => {
+                            formData.append('files', file);
+                        });
+                        
+                        try {
+                            const accessToken = '@(Request.Cookies["AccessToken"])';
+                            const uploadResponse = await fetch('@Model.ApiBaseUrl/evidence/upload', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`
+                                },
+                                body: formData
+                            });
+                            
+                            if (uploadResponse.ok) {
+                                const uploadResult = await uploadResponse.json();
+                                evidenceUrls = uploadResult.urls || [];
+                            } else {
+                                const errorData = await uploadResponse.json().catch(() => ({ message: 'Failed to upload images' }));
+                                alert(errorData.message || 'Failed to upload evidence images. Continuing without images.');
+                                evidenceUrls = [];
+                            }
+                        } catch (error) {
+                            console.error('Error uploading evidence images:', error);
+                            alert('Error uploading evidence images. Continuing without images.');
+                            evidenceUrls = [];
+                        }
+                    }
+                    
+                    const accessToken = '@(Request.Cookies["AccessToken"])';
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    if (accessToken) {
+                        headers['Authorization'] = `Bearer ${accessToken}`;
+                    }
+                    
+                    const reportData = {
+                        reporteeId: providerId,
+                        orderId: orderId,
+                        orderItemId: itemId,
+                        reportType: 'OrderItem',
+                        subject: subject,
+                        description: description.trim(),
+                        priority: priority,
+                        evidenceImages: evidenceUrls
+                    };
+                    
+                    const response = await fetch('@Model.ApiBaseUrl/report', {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(reportData)
+                    });
+                    
+                    if (response.ok) {
+                        alert('Your product report has been submitted successfully. Our team will review it shortly.');
+                        closeReportItemModal();
+                    } else {
+                        const errorData = await response.json().catch(() => ({ message: 'Failed to submit report' }));
+                        alert(errorData.message || 'Failed to submit report. Please try again.');
+                        // Reset button state
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                } catch (error) {
+                    console.error('Error submitting item report:', error);
+                    alert('An error occurred while submitting your report. Please try again.');
+                    // Reset button state
+                    const submitBtn = document.querySelector('#report-item-modal .btn-danger');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-send"></i> Submit Report';
+                }
+            };
+            
+            // Close item modal when clicking outside
+            document.getElementById('report-item-modal')?.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeReportItemModal();
                 }
             });
         });

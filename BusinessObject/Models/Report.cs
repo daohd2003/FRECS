@@ -22,6 +22,8 @@ namespace BusinessObject.Models
 
         public Guid? OrderId { get; set; }  // ID đơn hàng (nếu là report liên quan đến order)
 
+        public Guid? OrderItemId { get; set; }  // ID sản phẩm cụ thể trong đơn hàng (nếu report về sản phẩm)
+
         [Required]
         public ReportType ReportType { get; set; } = ReportType.General;  // Loại báo cáo
 
@@ -30,6 +32,9 @@ namespace BusinessObject.Models
 
         [ForeignKey(nameof(OrderId))]
         public Order? Order { get; set; }  // Đơn hàng liên quan (nếu có)
+
+        [ForeignKey(nameof(OrderItemId))]
+        public OrderItem? OrderItem { get; set; }  // Sản phẩm cụ thể trong đơn hàng (nếu có)
 
         [ForeignKey(nameof(ReporteeId))]
         public User? Reportee { get; set; }
@@ -53,5 +58,10 @@ namespace BusinessObject.Models
 
         public ReportPriority Priority { get; set; } = ReportPriority.Medium; // Thêm độ ưu tiên
         public string? AdminResponse { get; set; } // Phản hồi của admin cho người báo cáo
+        
+        /// <summary>
+        /// Danh sách URL/path của các ảnh đính kèm làm bằng chứng (JSON array)
+        /// </summary>
+        public string? EvidenceImages { get; set; } // Lưu dưới dạng JSON string: ["url1", "url2", ...]
     }
 }

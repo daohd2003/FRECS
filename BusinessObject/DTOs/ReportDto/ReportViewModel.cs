@@ -27,9 +27,12 @@ namespace BusinessObject.DTOs.ReportDto
         
         // Order-related fields
         public Guid? OrderId { get; set; }
+        public Guid? OrderItemId { get; set; }  // ID sản phẩm cụ thể được report
         public ReportType ReportType { get; set; }
         public string? OrderCode { get; set; }
         public List<OrderProductInfo>? OrderProducts { get; set; }
+        public OrderProductInfo? ReportedProduct { get; set; }  // Thông tin sản phẩm cụ thể được report
+        public List<string>? EvidenceImages { get; set; }  // Ảnh bằng chứng
     }
     
     public class OrderProductInfo
@@ -39,5 +42,8 @@ namespace BusinessObject.DTOs.ReportDto
         public string? PrimaryImageUrl { get; set; }
         public int Quantity { get; set; }
         public decimal Price { get; set; }
+        public BusinessObject.Enums.TransactionType TransactionType { get; set; }
+        public int? RentalDays { get; set; }
+        public decimal DepositAmount { get; set; }
     }
 }

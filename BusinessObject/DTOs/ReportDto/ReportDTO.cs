@@ -12,6 +12,8 @@ namespace BusinessObject.DTOs.ReportDto
 
         public Guid? OrderId { get; set; }  // ID đơn hàng (nếu là report liên quan đến order)
 
+        public Guid? OrderItemId { get; set; }  // ID sản phẩm cụ thể trong đơn hàng (nếu report về sản phẩm)
+
         public ReportType ReportType { get; set; } = ReportType.General;  // Loại báo cáo
 
         public string Subject { get; set; }  // Chủ đề/nguyên nhân báo cáo (Ví dụ: Spam, Lừa đảo)
@@ -23,5 +25,10 @@ namespace BusinessObject.DTOs.ReportDto
         public DateTime? CreatedAt { get; set; }
 
         public ReportPriority Priority { get; set; }
+        
+        /// <summary>
+        /// Danh sách URL/path của các ảnh đính kèm làm bằng chứng
+        /// </summary>
+        public List<string>? EvidenceImages { get; set; }
     }
 }
