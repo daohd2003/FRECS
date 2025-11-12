@@ -5,7 +5,6 @@ using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
-using Repositories.SystemConfigRepositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,13 +17,11 @@ namespace Repositories.TransactionRepositories
     {
         private readonly ShareItDbContext _context;
         private readonly IMapper _mapper;
-        private readonly ISystemConfigRepository _systemConfigRepository;
 
-        public TransactionRepository(ShareItDbContext context, IMapper mapper, ISystemConfigRepository systemConfigRepository)
+        public TransactionRepository(ShareItDbContext context, IMapper mapper)
         {
             _context = context;
             _mapper = mapper;
-            _systemConfigRepository = systemConfigRepository;
         }
 
         public async Task<IEnumerable<TransactionSummaryDto>> GetTransactionsByProviderAsync(Guid providerId)
@@ -53,23 +50,12 @@ namespace Repositories.TransactionRepositories
                 // Add gross revenue (Subtotal excludes deposit)
                 totalGrossRevenue += order.Subtotal;
 
-                // Calculate platform fee for each item using rates from database
+                // Calculate platform fee using commission amount saved at order creation time
                 foreach (var item in order.Items)
                 {
-                    decimal itemRevenue = 0;
-
-                    if (item.TransactionType == TransactionType.rental)
-                    {
-                        itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                        var rentalRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
-                        totalPlatformFee += itemRevenue * rentalRate;
-                    }
-                    else if (item.TransactionType == TransactionType.purchase)
-                    {
-                        itemRevenue = item.DailyRate * item.Quantity;
-                        var purchaseRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
-                        totalPlatformFee += itemRevenue * purchaseRate;
-                    }
+                    // Use the commission amount that was calculated and saved when the order was created
+                    // This ensures historical accuracy regardless of current commission rate changes
+                    totalPlatformFee += item.CommissionAmount;
                 }
             }
 
@@ -132,23 +118,12 @@ namespace Repositories.TransactionRepositories
                     // Add gross revenue (Subtotal excludes deposit)
                     totalGrossRevenue += order.Subtotal;
 
-                    // Calculate platform fee for each item using rates from database
+                    // Calculate platform fee using commission amount saved at order creation time
                     foreach (var item in order.Items)
                     {
-                        decimal itemRevenue = 0;
-
-                        if (item.TransactionType == TransactionType.rental)
-                        {
-                            itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                            var rentalRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
-                            totalPlatformFee += itemRevenue * rentalRate;
-                        }
-                        else if (item.TransactionType == TransactionType.purchase)
-                        {
-                            itemRevenue = item.DailyRate * item.Quantity;
-                            var purchaseRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
-                            totalPlatformFee += itemRevenue * purchaseRate;
-                        }
+                        // Use the commission amount that was calculated and saved when the order was created
+                        // This ensures historical accuracy regardless of current commission rate changes
+                        totalPlatformFee += item.CommissionAmount;
                     }
                 }
 

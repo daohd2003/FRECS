@@ -2,19 +2,16 @@ using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
-using Repositories.SystemConfigRepositories;
 
 namespace Repositories.RevenueRepositories
 {
     public class RevenueRepository : IRevenueRepository
     {
         private readonly ShareItDbContext _context;
-        private readonly ISystemConfigRepository _systemConfigRepository;
 
-        public RevenueRepository(ShareItDbContext context, ISystemConfigRepository systemConfigRepository)
+        public RevenueRepository(ShareItDbContext context)
         {
             _context = context;
-            _systemConfigRepository = systemConfigRepository;
         }
 
         public async Task<List<Order>> GetOrdersInPeriodAsync(Guid providerId, DateTime start, DateTime end)
@@ -66,25 +63,12 @@ namespace Repositories.RevenueRepositories
                 // Add gross revenue (Subtotal excludes deposit)
                 totalGrossRevenue += order.Subtotal;
 
-                // Calculate platform fee for each item using rates from database
+                // Calculate platform fee using commission amount saved at order creation time
                 foreach (var item in order.Items)
                 {
-                    decimal itemRevenue = 0;
-
-                    if (item.TransactionType == TransactionType.rental)
-                    {
-                        // Rental: DailyRate × RentalDays × Quantity
-                        itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                        var rentalRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
-                        totalPlatformFee += itemRevenue * rentalRate;
-                    }
-                    else if (item.TransactionType == TransactionType.purchase)
-                    {
-                        // Purchase: DailyRate × Quantity (DailyRate is used as unit price)
-                        itemRevenue = item.DailyRate * item.Quantity;
-                        var purchaseRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
-                        totalPlatformFee += itemRevenue * purchaseRate;
-                    }
+                    // Use the commission amount that was calculated and saved when the order was created
+                    // This ensures historical accuracy regardless of current commission rate changes
+                    totalPlatformFee += item.CommissionAmount;
                 }
             }
 

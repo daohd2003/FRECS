@@ -6,7 +6,6 @@ using Repositories.RevenueRepositories;
 using Repositories.TransactionRepositories;
 using Repositories.BankAccountRepositories;
 using Repositories.WithdrawalRepositories;
-using Repositories.SystemConfigRepositories;
 
 namespace Services.RevenueServices
 {
@@ -16,7 +15,6 @@ namespace Services.RevenueServices
         private readonly ITransactionRepository _transactionRepository;
         private readonly IBankAccountRepository _bankAccountRepository;
         private readonly IWithdrawalRepository _withdrawalRepository;
-        private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly IMapper _mapper;
 
         public RevenueService(
@@ -24,14 +22,12 @@ namespace Services.RevenueServices
             ITransactionRepository transactionRepository,
             IBankAccountRepository bankAccountRepository,
             IWithdrawalRepository withdrawalRepository,
-            ISystemConfigRepository systemConfigRepository,
             IMapper mapper)
         {
             _revenueRepository = revenueRepository;
             _transactionRepository = transactionRepository;
             _bankAccountRepository = bankAccountRepository;
             _withdrawalRepository = withdrawalRepository;
-            _systemConfigRepository = systemConfigRepository;
             _mapper = mapper;
         }
 
@@ -394,12 +390,24 @@ namespace Services.RevenueServices
                 }
             }
 
-            // Get commission rates from database
-            var rentalCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
-            var purchaseCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
-
-            var rentalFee = rentalRevenue * rentalCommissionRate;
-            var purchaseFee = purchaseRevenue * purchaseCommissionRate;
+            // Calculate commission fees using saved commission amounts from order items
+            decimal rentalFee = 0;
+            decimal purchaseFee = 0;
+            
+            foreach (var order in orders)
+            {
+                foreach (var item in order.Items)
+                {
+                    if (item.TransactionType == TransactionType.rental)
+                    {
+                        rentalFee += item.CommissionAmount;
+                    }
+                    else if (item.TransactionType == TransactionType.purchase)
+                    {
+                        purchaseFee += item.CommissionAmount;
+                    }
+                }
+            }
 
             return new CommissionBreakdown
             {
