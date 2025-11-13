@@ -1,4 +1,4 @@
-﻿
+
 using BusinessObject.DTOs.AIDtos;
 using BusinessObject.DTOs.BankQR;
 using BusinessObject.DTOs.CloudinarySetting;
@@ -43,6 +43,7 @@ using Repositories.RepositoryBase;
 using Repositories.TransactionRepositories;
 using Repositories.UserRepositories;
 using Repositories.RevenueRepositories;
+using Repositories.SystemConfigRepositories;
 using Services.AI;
 using Services.Authentication;
 using Services.CartServices;
@@ -65,6 +66,7 @@ using Services.ProviderBankServices;
 using Services.ProviderFinanceServices;
 using Services.ReportService;
 using Services.RevenueServices;
+using Services.SystemConfigServices;
 using Services.Transactions;
 using Services.UserServices;
 using ShareItAPI.Middlewares;
@@ -365,6 +367,10 @@ namespace ShareItAPI
             // Register Withdrawal services
             builder.Services.AddScoped<IWithdrawalRepository, WithdrawalRepository>();
             builder.Services.AddScoped<IWithdrawalService, WithdrawalService>();
+
+            // Register SystemConfig services
+            builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+            builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 

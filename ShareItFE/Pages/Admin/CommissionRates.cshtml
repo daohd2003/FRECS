@@ -1,0 +1,375 @@
+@page
+@model ShareItFE.Pages.Admin.CommissionRatesModel
+@{
+    ViewData["Title"] = "Commission Rates Management";
+    Layout = "_AdminLayout";
+}
+
+@section Styles {
+    <style>
+        .commission-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .page-subtitle {
+            font-size: 1rem;
+            color: #6b7280;
+        }
+
+        .commission-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .rate-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .rate-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .rate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .rate-label {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .rate-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #7c3aed;
+        }
+
+        .slider-container {
+            margin-bottom: 1rem;
+        }
+
+        .range-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e5e7eb;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #7c3aed;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        .range-slider::-webkit-slider-thumb:hover {
+            background: #6d28d9;
+            transform: scale(1.1);
+        }
+
+        .range-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #7c3aed;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        .range-slider::-moz-range-thumb:hover {
+            background: #6d28d9;
+            transform: scale(1.1);
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+
+        .impact-preview {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .impact-preview-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #1e40af;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .impact-preview-text {
+            color: #1e3a8a;
+            font-size: 0.875rem;
+        }
+
+        .btn-save {
+            background: #7c3aed;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-save:hover {
+            background: #6d28d9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(124, 58, 237, 0.3);
+        }
+
+        .btn-save:active {
+            transform: translateY(0);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 2rem 0;
+        }
+    </style>
+}
+
+<div class="commission-container">
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="bi bi-percent"></i>
+            Platform Commission Rates
+        </h1>
+        <p class="page-subtitle">Set the service fee percentage charged on rental and purchase transactions</p>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>@Model.SuccessMessage</span>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-error">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>@Model.ErrorMessage</span>
+        </div>
+    }
+
+    <form method="post">
+        <div class="commission-card">
+            <!-- Rental Commission Rate -->
+            <div class="rate-section">
+                <div class="rate-header">
+                    <div>
+                        <div class="rate-label">Rental Commission Rate (%)</div>
+                        <p style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">Commission charged on rental transactions</p>
+                    </div>
+                    <div class="rate-value" id="rentalRateDisplay">@Model.RentalCommissionRate%</div>
+                </div>
+
+                <div class="slider-container">
+                    <input type="range" 
+                           asp-for="RentalCommissionRate" 
+                           class="range-slider" 
+                           min="0" 
+                           max="100" 
+                           step="0.5"
+                           id="rentalSlider"
+                           oninput="updateRentalDisplay(this.value)" />
+                    <div class="range-labels">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div class="impact-preview">
+                    <div class="impact-preview-header">
+                        <i class="bi bi-info-circle"></i>
+                        <span>Impact Preview:</span>
+                    </div>
+                    <p class="impact-preview-text" id="rentalImpact">
+                        On a ₫1,000,000 rental, the platform will earn ₫@((Model.RentalCommissionRate / 100 * 1000000).ToString("N0")) 
+                        and the provider will receive ₫@(((100 - Model.RentalCommissionRate) / 100 * 1000000).ToString("N0")).
+                    </p>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Purchase Commission Rate -->
+            <div class="rate-section">
+                <div class="rate-header">
+                    <div>
+                        <div class="rate-label">Purchase Commission Rate (%)</div>
+                        <p style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">Commission charged on purchase transactions</p>
+                    </div>
+                    <div class="rate-value" id="purchaseRateDisplay">@Model.PurchaseCommissionRate%</div>
+                </div>
+
+                <div class="slider-container">
+                    <input type="range" 
+                           asp-for="PurchaseCommissionRate" 
+                           class="range-slider" 
+                           min="0" 
+                           max="100" 
+                           step="0.5"
+                           id="purchaseSlider"
+                           oninput="updatePurchaseDisplay(this.value)" />
+                    <div class="range-labels">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div class="impact-preview">
+                    <div class="impact-preview-header">
+                        <i class="bi bi-info-circle"></i>
+                        <span>Impact Preview:</span>
+                    </div>
+                    <p class="impact-preview-text" id="purchaseImpact">
+                        On a ₫1,000,000 purchase, the platform will earn ₫@((Model.PurchaseCommissionRate / 100 * 1000000).ToString("N0")) 
+                        and the provider will receive ₫@(((100 - Model.PurchaseCommissionRate) / 100 * 1000000).ToString("N0")).
+                    </p>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save">
+                <i class="bi bi-save"></i>
+                <span>Save Changes</span>
+            </button>
+
+            @if (Model.LastUpdated != DateTime.MinValue)
+            {
+                <div class="last-updated">
+                    Last updated: @Model.LastUpdated.ToString("MMMM dd, yyyy 'at' hh:mm tt")
+                </div>
+            }
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        function updateRentalDisplay(value) {
+            const displayValue = parseFloat(value).toFixed(1);
+            document.getElementById('rentalRateDisplay').textContent = displayValue + '%';
+            
+            const platformEarns = (value / 100 * 1000000).toFixed(0);
+            const providerReceives = ((100 - value) / 100 * 1000000).toFixed(0);
+            
+            document.getElementById('rentalImpact').innerHTML = 
+                `On a ₫1,000,000 rental, the platform will earn ₫${parseInt(platformEarns).toLocaleString()} 
+                and the provider will receive ₫${parseInt(providerReceives).toLocaleString()}.`;
+        }
+
+        function updatePurchaseDisplay(value) {
+            const displayValue = parseFloat(value).toFixed(1);
+            document.getElementById('purchaseRateDisplay').textContent = displayValue + '%';
+            
+            const platformEarns = (value / 100 * 1000000).toFixed(0);
+            const providerReceives = ((100 - value) / 100 * 1000000).toFixed(0);
+            
+            document.getElementById('purchaseImpact').innerHTML = 
+                `On a ₫1,000,000 purchase, the platform will earn ₫${parseInt(platformEarns).toLocaleString()} 
+                and the provider will receive ₫${parseInt(providerReceives).toLocaleString()}.`;
+        }
+
+        // Initialize displays on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const rentalSlider = document.getElementById('rentalSlider');
+            const purchaseSlider = document.getElementById('purchaseSlider');
+            
+            if (rentalSlider) {
+                updateRentalDisplay(rentalSlider.value);
+            }
+            
+            if (purchaseSlider) {
+                updatePurchaseDisplay(purchaseSlider.value);
+            }
+        });
+    </script>
+}

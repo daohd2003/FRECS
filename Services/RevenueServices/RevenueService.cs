@@ -98,9 +98,9 @@ namespace Services.RevenueServices
             var previousAvgOrderValue = previousReturnedCount > 0 ? previousRevenue / previousReturnedCount : 0;
             var avgOrderValueGrowth = previousAvgOrderValue > 0 ? ((currentAvgOrderValue - previousAvgOrderValue) / previousAvgOrderValue) * 100 : 0;
 
-            // Calculate platform commission breakdown (Rental: 20%, Purchase: 10%)
-            var currentCommissionBreakdown = CalculateCommissionBreakdown(currentReturnedOrders);
-            var previousCommissionBreakdown = CalculateCommissionBreakdown(previousReturnedOrders);
+            // Calculate platform commission breakdown using rates from database
+            var currentCommissionBreakdown = await CalculateCommissionBreakdownAsync(currentReturnedOrders);
+            var previousCommissionBreakdown = await CalculateCommissionBreakdownAsync(previousReturnedOrders);
             
             var currentPlatformFee = currentCommissionBreakdown.TotalFee;
             var previousPlatformFee = previousCommissionBreakdown.TotalFee;
@@ -364,9 +364,9 @@ namespace Services.RevenueServices
 
         /// <summary>
         /// Calculate platform commission breakdown from OrderItems
-        /// Rental: 20% commission, Purchase: 10% commission
+        /// Uses commission rates from database configuration
         /// </summary>
-        private CommissionBreakdown CalculateCommissionBreakdown(List<Order> orders)
+        private async Task<CommissionBreakdown> CalculateCommissionBreakdownAsync(List<Order> orders)
         {
             decimal rentalRevenue = 0;
             decimal purchaseRevenue = 0;
@@ -390,11 +390,24 @@ namespace Services.RevenueServices
                 }
             }
 
-            const decimal RENTAL_COMMISSION_RATE = 0.20m;  // 20%
-            const decimal PURCHASE_COMMISSION_RATE = 0.10m; // 10%
-
-            var rentalFee = rentalRevenue * RENTAL_COMMISSION_RATE;
-            var purchaseFee = purchaseRevenue * PURCHASE_COMMISSION_RATE;
+            // Calculate commission fees using saved commission amounts from order items
+            decimal rentalFee = 0;
+            decimal purchaseFee = 0;
+            
+            foreach (var order in orders)
+            {
+                foreach (var item in order.Items)
+                {
+                    if (item.TransactionType == TransactionType.rental)
+                    {
+                        rentalFee += item.CommissionAmount;
+                    }
+                    else if (item.TransactionType == TransactionType.purchase)
+                    {
+                        purchaseFee += item.CommissionAmount;
+                    }
+                }
+            }
 
             return new CommissionBreakdown
             {

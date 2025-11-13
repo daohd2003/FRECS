@@ -12,6 +12,7 @@ using Repositories.NotificationRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
+using Repositories.SystemConfigRepositories;
 using Services.NotificationServices;
 using BusinessObject.Utilities;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,7 @@ namespace Services.OrderServices
         private readonly ShareItDbContext _context;
         private readonly IEmailRepository _emailRepository;
         private readonly INotificationRepository _notificationRepository;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public OrderService(
             IOrderRepository orderRepo,
@@ -50,7 +52,8 @@ namespace Services.OrderServices
             ShareItDbContext context,
             IEmailRepository emailRepository,
             IProductRepository productRepo,
-            INotificationRepository notificationRepository
+            INotificationRepository notificationRepository,
+            ISystemConfigRepository systemConfigRepository
             )
         {
             _orderRepo = orderRepo;
@@ -65,6 +68,7 @@ namespace Services.OrderServices
             _emailRepository = emailRepository;
             _productRepo = productRepo;
             _notificationRepository = notificationRepository;
+            _systemConfigRepository = systemConfigRepository;
 
         }
 
@@ -73,11 +77,31 @@ namespace Services.OrderServices
             // Dùng mapper để map DTO sang entity
             var order = _mapper.Map<Order>(dto);
 
+            // Get commission rates from database
+            var rentalCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
+            var purchaseCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
+
             // Map Items → liên kết OrderId sau khi có Order Id
             foreach (var item in order.Items)
             {
                 item.Id = Guid.NewGuid();
                 item.OrderId = order.Id;
+                
+                // Calculate and store commission for each item
+                decimal itemRevenue = item.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                    ? item.DailyRate * item.Quantity
+                    : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity;
+                
+                if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                {
+                    item.RentalCommissionRate = rentalCommissionRate;
+                    item.CommissionAmount = itemRevenue * rentalCommissionRate;
+                }
+                else // purchase
+                {
+                    item.PurchaseCommissionRate = purchaseCommissionRate;
+                    item.CommissionAmount = itemRevenue * purchaseCommissionRate;
+                }
             }
 
             // Calculate and set subtotal if not already set (chỉ giá thuê/mua, không bao gồm cọc)
@@ -577,6 +601,10 @@ namespace Services.OrderServices
                             throw new InvalidOperationException($"Provider with ID {providerId} not found.");
                         }
 
+                        // Get commission rates from database
+                        var rentalCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
+                        var purchaseCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
+
                         decimal subtotalAmount = 0;
                         decimal depositAmount = 0;
                         var orderItems = new List<OrderItem>();
@@ -641,6 +669,22 @@ namespace Services.OrderServices
                                     ? product.SecurityDeposit 
                                     : 0m
                             };
+
+                            // Calculate and store commission for each item
+                            decimal itemRevenue = cartItem.TransactionType == BusinessObject.Enums.TransactionType.purchase
+                                ? orderItem.DailyRate * orderItem.Quantity
+                                : orderItem.DailyRate * (orderItem.RentalDays ?? 1) * orderItem.Quantity;
+                            
+                            if (cartItem.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                            {
+                                orderItem.RentalCommissionRate = rentalCommissionRate;
+                                orderItem.CommissionAmount = itemRevenue * rentalCommissionRate;
+                            }
+                            else // purchase
+                            {
+                                orderItem.PurchaseCommissionRate = purchaseCommissionRate;
+                                orderItem.CommissionAmount = itemRevenue * purchaseCommissionRate;
+                            }
 
                             orderItems.Add(orderItem);
                             

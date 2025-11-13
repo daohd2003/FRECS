@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.Enums;
@@ -50,21 +50,12 @@ namespace Repositories.TransactionRepositories
                 // Add gross revenue (Subtotal excludes deposit)
                 totalGrossRevenue += order.Subtotal;
 
-                // Calculate platform fee for each item
+                // Calculate platform fee using commission amount saved at order creation time
                 foreach (var item in order.Items)
                 {
-                    decimal itemRevenue = 0;
-
-                    if (item.TransactionType == TransactionType.rental)
-                    {
-                        itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                        totalPlatformFee += itemRevenue * 0.20m; // 20% commission
-                    }
-                    else if (item.TransactionType == TransactionType.purchase)
-                    {
-                        itemRevenue = item.DailyRate * item.Quantity;
-                        totalPlatformFee += itemRevenue * 0.10m; // 10% commission
-                    }
+                    // Use the commission amount that was calculated and saved when the order was created
+                    // This ensures historical accuracy regardless of current commission rate changes
+                    totalPlatformFee += item.CommissionAmount;
                 }
             }
 
@@ -127,21 +118,12 @@ namespace Repositories.TransactionRepositories
                     // Add gross revenue (Subtotal excludes deposit)
                     totalGrossRevenue += order.Subtotal;
 
-                    // Calculate platform fee for each item
+                    // Calculate platform fee using commission amount saved at order creation time
                     foreach (var item in order.Items)
                     {
-                        decimal itemRevenue = 0;
-
-                        if (item.TransactionType == TransactionType.rental)
-                        {
-                            itemRevenue = item.DailyRate * (item.RentalDays ?? 0) * item.Quantity;
-                            totalPlatformFee += itemRevenue * 0.20m; // 20% commission
-                        }
-                        else if (item.TransactionType == TransactionType.purchase)
-                        {
-                            itemRevenue = item.DailyRate * item.Quantity;
-                            totalPlatformFee += itemRevenue * 0.10m; // 10% commission
-                        }
+                        // Use the commission amount that was calculated and saved when the order was created
+                        // This ensures historical accuracy regardless of current commission rate changes
+                        totalPlatformFee += item.CommissionAmount;
                     }
                 }
 

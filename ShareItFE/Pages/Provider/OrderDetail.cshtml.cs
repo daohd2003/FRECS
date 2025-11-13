@@ -43,8 +43,8 @@ namespace ShareItFE.Pages.Provider
                 return RedirectToPage("/Auth");
             }
 
-            // Verify user has provider role
-            if (!User.IsInRole("provider"))
+            // Allow provider, staff, and admin roles
+            if (!User.IsInRole("provider") && !User.IsInRole("staff") && !User.IsInRole("admin"))
             {
                 TempData["ErrorMessage"] = "Access Denied. You do not have permission to access this page.";
                 return RedirectToPage("/Index");
@@ -63,9 +63,11 @@ namespace ShareItFE.Pages.Provider
                     {
                         Order = apiResponse.Data;
 
-                        // Verify the logged-in provider owns this order
-                        var currentProviderId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                        if (string.IsNullOrEmpty(currentProviderId) || Order.ProviderId.ToString() != currentProviderId)
+                        // Verify the logged-in provider owns this order (skip for staff/admin)
+                        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        var isStaffOrAdmin = User.IsInRole("staff") || User.IsInRole("admin");
+                        
+                        if (!isStaffOrAdmin && (string.IsNullOrEmpty(currentUserId) || Order.ProviderId.ToString() != currentUserId))
                         {
                             TempData["ErrorMessage"] = "You do not have permission to view this order.";
                             return RedirectToPage("/Provider/OrderManagement");

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
@@ -52,5 +52,25 @@ namespace BusinessObject.Models
         // Tiền cọc cho từng item (Lưu Lại tại thời điểm đặt hàng để tránh sai lệch)
         [Column(TypeName = "decimal(10,2)")]
         public decimal DepositPerUnit { get; set; } = 0m;
+
+        /// <summary>
+        /// Rental commission rate percentage applied at the time of order (stored to avoid discrepancies)
+        /// Only applicable for rental transactions
+        /// </summary>
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal? RentalCommissionRate { get; set; }
+
+        /// <summary>
+        /// Purchase commission rate percentage applied at the time of order (stored to avoid discrepancies)
+        /// Only applicable for purchase transactions
+        /// </summary>
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal? PurchaseCommissionRate { get; set; }
+
+        /// <summary>
+        /// Total commission amount for this item
+        /// </summary>
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal CommissionAmount { get; set; } = 0m;
     }
 }
