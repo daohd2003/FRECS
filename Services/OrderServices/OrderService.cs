@@ -1220,73 +1220,117 @@ namespace Services.OrderServices
         /// - Stock quantities (RentalQuantity/PurchaseQuantity) are deducted when order becomes 'approved' (payment confirmed)
         /// - Rent count increases whenever order status becomes 'returned' (including returned_with_issue -> returned)
         /// - Buy count increases only when purchase order first reaches 'approved'
+        /// - Uses pessimistic locking to prevent race conditions during stock deduction
         /// </summary>
         /// <param name="order">The order containing items to update counts for</param>
         /// <param name="oldStatus">The previous order status</param>
         /// <param name="newStatus">The new order status</param>
         private async Task UpdateProductCounts(Order order, OrderStatus oldStatus, OrderStatus newStatus)
         {
+            // Group items by ProductId to handle multiple items of same product in one order
+            var itemGroups = order.Items.GroupBy(i => i.ProductId);
 
-            foreach (var item in order.Items)
+            foreach (var itemGroup in itemGroups)
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product == null) continue;
+                var productId = itemGroup.Key;
+                var items = itemGroup.ToList();
+                
+                // Calculate total quantities for this product across all items in the order
+                var totalPurchaseQuantity = items
+                    .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                    .Sum(i => i.Quantity);
+                var totalRentalQuantity = items
+                    .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                    .Sum(i => i.Quantity);
 
-                bool shouldUpdateRentCount = false;
-                bool shouldUpdateBuyCount = false;
-                bool shouldDeductStock = false;
+                bool shouldDeductStock = newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved;
+                bool shouldUpdateCounts = false;
 
-                // Deduct stock quantity when order is approved (payment confirmed)
-                if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                // Check if we need to update rent/buy counts
+                foreach (var item in items)
                 {
-                    shouldDeductStock = true;
-                }
-
-                // For rental transactions - increment rent count whenever status becomes 'returned'
-                if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
-                {
-                    if (newStatus == OrderStatus.returned)
+                    if (item.TransactionType == BusinessObject.Enums.TransactionType.rental && newStatus == OrderStatus.returned)
                     {
-                        shouldUpdateRentCount = true;
+                        shouldUpdateCounts = true;
+                    }
+                    else if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase && 
+                             newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                    {
+                        shouldUpdateCounts = true;
                     }
                 }
-                // For purchase transactions - increment buy count only when first time reaching 'approved'
-                else if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
-                {
-                    if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
-                    {
-                        shouldUpdateBuyCount = true;
-                    }
-                }
 
-                // Deduct stock quantity when approved
-                if (shouldDeductStock)
+                // If we need to deduct stock (critical section), use database locking
+                if (shouldDeductStock && (totalPurchaseQuantity > 0 || totalRentalQuantity > 0))
                 {
-                    if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
-                    {
-                        product.PurchaseQuantity -= item.Quantity;
-                        // Prevent negative quantity
-                        if (product.PurchaseQuantity < 0) product.PurchaseQuantity = 0;
-                    }
-                    else // Rental
-                    {
-                        product.RentalQuantity -= item.Quantity;
-                        // Prevent negative quantity
-                        if (product.RentalQuantity < 0) product.RentalQuantity = 0;
-                    }
-                    await _productRepository.UpdateAsync(product);
-                }
+                    // Use raw SQL with UPDLOCK for SQL Server row locking
+                    var lockedProduct = await _context.Products
+                        .FromSqlRaw("SELECT * FROM Products WITH (UPDLOCK, ROWLOCK) WHERE Id = {0}", productId)
+                        .FirstOrDefaultAsync();
 
-                // Update counts if needed
-                if (shouldUpdateRentCount)
-                {
-                    product.RentCount += item.Quantity;
-                    await _productRepository.UpdateAsync(product);
+                    if (lockedProduct == null)
+                    {
+                        throw new InvalidOperationException($"Product with ID {productId} not found during stock deduction.");
+                    }
+
+                    // Validate stock availability with locked data
+                    if (totalPurchaseQuantity > 0)
+                    {
+                        if (lockedProduct.PurchaseQuantity < totalPurchaseQuantity)
+                        {
+                            throw new InvalidOperationException(
+                                $"Insufficient stock for purchase. Product '{lockedProduct.Name}' has {lockedProduct.PurchaseQuantity} units available, but {totalPurchaseQuantity} units requested.");
+                        }
+                        lockedProduct.PurchaseQuantity -= totalPurchaseQuantity;
+                    }
+
+                    if (totalRentalQuantity > 0)
+                    {
+                        if (lockedProduct.RentalQuantity < totalRentalQuantity)
+                        {
+                            throw new InvalidOperationException(
+                                $"Insufficient stock for rental. Product '{lockedProduct.Name}' has {lockedProduct.RentalQuantity} units available, but {totalRentalQuantity} units requested.");
+                        }
+                        lockedProduct.RentalQuantity -= totalRentalQuantity;
+                    }
+
+                    // Update buy/rent counts if needed
+                    if (shouldUpdateCounts)
+                    {
+                        foreach (var item in items)
+                        {
+                            if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase && 
+                                newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                            {
+                                lockedProduct.BuyCount += item.Quantity;
+                            }
+                        }
+                    }
+
+                    // Save changes while still holding the lock
+                    _context.Products.Update(lockedProduct);
+                    await _context.SaveChangesAsync();
                 }
-                else if (shouldUpdateBuyCount)
+                // If we only need to update counts (no stock deduction), use regular update
+                else if (shouldUpdateCounts)
                 {
-                    product.BuyCount += item.Quantity;
-                    await _productRepository.UpdateAsync(product);
+                    var product = await _productRepository.GetByIdAsync(productId);
+                    if (product != null)
+                    {
+                        foreach (var item in items)
+                        {
+                            if (item.TransactionType == BusinessObject.Enums.TransactionType.rental && newStatus == OrderStatus.returned)
+                            {
+                                product.RentCount += item.Quantity;
+                            }
+                            else if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase && 
+                                     newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                            {
+                                product.BuyCount += item.Quantity;
+                            }
+                        }
+                        await _productRepository.UpdateAsync(product);
+                    }
                 }
             }
         }
