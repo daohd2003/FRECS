@@ -305,29 +305,15 @@
     <script>
         // Global validation function called from form onsubmit
         function validateCheckoutForm(event) {
-            console.log('🔍 validateCheckoutForm called');
-            
             const useSameProfileCheckbox = document.getElementById('useSameProfile');
             const phoneNumberInput = document.getElementById('phoneNumberInput');
             const addressInput = document.getElementById('addressInput');
             const phoneValidationMsg = document.querySelector('[data-valmsg-for="Input.PhoneNumber"]');
             const addressValidationMsg = document.querySelector('[data-valmsg-for="Input.Address"]');
             
-            console.log('Elements:', {
-                useSameProfile: useSameProfileCheckbox?.checked,
-                phoneInput: phoneNumberInput,
-                phoneDisabled: phoneNumberInput?.disabled,
-                phoneValue: phoneNumberInput?.value,
-                addressInput: addressInput,
-                addressDisabled: addressInput?.disabled,
-                addressValue: addressInput?.value
-            });
-            
             // Only validate if NOT using profile info
             if (!useSameProfileCheckbox || !useSameProfileCheckbox.checked) {
                 let isValid = true;
-                
-                console.log('📝 Validating manual inputs...');
                 
                 // Validate Phone Number (exactly 10 digits, no letters)
                 if (phoneNumberInput && !phoneNumberInput.disabled) {
@@ -335,27 +321,22 @@
                     const phoneRegex = /^\d{10}$/;
                     
                     if (!phoneValue) {
-                        console.log('❌ Phone number is EMPTY');
                         if (phoneValidationMsg) {
                             phoneValidationMsg.textContent = 'Phone number is required';
                             phoneValidationMsg.style.display = 'block';
-                            console.log('✓ Phone validation message displayed');
                         }
                         phoneNumberInput.style.borderColor = '#ef4444';
                         phoneNumberInput.style.borderWidth = '2px';
                         isValid = false;
                     } else if (!phoneRegex.test(phoneValue)) {
-                        console.log('❌ Phone number format is INVALID:', phoneValue);
                         if (phoneValidationMsg) {
                             phoneValidationMsg.textContent = 'Phone number must be exactly 10 digits and contain no letters';
                             phoneValidationMsg.style.display = 'block';
-                            console.log('✓ Phone format validation message displayed');
                         }
                         phoneNumberInput.style.borderColor = '#ef4444';
                         phoneNumberInput.style.borderWidth = '2px';
                         isValid = false;
                     } else {
-                        console.log('✅ Phone number is valid:', phoneValue);
                         if (phoneValidationMsg) {
                             phoneValidationMsg.style.display = 'none';
                         }
@@ -369,27 +350,22 @@
                     const addressValue = addressInput.value.trim();
                     
                     if (!addressValue) {
-                        console.log('❌ Address is EMPTY');
                         if (addressValidationMsg) {
                             addressValidationMsg.textContent = 'Address is required';
                             addressValidationMsg.style.display = 'block';
-                            console.log('✓ Address validation message displayed');
                         }
                         addressInput.style.borderColor = '#ef4444';
                         addressInput.style.borderWidth = '2px';
                         isValid = false;
                     } else if (addressValue.length < 10) {
-                        console.log('❌ Address is too SHORT:', addressValue);
                         if (addressValidationMsg) {
                             addressValidationMsg.textContent = 'Address must be at least 10 characters long';
                             addressValidationMsg.style.display = 'block';
-                            console.log('✓ Address length validation message displayed');
                         }
                         addressInput.style.borderColor = '#ef4444';
                         addressInput.style.borderWidth = '2px';
                         isValid = false;
                     } else {
-                        console.log('✅ Address is valid:', addressValue);
                         if (addressValidationMsg) {
                             addressValidationMsg.style.display = 'none';
                         }
@@ -399,7 +375,6 @@
                 }
                 
                 if (!isValid) {
-                    console.log('🛑 VALIDATION FAILED - Blocking form submission');
                     if (event) {
                         event.preventDefault();
                         event.stopPropagation();
@@ -414,11 +389,7 @@
                     }, 100);
                     
                     return false; // Return false to prevent form submission
-                } else {
-                    console.log('✅ VALIDATION PASSED - Form will submit');
                 }
-            } else {
-                console.log('ℹ️ Using profile info - Skipping validation');
             }
             
             return true; // Allow form submission
@@ -549,7 +520,7 @@
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         
                     } catch (e) {
-                        console.log('Error during cleanup:', e);
+                        // Ignore cleanup errors
                     }
                     
                     // Reload notifications after closing QR modal (after notification has been created)
@@ -562,7 +533,7 @@
                             }
                         }
                     } catch (e) {
-                        console.log('Error reloading notifications:', e);
+                        // Ignore notification reload errors
                     }
                     
                     // Redirect to order history after closing QR modal
@@ -589,7 +560,6 @@
                             });
 
                             if (!response.ok) {
-                                console.error(`Error checking transaction status: ${response.status} - ${response.statusText}`);
                                 clearInterval(checkStatusInterval);
                                 alert('An error occurred while checking transaction status.');
                                 return;
@@ -610,17 +580,14 @@
                                         }
                                     });
                                 } catch (e) {
-                                    console.log('Could not clear pending cart orders:', e);
+                                    // Ignore pending cart order clear errors
                                 }
                                 
                                 alert("Payment successful!");
                                 // Chuyển hướng đến trang lịch sử đơn hàng sau khi thanh toán thành công
                                 window.location.href = "@(Url.Content(Model.frontendBaseUrl))" + "/Profile?tab=orders&page=1";
-                            } else {
-                                console.log(`Transaction ${transactionId} status: ${status}. Checking again...`);
                             }
                         } catch (error) {
-                            console.error('Failed to fetch transaction status:', error);
                             clearInterval(checkStatusInterval);
                             alert('An error occurred while checking transaction status.');
                         }
