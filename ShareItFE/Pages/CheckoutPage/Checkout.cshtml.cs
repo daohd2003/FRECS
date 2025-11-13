@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.DiscountCodeDto;
 using BusinessObject.DTOs.OrdersDto;
@@ -300,10 +300,6 @@ namespace ShareItFE.Pages.CheckoutPage
                     if (!isAfterQRCreation && string.IsNullOrEmpty(Input.CustomerFullName) && Input.UseSameProfile)
                     {
                         var profileResponse = await client.GetAsync("api/profile/my-profile-for-checkout");
-                        // Thêm logging để kiểm tra
-                        Console.WriteLine($"Status Code: {profileResponse.StatusCode}");
-                        Console.WriteLine($"Response Content: {await profileResponse.Content.ReadAsStringAsync()}");
-                        Console.WriteLine($"Request Headers: {client.DefaultRequestHeaders}");
                         if (profileResponse.IsSuccessStatusCode)
                         {
                             var profileApiResponse = JsonSerializer.Deserialize<ApiResponse<ProfileDetailDto>>(
@@ -331,7 +327,7 @@ namespace ShareItFE.Pages.CheckoutPage
                                     Input.UseSameProfile = true;
                                 }
                             }
-                            else
+                            else  
                             {
                                 HasRequiredProfileInfo = false;
                                 Input.UseSameProfile = false;
@@ -339,8 +335,6 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
                         else if (profileResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
                         {
-                            Console.WriteLine("No profile found for this user. Manual input required.");
-                            // Nếu không tìm thấy profile, mặc định bỏ chọn "UseSameProfile"
                             HasRequiredProfileInfo = false;
                             Input.UseSameProfile = false;
                         }
@@ -431,7 +425,6 @@ namespace ShareItFE.Pages.CheckoutPage
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error sending notification: {ex.Message}");
                     // Don't fail the request if notification fails
                 }
             }
@@ -509,12 +502,11 @@ namespace ShareItFE.Pages.CheckoutPage
                         var clearCartResponse = await client.DeleteAsync($"{backendBaseUrl}/api/cart/clear");
                         if (clearCartResponse.IsSuccessStatusCode)
                         {
-                            Console.WriteLine("Cart cleared successfully before processing order payment.");
+                            // Cart cleared successfully
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Warning: Could not clear cart: {ex.Message}");
                         // Continue anyway, clearing cart is not critical
                     }
                     
@@ -608,29 +600,26 @@ namespace ShareItFE.Pages.CheckoutPage
                                                     
                                                     if (!deleteResponse.IsSuccessStatusCode)
                                                     {
-                                                        var deleteError = await deleteResponse.Content.ReadAsStringAsync();
-                                                        Console.WriteLine($"[WARNING] Could not delete order {pendingOrderId}: {deleteError}");
+                                                        // Could not delete order - continue anyway
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    var errorContent = await cancelResponse.Content.ReadAsStringAsync();
-                                                    Console.WriteLine($"[WARNING] Could not cancel pending order {pendingOrderId}: {errorContent}");
+                                                    // Could not cancel pending order - continue anyway
                                                 }
                                             }
                                             else
                                             {
-                                                Console.WriteLine($"[INFO] Skipping order {pendingOrderId} - not pending status (status: {orderToCheck?.Status})");
+                                                // Skip order - not pending status
                                             }
                                         }
                                         else
                                         {
-                                            Console.WriteLine($"[WARNING] Could not fetch order {pendingOrderId} for status check");
+                                            // Could not fetch order for status check
                                         }
                                     }
                                     catch (Exception ex)
                                     {
-                                        Console.WriteLine($"[ERROR] Failed to process pending order {pendingOrderId}: {ex.Message}");
                                         // Continue with other orders even if one fails
                                     }
                                 }
@@ -638,7 +627,7 @@ namespace ShareItFE.Pages.CheckoutPage
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[ERROR] Could not parse pending order IDs: {ex.Message}");
+                            // Could not parse pending order IDs - continue anyway
                         }
                     }
                     
@@ -916,7 +905,6 @@ namespace ShareItFE.Pages.CheckoutPage
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error restoring discount from order: {ex.Message}");
                 // Continue without discount if fetch fails
             }
         }
@@ -930,9 +918,11 @@ namespace ShareItFE.Pages.CheckoutPage
         public string? Email { get; set; }
         
         [Required(ErrorMessage = "Phone number is required")]
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone number must be exactly 10 digits and contain no letters")]
         public string? PhoneNumber { get; set; }
         
         [Required(ErrorMessage = "Address is required")]
+        [MinLength(10, ErrorMessage = "Address must be at least 10 characters long")]
         public string? Address { get; set; }
         
         public bool HasAgreedToPolicies { get; set; } = false;
