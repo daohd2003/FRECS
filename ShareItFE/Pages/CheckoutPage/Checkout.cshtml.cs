@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.DiscountCodeDto;
 using BusinessObject.DTOs.OrdersDto;
@@ -930,9 +930,11 @@ namespace ShareItFE.Pages.CheckoutPage
         public string? Email { get; set; }
         
         [Required(ErrorMessage = "Phone number is required")]
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "Phone number must be exactly 10 digits and contain no letters")]
         public string? PhoneNumber { get; set; }
         
         [Required(ErrorMessage = "Address is required")]
+        [MinLength(10, ErrorMessage = "Address must be at least 10 characters long")]
         public string? Address { get; set; }
         
         public bool HasAgreedToPolicies { get; set; } = false;
