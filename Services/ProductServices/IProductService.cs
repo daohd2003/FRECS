@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ProductDto;
+using BusinessObject.DTOs.ProductDto;
 
 namespace Services.ProductServices
 {
@@ -11,6 +11,7 @@ namespace Services.ProductServices
         Task<ProductDTO> AddAsync(ProductRequestDTO productDto);
         Task<bool> UpdateAsync(ProductDTO productDto);
         Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request);
+        Task<bool> UpdateProductImagesAsync(Guid productId, List<ProductImageDTO> newImages);
 
         Task<bool> DeleteAsync(Guid id);
         Task<bool> HasOrderItemsAsync(Guid productId);

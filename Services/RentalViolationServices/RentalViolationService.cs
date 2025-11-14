@@ -1,9 +1,11 @@
 using AutoMapper;
+using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.RentalViolationDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using BusinessObject.Utilities;
 using Repositories.OrderRepositories;
+using Repositories.ProductRepositories;
 using Repositories.RentalViolationRepositories;
 using Services.CloudServices;
 using Services.NotificationServices;
@@ -14,6 +16,7 @@ namespace Services.RentalViolationServices
     {
         private readonly IRentalViolationRepository _violationRepo;
         private readonly IOrderRepository _orderRepo;
+        private readonly IProductRepository _productRepository;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly INotificationService _notificationService;
         private readonly IMapper _mapper;
@@ -21,12 +24,14 @@ namespace Services.RentalViolationServices
         public RentalViolationService(
             IRentalViolationRepository violationRepo,
             IOrderRepository orderRepo,
+            IProductRepository productRepository,
             ICloudinaryService cloudinaryService,
             INotificationService notificationService,
             IMapper mapper)
         {
             _violationRepo = violationRepo;
             _orderRepo = orderRepo;
+            _productRepository = productRepository;
             _cloudinaryService = cloudinaryService;
             _notificationService = notificationService;
             _mapper = mapper;
@@ -93,7 +98,9 @@ namespace Services.RentalViolationServices
                     var existingViolations = await _violationRepo.GetViolationsByOrderItemIdAsync(violationDto.OrderItemId);
                     if (existingViolations.Any())
                     {
-                        throw new Exception($"This item has already been reported. Only one violation report per item is allowed.");
+                        // Skip this item if it already has violations (edit mode)
+                        // Frontend should handle filtering, but this provides backend safety
+                        continue;
                     }
 
                     // Create RentalViolation
@@ -167,7 +174,7 @@ namespace Services.RentalViolationServices
                     var violationCount = createdViolationIds.Count;
                     var itemText = violationCount > 1 ? "items" : "item";
                     var message = $"⚠️ Violation Report: {violationCount} {itemText} from your order have been reported with issues. Please review and respond.";
-                    
+
                     await _notificationService.SendNotification(
                         order.CustomerId,
                         message,
@@ -245,7 +252,62 @@ namespace Services.RentalViolationServices
         public async Task<IEnumerable<RentalViolationDto>> GetViolationsByOrderIdAsync(Guid orderId)
         {
             var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
-            return _mapper.Map<IEnumerable<RentalViolationDto>>(violations);
+            var violationDtos = _mapper.Map<IEnumerable<RentalViolationDto>>(violations).ToList();
+
+            // Populate evidence URLs for each violation
+            foreach (var dto in violationDtos)
+            {
+                var violation = violations.First(v => v.ViolationId == dto.ViolationId);
+                if (violation.Images != null && violation.Images.Any())
+                {
+                    dto.EvidenceUrls = violation.Images
+                        .Where(img => img.UploadedBy == BusinessObject.Enums.EvidenceUploadedBy.PROVIDER)
+                        .Select(img => img.ImageUrl)
+                        .ToList();
+                    dto.EvidenceCount = dto.EvidenceUrls.Count;
+                }
+            }
+
+            return violationDtos;
+        }
+
+        public async Task<IEnumerable<RentalViolationDetailDto>> GetViolationsWithDetailsByOrderIdAsync(Guid orderId)
+        {
+            var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
+            var detailDtos = new List<RentalViolationDetailDto>();
+
+            foreach (var violation in violations)
+            {
+                // Calculate deposit amount and refund amount
+                var depositAmount = violation.OrderItem.DepositPerUnit * violation.OrderItem.Quantity;
+                var refundAmount = depositAmount - violation.PenaltyAmount;
+
+                var detailDto = new RentalViolationDetailDto
+                {
+                    ViolationId = violation.ViolationId,
+                    OrderItemId = violation.OrderItemId,
+                    ViolationType = violation.ViolationType,
+                    ViolationTypeDisplay = GetViolationTypeDisplay(violation.ViolationType),
+                    Description = violation.Description,
+                    DamagePercentage = violation.DamagePercentage,
+                    PenaltyPercentage = violation.PenaltyPercentage,
+                    PenaltyAmount = violation.PenaltyAmount,
+                    DepositAmount = depositAmount,
+                    RefundAmount = refundAmount,
+                    Status = violation.Status,
+                    StatusDisplay = GetViolationStatusDisplay(violation.Status),
+                    CustomerNotes = violation.CustomerNotes,
+                    CustomerResponseAt = violation.CustomerResponseAt,
+                    CreatedAt = violation.CreatedAt,
+                    UpdatedAt = violation.UpdatedAt,
+                    OrderItem = _mapper.Map<OrderItemDetailsDto>(violation.OrderItem),
+                    Images = _mapper.Map<List<RentalViolationImageDto>>(violation.Images)
+                };
+
+                detailDtos.Add(detailDto);
+            }
+
+            return detailDtos;
         }
 
         public async Task<IEnumerable<RentalViolationDto>> GetCustomerViolationsAsync(Guid customerId)
@@ -292,6 +354,39 @@ namespace Services.RentalViolationServices
             return await _violationRepo.UpdateViolationAsync(violation);
         }
 
+        public async Task<bool> EditViolationByProviderAsync(Guid violationId, UpdateViolationDto dto, Guid providerId)
+        {
+            var violation = await _violationRepo.GetViolationWithDetailsAsync(violationId);
+            if (violation == null)
+                return false;
+
+            // Verify provider owns this violation
+            if (violation.OrderItem.Order.ProviderId != providerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền sửa vi phạm này");
+
+            // Allow edit regardless of status (for edit mode)
+            // Update all fields that are provided
+            if (dto.ViolationType.HasValue)
+                violation.ViolationType = dto.ViolationType.Value;
+
+            if (!string.IsNullOrEmpty(dto.Description))
+                violation.Description = dto.Description;
+
+            if (dto.DamagePercentage.HasValue)
+                violation.DamagePercentage = dto.DamagePercentage.Value;
+
+            if (dto.PenaltyPercentage.HasValue)
+                violation.PenaltyPercentage = dto.PenaltyPercentage.Value;
+
+            if (dto.PenaltyAmount.HasValue)
+                violation.PenaltyAmount = dto.PenaltyAmount.Value;
+
+            // Keep existing status (don't reset to PENDING like UpdateViolationByProviderAsync)
+            violation.UpdatedAt = DateTime.UtcNow;
+
+            return await _violationRepo.UpdateViolationAsync(violation);
+        }
+
         public async Task<bool> CustomerRespondToViolationAsync(Guid violationId, CustomerViolationResponseDto dto, Guid customerId)
         {
             var violation = await _violationRepo.GetViolationWithDetailsAsync(violationId);
@@ -314,6 +409,14 @@ namespace Services.RentalViolationServices
 
                 // TODO: Process financial transaction here
                 // await ProcessViolationFinancialAsync(violationId);
+
+                // Update violation first
+                var updateResult = await _violationRepo.UpdateViolationAsync(violation);
+
+                // Check if all violations in this order are resolved and update order status if needed
+                await CheckAndUpdateOrderStatusIfAllViolationsResolvedAsync(violation.OrderItem.Order.Id);
+
+                return updateResult;
             }
             else
             {
@@ -370,6 +473,9 @@ namespace Services.RentalViolationServices
 
             violation.Status = ViolationStatus.RESOLVED;
             await _violationRepo.UpdateViolationAsync(violation);
+
+            // Check if all violations in this order are resolved and update order status if needed
+            await CheckAndUpdateOrderStatusIfAllViolationsResolvedAsync(violation.OrderItem.Order.Id);
         }
 
         public async Task<bool> CanUserAccessViolationAsync(Guid violationId, Guid userId, UserRole role)
@@ -391,6 +497,158 @@ namespace Services.RentalViolationServices
                 return true;
 
             return false;
+        }
+
+        public async Task CheckAndUpdateOrderStatusIfAllViolationsResolvedAsync(Guid orderId)
+        {
+            // Lấy order hiện tại
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null || order.Status != OrderStatus.returned_with_issue)
+                return;
+
+            // Lấy tất cả violations của order này
+            var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
+
+            // Kiểm tra xem tất cả violations đã được xử lý chưa
+            // Violation được coi là đã xử lý khi status = CUSTOMER_ACCEPTED hoặc RESOLVED
+            var allViolationsResolved = violations.All(v =>
+                v.Status == ViolationStatus.CUSTOMER_ACCEPTED ||
+                v.Status == ViolationStatus.RESOLVED);
+
+            // Nếu tất cả violations đã được xử lý, chuyển order status sang returned
+            if (allViolationsResolved && violations.Any()) // Đảm bảo có ít nhất 1 violation
+            {
+                var oldStatus = order.Status; // Store old status for UpdateProductCounts
+                order.Status = OrderStatus.returned;
+                order.UpdatedAt = DateTime.UtcNow;
+
+                // Update product counts (RentCount/BuyCount) when order becomes returned
+                await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
+
+                await _orderRepo.UpdateAsync(order);
+
+                // Gửi thông báo
+                await _notificationService.SendNotification(
+                    order.CustomerId,
+                    "✅ All violation issues have been resolved. Your order has been marked as returned.",
+                    NotificationType.order,
+                    order.Id
+                );
+
+                await _notificationService.SendNotification(
+                    order.ProviderId,
+                    $"✅ All violation issues for order #{order.Id} have been resolved. Order status updated to returned.",
+                    NotificationType.order,
+                    order.Id
+                );
+            }
+        }
+
+        public async Task<bool> ResolveOrderWithViolationsAsync(Guid orderId)
+        {
+            // Lấy order hiện tại
+            var order = await _orderRepo.GetByIdAsync(orderId);
+            if (order == null)
+                return false;
+
+            // Chỉ cho phép resolve order có status return_with_issue
+            if (order.Status != OrderStatus.returned_with_issue)
+                return false;
+
+            // Lấy tất cả violations của order này
+            var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
+
+            // Kiểm tra xem tất cả violations đã được xử lý chưa
+            // Violation được coi là đã xử lý khi status = CUSTOMER_ACCEPTED hoặc RESOLVED
+            var allViolationsResolved = violations.All(v =>
+                v.Status == ViolationStatus.CUSTOMER_ACCEPTED ||
+                v.Status == ViolationStatus.RESOLVED);
+
+            // Nếu chưa tất cả violations được xử lý, không cho phép resolve
+            if (!allViolationsResolved || !violations.Any())
+                return false;
+
+            try
+            {
+                var oldStatus = order.Status; // Store old status for UpdateProductCounts
+                order.Status = OrderStatus.returned;
+                order.UpdatedAt = DateTime.UtcNow;
+
+                // Update product counts (RentCount/BuyCount) when order becomes returned
+                await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
+
+                await _orderRepo.UpdateAsync(order);
+
+                // Gửi thông báo
+                await _notificationService.SendNotification(
+                    order.CustomerId,
+                    "✅ Your order with violation issues has been resolved and marked as returned.",
+                    NotificationType.order,
+                    order.Id
+                );
+
+                await _notificationService.SendNotification(
+                    order.ProviderId,
+                    $"✅ Order #{order.Id} with violation issues has been resolved and marked as returned. You can now receive payment.",
+                    NotificationType.order,
+                    order.Id
+                );
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Updates product rent count, buy count, and stock quantities based on order status
+        /// - Rent count increases whenever order status becomes 'returned' (including returned_with_issue -> returned)
+        /// - Buy count increases only when purchase order first reaches 'approved'
+        /// </summary>
+        /// <param name="order">The order containing items to update counts for</param>
+        /// <param name="oldStatus">The previous order status</param>
+        /// <param name="newStatus">The new order status</param>
+        private async Task UpdateProductCounts(Order order, OrderStatus oldStatus, OrderStatus newStatus)
+        {
+            foreach (var item in order.Items)
+            {
+                var product = await _productRepository.GetByIdAsync(item.ProductId);
+                if (product == null) continue;
+
+                bool shouldUpdateRentCount = false;
+                bool shouldUpdateBuyCount = false;
+
+                // For rental transactions - increment rent count whenever status becomes 'returned'
+                if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
+                {
+                    if (newStatus == OrderStatus.returned)
+                    {
+                        shouldUpdateRentCount = true;
+                    }
+                }
+                // For purchase transactions - increment buy count only when first time reaching 'approved'
+                else if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
+                {
+                    if (newStatus == OrderStatus.approved && oldStatus != OrderStatus.approved)
+                    {
+                        shouldUpdateBuyCount = true;
+                    }
+                }
+
+                // Update counts if needed
+                if (shouldUpdateRentCount)
+                {
+                    product.RentCount += item.Quantity;
+                    await _productRepository.UpdateAsync(product);
+                }
+                else if (shouldUpdateBuyCount)
+                {
+                    product.BuyCount += item.Quantity;
+                    await _productRepository.UpdateAsync(product);
+                }
+            }
         }
 
         #region Helper Methods

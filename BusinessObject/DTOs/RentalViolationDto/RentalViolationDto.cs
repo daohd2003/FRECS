@@ -26,5 +26,10 @@ namespace BusinessObject.DTOs.RentalViolationDto
         /// Số lượng ảnh/video bằng chứng
         /// </summary>
         public int EvidenceCount { get; set; }
+
+        /// <summary>
+        /// Danh sách URL của ảnh/video bằng chứng (để hiển thị khi edit)
+        /// </summary>
+        public List<string> EvidenceUrls { get; set; } = new List<string>();
     }
 }

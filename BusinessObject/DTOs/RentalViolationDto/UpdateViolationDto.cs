@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using BusinessObject.Enums;
 
 namespace BusinessObject.DTOs.RentalViolationDto
 {
@@ -8,10 +9,21 @@ namespace BusinessObject.DTOs.RentalViolationDto
     public class UpdateViolationDto
     {
         /// <summary>
+        /// Loại vi phạm mới (optional)
+        /// </summary>
+        public ViolationType? ViolationType { get; set; }
+
+        /// <summary>
         /// Mô tả mới (optional - có thể giữ nguyên)
         /// </summary>
         [StringLength(2000)]
         public string? Description { get; set; }
+
+        /// <summary>
+        /// Tỷ lệ % hư hại mới (optional)
+        /// </summary>
+        [Range(0, 100, ErrorMessage = "Tỷ lệ hư hại phải từ 0-100%")]
+        public decimal? DamagePercentage { get; set; }
 
         /// <summary>
         /// Tỷ lệ % phạt mới

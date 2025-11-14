@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.PagingDto;
 using BusinessObject.DTOs.ProductDto;
@@ -204,7 +204,13 @@ namespace ShareItAPI.Controllers
                 var result = await _service.UpdateAsync(productDto);
                 if (!result) return NotFound("Product not found or update failed.");
                 
-                return NoContent();
+                // Check if images were updated
+                var imagesUpdated = dto.Images?.Any() == true;
+                var message = imagesUpdated 
+                    ? "Product updated successfully. Old images have been automatically deleted from Cloudinary."
+                    : "Product updated successfully.";
+                
+                return Ok(new ApiResponse<string>(message, null));
             }
             catch (Exception ex)
             {
@@ -306,7 +312,7 @@ namespace ShareItAPI.Controllers
                     RentalStatus = dto.RentalStatus,
                     PurchaseStatus = dto.PurchaseStatus,
                     AvailabilityStatus = dto.AvailabilityStatus ?? existingProduct.AvailabilityStatus,
-                    Images = existingProduct.Images // Keep existing images
+                    Images = existingProduct.Images // Admin keeps existing images
                 };
 
                 var result = await _service.UpdateAsync(productDto);
@@ -463,6 +469,50 @@ namespace ShareItAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Update product images - automatically deletes old images from Cloudinary
+        /// </summary>
+        [HttpPut("{id}/images")]
+        [Authorize] // Chỉ provider được update ảnh sản phẩm của mình
+        public async Task<IActionResult> UpdateProductImages(Guid id, [FromBody] List<ProductImageDTO> newImages)
+        {
+            try
+            {
+                var providerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                
+                // Get existing product để check ownership
+                var existingProduct = await _service.GetByIdAsync(id);
+                if (existingProduct == null)
+                    return NotFound(new ApiResponse<string>("Product not found.", null));
+                
+                // Check ownership
+                if (existingProduct.ProviderId != providerId)
+                    return Forbid("You can only update images of your own products.");
+                
+                // Validate images
+                if (newImages == null || !newImages.Any())
+                    return BadRequest(new ApiResponse<string>("At least one image is required.", null));
+                
+                // Check if at least one image is marked as primary
+                if (!newImages.Any(img => img.IsPrimary))
+                    return BadRequest(new ApiResponse<string>("At least one image must be marked as primary.", null));
+                
+                // Call service method to update images (Repository → Service → Controller pattern)
+                var result = await _service.UpdateProductImagesAsync(id, newImages);
+                if (!result)
+                    return BadRequest(new ApiResponse<string>("Failed to update product images.", null));
+                
+                return Ok(new ApiResponse<string>(
+                    "Product images updated successfully. Old images have been automatically deleted from Cloudinary.", 
+                    null
+                ));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error updating images: {ex.Message}", null));
             }
         }
 

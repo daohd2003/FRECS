@@ -45,6 +45,7 @@ namespace Repositories.RentalViolationRepositories
             return await _context.RentalViolations
                 .Include(rv => rv.OrderItem)
                     .ThenInclude(oi => oi.Product)
+                        .ThenInclude(p => p.Images)
                 .Include(rv => rv.Images)
                 .Where(rv => rv.OrderItem.OrderId == orderId)
                 .OrderByDescending(rv => rv.CreatedAt)

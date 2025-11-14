@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
@@ -10,6 +10,7 @@ using Services.ContentModeration;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.ProductRepositories;
 using Services.ConversationServices;
+using Services.CloudServices;
 
 
 namespace Services.ProductServices
@@ -21,19 +22,22 @@ namespace Services.ProductServices
         private readonly IContentModerationService _contentModerationService;
         private readonly IServiceProvider _serviceProvider;
         private readonly IConversationService _conversationService;
+        private readonly ICloudinaryService _cloudinaryService;
 
         public ProductService(
             IProductRepository productRepository,
             IMapper mapper, 
             IContentModerationService contentModerationService,
             IServiceProvider serviceProvider,
-            IConversationService conversationService)
+            IConversationService conversationService,
+            ICloudinaryService cloudinaryService)
         {
             _productRepository = productRepository;
             _mapper = mapper;
             _contentModerationService = contentModerationService;
             _serviceProvider = serviceProvider;
             _conversationService = conversationService;
+            _cloudinaryService = cloudinaryService;
         }
 
         public IQueryable<ProductDTO> GetAll()
@@ -148,6 +152,12 @@ namespace Services.ProductServices
             // Lấy thông tin product hiện tại
                 var existingProduct = await _productRepository.GetProductWithImagesAndProviderAsync(productDto.Id);
                 if (existingProduct == null) return false;
+
+            // Nếu có images mới, chỉ xóa những ảnh cũ không còn trong danh sách mới
+            if (productDto.Images != null && productDto.Images.Any())
+            {
+                await DeleteReplacedImagesFromCloudinaryAsync(existingProduct.Images, productDto.Images);
+            }
 
             // Kiểm tra xem name/description có thay đổi không
                 var nameChanged = existingProduct.Name != productDto.Name;
@@ -289,6 +299,145 @@ namespace Services.ProductServices
         public async Task<bool> HasOrderItemsAsync(Guid productId)
         {
             return await _productRepository.HasOrderItemsAsync(productId);
+        }
+
+        /// <summary>
+        /// Update product images only - automatically deletes old images from Cloudinary
+        /// </summary>
+        public async Task<bool> UpdateProductImagesAsync(Guid productId, List<ProductImageDTO> newImages)
+        {
+            try
+            {
+                // Get existing product with images
+                var existingProduct = await _productRepository.GetProductWithImagesAndProviderAsync(productId);
+                if (existingProduct == null) return false;
+
+                // Delete old images from Cloudinary
+                await DeleteOldImagesFromCloudinaryAsync(existingProduct.Images);
+
+                // Create updated product DTO with new images only
+                var productDto = _mapper.Map<ProductDTO>(existingProduct);
+                productDto.Images = newImages;
+
+                // Update in database
+                var result = await _productRepository.UpdateProductWithImagesAsync(productDto);
+                
+                Console.WriteLine($"[PRODUCT SERVICE] Updated images for product {productId}. Result: {result}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PRODUCT SERVICE] Error updating images for product {productId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Delete old images from Cloudinary
+        /// </summary>
+        private async Task DeleteOldImagesFromCloudinaryAsync(ICollection<ProductImage> oldImages)
+        {
+            if (oldImages == null || !oldImages.Any()) return;
+
+            foreach (var oldImage in oldImages)
+            {
+                var publicId = ExtractPublicIdFromUrl(oldImage.ImageUrl);
+                if (!string.IsNullOrEmpty(publicId))
+                {
+                    try
+                    {
+                        await _cloudinaryService.DeleteImageAsync(publicId);
+                        Console.WriteLine($"[PRODUCT SERVICE] Deleted old image from Cloudinary: {publicId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[PRODUCT SERVICE] Failed to delete image {publicId} from Cloudinary: {ex.Message}");
+                        // Continue with update even if Cloudinary deletion fails
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Delete only replaced images from Cloudinary (smart deletion)
+        /// </summary>
+        private async Task DeleteReplacedImagesFromCloudinaryAsync(ICollection<ProductImage> oldImages, List<ProductImageDTO> newImages)
+        {
+            if (oldImages == null || !oldImages.Any()) return;
+
+            // Lấy danh sách URL của ảnh mới
+            var newImageUrls = newImages.Select(img => img.ImageUrl).ToHashSet();
+
+            // Chỉ xóa những ảnh cũ không có trong danh sách ảnh mới
+            var imagesToDelete = oldImages.Where(oldImg => !newImageUrls.Contains(oldImg.ImageUrl)).ToList();
+
+            Console.WriteLine($"[PRODUCT SERVICE] Found {imagesToDelete.Count} images to delete from Cloudinary out of {oldImages.Count} old images");
+
+            foreach (var imageToDelete in imagesToDelete)
+            {
+                var publicId = ExtractPublicIdFromUrl(imageToDelete.ImageUrl);
+                if (!string.IsNullOrEmpty(publicId))
+                {
+                    try
+                    {
+                        await _cloudinaryService.DeleteImageAsync(publicId);
+                        Console.WriteLine($"[PRODUCT SERVICE] Deleted replaced image from Cloudinary: {publicId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[PRODUCT SERVICE] Failed to delete image {publicId} from Cloudinary: {ex.Message}");
+                        // Continue with update even if Cloudinary deletion fails
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Extracts Cloudinary public ID from image URL
+        /// </summary>
+        /// <param name="imageUrl">Full Cloudinary image URL</param>
+        /// <returns>Public ID without extension, or null if extraction fails</returns>
+        /// <example>
+        /// Input: https://res.cloudinary.com/xxx/image/upload/v123/ShareIt/products/user123/image.jpg
+        /// Output: ShareIt/products/user123/image
+        /// </example>
+        private string? ExtractPublicIdFromUrl(string imageUrl)
+        {
+            if (string.IsNullOrEmpty(imageUrl)) return null;
+
+            try
+            {
+                // Cloudinary URL format: .../upload/v[version]/[publicId].[extension]
+                var uri = new Uri(imageUrl);
+                var path = uri.AbsolutePath;
+                
+                // Find the upload segment
+                var uploadIndex = path.IndexOf("/upload/");
+                if (uploadIndex == -1) return null;
+                
+                // Get everything after /upload/v[version]/
+                var afterUpload = path.Substring(uploadIndex + "/upload/".Length);
+                
+                // Skip version (v123456789)
+                var versionEndIndex = afterUpload.IndexOf('/');
+                if (versionEndIndex == -1) return null;
+                
+                var publicIdWithExtension = afterUpload.Substring(versionEndIndex + 1);
+                
+                // Remove file extension
+                var lastDotIndex = publicIdWithExtension.LastIndexOf('.');
+                if (lastDotIndex != -1)
+                {
+                    return publicIdWithExtension.Substring(0, lastDotIndex);
+                }
+                
+                return publicIdWithExtension;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PRODUCT SERVICE] Failed to extract public ID from URL: {ex.Message}");
+                return null;
+            }
         }
 
         private async Task<Guid?> GetDefaultStaffIdAsync()
