@@ -372,6 +372,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
             builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 
+            // Register PolicyConfig services
+            builder.Services.AddScoped<Repositories.PolicyConfigRepositories.IPolicyConfigRepository, Repositories.PolicyConfigRepositories.PolicyConfigRepository>();
+            builder.Services.AddScoped<Services.PolicyConfigServices.IPolicyConfigService, Services.PolicyConfigServices.PolicyConfigService>();
+
             builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();

@@ -1,0 +1,258 @@
+@page
+@model ShareItFE.Pages.PoliciesModel
+@{
+    ViewData["Title"] = "Policies";
+}
+
+@section Styles {
+    <style>
+        .policies-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+        }
+
+        .policies-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .policies-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 1rem;
+        }
+
+        .policies-subtitle {
+            font-size: 1.125rem;
+            color: #718096;
+        }
+
+        .policies-nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .policy-nav-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .policy-nav-btn:hover {
+            border-color: #7c3aed;
+            color: #7c3aed;
+        }
+
+        .policy-nav-btn.active {
+            background: #7c3aed;
+            border-color: #7c3aed;
+            color: white;
+        }
+
+        .policy-content-wrapper {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 3rem;
+            min-height: 400px;
+        }
+
+        .policy-section {
+            display: none;
+        }
+
+        .policy-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .policy-section h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .policy-section h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .policy-section h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .policy-section p {
+            line-height: 1.8;
+            color: #4a5568;
+            margin-bottom: 1rem;
+        }
+
+        .policy-section ul,
+        .policy-section ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .policy-section li {
+            line-height: 1.8;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .policy-section a {
+            color: #7c3aed;
+            text-decoration: underline;
+        }
+
+        .policy-section a:hover {
+            color: #6d28d9;
+        }
+
+        .policy-section strong {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #a0aec0;
+        }
+
+        .empty-state svg {
+            width: 4rem;
+            height: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .alert-error {
+            background-color: #fed7d7;
+            border: 1px solid #fc8181;
+            color: #742a2a;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .policy-updated {
+            font-size: 0.875rem;
+            color: #a0aec0;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+    </style>
+}
+
+<div class="policies-container">
+    <div class="policies-header">
+        <h1 class="policies-title">Policies</h1>
+        <p class="policies-subtitle">Read our platform policies and guidelines</p>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert-error">
+            @Model.ErrorMessage
+        </div>
+    }
+
+    @if (Model.Policies.Any())
+    {
+        <div class="policies-nav">
+            @for (int i = 0; i < Model.Policies.Count; i++)
+            {
+                var policy = Model.Policies[i];
+                <button class="policy-nav-btn @(i == 0 ? "active" : "")" 
+                        onclick="showPolicy('@policy.Id')">
+                    @policy.PolicyName
+                </button>
+            }
+        </div>
+
+        <div class="policy-content-wrapper">
+            @foreach (var policy in Model.Policies)
+            {
+                <div class="policy-section @(Model.Policies.IndexOf(policy) == 0 ? "active" : "")" 
+                     id="policy-@policy.Id">
+                    @Html.Raw(policy.Content)
+                    <div class="policy-updated">
+                        Last updated: @policy.UpdatedAt.ToString("MMMM dd, yyyy")
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="policy-content-wrapper">
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <p>No policies available at the moment.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function showPolicy(policyId) {
+            // Hide all policy sections
+            document.querySelectorAll('.policy-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.policy-nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected policy
+            const selectedPolicy = document.getElementById('policy-' + policyId);
+            if (selectedPolicy) {
+                selectedPolicy.classList.add('active');
+            }
+
+            // Add active class to clicked button
+            event.target.classList.add('active');
+
+            // Scroll to top of content
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+}

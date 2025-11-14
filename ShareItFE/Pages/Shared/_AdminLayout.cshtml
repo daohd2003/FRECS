@@ -109,6 +109,11 @@
                             <i class="bi bi-percent"></i>
                             <span>Commission Rates</span>
                         </a>
+
+                        <a asp-page="/Admin/PolicyManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/PolicyManagement" ? "active" : "")">
+                            <i class="bi bi-file-text"></i>
+                            <span>Policy Management</span>
+                        </a>
                     }
 
                     <a asp-page="/ReportManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/ReportManagement" ? "active" : "")">
