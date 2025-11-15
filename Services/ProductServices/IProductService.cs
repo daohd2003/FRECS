@@ -5,6 +5,7 @@ namespace Services.ProductServices
     public interface IProductService
     {
         IQueryable<ProductDTO> GetAll();
+        IQueryable<ProductDTO> GetAllNoFilter();
         Task<ProductDTO?> GetByIdAsync(Guid id);
 
         /*Task<ProductDTO> AddAsync(ProductDTO productDto);*/

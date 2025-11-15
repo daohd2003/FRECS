@@ -32,7 +32,7 @@ namespace ShareItAPI.Controllers
         }
 
         [HttpGet("my-pending")]
-        [Authorize(Roles = "customer")] 
+        [Authorize(Roles = "customer")]
         public async Task<IActionResult> GetMyPending()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -88,6 +88,25 @@ namespace ShareItAPI.Controllers
             var ok = await _service.ReviewAsync(staffId, dto);
             if (!ok) return BadRequest(new ApiResponse<string>("Unable to review application", null));
             return Ok(new ApiResponse<string>("Application reviewed", null));
+        }
+
+        [HttpGet("{id}/images")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> GetApplicationImages(Guid id)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
+            var userId = Guid.Parse(userIdClaim);
+
+            try
+            {
+                var signedUrls = await _service.GetApplicationImagesWithSignedUrlsAsync(id, userId);
+                return Ok(new ApiResponse<Dictionary<string, string>>("Success", signedUrls));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
         }
 
         public class RejectApplicationDto
