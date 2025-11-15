@@ -239,7 +239,9 @@
                                     <a asp-page="/Products/Detail" asp-route-id="@item.ProductId" title="View product details">
                                         <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.jpg")" 
                                              alt="@item.ProductName" 
-                                             class="item-image">
+                                             class="item-image"
+                                             onerror="console.log('Image failed to load:', this.src); this.src='/images/placeholder.jpg';"
+                                             onload="console.log('Image loaded successfully:', this.src);">
                                     </a>
                                     <div class="item-details">
                                         <h3>
@@ -292,18 +294,36 @@
                                 <i class="bi bi-chat-dots"></i> Contact Support
                             </a>
                             
-                            @* Report Issue - Only enabled when status is "returning" *@
-                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returning)
+                            @* Report Issue / Edit Report Issue - Only enabled when status is "returning" or "returned_with_issue" *@
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returning || Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
                             {
-                                <a asp-page="/Provider/CreateViolation" asp-route-orderId="@Model.Order.Id" class="btn" style="background-color: #fb923c; color: white;">
-                                    <i class="bi bi-exclamation-triangle"></i> Report Issue
-                                </a>
+                                @if (Model.HasExistingViolations)
+                                {
+                                    <a asp-page="/Provider/CreateViolation" asp-route-orderId="@Model.Order.Id" asp-route-edit="true" class="btn" style="background-color: #6366f1; color: white;">
+                                        <i class="bi bi-pencil-square"></i> Edit Report Issue
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a asp-page="/Provider/CreateViolation" asp-route-orderId="@Model.Order.Id" class="btn" style="background-color: #fb923c; color: white;">
+                                        <i class="bi bi-exclamation-triangle"></i> Report Issue
+                                    </a>
+                                }
                             }
                             else
                             {
-                                <button class="btn" style="background-color: #cbd5e0; color: #a0aec0; cursor: not-allowed;" disabled title="Only available when order status is 'Returning'">
-                                    <i class="bi bi-exclamation-triangle"></i> Report Issue
-                                </button>
+                                @if (Model.HasExistingViolations)
+                                {
+                                    <button class="btn" style="background-color: #cbd5e0; color: #a0aec0; cursor: not-allowed;" disabled title="Only available when order status is 'Returning' or 'Returned with Issue'">
+                                        <i class="bi bi-pencil-square"></i> Edit Report Issue
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn" style="background-color: #cbd5e0; color: #a0aec0; cursor: not-allowed;" disabled title="Only available when order status is 'Returning' or 'Returned with Issue'">
+                                        <i class="bi bi-exclamation-triangle"></i> Report Issue
+                                    </button>
+                                }
                             }
                         </div>
                     </div>

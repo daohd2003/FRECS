@@ -86,7 +86,12 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.Name))
                 .ForMember(dest => dest.Size, opt => opt.MapFrom(src => src.Product.Size))
                 .ForMember(dest => dest.Color, opt => opt.MapFrom(src => src.Product.Color))
-                .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl))
+                .ForMember(dest => dest.PrimaryImageUrl, opt => opt.MapFrom(src => 
+                    src.Product.Images != null && src.Product.Images.Any(i => i.IsPrimary) 
+                        ? src.Product.Images.FirstOrDefault(i => i.IsPrimary).ImageUrl 
+                        : src.Product.Images != null && src.Product.Images.Any() 
+                            ? src.Product.Images.FirstOrDefault().ImageUrl 
+                            : "/images/placeholder.jpg"))
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity))
                 .ForMember(dest => dest.RentalDays, opt => opt.MapFrom(src => src.RentalDays))
                 .ForMember(dest => dest.PricePerDay, opt => opt.MapFrom(src => src.DailyRate))

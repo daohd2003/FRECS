@@ -34,6 +34,9 @@ namespace ShareItFE.Pages.Provider
         [BindProperty]
         public OrderDetailsDto Order { get; set; }
         
+        public List<BusinessObject.DTOs.RentalViolationDto.RentalViolationDto> ExistingViolations { get; set; } = new List<BusinessObject.DTOs.RentalViolationDto.RentalViolationDto>();
+        public bool HasExistingViolations => ExistingViolations.Any();
+        
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
         public async Task<IActionResult> OnGetAsync(Guid id)
@@ -71,6 +74,24 @@ namespace ShareItFE.Pages.Provider
                         {
                             TempData["ErrorMessage"] = "You do not have permission to view this order.";
                             return RedirectToPage("/Provider/OrderManagement");
+                        }
+
+                        // Load existing violations for this order
+                        try
+                        {
+                            var violationsResponse = await client.GetAsync($"api/rental-violations/order/{id}");
+                            if (violationsResponse.IsSuccessStatusCode)
+                            {
+                                var violationsApiResponse = await violationsResponse.Content.ReadFromJsonAsync<BusinessObject.DTOs.ApiResponses.ApiResponse<IEnumerable<BusinessObject.DTOs.RentalViolationDto.RentalViolationDto>>>(_jsonOptions);
+                                if (violationsApiResponse?.Data != null)
+                                {
+                                    ExistingViolations = violationsApiResponse.Data.ToList();
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Ignore errors when fetching violations - not critical for page load
                         }
 
                         return Page();

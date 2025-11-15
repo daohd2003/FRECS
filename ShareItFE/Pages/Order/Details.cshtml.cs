@@ -1,5 +1,7 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.OrdersDto;
+using BusinessObject.DTOs.RentalViolationDto;
+using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +16,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Text;
 
 namespace ShareItFE.Pages.Order
 {
@@ -40,6 +43,9 @@ namespace ShareItFE.Pages.Order
 
         [BindProperty]
         public OrderDetailsDto Order { get; set; }
+        
+        [BindProperty]
+        public List<RentalViolationDto> Violations { get; set; } = new List<RentalViolationDto>();
         
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
         
@@ -119,6 +125,93 @@ namespace ShareItFE.Pages.Order
             }
         }
 
+        public async Task<IActionResult> OnGetViolationsAsync(Guid orderId)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.GetAsync($"api/rental-violations/order/{orderId}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<IEnumerable<RentalViolationDto>>>(_jsonOptions);
+                    if (apiResponse != null && apiResponse.Data != null)
+                    {
+                        Violations = apiResponse.Data.ToList();
+                        return new JsonResult(new { success = true, violations = Violations });
+                    }
+                }
+                
+                return new JsonResult(new { success = false, message = "Failed to load violations" });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
+
+        public async Task<IActionResult> OnPostRespondToViolationAsync()
+        {
+            try
+            {
+                // Get parameters from query string and form
+                var violationIdStr = Request.Query["violationId"].ToString();
+                var isAcceptedStr = Request.Query["isAccepted"].ToString();
+                var customerNotes = Request.Form["customerNotes"].ToString();
+                
+                if (!Guid.TryParse(violationIdStr, out Guid violationId))
+                {
+                    return new JsonResult(new { success = false, message = "Invalid violation ID" });
+                }
+                
+                if (!bool.TryParse(isAcceptedStr, out bool isAccepted))
+                {
+                    return new JsonResult(new { success = false, message = "Invalid isAccepted value" });
+                }
+                
+                Console.WriteLine($"DEBUG: violationId={violationId}, isAccepted={isAccepted}, customerNotes={customerNotes}");
+                
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                
+                // Prepare the request data
+                var formData = new MultipartFormDataContent();
+                formData.Add(new StringContent(isAccepted.ToString().ToLower()), "IsAccepted");
+                
+                if (!isAccepted && !string.IsNullOrEmpty(customerNotes))
+                {
+                    formData.Add(new StringContent(customerNotes), "CustomerNotes");
+                }
+
+                Console.WriteLine($"DEBUG: Calling API endpoint: api/rental-violations/{violationId}/respond");
+                var response = await client.PostAsync($"api/rental-violations/{violationId}/respond", formData);
+                Console.WriteLine($"DEBUG: API Response Status: {response.StatusCode}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<string>>(_jsonOptions);
+                    return new JsonResult(new { 
+                        success = true, 
+                        message = apiResponse?.Message ?? (isAccepted ? "Compensation request accepted" : "Rejection response sent")
+                    });
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"DEBUG: API Error Response: {errorContent}");
+                    
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ApiResponse<string>>(_jsonOptions);
+                    return new JsonResult(new { 
+                        success = false, 
+                        message = errorResponse?.Message ?? $"API Error: {response.StatusCode} - {errorContent}"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Exception in OnPostRespondToViolationAsync: {ex}");
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
 
     }
 

@@ -8,6 +8,7 @@ using Services.ProductServices;
 using Services.ContentModeration;
 using Services.EmailServices;
 using Services.ConversationServices;
+using Services.CloudServices;
 
 namespace Services.Tests.Product
 {
@@ -41,6 +42,7 @@ namespace Services.Tests.Product
         private readonly Mock<IContentModerationService> _mockContentModerationService;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<IConversationService> _mockConversationService;
+        private readonly Mock<ICloudinaryService> _mockCloudinaryService;
         private readonly ProductService _productService;
 
         public ProductServiceTests()
@@ -50,13 +52,15 @@ namespace Services.Tests.Product
             _mockContentModerationService = new Mock<IContentModerationService>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockConversationService = new Mock<IConversationService>();
+            _mockCloudinaryService = new Mock<ICloudinaryService>();
 
             _productService = new ProductService(
                 _mockProductRepository.Object,
                 _mockMapper.Object,
                 _mockContentModerationService.Object,
                 _mockServiceProvider.Object,
-                _mockConversationService.Object
+                _mockConversationService.Object,
+                _mockCloudinaryService.Object
             );
         }
 
