@@ -12,6 +12,36 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 
+<style>
+    /* Styling for formatted product description */
+    .product-description p {
+        margin-bottom: 0.5rem;
+    }
+    .product-description strong {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .product-description em {
+        font-style: italic;
+    }
+    .product-description u {
+        text-decoration: underline;
+    }
+    .product-description ol {
+        list-style-type: decimal;
+        margin-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .product-description ul {
+        list-style-type: disc;
+        margin-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .product-description li {
+        margin-bottom: 0.25rem;
+    }
+</style>
+
 <div class="min-h-screen bg-white">
     @if (Model.Product != null)
     {
@@ -100,7 +130,9 @@
                     <div class="space-y-4">
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-                            <p class="text-gray-600 leading-relaxed">@Model.Product.Description</p>
+                            <div class="text-gray-600 leading-relaxed product-description">
+                                @Html.Raw(Model.Product.Description)
+                            </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div><span class="font-medium text-gray-900">Color:</span><span class="ml-2 text-gray-600">@Model.Product.Color</span></div>

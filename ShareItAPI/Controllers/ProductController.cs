@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.PagingDto;
 using BusinessObject.DTOs.ProductDto;
@@ -15,7 +15,7 @@ namespace ShareItAPI.Controllers
 {
     [Route("api/products")]
     [ApiController]
-        [Authorize(Roles = "admin,provider,staff")]
+    [Authorize(Roles = "admin,provider,staff")]
     public class ProductController : ControllerBase
     {
         private readonly IProductService _service;
@@ -24,7 +24,7 @@ namespace ShareItAPI.Controllers
         private readonly IConversationService _conversationService;
 
         public ProductController(
-            IProductService service, 
+            IProductService service,
             IMapper mapper,
             IContentModerationService moderationService,
             IConversationService conversationService)
@@ -46,29 +46,29 @@ namespace ShareItAPI.Controllers
 
         [HttpGet()]
         [AllowAnonymous]
-        public  IActionResult GetAll()
+        public IActionResult GetAll()
         {
             IQueryable<ProductDTO> products = _service.GetAll();
             if (products == null) return NotFound();
             return Ok(products);
         }
 
-        [HttpGet("filter")] 
+        [HttpGet("filter")]
         public async Task<ActionResult<PagedResult<ProductDTO>>> GetProductsAsync(
             [FromQuery] string? searchTerm,
             [FromQuery] string status,
-            [FromQuery] int page = 1, 
-            [FromQuery] int pageSize = 5) 
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 5)
         {
             if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 5; 
+            if (pageSize < 1) pageSize = 5;
 
             if (searchTerm == "\"\"")
             {
                 searchTerm = string.Empty;
             }
 
-            IQueryable<ProductDTO> products = _service.GetAll(); 
+            IQueryable<ProductDTO> products = _service.GetAll();
 
             var query = products.AsQueryable();
 
@@ -92,10 +92,10 @@ namespace ShareItAPI.Controllers
             var totalCount = query.Count();
 
             var items = query
-                .OrderByDescending(p => p.CreatedAt) 
+                .OrderByDescending(p => p.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList(); 
+                .ToList();
 
             var pagedResult = new PagedResult<ProductDTO>
             {
@@ -148,7 +148,7 @@ namespace ShareItAPI.Controllers
                 else
                 {
                     // Product passed AI check
-                    return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, 
+                    return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id },
                         new ApiResponse<ProductDTO>(
                             "Product created successfully and is now AVAILABLE to customers. " +
                             "Your product passed our automated content moderation check.",
@@ -164,7 +164,7 @@ namespace ShareItAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<string>(
-                    "Failed to create product: " + ex.Message, 
+                    "Failed to create product: " + ex.Message,
                     null
                 ));
             }
@@ -178,7 +178,7 @@ namespace ShareItAPI.Controllers
             {
                 // Đảm bảo ProviderId từ token
                 dto.ProviderId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                
+
                 // Convert ProductRequestDTO to ProductDTO để update
                 var productDto = new ProductDTO
                 {
@@ -203,8 +203,14 @@ namespace ShareItAPI.Controllers
 
                 var result = await _service.UpdateAsync(productDto);
                 if (!result) return NotFound("Product not found or update failed.");
-                
-                return NoContent();
+
+                // Check if images were updated
+                var imagesUpdated = dto.Images?.Any() == true;
+                var message = imagesUpdated
+                    ? "Product updated successfully. Old images have been automatically deleted from Cloudinary."
+                    : "Product updated successfully.";
+
+                return Ok(new ApiResponse<string>(message, null));
             }
             catch (Exception ex)
             {
@@ -223,9 +229,9 @@ namespace ShareItAPI.Controllers
             {
                 // Get existing product first to preserve ProviderId
                 var existingProduct = await _service.GetByIdAsync(id);
-                if (existingProduct == null) 
+                if (existingProduct == null)
                     return NotFound(new ApiResponse<string>("Product not found.", null));
-                
+
                 var currentStatus = existingProduct.AvailabilityStatus.ToLower();
                 var isArchivedOrDeleted = currentStatus == "archived" || currentStatus == "deleted";
 
@@ -252,30 +258,30 @@ namespace ShareItAPI.Controllers
                     if (otherFieldsChanged)
                     {
                         return BadRequest(new ApiResponse<string>(
-                            "This product is archived. To edit its details, first change its status to an active state (like 'Available'), save the change, and then edit other details.", 
+                            "This product is archived. To edit its details, first change its status to an active state (like 'Available'), save the change, and then edit other details.",
                             null));
                     }
                 }
-                
+
                 // ✅ CHECK CONTENT MODERATION - ONLY when changing to "Available" status
                 // Skip moderation check if:
                 // 1. Changing to Archived/Deleted (allow archiving/deleting without check)
                 // 2. Status is Pending and changing to Archived (allow staff to archive violated products)
                 var newStatus = dto.AvailabilityStatus ?? existingProduct.AvailabilityStatus;
                 var isChangingToAvailable = newStatus.Equals("Available", StringComparison.OrdinalIgnoreCase);
-                var isChangingToArchived = newStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase) || 
+                var isChangingToArchived = newStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase) ||
                                           newStatus.Equals("Deleted", StringComparison.OrdinalIgnoreCase);
-                
+
                 // Only check moderation when:
                 // - Changing TO "Available" status (must ensure content is appropriate)
                 // - OR updating Name/Description while ALREADY in "Available" status
-                bool shouldCheckModeration = isChangingToAvailable || 
+                bool shouldCheckModeration = isChangingToAvailable ||
                     (currentStatus == "available" && !isChangingToArchived);
-                
+
                 if (shouldCheckModeration)
                 {
                     var moderationResult = await _moderationService.CheckProductContentAsync(dto.Name, dto.Description);
-                    
+
                     if (!moderationResult.IsAppropriate)
                     {
                         // Return 400 with violation details
@@ -285,7 +291,7 @@ namespace ShareItAPI.Controllers
                         ));
                     }
                 }
-                
+
                 // Update fields but KEEP original ProviderId
                 var productDto = new ProductDTO
                 {
@@ -306,12 +312,12 @@ namespace ShareItAPI.Controllers
                     RentalStatus = dto.RentalStatus,
                     PurchaseStatus = dto.PurchaseStatus,
                     AvailabilityStatus = dto.AvailabilityStatus ?? existingProduct.AvailabilityStatus,
-                    Images = existingProduct.Images // Keep existing images
+                    Images = existingProduct.Images // Admin keeps existing images
                 };
 
                 var result = await _service.UpdateAsync(productDto);
                 if (!result) return BadRequest(new ApiResponse<string>("Update failed.", null));
-                
+
                 return Ok(new ApiResponse<string>("Product updated successfully.", null));
             }
             catch (Exception ex)
@@ -345,7 +351,7 @@ namespace ShareItAPI.Controllers
         public IActionResult GetByProductType(string productType)
         {
             var products = _service.GetAll();
-            
+
             var filteredProducts = productType.ToUpper() switch
             {
                 "BOTH" => products.Where(p => p.ProductType == "BOTH"),
@@ -385,27 +391,27 @@ namespace ShareItAPI.Controllers
             try
             {
                 var providerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                
+
                 // Get product để check ownership
                 var product = await _service.GetByIdAsync(id);
-                if (product == null) 
+                if (product == null)
                     return NotFound(new ApiResponse<string>("Product not found.", null));
-                
+
                 // Check ownership
                 if (product.ProviderId != providerId)
                     return Forbid("You can only delete your own products.");
-                
+
                 // Kiểm tra xem product có references không
                 var hasOrderItems = await _service.HasOrderItemsAsync(id);
                 var hasTransactions = product.RentCount > 0 || product.BuyCount > 0;
-                
+
                 // TẤT CẢ sản phẩm khi xóa đều chuyển sang archived
                 product.AvailabilityStatus = "archived";
                 var updateResult = await _service.UpdateAsync(product);
-                
+
                 if (!updateResult)
                     return BadRequest(new ApiResponse<string>("Failed to archive product.", null));
-                
+
                 // Tạo message chi tiết nếu có references
                 string message;
                 if (hasOrderItems || hasTransactions)
@@ -414,14 +420,14 @@ namespace ShareItAPI.Controllers
                     if (hasOrderItems) reasons.Add("has order history");
                     if (product.RentCount > 0) reasons.Add($"{product.RentCount} rental(s)");
                     if (product.BuyCount > 0) reasons.Add($"{product.BuyCount} purchase(s)");
-                    
+
                     message = $"Product archived successfully. Reason: {string.Join(", ", reasons)}.";
                 }
                 else
                 {
                     message = "Product archived successfully.";
                 }
-                
+
                 return Ok(new ApiResponse<string>(message, "Archived"));
             }
             catch (Exception ex)
@@ -437,32 +443,76 @@ namespace ShareItAPI.Controllers
             try
             {
                 var providerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                
+
                 // Get product để check ownership
                 var product = await _service.GetByIdAsync(id);
-                if (product == null) 
+                if (product == null)
                     return NotFound("Product not found.");
-                
+
                 // Check ownership
                 if (product.ProviderId != providerId)
                     return Forbid("You can only restore your own products.");
-                
+
                 // Check if product can be restored
                 if (product.AvailabilityStatus != "archived" && product.AvailabilityStatus != "deleted")
                     return BadRequest("Only archived or deleted products can be restored.");
-                
+
                 // Restore product - change status to available
                 product.AvailabilityStatus = "available";
                 var result = await _service.UpdateAsync(product);
-                
+
                 if (!result)
                     return BadRequest("Failed to restore product.");
-                
+
                 return Ok(new ApiResponse<string>("Product has been restored to active status.", "Restored"));
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// Update product images - automatically deletes old images from Cloudinary
+        /// </summary>
+        [HttpPut("{id}/images")]
+        [Authorize] // Chỉ provider được update ảnh sản phẩm của mình
+        public async Task<IActionResult> UpdateProductImages(Guid id, [FromBody] List<ProductImageDTO> newImages)
+        {
+            try
+            {
+                var providerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+                // Get existing product để check ownership
+                var existingProduct = await _service.GetByIdAsync(id);
+                if (existingProduct == null)
+                    return NotFound(new ApiResponse<string>("Product not found.", null));
+
+                // Check ownership
+                if (existingProduct.ProviderId != providerId)
+                    return Forbid("You can only update images of your own products.");
+
+                // Validate images
+                if (newImages == null || !newImages.Any())
+                    return BadRequest(new ApiResponse<string>("At least one image is required.", null));
+
+                // Check if at least one image is marked as primary
+                if (!newImages.Any(img => img.IsPrimary))
+                    return BadRequest(new ApiResponse<string>("At least one image must be marked as primary.", null));
+
+                // Call service method to update images (Repository → Service → Controller pattern)
+                var result = await _service.UpdateProductImagesAsync(id, newImages);
+                if (!result)
+                    return BadRequest(new ApiResponse<string>("Failed to update product images.", null));
+
+                return Ok(new ApiResponse<string>(
+                    "Product images updated successfully. Old images have been automatically deleted from Cloudinary.",
+                    null
+                ));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Error updating images: {ex.Message}", null));
             }
         }
 
@@ -479,8 +529,8 @@ namespace ShareItAPI.Controllers
         {
             try
             {
-                var allProducts = _service.GetAll();
-                
+                var allProducts = _service.GetAllNoFilter();
+
                 var stats = new
                 {
                     TotalProducts = allProducts.Count(),
@@ -492,7 +542,7 @@ namespace ShareItAPI.Controllers
                     TotalRented = allProducts.Sum(p => p.RentCount),
                     TotalSold = allProducts.Sum(p => p.BuyCount)
                 };
-                
+
                 return Ok(new ApiResponse<object>("Statistics retrieved successfully.", stats));
             }
             catch (Exception ex)
@@ -518,7 +568,7 @@ namespace ShareItAPI.Controllers
                 if (page < 1) page = 1;
                 if (pageSize < 1) pageSize = 10;
 
-                var query = _service.GetAll();
+                var query = _service.GetAllNoFilter();
 
                 // Filter by search term
                 if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -581,7 +631,7 @@ namespace ShareItAPI.Controllers
                 if (page < 1) page = 1;
                 if (pageSize < 1) pageSize = 10;
 
-                var query = _service.GetAll()
+                var query = _service.GetAllNoFilter()
                     .Where(p => p.AvailabilityStatus.ToLower() == "pending");
 
                 var totalCount = query.Count();
@@ -621,8 +671,8 @@ namespace ShareItAPI.Controllers
                 if (page < 1) page = 1;
                 if (pageSize < 1) pageSize = 10;
 
-                var allProducts = _service.GetAll();
-                
+                var allProducts = _service.GetAllNoFilter();
+
                 var groupedByProvider = allProducts
                     .GroupBy(p => new { p.ProviderId, p.ProviderName })
                     .Select(g => new
@@ -678,7 +728,7 @@ namespace ShareItAPI.Controllers
                 }
 
                 var result = await _service.UpdateProductStatusAsync(request);
-                
+
                 if (!result)
                 {
                     return NotFound("Product not found or status update failed.");
@@ -702,7 +752,7 @@ namespace ShareItAPI.Controllers
             try
             {
                 var product = await _service.GetByIdAsync(id);
-                if (product == null) 
+                if (product == null)
                     return NotFound("Product not found.");
 
                 if (hardDelete)
@@ -711,7 +761,7 @@ namespace ShareItAPI.Controllers
                     var deleteResult = await _service.DeleteAsync(id);
                     if (!deleteResult)
                         return BadRequest("Failed to delete product.");
-                    
+
                     return Ok(new ApiResponse<string>("Product permanently deleted.", "Deleted"));
                 }
                 else
@@ -719,10 +769,10 @@ namespace ShareItAPI.Controllers
                     // Soft delete - archive
                     product.AvailabilityStatus = "archived";
                     var updateResult = await _service.UpdateAsync(product);
-                    
+
                     if (!updateResult)
                         return BadRequest("Failed to archive product.");
-                    
+
                     return Ok(new ApiResponse<string>("Product archived successfully.", "Archived"));
                 }
             }
@@ -738,19 +788,19 @@ namespace ShareItAPI.Controllers
         [HttpPost("admin/{id}/flag")]
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> FlagProductViolation(
-            Guid id, 
+            Guid id,
             [FromBody] ManualFlagRequest request)
         {
             try
             {
                 var product = await _service.GetByIdAsync(id);
-                if (product == null) 
+                if (product == null)
                     return NotFound("Product not found.");
 
                 // Update product status to pending
                 product.AvailabilityStatus = "pending";
                 var updateResult = await _service.UpdateAsync(product);
-                
+
                 if (!updateResult)
                     return BadRequest("Failed to update product status.");
 
@@ -771,15 +821,15 @@ namespace ShareItAPI.Controllers
                                 reason: request.Reason ?? "Content violates community guidelines (Manual Review)",
                                 violatedTerms: string.Join(", ", request.ViolatedTerms ?? new List<string>())
                             );
-                            
+
                             return Ok(new ApiResponse<string>(
-                                "Product flagged successfully and chat notification sent to provider.", 
+                                "Product flagged successfully and chat notification sent to provider.",
                                 "Flagged"));
                         }
                         else
                         {
                             return Ok(new ApiResponse<string>(
-                                "Product flagged successfully but failed to get staff ID for notification.", 
+                                "Product flagged successfully but failed to get staff ID for notification.",
                                 "Flagged"));
                         }
                     }
@@ -788,13 +838,13 @@ namespace ShareItAPI.Controllers
                         // Log but don't fail the operation
                         Console.WriteLine($"Failed to send chat notification: {chatEx.Message}");
                         return Ok(new ApiResponse<string>(
-                            "Product flagged successfully but chat notification failed.", 
+                            "Product flagged successfully but chat notification failed.",
                             "Flagged"));
                     }
                 }
 
                 return Ok(new ApiResponse<string>(
-                    "Product flagged successfully.", 
+                    "Product flagged successfully.",
                     "Flagged"));
             }
             catch (Exception ex)
@@ -809,24 +859,24 @@ namespace ShareItAPI.Controllers
         [HttpPut("admin/{id}/approve")]
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> ApproveProduct(
-            Guid id, 
+            Guid id,
             [FromBody] ApproveProductRequest request)
         {
             try
             {
                 var product = await _service.GetByIdAsync(id);
-                if (product == null) 
+                if (product == null)
                     return NotFound("Product not found.");
 
                 // Update product status
                 product.AvailabilityStatus = request.NewStatus ?? "available";
                 var updateResult = await _service.UpdateAsync(product);
-                
+
                 if (!updateResult)
                     return BadRequest("Failed to update product status.");
 
                 return Ok(new ApiResponse<string>(
-                    "Product approved successfully.", 
+                    "Product approved successfully.",
                     product.AvailabilityStatus));
             }
             catch (Exception ex)
@@ -845,7 +895,7 @@ namespace ShareItAPI.Controllers
             try
             {
                 var product = await _service.GetByIdAsync(id);
-                if (product == null) 
+                if (product == null)
                     return NotFound("Product not found.");
 
                 // Run content moderation check
@@ -863,10 +913,11 @@ namespace ShareItAPI.Controllers
                         product.AvailabilityStatus = "available";
                         await _service.UpdateAsync(product);
                     }
-                    
+
                     return Ok(new ApiResponse<object>(
-                        "Product passed moderation check.", 
-                        new { 
+                        "Product passed moderation check.",
+                        new
+                        {
                             IsAppropriate = true,
                             NewStatus = product.AvailabilityStatus,
                             Message = "Product content is appropriate"
@@ -895,7 +946,7 @@ namespace ShareItAPI.Controllers
                                     reason: moderationResult.Reason ?? "Content violates community guidelines",
                                     violatedTerms: string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())
                                 );
-                                
+
                                 Console.WriteLine($"[RECHECK] Chat notification sent to Provider {product.ProviderId}");
                             }
                         }
@@ -906,8 +957,9 @@ namespace ShareItAPI.Controllers
                     }
 
                     return Ok(new ApiResponse<object>(
-                        "Product violated moderation rules and has been flagged.", 
-                        new { 
+                        "Product violated moderation rules and has been flagged.",
+                        new
+                        {
                             IsAppropriate = false,
                             NewStatus = "pending",
                             Reason = moderationResult.Reason,

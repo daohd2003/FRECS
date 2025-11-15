@@ -41,13 +41,13 @@ namespace ShareItAPI.Controllers
                 var providerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(providerIdClaim) || !Guid.TryParse(providerIdClaim, out Guid providerId))
                 {
-                    return Unauthorized(new ApiResponse<string>("Không xác định được provider", null));
+                    return Unauthorized(new ApiResponse<string>("Unable to identify provider", null));
                 }
 
                 var violationIds = await _violationService.CreateMultipleViolationsAsync(dto, providerId);
 
                 return Ok(new ApiResponse<List<Guid>>(
-                    $"Đã tạo {violationIds.Count} vi phạm thành công",
+                    $"Successfully created {violationIds.Count} violations",
                     violationIds
                 ));
             }
@@ -93,10 +93,10 @@ namespace ShareItAPI.Controllers
                 var detail = await _violationService.GetViolationDetailAsync(violationId);
                 if (detail == null)
                 {
-                    return NotFound(new ApiResponse<string>("Vi phạm không tồn tại", null));
+                    return NotFound(new ApiResponse<string>("Violation not found", null));
                 }
 
-                return Ok(new ApiResponse<RentalViolationDetailDto>("Lấy chi tiết thành công", detail));
+                return Ok(new ApiResponse<RentalViolationDetailDto>("Details retrieved successfully", detail));
             }
             catch (Exception ex)
             {
@@ -115,7 +115,28 @@ namespace ShareItAPI.Controllers
             {
                 var violations = await _violationService.GetViolationsByOrderIdAsync(orderId);
                 return Ok(new ApiResponse<IEnumerable<RentalViolationDto>>(
-                    "Lấy danh sách vi phạm thành công",
+                    "Violations retrieved successfully",
+                    violations
+                ));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// [ALL] Lấy danh sách vi phạm với thông tin chi tiết của một đơn hàng (bao gồm product info)
+        /// </summary>
+        /// <param name="orderId">ID của đơn hàng</param>
+        [HttpGet("order/{orderId:guid}/details")]
+        public async Task<IActionResult> GetViolationsWithDetailsByOrder(Guid orderId)
+        {
+            try
+            {
+                var violations = await _violationService.GetViolationsWithDetailsByOrderIdAsync(orderId);
+                return Ok(new ApiResponse<IEnumerable<RentalViolationDetailDto>>(
+                    "Detailed violations retrieved successfully",
                     violations
                 ));
             }
@@ -132,7 +153,7 @@ namespace ShareItAPI.Controllers
         /// Chỉ có thể cập nhật khi trạng thái vi phạm là CUSTOMER_REJECTED.
         /// Provider có thể điều chỉnh: Description, PenaltyPercentage, PenaltyAmount
         /// Sau khi cập nhật, status sẽ quay về PENDING để Customer xem xét lại.
-        /// </remarks>
+        /// </summary>
         /// <param name="violationId">ID của vi phạm cần cập nhật</param>
         [HttpPut("{violationId:guid}")]
         [Authorize(Roles = "provider")]
@@ -149,10 +170,49 @@ namespace ShareItAPI.Controllers
                 var result = await _violationService.UpdateViolationByProviderAsync(violationId, dto, providerId);
                 if (!result)
                 {
-                    return NotFound(new ApiResponse<string>("Vi phạm không tồn tại", null));
+                    return NotFound(new ApiResponse<string>("Violation not found", null));
                 }
 
-                return Ok(new ApiResponse<string>("Cập nhật vi phạm thành công", null));
+                return Ok(new ApiResponse<string>("Violation updated successfully", null));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"Internal server error: {ex.Message}", null));
+            }
+        }
+
+        /// <summary>
+        /// [PROVIDER] Edit violation report (bất kể status - for edit mode)
+        /// Không thay đổi status, chỉ update thông tin violation.
+        /// </summary>
+        /// <param name="violationId">ID của vi phạm cần edit</param>
+        [HttpPut("{violationId:guid}/edit")]
+        [Authorize(Roles = "provider")]
+        public async Task<IActionResult> EditViolation(Guid violationId, [FromBody] UpdateViolationDto dto)
+        {
+            try
+            {
+                var providerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(providerIdClaim) || !Guid.TryParse(providerIdClaim, out Guid providerId))
+                {
+                    return Unauthorized();
+                }
+
+                var result = await _violationService.EditViolationByProviderAsync(violationId, dto, providerId);
+                if (!result)
+                {
+                    return NotFound(new ApiResponse<string>("Violation not found", null));
+                }
+
+                return Ok(new ApiResponse<string>("Violation updated successfully", null));
             }
             catch (UnauthorizedAccessException)
             {
@@ -196,11 +256,11 @@ namespace ShareItAPI.Controllers
                 var result = await _violationService.CustomerRespondToViolationAsync(violationId, dto, customerId);
                 if (!result)
                 {
-                    return NotFound(new ApiResponse<string>("Vi phạm không tồn tại", null));
+                    return NotFound(new ApiResponse<string>("Violation not found", null));
                 }
 
                 return Ok(new ApiResponse<string>(
-                    dto.IsAccepted ? "Đã chấp nhận yêu cầu bồi thường" : "Đã gửi phản hồi",
+                    dto.IsAccepted ? "Compensation request accepted" : "Response sent",
                     null
                 ));
             }
@@ -235,7 +295,7 @@ namespace ShareItAPI.Controllers
 
                 var violations = await _violationService.GetCustomerViolationsAsync(customerId);
                 return Ok(new ApiResponse<IEnumerable<RentalViolationDto>>(
-                    "Lấy danh sách vi phạm thành công",
+                    "Violations retrieved successfully",
                     violations
                 ));
             }
@@ -262,8 +322,39 @@ namespace ShareItAPI.Controllers
 
                 var violations = await _violationService.GetProviderViolationsAsync(providerId);
                 return Ok(new ApiResponse<IEnumerable<RentalViolationDto>>(
-                    "Lấy danh sách vi phạm thành công",
+                    "Violations retrieved successfully",
                     violations
+                ));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
+        /// [ADMIN/STAFF] Manually resolve order with violations - chuyển từ return_with_issue sang returned
+        /// </summary>
+        /// <param name="orderId">ID của order cần resolve</param>
+        [HttpPut("resolve-order/{orderId}")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> ResolveOrderWithViolations(Guid orderId)
+        {
+            try
+            {
+                var result = await _violationService.ResolveOrderWithViolationsAsync(orderId);
+                
+                if (!result)
+                {
+                    return BadRequest(new ApiResponse<string>(
+                        "Unable to resolve order. Please check: Order must have return_with_issue status and all violations must be resolved.",
+                        null
+                    ));
+                }
+
+                return Ok(new ApiResponse<string>(
+                    "Order resolved successfully. Status changed from return_with_issue to returned and product counts have been updated.",
+                    "Success"
                 ));
             }
             catch (Exception ex)

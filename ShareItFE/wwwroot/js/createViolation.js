@@ -3,8 +3,172 @@
 // Tính toán tiền phạt tự động và UX interactions
 // ============================================
 
+
 // Store files for each item (key: itemId, value: Array of File objects)
 const filesByItem = {};
+
+// Pre-populate form with existing violation data
+function prePopulateViolations(existingViolations) {
+    if (!existingViolations || existingViolations.length === 0) {
+        return;
+    }
+    
+    existingViolations.forEach((violation, index) => {
+        const itemId = violation.orderItemId;
+        
+        // Check the checkbox and show the form
+        const checkbox = document.getElementById('item_' + itemId);
+        
+        if (checkbox) {
+            checkbox.checked = true;
+            toggleViolationForm(checkbox, itemId);
+            
+            // Wait a bit for form to show, then populate
+            setTimeout(() => {
+                // Populate violation type and make readonly
+                const violationTypeSelect = document.querySelector(`select[name="violations[${itemId}].ViolationType"]`);
+                if (violationTypeSelect && violation.violationType !== null && violation.violationType !== undefined) {
+                    // Convert enum number to string value
+                    let violationTypeValue = '';
+                    switch(violation.violationType) {
+                        case 0: violationTypeValue = 'DAMAGED'; break;
+                        case 1: violationTypeValue = 'LATE_RETURN'; break;
+                        case 2: violationTypeValue = 'NOT_RETURNED'; break;
+                        default: violationTypeValue = violation.violationType.toString(); break;
+                    }
+                    
+                    violationTypeSelect.value = violationTypeValue;
+                    violationTypeSelect.disabled = true; // Make readonly in edit mode
+                    violationTypeSelect.style.backgroundColor = '#f3f4f6';
+                    violationTypeSelect.style.cursor = 'not-allowed';
+                    handleViolationTypeChange(itemId, violationTypeValue);
+                }
+                
+                // Populate description and make readonly
+                const descriptionTextarea = document.querySelector(`textarea[name="violations[${itemId}].Description"]`);
+                if (descriptionTextarea && violation.description) {
+                    descriptionTextarea.value = violation.description;
+                    descriptionTextarea.readOnly = true; // Make readonly in edit mode
+                    descriptionTextarea.style.backgroundColor = '#f3f4f6';
+                    descriptionTextarea.style.cursor = 'not-allowed';
+                }
+                
+                // Populate damage percentage and make readonly
+                if (violation.damagePercentage !== null && violation.damagePercentage !== undefined) {
+                    const damageInput = document.querySelector(`input[name="violations[${itemId}].DamagePercentage"]`);
+                    if (damageInput) {
+                        damageInput.value = violation.damagePercentage;
+                        damageInput.readOnly = true; // Make readonly in edit mode
+                        damageInput.style.backgroundColor = '#f3f4f6';
+                        damageInput.style.cursor = 'not-allowed';
+                    }
+                }
+                
+                // Populate penalty percentage (KEEP EDITABLE)
+                if (violation.penaltyPercentage !== null && violation.penaltyPercentage !== undefined) {
+                    const penaltyPctInput = document.querySelector(`input[name="violations[${itemId}].PenaltyPercentage"]`);
+                    if (penaltyPctInput) {
+                        penaltyPctInput.value = violation.penaltyPercentage;
+                        // Keep penalty percentage editable - add visual indicator
+                        penaltyPctInput.style.backgroundColor = '#fff';
+                        penaltyPctInput.style.borderColor = '#3b82f6';
+                        penaltyPctInput.style.borderWidth = '2px';
+                    }
+                }
+                
+                // Disable file upload in edit mode
+                const fileInput = document.querySelector(`input[name="violations[${itemId}].EvidenceFiles"]`);
+                if (fileInput) {
+                    fileInput.disabled = true;
+                    fileInput.style.display = 'none'; // Hide file input completely
+                }
+                
+                // Hide file upload button
+                const uploadButton = document.querySelector(`.btn-select-files[onclick*="${itemId}"]`);
+                if (uploadButton) {
+                    uploadButton.style.display = 'none';
+                }
+                
+                // Add edit mode indicator to penalty rate field
+                const penaltyPctInput = document.querySelector(`input[name="violations[${itemId}].PenaltyPercentage"]`);
+                if (penaltyPctInput) {
+                    // Add edit indicator next to penalty rate field
+                    const penaltyGroup = penaltyPctInput.closest('.form-group');
+                    if (penaltyGroup) {
+                        const label = penaltyGroup.querySelector('label');
+                        if (label && !label.querySelector('.edit-indicator')) {
+                            const editIndicator = document.createElement('span');
+                            editIndicator.className = 'edit-indicator';
+                            editIndicator.innerHTML = ' <i class="fas fa-edit" style="color: #3b82f6; margin-left: 8px;"></i> <small style="color: #3b82f6; font-weight: 600;">Editable</small>';
+                            label.appendChild(editIndicator);
+                        }
+                    }
+                }
+                
+                // Recalculate penalty
+                calculatePenalty(itemId);
+                
+                // Show existing evidence files info (if any)
+                if (violation.evidenceCount && violation.evidenceCount > 0) {
+                    console.log(`DEBUG: Showing evidence for ${itemId} - count: ${violation.evidenceCount}, URLs:`, violation.evidenceUrls);
+                    showExistingEvidenceInfo(itemId, violation.evidenceCount, violation.evidenceUrls);
+                } else {
+                    console.log(`DEBUG: No evidence for ${itemId} - count: ${violation.evidenceCount}`);
+                }
+            }, 100);
+        }
+    });
+}
+
+// Show existing evidence files information
+function showExistingEvidenceInfo(itemId, evidenceCount, evidenceUrls = []) {
+    const previewArea = document.getElementById('preview_' + itemId);
+    if (!previewArea || !evidenceCount || evidenceCount === 0) return;
+    
+    // Clear empty state
+    previewArea.innerHTML = '';
+    previewArea.classList.add('has-files');
+    
+    // Add existing files (with actual images if URLs available)
+    for (let i = 0; i < evidenceCount; i++) {
+        const existingFileDiv = document.createElement('div');
+        existingFileDiv.className = 'preview-item existing-evidence';
+        
+        if (i < evidenceUrls.length && evidenceUrls[i]) {
+            // Show actual image
+            const imageUrl = evidenceUrls[i];
+            existingFileDiv.innerHTML = `
+                <div style="position: relative; border-radius: 8px; overflow: hidden; height: 120px;">
+                    <img src="${imageUrl}" 
+                         alt="Evidence ${i + 1}" 
+                         style="width: 100%; height: 100%; object-fit: cover; border: 2px solid #10b981;"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div style="background: #f3f4f6; border: 2px solid #10b981; border-radius: 8px; padding: 12px; text-align: center; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box;">
+                        <i class="fas fa-image" style="font-size: 24px; color: #10b981; margin-bottom: 8px;"></i>
+                        <div style="font-size: 11px; color: #374151; font-weight: 600;">Evidence ${i + 1}</div>
+                        <div style="font-size: 10px; color: #10b981; margin-top: 4px;">Already uploaded</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Show placeholder for missing URLs
+            existingFileDiv.innerHTML = `
+                <div style="background: #f3f4f6; border: 2px solid #10b981; border-radius: 8px; padding: 12px; text-align: center; height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <i class="fas fa-image" style="font-size: 24px; color: #10b981; margin-bottom: 8px;"></i>
+                    <div style="font-size: 11px; color: #374151; font-weight: 600;">Evidence ${i + 1}</div>
+                    <div style="font-size: 10px; color: #10b981; margin-top: 4px;">Already uploaded</div>
+                </div>
+            `;
+        }
+        
+        previewArea.appendChild(existingFileDiv);
+    }
+    
+    // No info message needed for edit mode
+    
+    // Update submit button since we have existing evidence
+    updateSubmitButton();
+}
 
 // Toggle checkbox khi click vào card header
 function toggleCheckbox(headerElement, itemId) {
@@ -154,12 +318,21 @@ function updateSubmitButton() {
     const submitBtn = document.getElementById('submitBtn');
     
     if (submitBtn) {
-        submitBtn.disabled = (checkedCount === 0);
+        // Check if there are existing evidence files (edit mode)
+        const hasExistingEvidence = document.querySelector('.existing-evidence') !== null;
+        // Also check if any preview area has has-files class
+        const hasFilesInPreview = document.querySelector('.file-upload-area .has-files') !== null;
+        
+        // Allow submit if either new items selected OR existing evidence (edit mode)
+        const canSubmit = checkedCount > 0 || hasExistingEvidence || hasFilesInPreview;
+        submitBtn.disabled = !canSubmit;
         
         if (checkedCount > 0) {
             submitBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Submit ${checkedCount} violation${checkedCount > 1 ? 's' : ''}`;
+        } else if (hasExistingEvidence || hasFilesInPreview) {
+            submitBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Update violations`;
         } else {
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit violations';
+            submitBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Submit violations`;
         }
     }
 }
@@ -376,7 +549,43 @@ document.getElementById('violationForm')?.addEventListener('submit', function(e)
     e.preventDefault(); // Prevent default first, we'll submit manually
     
     const checkedCount = document.querySelectorAll('.violation-checkbox:checked').length;
+    const hasExistingEvidence = document.querySelector('.existing-evidence') !== null;
     
+    // Check if we're in edit mode (has existing violations with data populated)
+    const isEditMode = hasExistingEvidence || (checkedCount > 0 && document.querySelector('[name*="].ViolationType"]') && document.querySelector('[name*="].ViolationType"]').value);
+    
+    // If we have existing evidence (edit mode), skip validation for items with existing evidence
+    if (hasExistingEvidence) {
+        // Find items with existing evidence and exclude them from validation
+        const itemsWithEvidence = [];
+        document.querySelectorAll('.existing-evidence').forEach(evidenceEl => {
+            const previewArea = evidenceEl.closest('[id^="preview_"]');
+            if (previewArea) {
+                const itemId = previewArea.id.replace('preview_', '');
+                itemsWithEvidence.push(itemId);
+            }
+        });
+        
+        // If all checked items have existing evidence, skip all validation
+        const checkedItems = Array.from(document.querySelectorAll('.violation-checkbox:checked')).map(cb => cb.id.replace('item_', ''));
+        const allItemsHaveEvidence = checkedItems.length > 0 && checkedItems.every(itemId => itemsWithEvidence.includes(itemId));
+        
+        if (allItemsHaveEvidence) {
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            }
+            
+            // Submit directly without validation
+            this.submit();
+            return true;
+        }
+    }
+    
+    // Normal validation for create mode
     if (checkedCount === 0) {
         alert('Please select at least 1 item with violation');
         return false;
@@ -406,10 +615,21 @@ document.getElementById('violationForm')?.addEventListener('submit', function(e)
             return;
         }
         
-        // Check if files are uploaded (using filesByItem array)
+        // Check if files are uploaded (using filesByItem array) OR if there are existing evidence files
         const files = filesByItem[itemId] || [];
-        if (files.length === 0) {
-            alert('Please upload at least 1 image/video evidence for all items');
+        
+        // Check for existing evidence in the preview area for this item
+        const previewArea = document.getElementById('preview_' + itemId);
+        const hasExistingEvidence = previewArea && previewArea.querySelector('.existing-evidence') !== null;
+        
+        // Also check if the preview area has the has-files class (indicates existing evidence)
+        const hasExistingFiles = previewArea && previewArea.classList.contains('has-files');
+        
+        // Debug: check what we're detecting
+        if (hasExistingEvidence || hasExistingFiles) {
+            // Item has existing evidence, skip file validation
+        } else if (files.length === 0) {
+            alert(`Please upload at least 1 image/video evidence for item: ${itemId}`);
             isValid = false;
             return;
         }
@@ -434,7 +654,7 @@ document.getElementById('violationForm')?.addEventListener('submit', function(e)
                 });
                 fileInput.files = dt.files;
             } catch (err) {
-                console.error('Error setting files:', err);
+                // Handle error silently
             }
         }
     });
@@ -451,5 +671,7 @@ document.getElementById('violationForm')?.addEventListener('submit', function(e)
     
     return true;
 });
+
+// Evidence display is read-only in edit mode - no delete functionality needed
 
 
