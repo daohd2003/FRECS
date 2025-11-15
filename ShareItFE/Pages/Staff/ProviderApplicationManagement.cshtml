@@ -108,7 +108,7 @@
                         <th>Business Name</th>
                         <th>Applicant</th>
                         <th>Tax ID</th>
-                        <th>Phone</th>
+                        <th>Provider Type</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th>Actions</th>
@@ -237,10 +237,10 @@
                 <label for="rejectionReason" class="form-label">
                     Rejection Reason <span class="required">*</span>
                 </label>
-                <textarea id="rejectionReason" 
-                          class="form-textarea" 
-                          rows="5" 
-                          placeholder="Please enter the reason for rejecting this application..." 
+                <textarea id="rejectionReason"
+                          class="form-textarea"
+                          rows="5"
+                          placeholder="Please enter the reason for rejecting this application..."
                           required></textarea>
                 <div class="form-hint">This reason will be sent to the applicant via email.</div>
             </div>
@@ -320,7 +320,7 @@
 
             <!-- ID Card Images for Individual Verification -->
             <div id="idCardSection" class="info-section" style="display: none;">
-                <h4>ID Card Verification (Individual)</h4>
+                <h4>ID Card Verification</h4>
                 <p class="text-muted small mb-3">Applicant uploaded ID card images for verification.</p>
                 <div class="id-card-images" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
                     <div>
@@ -332,6 +332,25 @@
                         <img id="idCardBackImage" src="" alt="ID Card Back" style="width: 100%; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; max-height: 300px; object-fit: cover;" onclick="enlargeImage(this)">
                     </div>
                 </div>
+            </div>
+
+            <!-- Selfie Image (Individual Only) -->
+            <div id="selfieSection" class="info-section" style="display: none;">
+                <h4>Selfie Image (Face Verification)</h4>
+                <p class="text-muted small mb-3">Selfie for face matching with ID card.</p>
+                <div style="display: flex; gap: 15px; align-items: start;">
+                    <img id="selfieImage" src="" alt="Selfie" style="max-width: 300px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;" onclick="enlargeImage(this)">
+                    <div id="faceMatchInfo" style="flex: 1;">
+                        <!-- Face match info will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Business License (Business Only) -->
+            <div id="businessLicenseSection" class="info-section" style="display: none;">
+                <h4>Business License</h4>
+                <p class="text-muted small mb-3">Business registration document.</p>
+                <img id="businessLicenseImage" src="" alt="Business License" style="max-width: 500px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;" onclick="enlargeImage(this)">
             </div>
         </div>
         <div class="modal-actions">
