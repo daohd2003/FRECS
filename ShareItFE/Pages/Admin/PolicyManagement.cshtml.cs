@@ -55,6 +55,7 @@ namespace ShareItFE.Pages.Admin
             {
                 var client = await _clientHelper.GetAuthenticatedClientAsync();
                 var apiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+                Guid? policyId = null;
 
                 if (!SelectedPolicyId.HasValue || SelectedPolicyId == Guid.Empty)
                 {
@@ -72,12 +73,29 @@ namespace ShareItFE.Pages.Admin
 
                     if (response.IsSuccessStatusCode)
                     {
-                        SuccessMessage = "Policy created successfully!";
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var apiResponse = JsonSerializer.Deserialize<ApiResponse<PolicyConfigDto>>(responseContent, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                        
+                        policyId = apiResponse?.Data?.Id;
+                        
+                        return new JsonResult(new
+                        {
+                            success = true,
+                            message = "Policy created successfully!",
+                            policyId = policyId
+                        });
                     }
                     else
                     {
                         var errorContent = await response.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Failed to create policy: {errorContent}";
+                        return new JsonResult(new
+                        {
+                            success = false,
+                            message = $"Failed to create policy: {errorContent}"
+                        });
                     }
                 }
                 else
@@ -96,22 +114,32 @@ namespace ShareItFE.Pages.Admin
 
                     if (response.IsSuccessStatusCode)
                     {
-                        SuccessMessage = "Policy updated successfully!";
+                        return new JsonResult(new
+                        {
+                            success = true,
+                            message = "Policy updated successfully!",
+                            policyId = SelectedPolicyId
+                        });
                     }
                     else
                     {
                         var errorContent = await response.Content.ReadAsStringAsync();
-                        ErrorMessage = $"Failed to update policy: {errorContent}";
+                        return new JsonResult(new
+                        {
+                            success = false,
+                            message = $"Failed to update policy: {errorContent}"
+                        });
                     }
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Error saving policy: {ex.Message}";
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = $"Error saving policy: {ex.Message}"
+                });
             }
-
-            await LoadPoliciesAsync();
-            return Page();
         }
 
         public async Task<IActionResult> OnPostDeleteAsync(Guid id)
@@ -125,21 +153,74 @@ namespace ShareItFE.Pages.Admin
 
                 if (response.IsSuccessStatusCode)
                 {
-                    SuccessMessage = "Policy deleted successfully!";
+                    return new JsonResult(new
+                    {
+                        success = true,
+                        message = "Policy deleted successfully!"
+                    });
                 }
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    ErrorMessage = $"Failed to delete policy: {errorContent}";
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        message = $"Failed to delete policy: {errorContent}"
+                    });
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Error deleting policy: {ex.Message}";
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = $"Error deleting policy: {ex.Message}"
+                });
             }
+        }
 
-            await LoadPoliciesAsync();
-            return Page();
+        public async Task<IActionResult> OnGetGetPoliciesAsync()
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var apiBaseUrl = _configuration.GetApiBaseUrl(_environment);
+
+                var response = await client.GetAsync($"{apiBaseUrl}/policy-configs");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<PolicyConfigDto>>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (apiResponse?.Data != null)
+                    {
+                        return new JsonResult(new
+                        {
+                            success = true,
+                            policies = apiResponse.Data
+                        });
+                    }
+                }
+
+                return new JsonResult(new
+                {
+                    success = false,
+                    policies = new List<PolicyConfigDto>()
+                });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = $"Error loading policies: {ex.Message}",
+                    policies = new List<PolicyConfigDto>()
+                });
+            }
         }
 
         private async Task LoadPoliciesAsync()

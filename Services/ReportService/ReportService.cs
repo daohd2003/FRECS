@@ -68,7 +68,8 @@ namespace Services.ReportService
 
         public async Task<IEnumerable<AdminViewModel>> GetAllAdminsAsync(Guid? currentAdminIdToExclude)
         {
-            var admins = await _userRepository.GetByCondition(u => u.Role == UserRole.admin && u.Id != currentAdminIdToExclude);
+            // Lấy cả admin và staff
+            var admins = await _userRepository.GetByCondition(u => (u.Role == UserRole.admin || u.Role == UserRole.staff) && u.Id != currentAdminIdToExclude);
             // Logic đếm task có thể thêm vào đây
             return _mapper.Map<IEnumerable<AdminViewModel>>(admins);
         }

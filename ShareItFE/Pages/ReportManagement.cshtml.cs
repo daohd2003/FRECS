@@ -87,29 +87,31 @@ namespace ShareItFE.Pages
                     Converters = { new JsonStringEnumConverter() }
                 };
 
-                // === SỬA LỖI Ở ĐÂY: Thay đổi thứ tự, lấy thông tin phụ trước ===
-                // Lấy danh sách admin trước tiên
-                var adminsResponse = await client.GetFromJsonAsync<ApiResponse<List<AdminViewModel>>>($"{ApiRootUrl}/api/report/admins");
-                Admins = adminsResponse?.Data ?? new List<AdminViewModel>();
+                // === PERFORMANCE OPTIMIZATION: Gọi song song các API requests ===
+                var adminsTask = client.GetFromJsonAsync<ApiResponse<List<AdminViewModel>>>($"{ApiRootUrl}/api/report/admins");
+                var allCountTask = client.GetAsync($"{ApiRootUrl}/odata/unassigned?$count=true&$top=0");
+                var myTasksCountTask = client.GetAsync($"{ApiRootUrl}/odata/mytasks?$count=true&$top=0");
 
-                // Lấy số lượng All Reports
-                var allCountResponse = await client.GetAsync($"{ApiRootUrl}/odata/unassigned?$count=true&$top=0");
-                if (allCountResponse.IsSuccessStatusCode)
+                // Đợi tất cả requests hoàn thành cùng lúc
+                await Task.WhenAll(adminsTask, allCountTask, myTasksCountTask);
+
+                // Xử lý kết quả
+                Admins = adminsTask.Result?.Data ?? new List<AdminViewModel>();
+
+                if (allCountTask.Result.IsSuccessStatusCode)
                 {
-                    var allContent = await allCountResponse.Content.ReadAsStringAsync();
+                    var allContent = await allCountTask.Result.Content.ReadAsStringAsync();
                     var allOdata = JsonSerializer.Deserialize<ODataResponse<ReportViewModel>>(allContent, jsonOptions);
                     AllReportsCount = allOdata?.Count ?? 0;
                 }
 
-                // Lấy số lượng My Tasks
-                var myTasksCountResponse = await client.GetAsync($"{ApiRootUrl}/odata/mytasks?$count=true&$top=0");
-                if (myTasksCountResponse.IsSuccessStatusCode)
+                if (myTasksCountTask.Result.IsSuccessStatusCode)
                 {
-                    var myTasksContent = await myTasksCountResponse.Content.ReadAsStringAsync();
+                    var myTasksContent = await myTasksCountTask.Result.Content.ReadAsStringAsync();
                     var myTasksOdata = JsonSerializer.Deserialize<ODataResponse<ReportViewModel>>(myTasksContent, jsonOptions);
                     MyTasksCount = myTasksOdata?.Count ?? 0;
                 }
-                // === KẾT THÚC THAY ĐỔI THỨ TỰ ===
+                // === KẾT THÚC OPTIMIZATION ===
 
                 // Logic chính để lấy dữ liệu cho tab hiện tại (để ở cuối)
                 var endpoint = Tab == "mytasks" ? "odata/mytasks" : "odata/unassigned";
