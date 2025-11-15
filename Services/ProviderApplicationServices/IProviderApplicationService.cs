@@ -13,6 +13,7 @@ namespace Services.ProviderApplicationServices
         Task<IEnumerable<ProviderApplication>> GetAllApplicationsAsync(ProviderApplicationStatus? status);
         Task<bool> ApproveAsync(Guid staffId, Guid applicationId);
         Task<bool> RejectAsync(Guid staffId, Guid applicationId, string rejectionReason);
+        Task<Dictionary<string, string>> GetApplicationImagesWithSignedUrlsAsync(Guid applicationId, Guid requesterId);
     }
 }
 

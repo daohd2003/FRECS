@@ -38,16 +38,28 @@
                 transform: scale(1.1);
             }
 
-        /* Đảm bảo verification div luôn ẩn khi mới load trang */
+        /* Ensure verification div is always hidden when page loads */
         .verification-hidden {
             display: none !important;
         }
 
         /* Compact form layout */
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        @@media (min-width: 768px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @@media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         .panel-soft {
-            padding: 12px; border: 1px dashed #90caf9; border-radius: 8px;
+            padding: 12px;
+            border: 1px dashed #90caf9;
+            border-radius: 8px;
             background: #eaf4ff;
         }
     </style>
@@ -65,6 +77,7 @@
                 <span class="help-icon" data-bs-toggle="tooltip" title="Tax ID (10 digits for businesses) or Personal ID (12 digits for individuals). If you're an individual, enter 12 digits.">?</span>
                 <input asp-for="Input.TaxId" id="taxIdInput" class="form-control" placeholder="e.g., 0312345678 or 0790xxxxxxx" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" value="" />
                 <small id="taxIdError" class="text-danger" style="display:none;">Tax ID must be exactly 10 or 12 digits.</small>
+                <small id="cccdIdHelper" class="text-success fw-bold" style="display:none;">✅ Verified CCCD ID: <span id="cccdIdValue"></span></small>
             </div>
         </div>
 
@@ -75,23 +88,153 @@
                     <input type="file" id="idCardFront" name="Input.IdCardFrontImage" class="visually-hidden" accept="image/*" />
                     <button type="button" id="btnFrontPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
                     <span id="frontFileName" class="text-muted small">No file chosen</span>
+                    <button type="button" id="btnVerifyFront" class="btn btn-primary btn-sm" style="display:none;">Verify</button>
+                    <span id="frontVerifyStatus" class="small"></span>
                 </div>
                 <div class="mt-2">
                     <img id="idCardFrontPreview" alt="Front preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
                 </div>
+                <div id="frontVerificationResult" class="mt-2" style="display:none;"></div>
                 <small class="text-muted d-block mt-1">JPG/PNG only</small>
-        </div>
+
+                <!-- CCCD Photo Tips -->
+                <div class="mt-2 p-2" style="background: #fff3e0; border-left: 3px solid #ff9800; font-size: 11px;">
+                    <strong>📷 Tips for High-Quality CCCD Photos:</strong>
+                    <div class="mt-1" style="line-height: 1.6;">
+                        ✓ Place CCCD on dark background (easier to detect)<br>
+                        ✓ Take photo at 90° angle (not tilted)<br>
+                        ✓ Natural lighting, avoid glare/reflections<br>
+                        ✓ Text and photo must be sharp, not blurry
+                    </div>
+                </div>
+            </div>
             <div class="mb-3">
                 <label for="idCardBack" class="form-label fw-bold">Back side CCCD <span class="text-danger">*</span></label>
                 <div class="d-flex align-items-center gap-2">
                     <input type="file" id="idCardBack" name="Input.IdCardBackImage" class="visually-hidden" accept="image/*" />
                     <button type="button" id="btnBackPick" class="btn btn-outline-secondary btn-sm">Choose file</button>
                     <span id="backFileName" class="text-muted small">No file chosen</span>
+                    <button type="button" id="btnVerifyBack" class="btn btn-primary btn-sm" style="display:none;">Verify</button>
+                    <span id="backVerifyStatus" class="small"></span>
                 </div>
                 <div class="mt-2">
                     <img id="idCardBackPreview" alt="Back preview" style="max-width: 260px; max-height: 160px; display: none; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
                 </div>
+                <div id="backVerificationResult" class="mt-2" style="display:none;"></div>
                 <small class="text-muted d-block mt-1">JPG/PNG only</small>
+
+                <!-- CCCD Back Tips -->
+                <div class="mt-2 p-2" style="background: #e8f5e9; border-left: 3px solid #4caf50; font-size: 11px;">
+                    <strong>ℹ️ CCCD Back Side Notes:</strong>
+                    <div class="mt-1" style="line-height: 1.6;">
+                        • New CCCD (with chip): Only fingerprint, OCR may be 0% → OK<br>
+                        • Old CCCD: Has address, issue date → Easier to detect<br>
+                        • Still need clear photo, good lighting
+                    </div>
+                </div>
+            </div>
+
+            <!-- SELFIE CAPTURE SECTION -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Take Selfie for Face Matching <span class="text-danger">*</span></label>
+                <p class="text-muted small mb-2">📸 Take a clear photo of your face to verify it matches your CCCD.</p>
+
+                <!-- Camera View with Overlay Guide -->
+                <div id="cameraContainer" style="display: none;">
+                    <div style="position: relative; display: inline-block; max-width: 500px; width: 100%;">
+                        <!-- Video Stream (mirrored for natural viewing) -->
+                        <video id="selfieVideo" autoplay playsinline style="width: 100%; border: 2px solid #64b5f6; border-radius: 8px; background: #000; display: block; transform: scaleX(-1);"></video>
+
+                        <!-- Face Oval Guide Overlay -->
+                        <svg id="faceGuideOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                            <!-- Dark semi-transparent background -->
+                            <defs>
+                                <mask id="faceMask">
+                                    <rect width="100%" height="100%" fill="white" />
+                                    <!-- Oval cutout for face -->
+                                    <ellipse cx="50%" cy="45%" rx="35%" ry="42%" fill="black" />
+                                </mask>
+                            </defs>
+                            <rect width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#faceMask)" />
+
+                            <!-- Face guide oval border -->
+                            <ellipse cx="50%" cy="45%" rx="35%" ry="42%"
+                                     fill="none"
+                                     stroke="#4caf50"
+                                     stroke-width="3"
+                                     stroke-dasharray="10,5"
+                                     opacity="0.8">
+                                <animate attributeName="stroke-dashoffset" from="0" to="30" dur="2s" repeatCount="indefinite" />
+                            </ellipse>
+                        </svg>
+
+                        <!-- Instructions Overlay -->
+                        <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+                                    background: rgba(0,0,0,0.7); color: white; padding: 8px 16px;
+                                    border-radius: 20px; font-size: 13px; font-weight: 500; text-align: center;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap;">
+                            👤 Đặt mặt vào khung bầu dục
+                        </div>
+
+                        <!-- Tips at bottom -->
+                        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+                                    background: rgba(76,175,80,0.9); color: white; padding: 6px 12px;
+                                    border-radius: 15px; font-size: 11px; text-align: center;
+                                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+                            💡 Good lighting • Look straight • No glasses
+                        </div>
+                    </div>
+
+                    <canvas id="selfieCanvas" style="display: none;"></canvas>
+
+                    <div class="mt-2">
+                        <button type="button" id="btnCaptureSelfie" class="btn btn-success btn-sm">📸 Capture Photo</button>
+                        <button type="button" id="btnStopCamera" class="btn btn-secondary btn-sm">❌ Close Camera</button>
+                        <span id="countdownTimer" class="ms-3 fw-bold text-primary" style="display: none; font-size: 18px;"></span>
+                    </div>
+
+                    <!-- Quality Tips -->
+                    <div class="mt-2 p-2" style="background: #e3f2fd; border-radius: 6px; font-size: 12px;">
+                        <strong>📋 Quality Photo Checklist:</strong>
+                        <div class="mt-1">
+                            ✓ Face takes ~70% of frame<br>
+                            ✓ Even lighting (not too dark/bright)<br>
+                            ✓ Look directly at camera<br>
+                            ✓ No sunglasses, mask, or hat
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Captured Photo Preview -->
+                <div id="selfiePreviewContainer" style="display: none;">
+                    <img id="selfiePreview" alt="Selfie preview" style="max-width: 500px; width: 100%; border: 2px solid #4caf50; border-radius: 8px;" />
+                    <div class="mt-2">
+                        <button type="button" id="btnRetakeSelfie" class="btn btn-warning btn-sm">🔄 Retake Photo</button>
+                        <span id="selfieStatus" class="ms-2 small text-success">✅ Selfie captured</span>
+                    </div>
+                    <!-- Face Matching Result -->
+                    <div id="faceMatchResult" class="mt-3" style="display: none;">
+                        <div class="alert" id="faceMatchAlert" role="alert">
+                            <div class="d-flex align-items-center">
+                                <span id="faceMatchIcon" class="me-2"></span>
+                                <div>
+                                    <div id="faceMatchMessage" class="fw-bold"></div>
+                                    <div id="faceMatchScore" class="small"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Start Camera Button -->
+                <div id="startCameraContainer">
+                    <button type="button" id="btnStartCamera" class="btn btn-primary btn-sm">📷 Open Camera</button>
+                    <input type="file" id="selfieImageInput" name="Input.SelfieImage" class="visually-hidden" accept="image/*" />
+                </div>
+
+                <small class="text-muted d-block mt-1">
+                    💡 Tips: Look directly at camera, good lighting, no glasses/hat
+                </small>
             </div>
         </div>
 
@@ -112,15 +255,107 @@
             <span class="help-icon" data-bs-toggle="tooltip" title="Short description about your store, style, or special requirements (max 500 characters).">?</span>
             <textarea asp-for="Input.Notes" class="form-control" rows="3" placeholder="e.g., Specialize in evening gowns sizes S–L; rush delivery available"></textarea>
         </div>
+
+        <!-- BUSINESS LICENSE SECTION (For 10-digit Tax ID) -->
+        <div id="business-license-section" class="mb-3 verification-hidden panel-soft" style="display: none;">
+            <div class="mb-3">
+                <label for="businessLicenseImage" class="form-label fw-bold">
+                    Business License <span class="text-danger">*</span>
+                </label>
+                <span class="help-icon" data-bs-toggle="tooltip"
+                      title="Upload image or PDF of valid business license">?</span>
+
+                <div class="d-flex align-items-center gap-2">
+                    <input type="file" id="businessLicenseImage"
+                           name="Input.BusinessLicenseImage"
+                           class="visually-hidden"
+                           accept="image/*,application/pdf" />
+                    <button type="button" id="btnBusinessLicensePick"
+                            class="btn btn-outline-secondary btn-sm">
+                        Choose file
+                    </button>
+                    <span id="businessLicenseFileName" class="text-muted small">No file chosen</span>
+                </div>
+
+                <div class="mt-2">
+                    <img id="businessLicensePreview" alt="Business License preview"
+                         style="max-width: 400px; max-height: 300px; display: none;
+                                border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" />
+                </div>
+
+                <small class="text-muted d-block mt-1">JPG/PNG/PDF accepted</small>
+
+                <!-- Business License Tips -->
+                <div class="mt-2 p-2" style="background: #fff3e0; border-left: 3px solid #ff9800; font-size: 11px;">
+                    <strong>📋 Business License Requirements:</strong>
+                    <div class="mt-1" style="line-height: 1.6;">
+                        ✓ License must be valid and current<br>
+                        ✓ Clear photo/scan with all information visible<br>
+                        ✓ Tax ID on license must match the ID you entered<br>
+                        ✓ Business name must match the name above
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Privacy Policy Agreement -->
+        <div class="mb-3">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input"
+                       id="privacyPolicyAgreed"
+                       name="Input.PrivacyPolicyAgreed"
+                       required
+                       oninvalid="this.setCustomValidity('You must agree to the privacy policy to continue.')"
+                       oninput="this.setCustomValidity('')" />
+                <label class="form-check-label" for="privacyPolicyAgreed">
+                    I agree to the
+                    <a href="/privacy-policy" target="_blank" class="text-primary">
+                        privacy policy
+                    </a>
+                    <span class="text-danger">*</span>
+                </label>
+            </div>
+            <small class="text-muted">
+                You must agree to the privacy policy to continue
+            </small>
+        </div>
+
         <button type="submit" class="btn btn-primary">Submit Application</button>
     </form>
 
     <div id="toast-mini" style="position: fixed; top: 16px; right: 16px; z-index: 10500; display: flex; flex-direction: column; gap: 8px;"></div>
 
     <script>
-        // Đợi DOM load xong trước khi chạy
+        // ============================================
+        // GLOBAL HELPER FUNCTIONS
+        // ============================================
+
+        // Toast notification helper (global scope)
+        function showToastMini(type, message) {
+            const container = document.getElementById('toast-mini');
+            if (!container) {
+                console.warn('Toast container not found');
+                return;
+            }
+            const el = document.createElement('div');
+            el.style.cssText = 'min-width:260px; max-width:420px; padding:10px 12px; border-radius:6px; color:#fff; font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,.2); opacity:0; transform: translateY(-6px); transition: all .2s;';
+            el.style.background = type === 'success' ? '#2e7d32' : (type === 'warning' ? '#ed6c02' : '#c62828');
+            el.textContent = message;
+            container.appendChild(el);
+            requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+            setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-6px)'; setTimeout(() => el.remove(), 200); }, 3500);
+        }
+
+        // ============================================
+        // CCCD VERIFICATION LOGIC
+        // ============================================
+
+        // Global variable to store verified CCCD ID
+        let verifiedCccdId = null;
+
+        // Wait for DOM to load before running
         function initializeVerification() {
-            // Thử tìm element với multiple selectors
+            // Try to find element with multiple selectors
             let taxIdInput = document.getElementById('taxIdInput');
             if (!taxIdInput) {
                 taxIdInput = document.querySelector('input[name="Input.TaxId"]');
@@ -128,7 +363,7 @@
             if (!taxIdInput) {
                 taxIdInput = document.querySelector('input[name="TaxId"]');
             }
-            
+
             let verificationDiv = document.getElementById('individual-verification');
             let idCardFront = document.getElementById('idCardFront');
             let idCardBack = document.getElementById('idCardBack');
@@ -149,7 +384,7 @@
                 return;
             }
 
-            // Nếu không tìm thấy khối xác minh, tạo động và chèn ngay sau nhóm TaxId
+            // If verification block not found, create dynamically and insert after TaxId group
             if (!verificationDiv) {
                 const taxGroup = taxIdInput.closest('.mb-3') || taxIdInput.parentElement;
                 const container = document.createElement('div');
@@ -204,13 +439,13 @@
                 }
             }
 
-            // Biến để theo dõi xem user đã tương tác chưa
+            // Variable to track if user has interacted
             let userHasInteracted = false;
 
-            // XÓA CỨNG giá trị Tax ID khi trang load để tránh autofill
+            // CLEAR Tax ID value when page loads to prevent autofill
             taxIdInput.value = '';
-            
-            // Đảm bảo ẩn thông báo và error message khi trang load
+
+            // Ensure notifications and error messages are hidden when page loads
             if (verificationDiv) {
                 verificationDiv.classList.add('verification-hidden');
                 verificationDiv.style.display = 'none';
@@ -221,8 +456,8 @@
             if (submitBtn) {
                 submitBtn.disabled = false;
             }
-            
-            // Xóa nhiều lần để chắc chắn chống autofill (browser có thể autofill sau một chút)
+
+            // Clear multiple times to ensure autofill is prevented (browser may autofill after a bit)
             const clearAutofill = () => {
                 if (!userHasInteracted && taxIdInput.value) {
                     taxIdInput.value = '';
@@ -235,21 +470,21 @@
                     }
                 }
             };
-            
+
             setTimeout(clearAutofill, 50);
             setTimeout(clearAutofill, 100);
             setTimeout(clearAutofill, 200);
             setTimeout(clearAutofill, 500);
 
-            // Hàm để cập nhật visibility
+            // Function to update visibility
             function updateVerificationVisibility(isUserInteraction = false) {
                 if (isUserInteraction) {
                     userHasInteracted = true;
                 }
 
-                // Chỉ hiển thị nếu user đã thực sự tương tác
+                // Only show if user has actually interacted
                 if (!userHasInteracted) {
-                    // Luôn ẩn tất cả thông báo cho đến khi user tương tác
+                    // Always hide all notifications until user interacts
                     if (verificationDiv) {
                         verificationDiv.classList.add('verification-hidden');
                         verificationDiv.style.display = 'none';
@@ -266,52 +501,111 @@
                 const taxIdValue = taxIdInput.value || '';
                 const taxIdClean = taxIdValue.replace(/\D/g, '');
 
-                // Chỉ hiển thị error message khi:
-                // 1. Có giá trị (không rỗng)
-                // 2. Giá trị không phải 10 hoặc 12 số
+                // Only show error message when:
+                // 1. Has value (not empty)
+                // 2. Value is not 10 or 12 digits
                 const isEmpty = taxIdClean.length === 0;
                 const isValid = taxIdClean.length === 10 || taxIdClean.length === 12;
                 const shouldShowError = !isEmpty && !isValid;
-                
+
                 if (taxIdError) {
                     taxIdError.style.display = shouldShowError ? 'block' : 'none';
                 }
-                
+
                 // Chỉ disable submit button khi có giá trị SAI (không disable khi rỗng)
                 if (submitBtn) {
                     submitBtn.disabled = shouldShowError;
                 }
-                
+
+                // Get business license section and selfie section
+                const businessLicenseSection = document.getElementById('business-license-section');
+                const selfieSection = document.querySelector('#individual-verification > div:last-of-type'); // Selfie is last div
+
                 if (verificationDiv) {
                     if (taxIdClean.length === 12) {
+                        // INDIVIDUAL (12 digits) - Show CCCD + Selfie
                         verificationDiv.classList.remove('verification-hidden');
                         verificationDiv.style.display = 'block';
+
+                        // Show selfie section, hide business license
+                        if (selfieSection) selfieSection.style.display = 'block';
+                        if (businessLicenseSection) {
+                            businessLicenseSection.classList.add('verification-hidden');
+                            businessLicenseSection.style.display = 'none';
+                        }
+
+                        console.log('✓ Individual mode (12 digits): CCCD + Selfie');
+                    } else if (taxIdClean.length === 10) {
+                        // BUSINESS (10 digits) - Show CCCD + Business License
+                        verificationDiv.classList.remove('verification-hidden');
+                        verificationDiv.style.display = 'block';
+
+                        // Hide selfie section, show business license
+                        if (selfieSection) selfieSection.style.display = 'none';
+                        if (businessLicenseSection) {
+                            businessLicenseSection.classList.remove('verification-hidden');
+                            businessLicenseSection.style.display = 'block';
+                        }
+
+                        console.log('✓ Business mode (10 digits): CCCD + Business License');
                     } else {
+                        // INVALID or EMPTY - Hide everything
                         verificationDiv.classList.add('verification-hidden');
                         verificationDiv.style.display = 'none';
+                        if (businessLicenseSection) {
+                            businessLicenseSection.classList.add('verification-hidden');
+                            businessLicenseSection.style.display = 'none';
+                        }
+
+                        // Clear files
                         if (idCardFront) idCardFront.value = '';
                         if (idCardBack) idCardBack.value = '';
+                        const businessLicenseInput = document.getElementById('businessLicenseImage');
+                        if (businessLicenseInput) businessLicenseInput.value = '';
+
                         const _lf = document.getElementById('frontFileName');
                         const _lb = document.getElementById('backFileName');
+                        const _lbl = document.getElementById('businessLicenseFileName');
                         if (_lf) _lf.textContent = 'No file chosen';
                         if (_lb) _lb.textContent = 'No file chosen';
+                        if (_lbl) _lbl.textContent = 'No file chosen';
                     }
                 }
             }
 
-            // Đánh dấu user interaction khi họ focus vào field
+            // Mark user interaction when they focus on field
             taxIdInput.addEventListener('focus', function() {
                 userHasInteracted = true;
             });
 
-            // Đánh dấu user interaction khi họ gõ phím
+            // Mark user interaction when they press keys
             taxIdInput.addEventListener('keydown', function() {
                 userHasInteracted = true;
             });
 
-            // Gán nhiều listener để chắc chắn bắt được thay đổi
+            // Assign multiple listeners to ensure changes are captured
             taxIdInput.addEventListener('input', function(e) {
                 updateVerificationVisibility(userHasInteracted);
+
+                // Real-time validation: Check if Tax ID matches CCCD ID
+                const taxValClean = e.target.value.replace(/\D/g, '');
+                const cccdIdHelper = document.getElementById('cccdIdHelper');
+
+                if (verifiedCccdId && taxValClean.length === 12) {
+                    if (taxValClean === verifiedCccdId) {
+                        // Match! Show green
+                        if (cccdIdHelper) {
+                            cccdIdHelper.className = 'text-success fw-bold';
+                            cccdIdHelper.innerHTML = `✅ Verified CCCD ID: <span>${verifiedCccdId}</span> (Match!)`;
+                        }
+                    } else {
+                        // Not match! Show red warning
+                        if (cccdIdHelper) {
+                            cccdIdHelper.className = 'text-danger fw-bold';
+                            cccdIdHelper.innerHTML = `❌ Tax ID does NOT match CCCD ID: <span>${verifiedCccdId}</span>`;
+                        }
+                    }
+                }
             });
             taxIdInput.addEventListener('change', function(e) {
                 updateVerificationVisibility(userHasInteracted);
@@ -349,11 +643,82 @@
             bindPreview(idCardFront, idCardFrontPreview);
             bindPreview(idCardBack, idCardBackPreview);
 
+            // Business License file picker
+            const btnBusinessLicensePick = document.getElementById('btnBusinessLicensePick');
+            const businessLicenseInput = document.getElementById('businessLicenseImage');
+            const businessLicenseFileName = document.getElementById('businessLicenseFileName');
+            const businessLicensePreview = document.getElementById('businessLicensePreview');
+
+            if (btnBusinessLicensePick && businessLicenseInput) {
+                btnBusinessLicensePick.addEventListener('click', () => businessLicenseInput.click());
+            }
+
+            if (businessLicenseInput && businessLicenseFileName) {
+                businessLicenseInput.addEventListener('change', function() {
+                    const file = this.files && this.files[0];
+                    if (file) {
+                        businessLicenseFileName.textContent = file.name;
+
+                        // Show preview if image
+                        if (file.type.startsWith('image/') && businessLicensePreview) {
+                            const url = URL.createObjectURL(file);
+                            businessLicensePreview.src = url;
+                            businessLicensePreview.style.display = 'inline-block';
+                        } else {
+                            // PDF or other - hide preview
+                            if (businessLicensePreview) {
+                                businessLicensePreview.style.display = 'none';
+                            }
+                        }
+                    } else {
+                        businessLicenseFileName.textContent = 'No file chosen';
+                        if (businessLicensePreview) {
+                            businessLicensePreview.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
+            // Preview click for business license
+            if (businessLicensePreview) {
+                businessLicensePreview.addEventListener('click', function() {
+                    if (!businessLicensePreview.src) return;
+                    previewLargeImage.src = businessLicensePreview.src;
+                    previewModal.style.display = 'flex';
+                });
+            }
+
             // file pickers (static)
             if (btnFrontPick && idCardFront) btnFrontPick.addEventListener('click', () => idCardFront.click());
             if (btnBackPick && idCardBack) btnBackPick.addEventListener('click', () => idCardBack.click());
-            if (idCardFront && frontFileName) idCardFront.addEventListener('change', () => { frontFileName.textContent = idCardFront.files?.[0]?.name || 'No file chosen'; });
-            if (idCardBack && backFileName) idCardBack.addEventListener('change', () => { backFileName.textContent = idCardBack.files?.[0]?.name || 'No file chosen'; });
+            if (idCardFront && frontFileName) {
+                idCardFront.addEventListener('change', () => {
+                    frontFileName.textContent = idCardFront.files?.[0]?.name || 'No file chosen';
+                    // Show verify button when file is selected
+                    const btnVerifyFront = document.getElementById('btnVerifyFront');
+                    if (idCardFront.files && idCardFront.files[0]) {
+                        if (btnVerifyFront) btnVerifyFront.style.display = 'inline-block';
+                        // Auto verify after short delay
+                        setTimeout(() => verifyCccdImage('front'), 500);
+                    } else {
+                        if (btnVerifyFront) btnVerifyFront.style.display = 'none';
+                    }
+                });
+            }
+            if (idCardBack && backFileName) {
+                idCardBack.addEventListener('change', () => {
+                    backFileName.textContent = idCardBack.files?.[0]?.name || 'No file chosen';
+                    // Show verify button when file is selected
+                    const btnVerifyBack = document.getElementById('btnVerifyBack');
+                    if (idCardBack.files && idCardBack.files[0]) {
+                        if (btnVerifyBack) btnVerifyBack.style.display = 'inline-block';
+                        // Auto verify after short delay
+                        setTimeout(() => verifyCccdImage('back'), 500);
+                    } else {
+                        if (btnVerifyBack) btnVerifyBack.style.display = 'none';
+                    }
+                });
+            }
 
             if (closePreviewModal) {
                 closePreviewModal.addEventListener('click', function () {
@@ -369,16 +734,125 @@
                 }
             });
 
-            // Compact toast helpers
-            function showToastMini(type, message) {
-                const container = document.getElementById('toast-mini');
-                const el = document.createElement('div');
-                el.style.cssText = 'min-width:260px; max-width:420px; padding:10px 12px; border-radius:6px; color:#fff; font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,.2); opacity:0; transform: translateY(-6px); transition: all .2s;';
-                el.style.background = type === 'success' ? '#2e7d32' : (type === 'warning' ? '#ed6c02' : '#c62828');
-                el.textContent = message;
-                container.appendChild(el);
-                requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
-                setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-6px)'; setTimeout(() => el.remove(), 200); }, 3500);
+            // CCCD Verification function
+            async function verifyCccdImage(side) {
+                const isBack = side === 'back';
+                const fileInput = isBack ? idCardBack : idCardFront;
+                const statusSpan = isBack ? document.getElementById('backVerifyStatus') : document.getElementById('frontVerifyStatus');
+                const resultDiv = isBack ? document.getElementById('backVerificationResult') : document.getElementById('frontVerificationResult');
+                const verifyBtn = isBack ? document.getElementById('btnVerifyBack') : document.getElementById('btnVerifyFront');
+
+                if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                    return;
+                }
+
+                const file = fileInput.files[0];
+
+                // Show loading status
+                if (statusSpan) {
+                    statusSpan.innerHTML = '<span class="text-info">⏳ Verifying...</span>';
+                }
+                if (verifyBtn) {
+                    verifyBtn.disabled = true;
+                    verifyBtn.textContent = 'Verifying...';
+                }
+
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+
+                    const apiRoot = document.getElementById('applyForm').dataset.apiRoot || '';
+                    const response = await fetch(`${apiRoot}/api/ekyc/verify-single`, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.data && result.data.isValid) {
+                        // Success - show extracted data
+                        const data = result.data;
+                        if (statusSpan) {
+                            statusSpan.innerHTML = '<span class="text-success">✓ Verified</span>';
+                        }
+
+                        let resultHtml = '<div class="alert alert-success p-2"><strong>✓ CCCD Verified Successfully</strong><br>';
+                        if (data.idNumber) resultHtml += `<small>ID: ${data.idNumber}</small><br>`;
+                        if (data.fullName) resultHtml += `<small>Name: ${data.fullName}</small><br>`;
+                        if (data.dateOfBirth) resultHtml += `<small>DOB: ${data.dateOfBirth}</small><br>`;
+                        if (data.sex) resultHtml += `<small>Sex: ${data.sex}</small><br>`;
+                        if (data.confidence) resultHtml += `<small>Confidence: ${(data.confidence * 100).toFixed(1)}%</small>`;
+                        resultHtml += '</div>';
+
+                        if (resultDiv) {
+                            resultDiv.innerHTML = resultHtml;
+                            resultDiv.style.display = 'block';
+                        }
+
+                        // Store verified CCCD ID for validation (FRONT side only)
+                        if (data.idNumber && data.idNumber.length === 12 && !isBack) {
+                            verifiedCccdId = data.idNumber; // Save for validation
+                            console.log('✅ CCCD ID saved for validation:', verifiedCccdId);
+
+                            // Show verified CCCD ID helper
+                            const cccdIdHelper = document.getElementById('cccdIdHelper');
+                            const cccdIdValue = document.getElementById('cccdIdValue');
+                            if (cccdIdHelper && cccdIdValue) {
+                                cccdIdValue.textContent = verifiedCccdId;
+                                cccdIdHelper.style.display = 'block';
+                            }
+
+                            // Auto-fill TaxId if empty
+                            const taxInput = document.getElementById('taxIdInput');
+                            if (taxInput && !taxInput.value) {
+                                taxInput.value = data.idNumber;
+                                userHasInteracted = true;
+                                updateVerificationVisibility(true);
+                            }
+                        }
+
+                        showToastMini('success', `${isBack ? 'Back' : 'Front'} side verified successfully`);
+                    } else {
+                        // Verification failed
+                        const errorMsg = result.data?.errorMessage || result.message || 'Verification failed';
+                        if (statusSpan) {
+                            statusSpan.innerHTML = '<span class="text-warning">⚠ Not verified</span>';
+                        }
+
+                        if (resultDiv) {
+                            resultDiv.innerHTML = `<div class="alert alert-warning p-2"><small>⚠ ${errorMsg}</small></div>`;
+                            resultDiv.style.display = 'block';
+                        }
+
+                        showToastMini('warning', errorMsg);
+                    }
+                } catch (error) {
+                    console.error('Verification error:', error);
+                    if (statusSpan) {
+                        statusSpan.innerHTML = '<span class="text-danger">✗ Error</span>';
+                    }
+                    if (resultDiv) {
+                        resultDiv.innerHTML = `<div class="alert alert-danger p-2"><small>✗ Error: ${error.message}</small></div>`;
+                        resultDiv.style.display = 'block';
+                    }
+                    showToastMini('error', 'Failed to verify CCCD. Please try again.');
+                } finally {
+                    if (verifyBtn) {
+                        verifyBtn.disabled = false;
+                        verifyBtn.textContent = 'Re-verify';
+                    }
+                }
+            }
+
+            // Bind verify buttons
+            const btnVerifyFront = document.getElementById('btnVerifyFront');
+            const btnVerifyBack = document.getElementById('btnVerifyBack');
+            if (btnVerifyFront) {
+                btnVerifyFront.addEventListener('click', () => verifyCccdImage('front'));
+            }
+            if (btnVerifyBack) {
+                btnVerifyBack.addEventListener('click', () => verifyCccdImage('back'));
             }
 
             // AJAX submit to keep previews/files without page refresh
@@ -394,8 +868,12 @@
                     const taxValClean = taxValRaw.replace(/\D/g, '');
                     const contactPhone = (document.querySelector('input[name="Input.ContactPhone"]')?.value || '').trim();
                     const contactPhoneClean = contactPhone.replace(/\D/g, '');
-                    const frontFile = idCardFront?.files?.[0];
-                    const backFile = idCardBack?.files?.[0];
+
+                    // Query file inputs directly (they're inside initializeVerification scope)
+                    const idCardFrontInput = document.getElementById('idCardFront');
+                    const idCardBackInput = document.getElementById('idCardBack');
+                    const frontFile = idCardFrontInput?.files?.[0];
+                    const backFile = idCardBackInput?.files?.[0];
 
                     // Client-side validation rules
                     const errors = [];
@@ -404,9 +882,36 @@
                     if (taxValClean && taxValClean.length !== 10 && taxValClean.length !== 12) errors.push('Tax ID must be 10 or 12 digits.');
                     if (!contactPhone) errors.push('Contact phone is required.');
                     else if (contactPhoneClean.length !== 10) errors.push('Contact phone must be 10 digits.');
+
+                    // Validation based on provider type
                     if (taxValClean.length === 12) {
+                        // INDIVIDUAL - Require CCCD + Selfie
                         if (!frontFile) errors.push('Front ID image is required for 12-digit Personal ID.');
                         if (!backFile) errors.push('Back ID image is required for 12-digit Personal ID.');
+
+                        // Query selfie input directly
+                        const selfieInput = document.getElementById('selfieImageInput');
+                        const selfieFile = selfieInput?.files?.[0];
+                        if (!selfieFile) errors.push('Selfie image is required for face matching verification.');
+
+                        // ✅ CRITICAL VALIDATION: Tax ID must match CCCD ID
+                        if (verifiedCccdId && taxValClean !== verifiedCccdId) {
+                            errors.push(`❌ Tax ID (${taxValClean}) does NOT match your CCCD ID (${verifiedCccdId}). Please correct it.`);
+                        }
+                    } else if (taxValClean.length === 10) {
+                        // BUSINESS - Require CCCD + Business License
+                        if (!frontFile) errors.push('Front ID image (representative) is required for business registration.');
+                        if (!backFile) errors.push('Back ID image (representative) is required for business registration.');
+
+                        const businessLicenseInput = document.getElementById('businessLicenseImage');
+                        const businessLicenseFile = businessLicenseInput?.files?.[0];
+                        if (!businessLicenseFile) errors.push('Business license image is required for 10-digit Tax ID.');
+                    }
+
+                    // Privacy Policy validation
+                    const privacyCheckbox = document.getElementById('privacyPolicyAgreed');
+                    if (!privacyCheckbox || !privacyCheckbox.checked) {
+                        errors.push('You must agree to the privacy policy to continue.');
                     }
 
                     if (errors.length > 0) {
@@ -442,13 +947,237 @@
             });
         }
 
-        // Chạy khi DOM ready
+        // Run when DOM ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeVerification);
         } else {
             initializeVerification();
         }
+
+        // ============================================
+        // SELFIE CAMERA CAPTURE LOGIC
+        // ============================================
+        let cameraCapture = null;
+        let selfieBlob = null;
+
+        const btnStartCamera = document.getElementById('btnStartCamera');
+        const btnStopCamera = document.getElementById('btnStopCamera');
+        const btnCaptureSelfie = document.getElementById('btnCaptureSelfie');
+        const btnRetakeSelfie = document.getElementById('btnRetakeSelfie');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const selfiePreviewContainer = document.getElementById('selfiePreviewContainer');
+        const startCameraContainer = document.getElementById('startCameraContainer');
+        const selfiePreview = document.getElementById('selfiePreview');
+        const selfieImageInput = document.getElementById('selfieImageInput');
+
+        // Initialize camera capture
+        if (btnStartCamera) {
+            btnStartCamera.addEventListener('click', async () => {
+                if (!cameraCapture) {
+                    cameraCapture = new window.CameraCapture('selfieVideo', 'selfieCanvas');
+                }
+
+                const success = await cameraCapture.openCamera('user'); // Front camera
+                if (success) {
+                    startCameraContainer.style.display = 'none';
+                    cameraContainer.style.display = 'block';
+                    selfiePreviewContainer.style.display = 'none';
+                }
+            });
+        }
+
+        // Stop camera
+        if (btnStopCamera) {
+            btnStopCamera.addEventListener('click', () => {
+                if (cameraCapture) {
+                    cameraCapture.stopCamera();
+                }
+                cameraContainer.style.display = 'none';
+                startCameraContainer.style.display = 'block';
+            });
+        }
+
+        // Capture photo with countdown
+        if (btnCaptureSelfie) {
+            btnCaptureSelfie.addEventListener('click', async () => {
+                if (!cameraCapture) return;
+
+                const countdownTimer = document.getElementById('countdownTimer');
+                const btnCapture = document.getElementById('btnCaptureSelfie');
+
+                // Disable button during countdown
+                btnCapture.disabled = true;
+                btnCapture.textContent = 'Preparing...';
+
+                // Show countdown: 3... 2... 1... Smile! 📸
+                if (countdownTimer) {
+                    countdownTimer.style.display = 'inline';
+
+                    for (let i = 3; i > 0; i--) {
+                        countdownTimer.textContent = `${i}...`;
+                        countdownTimer.style.fontSize = '24px';
+                        countdownTimer.style.color = i === 1 ? '#f44336' : '#2196f3';
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
+                    countdownTimer.textContent = '📸 Smile!';
+                    countdownTimer.style.color = '#4caf50';
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                // Capture photo
+                const canvas = cameraCapture.capturePhoto();
+                if (!canvas) {
+                    btnCapture.disabled = false;
+                    btnCapture.textContent = '📸 Capture Photo';
+                    if (countdownTimer) countdownTimer.style.display = 'none';
+                    return;
+                }
+
+                // Convert to blob
+                selfieBlob = await cameraCapture.canvasToBlob(canvas, 0.92);
+
+                // Show preview
+                selfiePreview.src = canvas.toDataURL('image/jpeg', 0.92);
+
+                // Update UI
+                cameraContainer.style.display = 'none';
+                selfiePreviewContainer.style.display = 'block';
+                if (countdownTimer) countdownTimer.style.display = 'none';
+
+                // Stop camera
+                cameraCapture.stopCamera();
+
+                // Re-enable button
+                btnCapture.disabled = false;
+                btnCapture.textContent = '📸 Capture Photo';
+
+                // Create File from Blob and set to input
+                const file = new File([selfieBlob], 'selfie.jpg', { type: 'image/jpeg' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                selfieImageInput.files = dataTransfer.files;
+
+                console.log('✅ Selfie captured and ready:', file.size, 'bytes');
+                showToastMini('success', '✅ Selfie captured successfully!');
+
+                // Auto-verify face matching with CCCD front image
+                await verifyFaceMatch(file);
+            });
+        }
+
+        // Function to verify face matching via API
+        async function verifyFaceMatch(selfieFile) {
+            const faceMatchResult = document.getElementById('faceMatchResult');
+            const faceMatchAlert = document.getElementById('faceMatchAlert');
+            const faceMatchIcon = document.getElementById('faceMatchIcon');
+            const faceMatchMessage = document.getElementById('faceMatchMessage');
+            const faceMatchScore = document.getElementById('faceMatchScore');
+
+            // Check if CCCD front image exists
+            const idCardFront = document.getElementById('idCardFront');
+            const frontFile = idCardFront?.files?.[0];
+
+            if (!frontFile) {
+                showToastMini('warning', '⚠️ Please upload CCCD front image first before taking selfie');
+                return;
+            }
+
+            // Show loading state
+            faceMatchResult.style.display = 'block';
+            faceMatchAlert.className = 'alert alert-info';
+            faceMatchIcon.textContent = '⏳';
+            faceMatchMessage.textContent = 'Verifying face matching...';
+            faceMatchScore.textContent = 'Please wait...';
+
+            try {
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('SelfieImage', selfieFile);
+                formData.append('CccdFrontImage', frontFile);
+
+                // Get API base URL
+                const form = document.getElementById('applyForm');
+                const apiRoot = form?.getAttribute('data-api-root') || 'https://localhost:7258';
+
+                // Call API
+                const response = await fetch(`${apiRoot}/api/ekyc/verify-face-match`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.data) {
+                    const matchScore = result.data.matchScore;
+                    const isMatched = result.data.isMatched;
+
+                    if (isMatched && matchScore >= 0.7) {
+                        // EXCELLENT: High match score
+                        faceMatchAlert.className = 'alert alert-success';
+                        faceMatchIcon.textContent = '✅';
+                        faceMatchMessage.textContent = 'Face Matched! (Excellent)';
+                        faceMatchScore.textContent = `Match Score: ${(matchScore * 100).toFixed(1)}% (High confidence)`;
+                        showToastMini('success', `✅ Face matched: ${(matchScore * 100).toFixed(1)}%`);
+                    } else if (matchScore >= 0.5) {
+                        // SUCCESS: Acceptable match (TESTING MODE - 50%)
+                        faceMatchAlert.className = 'alert alert-success';
+                        faceMatchIcon.textContent = '✅';
+                        faceMatchMessage.textContent = 'Face Matched! (Acceptable)';
+                        faceMatchScore.textContent = `Match Score: ${(matchScore * 100).toFixed(1)}% (Required: ≥50% TESTING MODE)`;
+                        showToastMini('success', `✅ Face matched: ${(matchScore * 100).toFixed(1)}% (Acceptable for testing)`);
+                    } else if (matchScore >= 0.4) {
+                        // WARNING: Low match score
+                        faceMatchAlert.className = 'alert alert-warning';
+                        faceMatchIcon.textContent = '⚠️';
+                        faceMatchMessage.textContent = 'Low Match Score';
+                        faceMatchScore.textContent = `Match Score: ${(matchScore * 100).toFixed(1)}% (Too low, min 50%)`;
+                        showToastMini('warning', `⚠️ Low match score: ${(matchScore * 100).toFixed(1)}%. Please retake with better lighting.`);
+                    } else {
+                        // FAIL: Not matched
+                        faceMatchAlert.className = 'alert alert-danger';
+                        faceMatchIcon.textContent = '❌';
+                        faceMatchMessage.textContent = 'Face Not Matched';
+                        faceMatchScore.textContent = `Match Score: ${(matchScore * 100).toFixed(1)}% (Too low)`;
+                        showToastMini('error', `❌ Face not matched: ${(matchScore * 100).toFixed(1)}%. Please use your own CCCD.`);
+                    }
+                } else {
+                    // API error
+                    faceMatchAlert.className = 'alert alert-danger';
+                    faceMatchIcon.textContent = '❌';
+                    faceMatchMessage.textContent = 'Verification Failed';
+                    faceMatchScore.textContent = result.message || 'Unknown error';
+                    showToastMini('error', '❌ Face matching failed: ' + (result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Face match error:', error);
+                faceMatchAlert.className = 'alert alert-danger';
+                faceMatchIcon.textContent = '❌';
+                faceMatchMessage.textContent = 'Connection Error';
+                faceMatchScore.textContent = 'Failed to connect to server';
+                showToastMini('error', '❌ Connection error. Please try again.');
+            }
+        }
+
+        // Retake photo
+        if (btnRetakeSelfie) {
+            btnRetakeSelfie.addEventListener('click', () => {
+                selfieBlob = null;
+                selfieImageInput.value = '';
+                selfiePreviewContainer.style.display = 'none';
+                startCameraContainer.style.display = 'block';
+
+                // Hide face match result
+                const faceMatchResult = document.getElementById('faceMatchResult');
+                if (faceMatchResult) {
+                    faceMatchResult.style.display = 'none';
+                }
+            });
+        }
     </script>
+
+    <!-- Include Camera Capture Script -->
+    <script src="~/js/camera-capture.js"></script>
 </section>
 
 

@@ -17,6 +17,7 @@ namespace Repositories.ProductRepositories
         Task<Product?> GetProductWithImagesByIdAsync(Guid id);
         Task<bool> IsProductAvailable(Guid productId, DateTime startDate, DateTime endDate);
         Task<Product> AddProductWithImagesAsync(ProductRequestDTO dto);
+        IQueryable<Product> GetAllWithIncludesNoFilter();
         Task<bool> UpdateProductWithImagesAsync(ProductDTO productDto);
         Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request);
         Task<bool> HasOrderItemsAsync(Guid productId);

@@ -174,7 +174,7 @@ namespace Services.CloudServices
             };
 
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-            
+
             if (uploadResult.Error != null)
             {
                 _logger.LogError($"Category image upload failed for user {userId}: {uploadResult.Error.Message}");
@@ -379,6 +379,75 @@ namespace Services.CloudServices
                     PublicId = uploadResult.PublicId
                 };
             }
+        }
+
+        // Upload private image for sensitive documents (Provider Applications)
+        public async Task<BusinessObject.DTOs.ProductDto.ImageUploadResult> UploadPrivateImageAsync(IFormFile file, Guid userId, string projectName, string folderType)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("No file selected.");
+
+            // Validate file type - only images allowed
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+            var extension = Path.GetExtension(file.FileName)?.ToLower() ?? "";
+            if (!allowedExtensions.Contains(extension))
+            {
+                throw new ArgumentException($"Invalid file type. Allowed: JPG, JPEG, PNG, PDF. Got: {extension}");
+            }
+
+            // Validate file size (max 10MB for sensitive documents)
+            const long maxFileSize = 10 * 1024 * 1024; // 10MB
+            if (file.Length > maxFileSize)
+            {
+                throw new ArgumentException($"File size exceeds 10MB limit. Size: {file.Length / 1024 / 1024}MB");
+            }
+
+            var publicId = $"{folderType}_{userId}_{Path.GetRandomFileName()}";
+
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream()),
+                PublicId = publicId,
+                Folder = $"{projectName}/{folderType}/{userId}",
+                Overwrite = false,
+                Type = "private", // PRIVATE UPLOAD - requires signed URL to access
+                Transformation = new Transformation().Quality("auto").FetchFormat("auto")
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            if (uploadResult.Error != null)
+            {
+                _logger.LogError($"Cloudinary private upload failed: {uploadResult.Error.Message}");
+                throw new Exception($"Upload failed: {uploadResult.Error.Message}");
+            }
+
+            _logger.LogInformation($"Private image uploaded successfully. User: {userId}, PublicId: {uploadResult.PublicId}");
+
+            return new BusinessObject.DTOs.ProductDto.ImageUploadResult
+            {
+                ImageUrl = uploadResult.SecureUrl.ToString(),
+                PublicId = uploadResult.PublicId
+            };
+        }
+
+        // Generate signed URL for private images (valid for limited time)
+        public string GenerateSignedUrl(string publicId, int expirationMinutes = 60)
+        {
+            if (string.IsNullOrEmpty(publicId))
+                throw new ArgumentException("PublicId is required");
+
+            // Calculate expiration timestamp
+            var expirationTime = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes).ToUnixTimeSeconds();
+
+            // Generate signed URL for private image
+            var url = _cloudinary.Api.UrlImgUp
+                .Secure(true)
+                .Type("private")
+                .Signed(true)
+                .Transform(new Transformation().Add("e", $"expires_at:{expirationTime}"))
+                .BuildUrl(publicId);
+
+            return url;
         }
     }
 }

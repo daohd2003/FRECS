@@ -2,9 +2,11 @@ using BusinessObject.DTOs.AIDtos;
 using BusinessObject.DTOs.ProductDto;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Caching.Memory;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 
 namespace Services.ContentModeration
 {
@@ -13,16 +15,19 @@ namespace Services.ContentModeration
         private readonly ContentModerationOptions _moderationOptions;
         private readonly ILogger<ContentModerationService> _logger;
         private readonly HttpClient _httpClient;
+        private readonly IMemoryCache _cache;
 
         public ContentModerationService(
             IOptions<ContentModerationOptions> moderationOptions,
             ILogger<ContentModerationService> logger,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IMemoryCache cache)
         {
             _moderationOptions = moderationOptions.Value;
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient("ContentModeration");
             _httpClient.DefaultRequestHeaders.AcceptCharset.Add(new StringWithQualityHeaderValue("utf-8"));
+            _cache = cache;
         }
 
         public async Task<ContentModerationResultDTO> CheckProductContentAsync(string name, string? description)
@@ -32,7 +37,7 @@ namespace Services.ContentModeration
                 // Pre-validation check BEFORE calling AI (catches spam, repeating chars, etc.)
                 Console.WriteLine($"[MODERATION DEBUG] Running pre-validation check...");
                 var (isValid, reason, violatedTerms) = PerformPreValidation(name, description);
-                
+
                 if (!isValid)
                 {
                     Console.WriteLine($"[MODERATION] Pre-validation FAILED: {reason}");
@@ -43,16 +48,24 @@ namespace Services.ContentModeration
                         ViolatedTerms = violatedTerms
                     };
                 }
-                
+
+                // Check cache BEFORE calling AI API
+                var cacheKey = GenerateCacheKey(name, description);
+                if (_cache.TryGetValue(cacheKey, out ContentModerationResultDTO? cachedResult))
+                {
+                    Console.WriteLine($"[MODERATION CACHE] ✓ Cache HIT - Skipping API call");
+                    return cachedResult!;
+                }
+
                 Console.WriteLine($"[MODERATION DEBUG] Pre-validation PASSED. Proceeding to AI check...");
                 Console.WriteLine($"[MODERATION DEBUG] Input - Name: '{name}' | Description: '{description}'");
-                
+
                 var prompt = BuildModerationPrompt(name, description);
                 Console.WriteLine($"[MODERATION DEBUG] Sending to AI...");
-                
+
                 // This will throw detailed exceptions if any error occurs
                 var geminiResponse = await SendRequestToGeminiAsync(prompt);
-                
+
                 Console.WriteLine($"[MODERATION DEBUG] AI Response: {geminiResponse?.Substring(0, Math.Min(500, geminiResponse?.Length ?? 0))}...");
 
                 if (string.IsNullOrEmpty(geminiResponse))
@@ -68,7 +81,15 @@ namespace Services.ContentModeration
 
                 var result = ParseModerationResponse(geminiResponse);
                 Console.WriteLine($"[MODERATION DEBUG] Final Decision - IsAppropriate: {result.IsAppropriate} | Reason: {result.Reason}");
-                
+
+                // Cache the result for 24 hours
+                var cacheOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromHours(24))
+                    .SetPriority(CacheItemPriority.High);
+
+                _cache.Set(cacheKey, result, cacheOptions);
+                Console.WriteLine($"[MODERATION CACHE] ✓ Result cached for 24 hours");
+
                 return result;
             }
             catch (InvalidOperationException ex)
@@ -89,6 +110,16 @@ namespace Services.ContentModeration
                     ViolatedTerms = new List<string> { "unexpected_error" }
                 };
             }
+        }
+
+        private string GenerateCacheKey(string name, string? description)
+        {
+            // Create hash from content to use as cache key
+            var content = $"{name?.Trim().ToLower()}|{description?.Trim().ToLower()}";
+            using var sha256 = SHA256.Create();
+            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
+            var hash = Convert.ToBase64String(hashBytes);
+            return $"moderation:{hash}";
         }
 
         private (bool IsValid, string? Reason, List<string> ViolatedTerms) PerformPreValidation(string name, string? description)
@@ -132,7 +163,7 @@ namespace Services.ContentModeration
                 {
                     return (false, "Product description contains excessive repeating characters", new List<string> { "repeating characters" });
                 }
-                
+
                 // Kiểm tra description không được quá ngắn nếu có
                 if (description.Trim().Length < 10)
                 {
@@ -149,7 +180,7 @@ namespace Services.ContentModeration
 
             // Loại bỏ TẤT CẢ spaces và ký tự đặc biệt trước khi check
             var cleanText = new string(text.Where(c => char.IsLetterOrDigit(c)).ToArray()).ToLower();
-            
+
             if (cleanText.Length < 4) return false;
 
             // ✅ FIX 1: Kiểm tra nếu có >70% ký tự giống nhau (bắt "111111", "aaaaaaa")
@@ -273,7 +304,7 @@ Remember: ONE violation = REJECT. Be strict.";
         private async Task<string?> SendRequestToGeminiAsync(string prompt)
         {
             var apiKey = _moderationOptions.ApiKey;
-            
+
             // Validate API key before making request
             if (string.IsNullOrEmpty(apiKey))
             {
@@ -283,7 +314,7 @@ Remember: ONE violation = REJECT. Be strict.";
                     "Get your API key at: https://aistudio.google.com/app/apikey"
                 );
             }
-            
+
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
 
             var requestData = new
@@ -318,7 +349,7 @@ Remember: ONE violation = REJECT. Be strict.";
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    
+
                     // Parse error response to provide clear messages
                     try
                     {
@@ -327,7 +358,7 @@ Remember: ONE violation = REJECT. Be strict.";
                         {
                             var errorMessage = error.GetProperty("message").GetString();
                             var statusCode = (int)response.StatusCode;
-                            
+
                             // Handle specific error codes
                             if (statusCode == 429)
                             {
@@ -377,15 +408,15 @@ Remember: ONE violation = REJECT. Be strict.";
                             $"Gemini API returned an error (HTTP {response.StatusCode}): {truncatedError}"
                         );
                     }
-                    
+
                     throw new InvalidOperationException($"Gemini API returned error: HTTP {response.StatusCode}");
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync();
                 using var responseDoc = JsonDocument.Parse(responseJson);
-                
+
                 // Check if response contains candidates
-                if (!responseDoc.RootElement.TryGetProperty("candidates", out var candidates) || 
+                if (!responseDoc.RootElement.TryGetProperty("candidates", out var candidates) ||
                     candidates.GetArrayLength() == 0)
                 {
                     // Check if blocked by safety filters
@@ -402,7 +433,7 @@ Remember: ONE violation = REJECT. Be strict.";
                         );
                     }
                 }
-                
+
                 return candidates[0]
                     .GetProperty("content")
                     .GetProperty("parts")[0]
@@ -449,9 +480,9 @@ Remember: ONE violation = REJECT. Be strict.";
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                
+
                 var result = JsonSerializer.Deserialize<ContentModerationResultDTO>(jsonResponse, options);
-                
+
                 return result ?? new ContentModerationResultDTO
                 {
                     IsAppropriate = true,
