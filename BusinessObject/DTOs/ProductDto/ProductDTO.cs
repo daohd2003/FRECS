@@ -31,6 +31,7 @@ namespace BusinessObject.DTOs.ProductDto
         public decimal AverageRating { get; set; }
         public List<ProductImageDTO>? Images { get; set; }
         public decimal SecurityDeposit { get; set; }
+        public string? ViolationReason { get; set; }
 
         // Computed properties cho logic hiển thị
         public bool IsRentalAvailable => RentalStatus == "Available";
