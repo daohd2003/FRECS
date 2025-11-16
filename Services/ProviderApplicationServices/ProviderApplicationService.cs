@@ -191,48 +191,53 @@ namespace Services.ProviderApplicationServices
                         $"Tips: Upload clearer CCCD photo, take selfie with similar lighting/angle.");
                 }
 
-                // === BƯỚC 7: Upload tất cả files lên Cloudinary (sau khi verify thành công) ===
+                // === BƯỚC 7: Upload tất cả files lên Cloudinary SONG SONG (sau khi verify thành công) ===
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? frontImageResult = null;
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? backImageResult = null;
-                BusinessObject.DTOs.ProductDto.ImageUploadResult? livenessVideoResult = null;
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? selfieResult = null;
 
                 try
                 {
-                    // Upload CCCD mặt trước (PRIVATE)
-                    frontImageResult = await _cloudinaryService.UploadPrivateImageAsync(
+                    // Tạo danh sách tasks để upload song song
+                    var uploadTasks = new List<Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>>();
+
+                    // Task 1: Upload CCCD mặt trước (PRIVATE)
+                    var frontTask = _cloudinaryService.UploadPrivateImageAsync(
                         dto.IdCardFrontImage,
                         userId,
                         "ShareIt",
                         "provider-verification");
+                    uploadTasks.Add(frontTask);
 
-                    // Upload CCCD mặt sau (PRIVATE)
-                    backImageResult = await _cloudinaryService.UploadPrivateImageAsync(
+                    // Task 2: Upload CCCD mặt sau (PRIVATE)
+                    var backTask = _cloudinaryService.UploadPrivateImageAsync(
                         dto.IdCardBackImage,
                         userId,
                         "ShareIt",
                         "provider-verification");
+                    uploadTasks.Add(backTask);
 
-                    // Upload Liveness video (SKIPPED - Not using Liveness Detection for now)
-                    // Liveness bị bỏ qua để đơn giản hóa flow và cải thiện UX
-                    // if (dto.LivenessVideo != null)
-                    // {
-                    //     livenessVideoResult = await _cloudinaryService.UploadSingleImageAsync(
-                    //         dto.LivenessVideo, 
-                    //         userId, 
-                    //         "ShareIt", 
-                    //         "provider-liveness");
-                    //     app.LivenessVideoUrl = livenessVideoResult.ImageUrl;
-                    // }
-
-                    // Upload Selfie image (REQUIRED for Face Matching) (PRIVATE)
+                    // Task 3: Upload Selfie image (REQUIRED for Face Matching) (PRIVATE)
+                    Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>? selfieTask = null;
                     if (dto.SelfieImage != null)
                     {
-                        selfieResult = await _cloudinaryService.UploadPrivateImageAsync(
+                        selfieTask = _cloudinaryService.UploadPrivateImageAsync(
                             dto.SelfieImage,
                             userId,
                             "ShareIt",
                             "provider-selfie");
+                        uploadTasks.Add(selfieTask);
+                    }
+
+                    // ⚡ UPLOAD TẤT CẢ CÙNG LÚC - Giảm thời gian từ 3s xuống ~1s
+                    await Task.WhenAll(uploadTasks);
+
+                    // Lấy kết quả sau khi tất cả hoàn thành
+                    frontImageResult = await frontTask;
+                    backImageResult = await backTask;
+                    if (selfieTask != null)
+                    {
+                        selfieResult = await selfieTask;
                         app.SelfieImageUrl = selfieResult.ImageUrl;
                     }
 
@@ -243,22 +248,27 @@ namespace Services.ProviderApplicationServices
                 catch (Exception ex)
                 {
                     // Clean up uploaded files if any error occurred
+                    var cleanupTasks = new List<Task>();
+                    
                     if (frontImageResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(frontImageResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(frontImageResult.PublicId));
                     }
                     if (backImageResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(backImageResult.PublicId);
-                    }
-                    if (livenessVideoResult != null)
-                    {
-                        await _cloudinaryService.DeleteImageAsync(livenessVideoResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(backImageResult.PublicId));
                     }
                     if (selfieResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(selfieResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(selfieResult.PublicId));
                     }
+
+                    // Cleanup cũng song song để nhanh hơn
+                    if (cleanupTasks.Any())
+                    {
+                        await Task.WhenAll(cleanupTasks);
+                    }
+
                     throw new InvalidOperationException($"An error occurred while uploading files. Please try again. Details: {ex.Message}");
                 }
             }
@@ -301,35 +311,53 @@ namespace Services.ProviderApplicationServices
                         $"Required: ≥60%. Please upload clearer images with good lighting.");
                 }
 
-                // === BƯỚC 4: Upload files lên Cloudinary ===
+                // === BƯỚC 4: Upload files lên Cloudinary SONG SONG ===
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? frontImageResult = null;
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? backImageResult = null;
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? businessLicenseResult = null;
 
                 try
                 {
-                    // Upload CCCD mặt trước (PRIVATE)
-                    frontImageResult = await _cloudinaryService.UploadPrivateImageAsync(
+                    // Tạo danh sách tasks để upload song song
+                    var uploadTasks = new List<Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>>();
+
+                    // Task 1: Upload CCCD mặt trước (PRIVATE)
+                    var frontTask = _cloudinaryService.UploadPrivateImageAsync(
                         dto.IdCardFrontImage,
                         userId,
                         "ShareIt",
                         "business-verification");
+                    uploadTasks.Add(frontTask);
 
-                    // Upload CCCD mặt sau (PRIVATE)
-                    backImageResult = await _cloudinaryService.UploadPrivateImageAsync(
+                    // Task 2: Upload CCCD mặt sau (PRIVATE)
+                    var backTask = _cloudinaryService.UploadPrivateImageAsync(
                         dto.IdCardBackImage,
                         userId,
                         "ShareIt",
                         "business-verification");
+                    uploadTasks.Add(backTask);
 
-                    // Upload Business License (REQUIRED for Business) (PRIVATE)
+                    // Task 3: Upload Business License (REQUIRED for Business) (PRIVATE)
+                    Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>? businessLicenseTask = null;
                     if (dto.BusinessLicenseImage != null)
                     {
-                        businessLicenseResult = await _cloudinaryService.UploadPrivateImageAsync(
+                        businessLicenseTask = _cloudinaryService.UploadPrivateImageAsync(
                             dto.BusinessLicenseImage,
                             userId,
                             "ShareIt",
                             "business-license");
+                        uploadTasks.Add(businessLicenseTask);
+                    }
+
+                    // ⚡ UPLOAD TẤT CẢ CÙNG LÚC - Giảm thời gian từ 3s xuống ~1s
+                    await Task.WhenAll(uploadTasks);
+
+                    // Lấy kết quả sau khi tất cả hoàn thành
+                    frontImageResult = await frontTask;
+                    backImageResult = await backTask;
+                    if (businessLicenseTask != null)
+                    {
+                        businessLicenseResult = await businessLicenseTask;
                         app.BusinessLicenseImageUrl = businessLicenseResult.ImageUrl;
                     }
 
@@ -337,23 +365,32 @@ namespace Services.ProviderApplicationServices
                     app.IdCardFrontImageUrl = frontImageResult.ImageUrl;
                     app.IdCardBackImageUrl = backImageResult.ImageUrl;
 
-                    Console.WriteLine($"[PROVIDER APPLICATION] Business files uploaded successfully");
+                    Console.WriteLine($"[PROVIDER APPLICATION] Business files uploaded successfully (parallel upload)");
                 }
                 catch (Exception ex)
                 {
-                    // Clean up uploaded files if any error occurred
+                    // Clean up uploaded files if any error occurred (song song để nhanh hơn)
+                    var cleanupTasks = new List<Task>();
+                    
                     if (frontImageResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(frontImageResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(frontImageResult.PublicId));
                     }
                     if (backImageResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(backImageResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(backImageResult.PublicId));
                     }
                     if (businessLicenseResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(businessLicenseResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(businessLicenseResult.PublicId));
                     }
+
+                    // Cleanup cũng song song
+                    if (cleanupTasks.Any())
+                    {
+                        await Task.WhenAll(cleanupTasks);
+                    }
+
                     throw new InvalidOperationException($"An error occurred while uploading files. Please try again. Details: {ex.Message}");
                 }
             }
