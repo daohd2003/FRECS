@@ -293,6 +293,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<IProviderBankService, ProviderBankService>();
             builder.Services.AddScoped<IProviderApplicationRepository, ProviderApplicationRepository>();
             builder.Services.AddScoped<IProviderApplicationService, ProviderApplicationService>();
+            
+            // AI Services for Provider Application verification
+            builder.Services.AddScoped<Services.AI.IEkycService, Services.AI.EkycService>();
+            builder.Services.AddScoped<Services.AI.IFaceMatchService, Services.AI.FaceMatchService>();
 
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<UserContextHelper>();
@@ -314,7 +318,17 @@ namespace ShareItAPI
                 });
             builder.Services.Configure<OpenAIOptions>(builder.Configuration.GetSection("OpenAI"));
             builder.Services.AddScoped<IAiSearchService, AiSearchService>();
-            
+
+            // Cấu hình FPT.AI eKYC Service
+            builder.Services.AddHttpClient("FPTAI")
+                .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+                .ConfigureHttpClient(client =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(60); // Longer timeout for image/video processing
+                });
+            builder.Services.AddScoped<IEkycService, EkycService>();
+            builder.Services.AddScoped<IFaceMatchService, FaceMatchService>();
+
             // Cấu hình ContentModerationOptions - Key riêng cho content moderation
             builder.Services.AddHttpClient("ContentModeration")
                 .SetHandlerLifetime(TimeSpan.FromMinutes(5))
@@ -371,6 +385,10 @@ namespace ShareItAPI
             // Register SystemConfig services
             builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
             builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
+
+            // Register PolicyConfig services
+            builder.Services.AddScoped<Repositories.PolicyConfigRepositories.IPolicyConfigRepository, Repositories.PolicyConfigRepositories.PolicyConfigRepository>();
+            builder.Services.AddScoped<Services.PolicyConfigServices.IPolicyConfigService, Services.PolicyConfigServices.PolicyConfigService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 

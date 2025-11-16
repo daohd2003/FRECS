@@ -30,6 +30,17 @@ namespace Repositories.ProductRepositories
                 .Where(p => p.AvailabilityStatus == AvailabilityStatus.available); // Only available products
         }
 
+        public IQueryable<Product> GetAllWithIncludesNoFilter()
+        {
+            return _context.Products
+                .AsNoTracking()
+                .Include(p => p.Images.Where(img => img.IsPrimary || img.ImageUrl != null))
+                .Include(p => p.Category)
+                .Include(p => p.Provider)
+                    .ThenInclude(u => u.Profile);
+            // No status filter - returns ALL products
+        }
+
         public async Task<IEnumerable<Product>> GetProductsWithImagesAsync()
         {
             return await _context.Products
@@ -166,13 +177,13 @@ namespace Repositories.ProductRepositories
                 existingProduct.PurchaseQuantity = productDto.PurchaseQuantity;
                 existingProduct.RentalQuantity = productDto.RentalQuantity;
                 existingProduct.SecurityDeposit = productDto.SecurityDeposit;
-                
+
                 // Parse string sang enum
                 existingProduct.Gender = Enum.Parse<Gender>(productDto.Gender ?? "Unisex");
                 existingProduct.RentalStatus = Enum.Parse<RentalStatus>(productDto.RentalStatus ?? "Available");
                 existingProduct.PurchaseStatus = Enum.Parse<PurchaseStatus>(productDto.PurchaseStatus ?? "NotForSale");
                 existingProduct.AvailabilityStatus = Enum.Parse<AvailabilityStatus>(productDto.AvailabilityStatus ?? "available");
-                
+
                 existingProduct.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
                 // Xử lý Images riêng biệt
@@ -180,7 +191,7 @@ namespace Repositories.ProductRepositories
                 {
                     // Xóa tất cả images cũ
                     _context.ProductImages.RemoveRange(existingProduct.Images);
-                    
+
                     // Thêm images mới
                     foreach (var imageDto in productDto.Images)
                     {
@@ -229,10 +240,10 @@ namespace Repositories.ProductRepositories
             {
                 product.AvailabilityStatus = AvailabilityStatus.rejected;
             }
-            
+
             _context.Products.Update(product);
             await _context.SaveChangesAsync();
-            
+
             return true;
         }
 
@@ -255,10 +266,10 @@ namespace Repositories.ProductRepositories
 
             product.AvailabilityStatus = status;
             product.UpdatedAt = DateTimeHelper.GetVietnamTime();
-            
+
             _context.Products.Update(product);
             await _context.SaveChangesAsync();
-            
+
             return true;
         }
 

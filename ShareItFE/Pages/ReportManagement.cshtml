@@ -218,8 +218,8 @@
         position: absolute;
         top: 20px;
         right: 20px;
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
+        background: rgba(220, 38, 38, 0.9);
+        border: 2px solid white;
         color: white;
         font-size: 2rem;
         width: 50px;
@@ -229,11 +229,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.2s ease;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        font-weight: bold;
     }
     
     .image-modal .close-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: rgba(220, 38, 38, 1);
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     }
     
     /* Modal Layout - Keep 1:1 columns, but move Order Information to right column above Actions */
@@ -323,18 +327,26 @@
         position: absolute;
         top: 20px;
         right: 20px;
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
+        background: rgba(220, 38, 38, 0.9);
+        border: 2px solid white;
         color: white;
-        font-size: 24px;
-        padding: 10px 15px;
+        font-size: 28px;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         border-radius: 50%;
-        transition: background 0.2s ease;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        font-weight: bold;
     }
     
     .carousel-close:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: rgba(220, 38, 38, 1);
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     }
     
     .carousel-counter {
@@ -610,10 +622,10 @@
                         </div>
                         <div class="action-control" style="margin-bottom: 1rem;">
                             <select id="modal-admin-select" class="form-control">
-                                <option value="">Select an admin...</option>
+                                <option value="">Select admin or staff...</option>
                                 @foreach (var admin in Model.Admins)
                                 {
-                                    <option value="@admin.Id">@admin.Email</option>
+                                    <option value="@admin.Id" data-role="@admin.Role">@admin.Email (@admin.Role)</option>
                                 }
                             </select>
                             <button id="btn-assign-admin" class="btn-action btn-assign-admin">Assign</button>
@@ -723,15 +735,17 @@
             // --- Function to populate Admin Dropdown ---
             function populateAdminDropdown() {
                 const adminSelect = document.getElementById('modal-admin-select');
-                // Xóa các option cũ (trừ option đầu tiên "Select an admin...")
+                // Xóa các option cũ (trừ option đầu tiên "Select admin or staff...")
                 while (adminSelect.options.length > 1) {
                     adminSelect.remove(1);
                 }
-                // Thêm các admin mới từ danh sách
+                // Thêm các admin/staff mới từ danh sách với role
                 adminsList.forEach(admin => {
                     const option = document.createElement('option');
                     option.value = admin.id;
-                    option.textContent = admin.email || 'No Name';
+                    option.dataset.role = admin.role || 'admin';
+                    // Hiển thị email và role
+                    option.textContent = `${admin.email || 'No Email'} (${admin.role || 'admin'})`;
                     adminSelect.appendChild(option);
                 });
             }
@@ -1035,22 +1049,33 @@
                     }
                 });
             });
-            // Open message box to start chat with a user (as admin)
-            function openAdminChatWith(userId) {
+            // Open floating chat to start conversation with a user
+            function openFloatingChatWith(userId, userName) {
                 if (!userId) return;
-                const url = '/admin/messages';
-                // Prefer opening in new tab with preset query for target user if FE supports
-                window.open(url + `?with=${userId}`, '_blank');
+                
+                // Check if openFloatingChat function exists (from floating-chat-manager.js)
+                if (typeof window.openFloatingChat === 'function') {
+                    // Open floating chat with the specific user
+                    window.openFloatingChat(userId, userName || 'User', null);
+                } else if (typeof window.FloatingChatManager !== 'undefined' && typeof window.FloatingChatManager.openChatWith === 'function') {
+                    // Fallback to static method
+                    window.FloatingChatManager.openChatWith(userId, userName || 'User', null);
+                } else {
+                    console.error('FloatingChatManager not found. Make sure floating-chat-manager.js is loaded.');
+                    showToast('Chat feature is not available at the moment.', 'error');
+                }
             }
 
             document.addEventListener('click', (e) => {
                 if (e.target && e.target.id === 'btn-message-reporter') {
                     const id = e.target.dataset.userId;
-                    openAdminChatWith(id);
+                    const name = document.getElementById('modal-reporter-name')?.textContent || 'Reporter';
+                    openFloatingChatWith(id, name);
                 }
                 if (e.target && e.target.id === 'btn-message-reportee') {
                     const id = e.target.dataset.userId;
-                    openAdminChatWith(id);
+                    const name = document.getElementById('modal-reportee-name')?.textContent || 'Reportee';
+                    openFloatingChatWith(id, name);
                 }
             });
 
@@ -1065,7 +1090,7 @@
 
             document.getElementById('btn-assign-admin').addEventListener('click', () => {
                 const newAdminId = document.getElementById('modal-admin-select').value;
-                if (!newAdminId) return showToast('Please select an admin.', 'warning');
+                if (!newAdminId) return showToast('Please select an admin or staff member.', 'warning');
                 updateReportAction('assign', { reportId: (currentReport.id || currentReport.Id), newAdminId: newAdminId });
             });
 
@@ -1224,5 +1249,4 @@
             });
         });
     </script>
-}
 }

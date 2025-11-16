@@ -18,6 +18,8 @@ namespace BusinessObject.Mappings
             CreateMap<User, AdminViewModel>()
                 // Chỉ định rằng thuộc tính FullName của AdminViewModel sẽ được lấy từ User.Profile.FullName
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.Profile.FullName))
+                // Map Role để hiển thị trong dropdown
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role.ToString()))
                 // Tạm thời bỏ qua ActiveTaskCount để giải quyết lỗi trước mắt.
                 // Logic đếm số task sẽ được thêm vào sau.
                 .ForMember(dest => dest.ActiveTaskCount, opt => opt.Ignore());

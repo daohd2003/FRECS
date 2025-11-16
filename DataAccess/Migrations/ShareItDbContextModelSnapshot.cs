@@ -604,6 +604,37 @@ namespace DataAccess.Migrations
                     b.ToTable("OrderItems");
                 });
 
+            modelBuilder.Entity("BusinessObject.Models.PolicyConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PolicyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedByAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByAdminId");
+
+                    b.ToTable("PolicyConfigs");
+                });
+
             modelBuilder.Entity("BusinessObject.Models.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -767,10 +798,47 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("BusinessLicenseImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("BusinessName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("CccdAddress")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<double?>("CccdConfidenceScore")
+                        .HasColumnType("float");
+
+                    b.Property<string>("CccdDateOfBirth")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CccdFullName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("CccdIdNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CccdSex")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CccdVerificationError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("CccdVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("CccdVerifiedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("ContactPhone")
                         .HasMaxLength(255)
@@ -778,6 +846,12 @@ namespace DataAccess.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<double?>("FaceMatchScore")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("FaceMatched")
+                        .HasColumnType("bit");
 
                     b.Property<string>("IdCardBackImageUrl")
                         .HasMaxLength(500)
@@ -791,6 +865,17 @@ namespace DataAccess.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<bool>("PrivacyPolicyAgreed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("PrivacyPolicyAgreedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProviderType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("ReviewComment")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -800,6 +885,10 @@ namespace DataAccess.Migrations
 
                     b.Property<Guid?>("ReviewedByAdminId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SelfieImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1432,6 +1521,15 @@ namespace DataAccess.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("BusinessObject.Models.PolicyConfig", b =>
+                {
+                    b.HasOne("BusinessObject.Models.User", "UpdatedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByAdminId");
+
+                    b.Navigation("UpdatedByAdmin");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Product", b =>

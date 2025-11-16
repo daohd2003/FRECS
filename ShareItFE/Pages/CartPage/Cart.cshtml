@@ -499,7 +499,9 @@
                     // Update item total price
                     const itemTotalElement = document.getElementById(`total-price-${itemId}`);
                     if (itemTotalElement) {
-                        const newTotal = (pricePerUnit * (rentalDays || 1) * newQuantity);
+                        // For purchase items, don't multiply by rental days
+                        const multiplier = transactionType === 'purchase' ? 1 : (rentalDays || 1);
+                        const newTotal = (pricePerUnit * multiplier * newQuantity);
                         itemTotalElement.textContent = newTotal.toLocaleString() + ' VND';
                     }
 

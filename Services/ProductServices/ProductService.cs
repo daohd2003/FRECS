@@ -28,7 +28,7 @@ namespace Services.ProductServices
 
         public ProductService(
             IProductRepository productRepository,
-            IMapper mapper, 
+            IMapper mapper,
             IContentModerationService contentModerationService,
             IServiceProvider serviceProvider,
             IConversationService conversationService,
@@ -50,6 +50,12 @@ namespace Services.ProductServices
                 .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
         }
 
+        public IQueryable<ProductDTO> GetAllNoFilter()
+        {
+            return _productRepository.GetAllWithIncludesNoFilter()
+                .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
+        }
+
         public async Task<ProductDTO?> GetByIdAsync(Guid id)
         {
             var product = await _productRepository.GetProductWithImagesByIdAsync(id);
@@ -59,36 +65,36 @@ namespace Services.ProductServices
 
 
         public async Task<ProductDTO> AddAsync(ProductRequestDTO dto)
-            {
-                // Bước 1: Tạo product với images thông qua repository
-                var newProduct = await _productRepository.AddProductWithImagesAsync(dto);
+        {
+            // Bước 1: Tạo product với images thông qua repository
+            var newProduct = await _productRepository.AddProductWithImagesAsync(dto);
 
-                // Bước 2: SYNCHRONOUS AI Moderation Check (AFTER creation)
-                Console.WriteLine($"[PRODUCT SERVICE] Running SYNCHRONOUS AI moderation check for: '{newProduct.Name}'");
-                
-                ContentModerationResultDTO moderationResult;
-                try
+            // Bước 2: SYNCHRONOUS AI Moderation Check (AFTER creation)
+            Console.WriteLine($"[PRODUCT SERVICE] Running SYNCHRONOUS AI moderation check for: '{newProduct.Name}'");
+
+            ContentModerationResultDTO moderationResult;
+            try
+            {
+                moderationResult = await _contentModerationService.CheckProductContentAsync(
+                    newProduct.Name,
+                    newProduct.Description
+                );
+
+                Console.WriteLine($"[PRODUCT SERVICE] AI Check Result - IsAppropriate: {moderationResult.IsAppropriate}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PRODUCT SERVICE] AI moderation failed: {ex.Message}");
+
+                // FAIL-SAFE: If AI service is down, set to PENDING for manual review
+                // This ensures NO violated content ever goes live
+                moderationResult = new ContentModerationResultDTO
                 {
-                    moderationResult = await _contentModerationService.CheckProductContentAsync(
-                        newProduct.Name,
-                        newProduct.Description
-                    );
-                    
-                    Console.WriteLine($"[PRODUCT SERVICE] AI Check Result - IsAppropriate: {moderationResult.IsAppropriate}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[PRODUCT SERVICE] AI moderation failed: {ex.Message}");
-                    
-                    // FAIL-SAFE: If AI service is down, set to PENDING for manual review
-                    // This ensures NO violated content ever goes live
-                    moderationResult = new ContentModerationResultDTO
-                    {
-                        IsAppropriate = false,
-                        Reason = "AI service unavailable - pending manual review",
-                        ViolatedTerms = new List<string> { "ai_service_error" }
-                    };
-                }
+                    IsAppropriate = false,
+                    Reason = "AI service unavailable - pending manual review",
+                    ViolatedTerms = new List<string> { "ai_service_error" }
+                };
+            }
 
             // Bước 3: Set product status based on AI result
             if (!moderationResult.IsAppropriate)
@@ -98,24 +104,17 @@ namespace Services.ProductServices
                     newProduct.Id,
                     AvailabilityStatus.pending
                 );
-                
-                // Save violation reason to database
-                newProduct.ViolationReason = moderationResult.Reason ?? "Content violates community guidelines";
-                await _productRepository.UpdateAsync(newProduct);
-                
                 Console.WriteLine($"[PRODUCT SERVICE] VIOLATED - Product set to PENDING");
                 Console.WriteLine($"[PRODUCT SERVICE] Reason: {moderationResult.Reason}");
                 Console.WriteLine($"[PRODUCT SERVICE] Violated terms: {string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())}");
             }
             else
             {
-                // PASSED - Keep as Available (customers can see) and clear violation reason
-                newProduct.ViolationReason = null;
-                await _productRepository.UpdateAsync(newProduct);
+                // PASSED - Keep as Available (customers can see)
                 Console.WriteLine($"[PRODUCT SERVICE] PASSED - Product remains AVAILABLE");
             }
 
-                Console.WriteLine($"[PRODUCT SERVICE] Product {newProduct.Id} created with status: {newProduct.AvailabilityStatus}");
+            Console.WriteLine($"[PRODUCT SERVICE] Product {newProduct.Id} created with status: {newProduct.AvailabilityStatus}");
 
             // Bước 4: Send notification if violated
             if (!moderationResult.IsAppropriate)
@@ -156,8 +155,8 @@ namespace Services.ProductServices
         public async Task<bool> UpdateAsync(ProductDTO productDto)
         {
             // Lấy thông tin product hiện tại
-                var existingProduct = await _productRepository.GetProductWithImagesAndProviderAsync(productDto.Id);
-                if (existingProduct == null) return false;
+            var existingProduct = await _productRepository.GetProductWithImagesAndProviderAsync(productDto.Id);
+            if (existingProduct == null) return false;
 
             // Nếu có images mới, chỉ xóa những ảnh cũ không còn trong danh sách mới
             if (productDto.Images != null && productDto.Images.Any())
@@ -166,9 +165,9 @@ namespace Services.ProductServices
             }
 
             // Kiểm tra xem name/description có thay đổi không
-                var nameChanged = existingProduct.Name != productDto.Name;
-                var descriptionChanged = existingProduct.Description != productDto.Description;
-            
+            var nameChanged = existingProduct.Name != productDto.Name;
+            var descriptionChanged = existingProduct.Description != productDto.Description;
+
             Console.WriteLine($"[UPDATE] Product {productDto.Id} - Name changed: {nameChanged} | Description changed: {descriptionChanged}");
             Console.WriteLine($"[UPDATE] Old Name: '{existingProduct.Name}' → New Name: '{productDto.Name}'");
             Console.WriteLine($"[UPDATE] Old Description: '{existingProduct.Description}' → New Description: '{productDto.Description}'");
@@ -183,25 +182,25 @@ namespace Services.ProductServices
                 var productName = productDto.Name;
                 var productDescription = productDto.Description;
                 var providerId = existingProduct.ProviderId;
-                
+
                 Console.WriteLine($"[UPDATE] ⚡ Starting SYNCHRONOUS moderation check for Product {productId}");
-                
+
                 try
                 {
                     Console.WriteLine($"[UPDATE] Calling AI moderation service...");
-                    
-                                var moderationResult = await _contentModerationService.CheckProductContentAsync(
-                                    productName,
-                                    productDescription
-                                );
+
+                    var moderationResult = await _contentModerationService.CheckProductContentAsync(
+                        productName,
+                        productDescription
+                    );
 
                     Console.WriteLine($"[UPDATE] AI Check completed!");
                     Console.WriteLine($"[UPDATE] IsAppropriate: {moderationResult.IsAppropriate}");
                     Console.WriteLine($"[UPDATE] Reason: {moderationResult.Reason}");
                     Console.WriteLine($"[UPDATE] Violated terms: {string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())}");
 
-                                    if (moderationResult.IsAppropriate)
-                                    {
+                    if (moderationResult.IsAppropriate)
+                    {
                         Console.WriteLine($"[UPDATE] Product {productId} PASSED moderation");
 
                         // Nếu product đang PENDING → Set về AVAILABLE và xóa violation reason
@@ -217,13 +216,13 @@ namespace Services.ProductServices
                             existingProduct.ViolationReason = null;
                             await _productRepository.UpdateAsync(existingProduct);
                         }
-                                    }
+                    }
                     else
                     {
                         // VI PHẠM - Set PENDING + Save violation reason + Send notification
                         Console.WriteLine($"[UPDATE] Product {productId} VIOLATED content policy!");
                         Console.WriteLine($"[UPDATE] Current status: {existingProduct.AvailabilityStatus} → Setting to PENDING");
-                        
+
                         // Set to PENDING (kể cả khi đang AVAILABLE)
                         await _productRepository.UpdateProductAvailabilityStatusAsync(
                             productId,
@@ -268,12 +267,12 @@ namespace Services.ProductServices
                     Console.WriteLine($"[UPDATE] Exception Type: {moderationEx.GetType().Name}");
                     Console.WriteLine($"[UPDATE] Error Message: {moderationEx.Message}");
                     Console.WriteLine($"[UPDATE] Stack Trace: {moderationEx.StackTrace}");
-                    
+
                     if (moderationEx.InnerException != null)
                     {
                         Console.WriteLine($"[UPDATE] Inner Exception: {moderationEx.InnerException.Message}");
                     }
-                    
+
                     // Fail-safe: Nếu AI service lỗi - Set PENDING để admin review thủ công
                     Console.WriteLine($"[UPDATE] Setting product to PENDING as fail-safe due to moderation service failure");
                     await _productRepository.UpdateProductAvailabilityStatusAsync(
@@ -323,7 +322,7 @@ namespace Services.ProductServices
 
                 // Update in database
                 var result = await _productRepository.UpdateProductWithImagesAsync(productDto);
-                
+
                 Console.WriteLine($"[PRODUCT SERVICE] Updated images for product {productId}. Result: {result}");
                 return result;
             }
@@ -412,27 +411,27 @@ namespace Services.ProductServices
                 // Cloudinary URL format: .../upload/v[version]/[publicId].[extension]
                 var uri = new Uri(imageUrl);
                 var path = uri.AbsolutePath;
-                
+
                 // Find the upload segment
                 var uploadIndex = path.IndexOf("/upload/");
                 if (uploadIndex == -1) return null;
-                
+
                 // Get everything after /upload/v[version]/
                 var afterUpload = path.Substring(uploadIndex + "/upload/".Length);
-                
+
                 // Skip version (v123456789)
                 var versionEndIndex = afterUpload.IndexOf('/');
                 if (versionEndIndex == -1) return null;
-                
+
                 var publicIdWithExtension = afterUpload.Substring(versionEndIndex + 1);
-                
+
                 // Remove file extension
                 var lastDotIndex = publicIdWithExtension.LastIndexOf('.');
                 if (lastDotIndex != -1)
                 {
                     return publicIdWithExtension.Substring(0, lastDotIndex);
                 }
-                
+
                 return publicIdWithExtension;
             }
             catch (Exception ex)
@@ -449,18 +448,18 @@ namespace Services.ProductServices
                 // Lấy Staff đầu tiên từ database (KHÔNG bao gồm Admin)
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ShareItDbContext>();
-                
+
                 var staff = await dbContext.Users
                     .Where(u => u.Role == BusinessObject.Enums.UserRole.staff)
                     .OrderBy(u => u.CreatedAt) // Lấy staff đầu tiên (oldest)
                     .FirstOrDefaultAsync();
-                
+
                 if (staff != null)
                 {
                     Console.WriteLine($"[STAFF CONTEXT] Using default Staff: {staff.Id} ({staff.Email})");
                     return staff.Id;
                 }
-                
+
                 Console.WriteLine("[STAFF CONTEXT] No Staff account found in database");
                 return null;
             }

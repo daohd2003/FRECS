@@ -47,12 +47,17 @@ namespace ShareItFE.Pages.Provider
 
             public IFormFile? IdCardFrontImage { get; set; }
             public IFormFile? IdCardBackImage { get; set; }
+            public IFormFile? SelfieImage { get; set; }
+            public IFormFile? BusinessLicenseImage { get; set; }
+
+            [Required(ErrorMessage = "You must agree to the privacy policy")]
+            public bool PrivacyPolicyAgreed { get; set; } = false;
         }
 
         public void OnGet()
         {
             ApiBaseUrl = _configuration.GetApiRootUrl(_environment);
-            
+
             // Clear ModelState và reset Input để tránh browser autofill từ cache
             ModelState.Clear();
             Input = new InputModel();
@@ -133,6 +138,20 @@ namespace ShareItFE.Pages.Provider
                 AddString("ContactPhone", "ContactPhone", "Input.ContactPhone");
                 AddString("Notes", "Notes", "Input.Notes");
 
+                // Add ProviderType based on TaxId length
+                var taxId = GetValue("TaxId", "Input.TaxId");
+                var taxIdClean = new string(taxId.Where(char.IsDigit).ToArray());
+                var providerType = taxIdClean.Length == 12 ? "Individual" : "Business";
+                content.Add(new StringContent(providerType), "ProviderType");
+
+                // Add PrivacyPolicyAgreed
+                var privacyAgreed = GetValue("PrivacyPolicyAgreed", "Input.PrivacyPolicyAgreed");
+                // Checkbox sends "on" or "true" when checked, empty when unchecked
+                var isAgreed = !string.IsNullOrWhiteSpace(privacyAgreed) &&
+                               (privacyAgreed.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                                privacyAgreed.Equals("on", StringComparison.OrdinalIgnoreCase));
+                content.Add(new StringContent(isAgreed ? "true" : "false"), "PrivacyPolicyAgreed");
+
                 IFormFile? TryGetFile(params string[] keys)
                 {
                     foreach (var k in keys)
@@ -145,6 +164,8 @@ namespace ShareItFE.Pages.Provider
 
                 var front = TryGetFile("IdCardFrontImage", "Input.IdCardFrontImage");
                 var back = TryGetFile("IdCardBackImage", "Input.IdCardBackImage");
+                var selfie = TryGetFile("SelfieImage", "Input.SelfieImage");
+                var businessLicense = TryGetFile("BusinessLicenseImage", "Input.BusinessLicenseImage");
 
                 if (front != null)
                 {
@@ -157,6 +178,18 @@ namespace ShareItFE.Pages.Provider
                     var sc = new StreamContent(back.OpenReadStream());
                     sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(back.ContentType ?? "application/octet-stream");
                     content.Add(sc, "IdCardBackImage", back.FileName);
+                }
+                if (selfie != null)
+                {
+                    var sc = new StreamContent(selfie.OpenReadStream());
+                    sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(selfie.ContentType ?? "application/octet-stream");
+                    content.Add(sc, "SelfieImage", selfie.FileName);
+                }
+                if (businessLicense != null)
+                {
+                    var sc = new StreamContent(businessLicense.OpenReadStream());
+                    sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(businessLicense.ContentType ?? "application/octet-stream");
+                    content.Add(sc, "BusinessLicenseImage", businessLicense.FileName);
                 }
 
                 var res = await client.PostAsync($"{root}/api/provider-applications", content);

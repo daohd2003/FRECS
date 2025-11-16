@@ -6,6 +6,7 @@ using Repositories.ProviderApplicationRepositories;
 using Repositories.UserRepositories;
 using Services.CloudServices;
 using Services.EmailServices;
+using Services.AI;
 
 namespace Services.ProviderApplicationServices
 {
@@ -15,17 +16,23 @@ namespace Services.ProviderApplicationServices
         private readonly IUserRepository _userRepository;
         private readonly IEmailService _emailService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly IEkycService _ekycService;
+        private readonly IFaceMatchService _faceMatchService;
 
         public ProviderApplicationService(
-            IProviderApplicationRepository applicationRepository, 
+            IProviderApplicationRepository applicationRepository,
             IUserRepository userRepository,
             IEmailService emailService,
-            ICloudinaryService cloudinaryService)
+            ICloudinaryService cloudinaryService,
+            IEkycService ekycService,
+            IFaceMatchService faceMatchService)
         {
             _applicationRepository = applicationRepository;
             _userRepository = userRepository;
             _emailService = emailService;
             _cloudinaryService = cloudinaryService;
+            _ekycService = ekycService;
+            _faceMatchService = faceMatchService;
         }
 
         public async Task<ProviderApplication> ApplyAsync(Guid userId, ProviderApplicationCreateDto dto)
@@ -43,6 +50,12 @@ namespace Services.ProviderApplicationServices
                 return existingPending;
             }
 
+            // Validate Privacy Policy Agreement
+            if (!dto.PrivacyPolicyAgreed)
+            {
+                throw new InvalidOperationException("You must agree to the privacy policy to continue.");
+            }
+
             var app = new ProviderApplication
             {
                 Id = Guid.NewGuid(),
@@ -51,54 +64,334 @@ namespace Services.ProviderApplicationServices
                 TaxId = dto.TaxId,
                 ContactPhone = dto.ContactPhone,
                 Notes = dto.Notes,
+                ProviderType = dto.ProviderType,
+                PrivacyPolicyAgreed = dto.PrivacyPolicyAgreed,
+                PrivacyPolicyAgreedAt = DateTimeHelper.GetVietnamTime(),
                 Status = ProviderApplicationStatus.pending,
                 CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
-            // Logic để xử lý ID card images cho cá nhân kinh doanh (12 số)
+            // Validate Tax ID format
             var taxId = dto.TaxId?.Trim();
-            if (taxId != null && taxId.Length == 12 && taxId.All(char.IsDigit))
+            if (string.IsNullOrEmpty(taxId) || !taxId.All(char.IsDigit))
             {
-                // Đây là cá nhân - yêu cầu cả 2 ảnh
+                throw new InvalidOperationException("Invalid Tax ID. Please enter 10 digits (business) or 12 digits (individual).");
+            }
+
+            // Determine provider type based on Tax ID length
+            var isIndividual = taxId.Length == 12;
+            var isBusiness = taxId.Length == 10;
+
+            if (!isIndividual && !isBusiness)
+            {
+                throw new InvalidOperationException("Tax ID must be 10 digits (business) or 12 digits (individual).");
+            }
+
+            // Validate required images based on provider type
+            if (dto.IdCardFrontImage == null || dto.IdCardBackImage == null)
+            {
+                throw new InvalidOperationException("Please provide both front and back ID card images.");
+            }
+
+            if (isIndividual && dto.SelfieImage == null)
+            {
+                throw new InvalidOperationException("Individual providers must provide a selfie image for face verification.");
+            }
+
+            if (isBusiness && dto.BusinessLicenseImage == null)
+            {
+                throw new InvalidOperationException("Business providers must provide a business license image.");
+            }
+
+            // === PROCESSING LOGIC ===
+            if (isIndividual)
+            {
+                // Individual - require both ID card images
                 if (dto.IdCardFrontImage == null || dto.IdCardBackImage == null)
                 {
-                    throw new InvalidOperationException("Vui lòng cung cấp đủ ảnh CCCD mặt trước và mặt sau.");
+                    throw new InvalidOperationException("Please provide both front and back ID card images.");
                 }
 
-                // Upload ảnh mặt trước
+                // === BƯỚC 1: VERIFY CCCD bằng FPT.AI trước khi upload ===
+                var verificationResult = await _ekycService.VerifyCccdBothSidesAsync(
+                    dto.IdCardFrontImage,
+                    dto.IdCardBackImage);
+
+                // Lưu kết quả verification
+                app.CccdVerified = verificationResult.IsValid;
+                app.CccdIdNumber = verificationResult.IdNumber;
+                app.CccdFullName = verificationResult.FullName;
+                app.CccdDateOfBirth = verificationResult.DateOfBirth;
+                app.CccdSex = verificationResult.Sex;
+                app.CccdAddress = verificationResult.Address;
+                app.CccdConfidenceScore = verificationResult.Confidence;
+                app.CccdVerifiedAt = DateTimeHelper.GetVietnamTime();
+                app.CccdVerificationError = verificationResult.ErrorMessage;
+
+                // === BƯỚC 2: Kiểm tra xem CCCD có hợp lệ không ===
+                if (!verificationResult.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        $"CCCD verification failed: {verificationResult.ErrorMessage ?? "Unable to verify ID card. Please ensure images are clear and of good quality."}");
+                }
+
+                // === BƯỚC 3: So sánh Tax ID với số CCCD (CHỈ CHO CÁ NHÂN) ===
+                // ⚠️ IMPORTANT: Chỉ check match cho Individual (12 số)
+                // Business (10 số) không cần check vì Tax ID là mã doanh nghiệp, không phải số CCCD
+                var cccdNumber = verificationResult.IdNumber?.Replace(" ", "").Trim();
+                var inputTaxId = taxId.Replace(" ", "").Trim();
+
+                if (!string.IsNullOrEmpty(cccdNumber) && cccdNumber != inputTaxId)
+                {
+                    throw new InvalidOperationException(
+                        $"Personal Tax ID ({inputTaxId}) does not match ID card number ({cccdNumber}). Please verify your information.");
+                }
+
+                // === BƯỚC 4: Kiểm tra confidence score (ít nhất 60%) ===
+                // Production threshold: 60% for reliable CCCD verification
+                if (verificationResult.Confidence < 0.60)
+                {
+                    throw new InvalidOperationException(
+                        $"CCCD verification confidence too low ({verificationResult.Confidence:P}). " +
+                        $"Required: ≥60%. Please upload clearer images with good lighting.");
+                }
+
+                // === BƯỚC 5: LIVENESS DETECTION (Verify người thật) ===
+                // SKIPPED: Liveness bị bỏ qua để đơn giản hóa flow
+                // Chỉ dùng CCCD + Face Matching (bảo mật ~80%)
+
+                // === BƯỚC 6: FACE MATCHING (So khớp selfie với CCCD) ===
+                if (dto.SelfieImage == null || dto.SelfieImage.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        "Selfie image is required for face matching verification. Please capture a clear photo of your face.");
+                }
+
+                var faceMatchResult = await _faceMatchService.CompareFacesAsync(
+                    dto.SelfieImage,
+                    dto.IdCardFrontImage); // Compare with front image of CCCD
+
+                // Lưu kết quả face matching
+                app.FaceMatched = faceMatchResult.IsMatched;
+                app.FaceMatchScore = faceMatchResult.MatchScore;
+
+                if (!faceMatchResult.IsMatched)
+                {
+                    throw new InvalidOperationException(
+                        $"Face matching failed: {faceMatchResult.ErrorMessage ?? "Your face does not match the CCCD photo. Please ensure you're using your own ID card and take a clear selfie."}");
+                }
+
+                // Kiểm tra match score (ít nhất 70% - Production)
+                // Production threshold: 70% for reliable face matching
+                if (faceMatchResult.MatchScore < 0.70)
+                {
+                    throw new InvalidOperationException(
+                        $"Face matching confidence too low ({faceMatchResult.MatchScore:P}). " +
+                        $"Required: ≥70%. " +
+                        $"Tips: Upload clearer CCCD photo, take selfie with similar lighting/angle.");
+                }
+
+                // === BƯỚC 7: Upload tất cả files lên Cloudinary SONG SONG (sau khi verify thành công) ===
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? frontImageResult = null;
                 BusinessObject.DTOs.ProductDto.ImageUploadResult? backImageResult = null;
+                BusinessObject.DTOs.ProductDto.ImageUploadResult? selfieResult = null;
 
                 try
                 {
-                    frontImageResult = await _cloudinaryService.UploadSingleImageAsync(
-                        dto.IdCardFrontImage, 
-                        userId, 
-                        "ShareIt", 
-                        "provider-verification");
+                    // Tạo danh sách tasks để upload song song
+                    var uploadTasks = new List<Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>>();
 
-                    // Upload ảnh mặt sau
-                    backImageResult = await _cloudinaryService.UploadSingleImageAsync(
-                        dto.IdCardBackImage, 
-                        userId, 
-                        "ShareIt", 
+                    // Task 1: Upload CCCD mặt trước (PRIVATE)
+                    var frontTask = _cloudinaryService.UploadPrivateImageAsync(
+                        dto.IdCardFrontImage,
+                        userId,
+                        "ShareIt",
                         "provider-verification");
+                    uploadTasks.Add(frontTask);
 
+                    // Task 2: Upload CCCD mặt sau (PRIVATE)
+                    var backTask = _cloudinaryService.UploadPrivateImageAsync(
+                        dto.IdCardBackImage,
+                        userId,
+                        "ShareIt",
+                        "provider-verification");
+                    uploadTasks.Add(backTask);
+
+                    // Task 3: Upload Selfie image (REQUIRED for Face Matching) (PRIVATE)
+                    Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>? selfieTask = null;
+                    if (dto.SelfieImage != null)
+                    {
+                        selfieTask = _cloudinaryService.UploadPrivateImageAsync(
+                            dto.SelfieImage,
+                            userId,
+                            "ShareIt",
+                            "provider-selfie");
+                        uploadTasks.Add(selfieTask);
+                    }
+
+                    // ⚡ UPLOAD TẤT CẢ CÙNG LÚC - Giảm thời gian từ 3s xuống ~1s
+                    await Task.WhenAll(uploadTasks);
+
+                    // Lấy kết quả sau khi tất cả hoàn thành
+                    frontImageResult = await frontTask;
+                    backImageResult = await backTask;
+                    if (selfieTask != null)
+                    {
+                        selfieResult = await selfieTask;
+                        app.SelfieImageUrl = selfieResult.ImageUrl;
+                    }
+
+                    // Lưu URLs
                     app.IdCardFrontImageUrl = frontImageResult.ImageUrl;
                     app.IdCardBackImageUrl = backImageResult.ImageUrl;
                 }
                 catch (Exception ex)
                 {
-                    // Clean up uploaded images if any error occurred
+                    // Clean up uploaded files if any error occurred
+                    var cleanupTasks = new List<Task>();
+                    
                     if (frontImageResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(frontImageResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(frontImageResult.PublicId));
                     }
                     if (backImageResult != null)
                     {
-                        await _cloudinaryService.DeleteImageAsync(backImageResult.PublicId);
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(backImageResult.PublicId));
                     }
-                    throw new InvalidOperationException($"Có lỗi xảy ra trong quá trình tải ảnh lên. Vui lòng thử lại. Chi tiết: {ex.Message}");
+                    if (selfieResult != null)
+                    {
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(selfieResult.PublicId));
+                    }
+
+                    // Cleanup cũng song song để nhanh hơn
+                    if (cleanupTasks.Any())
+                    {
+                        await Task.WhenAll(cleanupTasks);
+                    }
+
+                    throw new InvalidOperationException($"An error occurred while uploading files. Please try again. Details: {ex.Message}");
+                }
+            }
+            else if (isBusiness)
+            {
+                // === BUSINESS PROVIDER (10-digit Tax ID) ===
+                // ⚠️ IMPORTANT: Tax ID (10 số) là mã số thuế DOANH NGHIỆP
+                // CCCD là của người đại diện → KHÔNG CẦN check Tax ID match với CCCD
+                Console.WriteLine($"[PROVIDER APPLICATION] Processing BUSINESS application with Tax ID: {taxId}");
+
+                // === BƯỚC 1: VERIFY CCCD của người đại diện ===
+                var verificationResult = await _ekycService.VerifyCccdBothSidesAsync(
+                    dto.IdCardFrontImage,
+                    dto.IdCardBackImage);
+
+                // Lưu kết quả verification
+                app.CccdVerified = verificationResult.IsValid;
+                app.CccdIdNumber = verificationResult.IdNumber;
+                app.CccdFullName = verificationResult.FullName;
+                app.CccdDateOfBirth = verificationResult.DateOfBirth;
+                app.CccdSex = verificationResult.Sex;
+                app.CccdAddress = verificationResult.Address;
+                app.CccdConfidenceScore = verificationResult.Confidence;
+                app.CccdVerifiedAt = DateTimeHelper.GetVietnamTime();
+                app.CccdVerificationError = verificationResult.ErrorMessage;
+
+                // === BƯỚC 2: Kiểm tra xem CCCD có hợp lệ không ===
+                if (!verificationResult.IsValid)
+                {
+                    throw new InvalidOperationException(
+                        $"ID card verification failed: {verificationResult.ErrorMessage ?? "Unable to verify ID card. Please ensure images are clear and of good quality."}");
+                }
+
+                // === BƯỚC 3: Kiểm tra confidence score (ít nhất 60%) ===
+                // Production threshold: 60% for reliable CCCD verification
+                if (verificationResult.Confidence < 0.60)
+                {
+                    throw new InvalidOperationException(
+                        $"CCCD verification confidence too low ({verificationResult.Confidence:P}). " +
+                        $"Required: ≥60%. Please upload clearer images with good lighting.");
+                }
+
+                // === BƯỚC 4: Upload files lên Cloudinary SONG SONG ===
+                BusinessObject.DTOs.ProductDto.ImageUploadResult? frontImageResult = null;
+                BusinessObject.DTOs.ProductDto.ImageUploadResult? backImageResult = null;
+                BusinessObject.DTOs.ProductDto.ImageUploadResult? businessLicenseResult = null;
+
+                try
+                {
+                    // Tạo danh sách tasks để upload song song
+                    var uploadTasks = new List<Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>>();
+
+                    // Task 1: Upload CCCD mặt trước (PRIVATE)
+                    var frontTask = _cloudinaryService.UploadPrivateImageAsync(
+                        dto.IdCardFrontImage,
+                        userId,
+                        "ShareIt",
+                        "business-verification");
+                    uploadTasks.Add(frontTask);
+
+                    // Task 2: Upload CCCD mặt sau (PRIVATE)
+                    var backTask = _cloudinaryService.UploadPrivateImageAsync(
+                        dto.IdCardBackImage,
+                        userId,
+                        "ShareIt",
+                        "business-verification");
+                    uploadTasks.Add(backTask);
+
+                    // Task 3: Upload Business License (REQUIRED for Business) (PRIVATE)
+                    Task<BusinessObject.DTOs.ProductDto.ImageUploadResult>? businessLicenseTask = null;
+                    if (dto.BusinessLicenseImage != null)
+                    {
+                        businessLicenseTask = _cloudinaryService.UploadPrivateImageAsync(
+                            dto.BusinessLicenseImage,
+                            userId,
+                            "ShareIt",
+                            "business-license");
+                        uploadTasks.Add(businessLicenseTask);
+                    }
+
+                    // ⚡ UPLOAD TẤT CẢ CÙNG LÚC - Giảm thời gian từ 3s xuống ~1s
+                    await Task.WhenAll(uploadTasks);
+
+                    // Lấy kết quả sau khi tất cả hoàn thành
+                    frontImageResult = await frontTask;
+                    backImageResult = await backTask;
+                    if (businessLicenseTask != null)
+                    {
+                        businessLicenseResult = await businessLicenseTask;
+                        app.BusinessLicenseImageUrl = businessLicenseResult.ImageUrl;
+                    }
+
+                    // Lưu URLs
+                    app.IdCardFrontImageUrl = frontImageResult.ImageUrl;
+                    app.IdCardBackImageUrl = backImageResult.ImageUrl;
+
+                    Console.WriteLine($"[PROVIDER APPLICATION] Business files uploaded successfully (parallel upload)");
+                }
+                catch (Exception ex)
+                {
+                    // Clean up uploaded files if any error occurred (song song để nhanh hơn)
+                    var cleanupTasks = new List<Task>();
+                    
+                    if (frontImageResult != null)
+                    {
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(frontImageResult.PublicId));
+                    }
+                    if (backImageResult != null)
+                    {
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(backImageResult.PublicId));
+                    }
+                    if (businessLicenseResult != null)
+                    {
+                        cleanupTasks.Add(_cloudinaryService.DeleteImageAsync(businessLicenseResult.PublicId));
+                    }
+
+                    // Cleanup cũng song song
+                    if (cleanupTasks.Any())
+                    {
+                        await Task.WhenAll(cleanupTasks);
+                    }
+
+                    throw new InvalidOperationException($"An error occurred while uploading files. Please try again. Details: {ex.Message}");
                 }
             }
 
@@ -174,7 +467,7 @@ namespace Services.ProviderApplicationServices
             // Update user role to provider
             var user = await _userRepository.GetByIdAsync(app.UserId);
             if (user == null) return false;
-            
+
             user.Role = UserRole.provider;
             await _userRepository.UpdateAsync(user);
 
@@ -217,8 +510,8 @@ namespace Services.ProviderApplicationServices
             try
             {
                 await _emailService.SendProviderApplicationRejectedEmailAsync(
-                    user.Email, 
-                    app.BusinessName, 
+                    user.Email,
+                    app.BusinessName,
                     rejectionReason);
             }
             catch (Exception ex)
@@ -228,6 +521,84 @@ namespace Services.ProviderApplicationServices
             }
 
             return true;
+        }
+
+        // Get application images with signed URLs for private access (Admin and Staff)
+        public async Task<Dictionary<string, string>> GetApplicationImagesWithSignedUrlsAsync(Guid applicationId, Guid requesterId)
+        {
+            var app = await _applicationRepository.GetByIdAsync(applicationId);
+            if (app == null)
+            {
+                throw new Exception("Application not found");
+            }
+
+            var signedUrls = new Dictionary<string, string>();
+
+            // Extract publicId from URL and generate signed URL
+            if (!string.IsNullOrEmpty(app.IdCardFrontImageUrl))
+            {
+                var publicId = ExtractPublicIdFromUrl(app.IdCardFrontImageUrl);
+                signedUrls["idCardFront"] = _cloudinaryService.GenerateSignedUrl(publicId, 60);
+            }
+
+            if (!string.IsNullOrEmpty(app.IdCardBackImageUrl))
+            {
+                var publicId = ExtractPublicIdFromUrl(app.IdCardBackImageUrl);
+                signedUrls["idCardBack"] = _cloudinaryService.GenerateSignedUrl(publicId, 60);
+            }
+
+            if (!string.IsNullOrEmpty(app.SelfieImageUrl))
+            {
+                var publicId = ExtractPublicIdFromUrl(app.SelfieImageUrl);
+                signedUrls["selfie"] = _cloudinaryService.GenerateSignedUrl(publicId, 60);
+            }
+
+            if (!string.IsNullOrEmpty(app.BusinessLicenseImageUrl))
+            {
+                var publicId = ExtractPublicIdFromUrl(app.BusinessLicenseImageUrl);
+                signedUrls["businessLicense"] = _cloudinaryService.GenerateSignedUrl(publicId, 60);
+            }
+
+            return signedUrls;
+        }
+
+        // Helper method to extract publicId from Cloudinary URL
+        private string ExtractPublicIdFromUrl(string url)
+        {
+            // Example URL: https://res.cloudinary.com/xxx/image/private/v123456/ShareIt/folder/publicId.jpg
+            // We need: ShareIt/folder/publicId
+
+            var uri = new Uri(url);
+            var pathParts = uri.AbsolutePath.Split('/');
+
+            // Find the version part (starts with 'v')
+            int versionIndex = -1;
+            for (int i = 0; i < pathParts.Length; i++)
+            {
+                if (pathParts[i].StartsWith("v") && pathParts[i].Length > 1 && char.IsDigit(pathParts[i][1]))
+                {
+                    versionIndex = i;
+                    break;
+                }
+            }
+
+            if (versionIndex == -1 || versionIndex >= pathParts.Length - 1)
+            {
+                throw new Exception("Invalid Cloudinary URL format");
+            }
+
+            // Get everything after version, remove file extension
+            var publicIdParts = pathParts.Skip(versionIndex + 1).ToArray();
+            var publicIdWithExt = string.Join("/", publicIdParts);
+
+            // Remove extension
+            var lastDotIndex = publicIdWithExt.LastIndexOf('.');
+            if (lastDotIndex > 0)
+            {
+                return publicIdWithExt.Substring(0, lastDotIndex);
+            }
+
+            return publicIdWithExt;
         }
     }
 }

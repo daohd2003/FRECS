@@ -7,7 +7,7 @@ using Repositories.UserRepositories;
 using Services.CloudServices;
 using Services.EmailServices;
 using Services.ProviderApplicationServices;
-using Services.CloudServices;
+using Services.AI;
 
 namespace Services.Tests.ProviderApplicationTests
 {
@@ -29,6 +29,8 @@ namespace Services.Tests.ProviderApplicationTests
         private readonly Mock<IUserRepository> _mockUserRepository;
         private readonly Mock<IEmailService> _mockEmailService;
         private readonly Mock<ICloudinaryService> _mockCloudinaryService;
+        private readonly Mock<IEkycService> _mockEkycService;
+        private readonly Mock<IFaceMatchService> _mockFaceMatchService;
         private readonly ProviderApplicationService _service;
 
         public ProviderApplicationServiceTests()
@@ -37,12 +39,47 @@ namespace Services.Tests.ProviderApplicationTests
             _mockUserRepository = new Mock<IUserRepository>();
             _mockEmailService = new Mock<IEmailService>();
             _mockCloudinaryService = new Mock<ICloudinaryService>();
+            _mockEkycService = new Mock<IEkycService>();
+            _mockFaceMatchService = new Mock<IFaceMatchService>();
             _service = new ProviderApplicationService(
                 _mockApplicationRepository.Object,
                 _mockUserRepository.Object,
                 _mockEmailService.Object,
-                _mockCloudinaryService.Object
+                _mockCloudinaryService.Object,
+                _mockEkycService.Object,
+                _mockFaceMatchService.Object
             );
+        }
+
+        private void SetupMocksForSuccessfulApplication()
+        {
+            // Mock Cloudinary uploads
+            _mockCloudinaryService.Setup(x => x.UploadPrivateImageAsync(
+                It.IsAny<Microsoft.AspNetCore.Http.IFormFile>(),
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+                .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ImageUploadResult
+                {
+                    ImageUrl = "https://cloudinary.com/test.jpg",
+                    PublicId = "test_id"
+                });
+
+            // Mock eKYC verification for both sides (Business provider)
+            _mockEkycService.Setup(x => x.VerifyCccdBothSidesAsync(
+                It.IsAny<Microsoft.AspNetCore.Http.IFormFile>(),
+                It.IsAny<Microsoft.AspNetCore.Http.IFormFile>()))
+                .ReturnsAsync(new BusinessObject.DTOs.AIDtos.CccdVerificationResultDto
+                {
+                    IsValid = true,
+                    IdNumber = "001234567890",
+                    FullName = "Test User",
+                    DateOfBirth = "01/01/1990",
+                    Sex = "Male",
+                    Address = "Test Address",
+                    Confidence = 0.95,
+                    ErrorMessage = null
+                });
         }
 
         #region Core Test Cases
@@ -74,9 +111,14 @@ namespace Services.Tests.ProviderApplicationTests
             var dto = new ProviderApplicationCreateDto
             {
                 BusinessName = "Test Business",
-                TaxId = "1234567890",
+                TaxId = "1234567890", // 10 digits = Business (simpler, no eKYC/FaceMatch)
                 ContactPhone = "0123456789",
-                Notes = "I want to become a provider"
+                Notes = "I want to become a provider",
+                ProviderType = "Business",
+                IdCardFrontImage = CreateMockFormFile("front.jpg"),
+                IdCardBackImage = CreateMockFormFile("back.jpg"),
+                BusinessLicenseImage = CreateMockFormFile("license.jpg"),
+                PrivacyPolicyAgreed = true
             };
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(userId))
@@ -84,6 +126,8 @@ namespace Services.Tests.ProviderApplicationTests
 
             _mockApplicationRepository.Setup(x => x.GetPendingByUserIdAsync(userId))
                 .ReturnsAsync((BusinessObject.Models.ProviderApplication?)null);
+
+            SetupMocksForSuccessfulApplication();
 
             _mockApplicationRepository.Setup(x => x.AddAsync(It.IsAny<BusinessObject.Models.ProviderApplication>()))
                 .Returns(Task.CompletedTask);
@@ -108,9 +152,25 @@ namespace Services.Tests.ProviderApplicationTests
                        app.Notes == dto.Notes &&
                        app.Status == ProviderApplicationStatus.pending
             )), Times.Once);
+        }
 
-            // Note: In the controller, the API message is "Application submitted"
-            // The message "Application submitted. We will notify you after review." may be displayed by the frontend.
+        private Microsoft.AspNetCore.Http.IFormFile CreateMockFormFile(string fileName)
+        {
+            var content = "fake image content";
+            var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+            var file = new Mock<Microsoft.AspNetCore.Http.IFormFile>();
+            file.Setup(f => f.FileName).Returns(fileName);
+            file.Setup(f => f.Length).Returns(bytes.Length);
+            // Return new stream each time to avoid stream closed issues
+            file.Setup(f => f.OpenReadStream()).Returns(() => new System.IO.MemoryStream(bytes));
+            file.Setup(f => f.ContentType).Returns("image/jpeg");
+            file.Setup(f => f.CopyToAsync(It.IsAny<System.IO.Stream>(), It.IsAny<System.Threading.CancellationToken>()))
+                .Returns((System.IO.Stream target, System.Threading.CancellationToken token) =>
+                {
+                    var ms = new System.IO.MemoryStream(bytes);
+                    return ms.CopyToAsync(target, token);
+                });
+            return file.Object;
         }
 
         /// <summary>
@@ -134,9 +194,14 @@ namespace Services.Tests.ProviderApplicationTests
             var dto = new ProviderApplicationCreateDto
             {
                 BusinessName = "Test Business",
-                TaxId = null,
-                ContactPhone = null,
-                Notes = null
+                TaxId = "1234567890", // 10 digits = Business
+                ContactPhone = "0123456789",
+                Notes = null,
+                ProviderType = "Business",
+                IdCardFrontImage = CreateMockFormFile("front.jpg"),
+                IdCardBackImage = CreateMockFormFile("back.jpg"),
+                BusinessLicenseImage = CreateMockFormFile("license.jpg"),
+                PrivacyPolicyAgreed = true
             };
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(userId))
@@ -144,6 +209,8 @@ namespace Services.Tests.ProviderApplicationTests
 
             _mockApplicationRepository.Setup(x => x.GetPendingByUserIdAsync(userId))
                 .ReturnsAsync((BusinessObject.Models.ProviderApplication?)null);
+
+            SetupMocksForSuccessfulApplication();
 
             _mockApplicationRepository.Setup(x => x.AddAsync(It.IsAny<BusinessObject.Models.ProviderApplication>()))
                 .Returns(Task.CompletedTask);
@@ -155,8 +222,7 @@ namespace Services.Tests.ProviderApplicationTests
             Assert.NotNull(result);
             Assert.Equal(userId, result.UserId);
             Assert.Equal(dto.BusinessName, result.BusinessName);
-            Assert.Null(result.TaxId);
-            Assert.Null(result.ContactPhone);
+            Assert.Equal(dto.TaxId, result.TaxId);
             Assert.Null(result.Notes);
             Assert.Equal(ProviderApplicationStatus.pending, result.Status);
 
@@ -297,7 +363,14 @@ namespace Services.Tests.ProviderApplicationTests
 
             var dto = new ProviderApplicationCreateDto
             {
-                BusinessName = "Test Business"
+                BusinessName = "Test Business",
+                TaxId = "1234567890",
+                ContactPhone = "0123456789",
+                ProviderType = "Business",
+                IdCardFrontImage = CreateMockFormFile("front.jpg"),
+                IdCardBackImage = CreateMockFormFile("back.jpg"),
+                BusinessLicenseImage = CreateMockFormFile("license.jpg"),
+                PrivacyPolicyAgreed = true
             };
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(userId))
@@ -305,6 +378,8 @@ namespace Services.Tests.ProviderApplicationTests
 
             _mockApplicationRepository.Setup(x => x.GetPendingByUserIdAsync(userId))
                 .ReturnsAsync((BusinessObject.Models.ProviderApplication?)null);
+
+            SetupMocksForSuccessfulApplication();
 
             _mockApplicationRepository.Setup(x => x.AddAsync(It.IsAny<BusinessObject.Models.ProviderApplication>()))
                 .Returns(Task.CompletedTask);
@@ -336,7 +411,14 @@ namespace Services.Tests.ProviderApplicationTests
 
             var dto = new ProviderApplicationCreateDto
             {
-                BusinessName = "Test Business"
+                BusinessName = "Test Business",
+                TaxId = "1234567890",
+                ContactPhone = "0123456789",
+                ProviderType = "Business",
+                IdCardFrontImage = CreateMockFormFile("front.jpg"),
+                IdCardBackImage = CreateMockFormFile("back.jpg"),
+                BusinessLicenseImage = CreateMockFormFile("license.jpg"),
+                PrivacyPolicyAgreed = true
             };
 
             _mockUserRepository.Setup(x => x.GetByIdAsync(userId))
@@ -344,6 +426,8 @@ namespace Services.Tests.ProviderApplicationTests
 
             _mockApplicationRepository.Setup(x => x.GetPendingByUserIdAsync(userId))
                 .ReturnsAsync((BusinessObject.Models.ProviderApplication?)null);
+
+            SetupMocksForSuccessfulApplication();
 
             _mockApplicationRepository.Setup(x => x.AddAsync(It.IsAny<BusinessObject.Models.ProviderApplication>()))
                 .Returns(Task.CompletedTask);
