@@ -48,6 +48,9 @@ namespace DataAccess
         // System Configuration table
         public DbSet<SystemConfig> SystemConfigs { get; set; }
 
+        // Policy Configuration table
+        public DbSet<PolicyConfig> PolicyConfigs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
