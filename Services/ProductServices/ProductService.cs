@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Services.ContentModeration;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.ProductRepositories;
+using Services.NotificationServices;
 using Services.ConversationServices;
 using Services.CloudServices;
 
@@ -23,6 +24,7 @@ namespace Services.ProductServices
         private readonly IServiceProvider _serviceProvider;
         private readonly IConversationService _conversationService;
         private readonly ICloudinaryService _cloudinaryService;
+        private readonly INotificationService _notificationService;
 
         public ProductService(
             IProductRepository productRepository,
@@ -30,7 +32,8 @@ namespace Services.ProductServices
             IContentModerationService contentModerationService,
             IServiceProvider serviceProvider,
             IConversationService conversationService,
-            ICloudinaryService cloudinaryService)
+            ICloudinaryService cloudinaryService,
+            INotificationService notificationService)
         {
             _productRepository = productRepository;
             _mapper = mapper;
@@ -38,6 +41,7 @@ namespace Services.ProductServices
             _serviceProvider = serviceProvider;
             _conversationService = conversationService;
             _cloudinaryService = cloudinaryService;
+            _notificationService = notificationService;
         }
 
         public IQueryable<ProductDTO> GetAll()
@@ -112,40 +116,35 @@ namespace Services.ProductServices
 
             Console.WriteLine($"[PRODUCT SERVICE] Product {newProduct.Id} created with status: {newProduct.AvailabilityStatus}");
 
-            // Bước 4: Send chat notification if violated
+            // Bước 4: Send notification if violated
             if (!moderationResult.IsAppropriate)
             {
                 var productWithProvider = await _productRepository.GetProductWithProviderByIdAsync(newProduct.Id);
 
                 if (productWithProvider?.Provider != null)
                 {
-                    // Lấy Staff ID từ database
-                    Guid? defaultStaffId = await GetDefaultStaffIdAsync();
-
-                    // Gửi tin nhắn qua Chat
+                    // Gửi thông báo qua Notification System
                     try
                     {
-                        var chatResult = await _conversationService.SendViolationMessageToProviderAsync(
-                            staffId: defaultStaffId,
-                            providerId: productWithProvider.ProviderId,
-                            productId: newProduct.Id,
-                            productName: newProduct.Name,
-                            reason: moderationResult.Reason ?? "Content violates community guidelines",
-                            violatedTerms: string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())
+                        var violatedTermsText = moderationResult.ViolatedTerms != null && moderationResult.ViolatedTerms.Any()
+                            ? string.Join(", ", moderationResult.ViolatedTerms)
+                            : "inappropriate content";
+
+                        // Full message (will be truncated in UI for bell notification)
+                        var notificationMessage = $"Your product '{newProduct.Name}' has been flagged for review due to: {moderationResult.Reason ?? "content policy violation"}. Violated terms: {violatedTermsText}. Please update your product to comply with our guidelines.";
+
+                        await _notificationService.SendNotification(
+                            userId: productWithProvider.ProviderId,
+                            message: notificationMessage,
+                            type: BusinessObject.Enums.NotificationType.content_violation,
+                            orderId: null
                         );
 
-                        if (chatResult != null)
-                        {
-                            Console.WriteLine($"[SUCCESS] Violation notification sent via CHAT to Provider {productWithProvider.ProviderId}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[WARNING] No Staff account found in database - violation notification not sent");
-                        }
+                        Console.WriteLine($"[SUCCESS] Content violation notification sent to Provider {productWithProvider.ProviderId}");
                     }
-                    catch (Exception chatEx)
+                    catch (Exception notifEx)
                     {
-                        Console.WriteLine($"[ERROR] Failed to send chat notification: {chatEx.Message}");
+                        Console.WriteLine($"[ERROR] Failed to send notification: {notifEx.Message}");
                     }
                 }
             }
@@ -204,7 +203,7 @@ namespace Services.ProductServices
                     {
                         Console.WriteLine($"[UPDATE] Product {productId} PASSED moderation");
 
-                        // Nếu product đang PENDING → Set về AVAILABLE
+                        // Nếu product đang PENDING → Set về AVAILABLE và xóa violation reason
                         if (existingProduct.AvailabilityStatus == AvailabilityStatus.pending)
                         {
                             Console.WriteLine($"[UPDATE] Setting PENDING product back to AVAILABLE");
@@ -212,11 +211,15 @@ namespace Services.ProductServices
                                 productId,
                                 AvailabilityStatus.available
                             );
+                            
+                            // Clear violation reason
+                            existingProduct.ViolationReason = null;
+                            await _productRepository.UpdateAsync(existingProduct);
                         }
                     }
                     else
                     {
-                        // VI PHẠM - Set PENDING + Send notification
+                        // VI PHẠM - Set PENDING + Save violation reason + Send notification
                         Console.WriteLine($"[UPDATE] Product {productId} VIOLATED content policy!");
                         Console.WriteLine($"[UPDATE] Current status: {existingProduct.AvailabilityStatus} → Setting to PENDING");
 
@@ -225,44 +228,36 @@ namespace Services.ProductServices
                             productId,
                             AvailabilityStatus.pending
                         );
+                        
+                        // Save violation reason to database
+                        existingProduct.ViolationReason = moderationResult.Reason ?? "Content violates community guidelines";
+                        await _productRepository.UpdateAsync(existingProduct);
 
-                        Console.WriteLine($"[UPDATE] Product status updated to PENDING. Sending chat notification...");
+                        Console.WriteLine($"[UPDATE] Product status updated to PENDING. Sending notification...");
 
-                        // Get Staff for notification
-                        using var scope = _serviceProvider.CreateScope();
-                        var scopedDbContext = scope.ServiceProvider.GetRequiredService<ShareItDbContext>();
-
-                        var staff = await scopedDbContext.Users
-                            .Where(u => u.Role == BusinessObject.Enums.UserRole.staff)
-                            .OrderBy(u => u.CreatedAt)
-                            .FirstOrDefaultAsync();
-
-                        if (staff != null)
+                        // Send notification to provider
+                        try
                         {
-                            Console.WriteLine($"[UPDATE] Found Staff account: {staff.Email}. Sending violation notification...");
+                            var violatedTermsText = moderationResult.ViolatedTerms != null && moderationResult.ViolatedTerms.Any()
+                                ? string.Join(", ", moderationResult.ViolatedTerms)
+                                : "inappropriate content";
 
-                            try
-                            {
-                                await _conversationService.SendViolationMessageToProviderAsync(
-                                    staffId: staff.Id,
-                                    providerId: providerId,
-                                    productId: productId,
-                                    productName: productName,
-                                    reason: moderationResult.Reason ?? "Content violates community guidelines",
-                                    violatedTerms: string.Join(", ", moderationResult.ViolatedTerms ?? new List<string>())
-                                );
+                            // Full message (will be truncated in UI for bell notification)
+                            var notificationMessage = $"Your product '{productName}' has been flagged for review due to: {moderationResult.Reason ?? "content policy violation"}. Violated terms: {violatedTermsText}. Please update your product to comply with our guidelines.";
 
-                                Console.WriteLine($"[UPDATE] Chat notification sent successfully to Provider {providerId}!");
-                            }
-                            catch (Exception chatEx)
-                            {
-                                Console.WriteLine($"[UPDATE] ERROR sending chat notification: {chatEx.Message}");
-                                Console.WriteLine($"[UPDATE] Chat error stack trace: {chatEx.StackTrace}");
-                            }
+                            await _notificationService.SendNotification(
+                                userId: providerId,
+                                message: notificationMessage,
+                                type: BusinessObject.Enums.NotificationType.content_violation,
+                                orderId: null
+                            );
+
+                            Console.WriteLine($"[UPDATE] Content violation notification sent successfully to Provider {providerId}!");
                         }
-                        else
+                        catch (Exception notifEx)
                         {
-                            Console.WriteLine($"[UPDATE] WARNING: No Staff account found in database! Cannot send notification.");
+                            Console.WriteLine($"[UPDATE] ERROR sending notification: {notifEx.Message}");
+                            Console.WriteLine($"[UPDATE] Notification error stack trace: {notifEx.StackTrace}");
                         }
                     }
                 }

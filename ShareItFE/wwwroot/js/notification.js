@@ -90,6 +90,16 @@
             const unreadClass = isUnread ? 'unread' : '';
             const unreadDot = isUnread ? '<div class="unread-dot"></div>' : '';
             
+            // Truncate message for bell notification - extract product name if it's a flagged notification
+            let displayMessage = notification.message;
+            if (notification.message.includes("has been flagged for review")) {
+                // Extract product name from message like "Your product 'X' has been flagged for review..."
+                const match = notification.message.match(/Your product '([^']+)' has been flagged for review/);
+                if (match && match[1]) {
+                    displayMessage = `Your product '${match[1]}' has been flagged for review.`;
+                }
+            }
+            
             if (notification.orderId && notification.orderId !== '00000000-0000-0000-0000-000000000000') {
                 // Notification with order link - route based on IsUserProvider
                 // isUserProvider === true: user là provider của order này -> đi đến provider order detail
@@ -112,23 +122,28 @@
                        class="notification-item ${unreadClass}" 
                        data-id="${notification.id}">
                         <div class="notification-content">
-                            <p class="notification-message">${notification.message}</p>
+                            <p class="notification-message">${displayMessage}</p>
                             <span class="notification-time">${formatNotificationTime(notification.createdAt)}</span>
                         </div>
                         ${unreadDot}
                     </a>
                 `;
             } else {
-                // Notification without order link
+                // Notification without order link - for content violations, link to /Notifications
+                const linkUrl = notification.message.includes("flagged for review") ? '/Notifications' : '#';
+                const linkTag = linkUrl !== '#' ? 'a' : 'div';
+                const hrefAttr = linkUrl !== '#' ? `href="${linkUrl}"` : '';
+                
                 html += `
-                    <div class="notification-item ${unreadClass}" 
+                    <${linkTag} ${hrefAttr}
+                         class="notification-item ${unreadClass}" 
                          data-id="${notification.id}">
                         <div class="notification-content">
-                            <p class="notification-message">${notification.message}</p>
+                            <p class="notification-message">${displayMessage}</p>
                             <span class="notification-time">${formatNotificationTime(notification.createdAt)}</span>
                         </div>
                         ${unreadDot}
-                    </div>
+                    </${linkTag}>
                 `;
             }
         });
