@@ -13,6 +13,7 @@ namespace BusinessObject.Enums
     {
         order,      // Thông báo liên quan đến đơn hàng
         message,    // Thông báo tin nhắn hoặc chat
-        system      // Thông báo hệ thống chung, như cập nhật hoặc cảnh báo
+        system,     // Thông báo hệ thống chung, như cập nhật hoặc cảnh báo
+        content_violation  // Thông báo vi phạm nội dung sản phẩm
     }
 }
