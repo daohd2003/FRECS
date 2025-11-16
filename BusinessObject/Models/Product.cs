@@ -55,6 +55,12 @@ namespace BusinessObject.Models
         public AvailabilityStatus AvailabilityStatus { get; set; }
 
         /// <summary>
+        /// Lý do vi phạm nội dung (nếu có) - được cập nhật bởi AI Content Moderation
+        /// </summary>
+        [MaxLength(500)]
+        public string? ViolationReason { get; set; }
+
+        /// <summary>
         /// Sản phẩm có được quảng cáo hay không
         /// </summary>
         public bool IsPromoted { get; set; } = false;
