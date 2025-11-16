@@ -1,4 +1,4 @@
-// Provider Application Management JavaScript
+﻿// Provider Application Management JavaScript
 class ProviderApplicationManagement {
     constructor() {
         this.config = window.providerApplicationConfig || {};
@@ -102,7 +102,7 @@ class ProviderApplicationManagement {
 
             const result = await response.json();
             this.applications = result.data || [];
-            
+
             this.updateStatistics();
             this.filterAndRenderApplications();
 
@@ -125,9 +125,9 @@ class ProviderApplicationManagement {
             const taxId = (app.taxId || '').toLowerCase();
 
             return businessName.includes(this.searchQuery) ||
-                   applicantName.includes(this.searchQuery) ||
-                   applicantEmail.includes(this.searchQuery) ||
-                   taxId.includes(this.searchQuery);
+                applicantName.includes(this.searchQuery) ||
+                applicantEmail.includes(this.searchQuery) ||
+                taxId.includes(this.searchQuery);
         });
 
         // Filter by provider type (derived)
@@ -149,9 +149,14 @@ class ProviderApplicationManagement {
     }
 
     deriveProviderType(app) {
+        // Use providerType from database if available
+        if (app.providerType) {
+            return app.providerType.toLowerCase();
+        }
+
+        // Fallback: derive from Tax ID length
         const taxId = (app.taxId || '').replace(/\D/g, '');
-        const hasIdCards = !!(app.idCardFrontImageUrl && app.idCardBackImageUrl);
-        if (taxId.length === 12 || hasIdCards) return 'individual';
+        if (taxId.length === 12) return 'individual';
         if (taxId.length === 10) return 'business';
         return 'unknown';
     }
@@ -162,7 +167,7 @@ class ProviderApplicationManagement {
         this.filteredApplications.sort((a, b) => {
             let aValue, bValue;
 
-            switch(field) {
+            switch (field) {
                 case 'name':
                     aValue = (a.businessName || '').toLowerCase();
                     bValue = (b.businessName || '').toLowerCase();
@@ -206,11 +211,11 @@ class ProviderApplicationManagement {
     }
 
     renderApplicationRow(app) {
-        const statusClass = app.status === 'pending' ? 'pending' : 
-                           app.status === 'approved' ? 'approved' : 'rejected';
-        
+        const statusClass = app.status === 'pending' ? 'pending' :
+            app.status === 'approved' ? 'approved' : 'rejected';
+
         const statusText = app.status === 'pending' ? 'Pending' :
-                          app.status === 'approved' ? 'Approved' : 'Rejected';
+            app.status === 'approved' ? 'Approved' : 'Rejected';
 
         const createdDate = new Date(app.createdAt);
         const formattedDate = createdDate.toLocaleDateString('en-US', {
@@ -273,7 +278,11 @@ class ProviderApplicationManagement {
                     </div>
                 </td>
                 <td>${taxHtml}</td>
-                <td>${app.contactPhone ? this.escapeHtml(app.contactPhone) : '<span class="text-muted">N/A</span>'}</td>
+                <td>
+                    <span class="provider-type-badge provider-type-${type}">
+                        ${type === 'individual' ? '👤 Individual' : type === 'business' ? '🏢 Business' : '❓ Unknown'}
+                    </span>
+                </td>
                 <td>
                     <span class="status-badge status-${statusClass}">${statusText}</span>
                 </td>
@@ -521,7 +530,7 @@ class ProviderApplicationManagement {
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        
+
         const icons = {
             success: '<polyline points="20 6 9 17 4 12"></polyline>',
             error: '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',
@@ -570,9 +579,9 @@ function closeImageEnlargeModal() {
     document.getElementById('imageEnlargeModal').style.display = 'none';
 }
 
-function viewApplicationDetails(applicationId) {
+async function viewApplicationDetails(applicationId) {
     if (!providerAppMgmt) return;
-    
+
     const app = providerAppMgmt.applications.find(a => a.id === applicationId);
     if (!app) {
         console.error('Application not found:', applicationId);
@@ -581,21 +590,86 @@ function viewApplicationDetails(applicationId) {
 
     // Populate detail modal
     document.getElementById('detailBusinessName').textContent = app.businessName || 'N/A';
-    document.getElementById('detailApplicantName').textContent = app.user?.fullName || 'N/A';
+    document.getElementById('detailApplicantName').textContent = app.user?.profile?.fullName || 'N/A';
     document.getElementById('detailApplicantEmail').textContent = app.user?.email || 'N/A';
     document.getElementById('detailTaxId').textContent = app.taxId || 'N/A';
     document.getElementById('detailContactPhone').textContent = app.contactPhone || 'N/A';
     document.getElementById('detailBusinessNameFull').textContent = app.businessName || 'N/A';
     document.getElementById('detailNotes').textContent = app.notes || 'No notes';
 
+    // Fetch signed URLs for private images
+    let signedUrls = {};
+    let useSignedUrls = false;
+
+    try {
+        const response = await fetch(`${providerAppMgmt.config.apiBaseUrl}/provider-applications/${applicationId}/images`, {
+            headers: {
+                'Authorization': `Bearer ${providerAppMgmt.config.accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            signedUrls = result.data || {};
+            useSignedUrls = true;
+            console.log('Using signed URLs for private images');
+        } else {
+            console.warn('Failed to fetch signed URLs, falling back to direct URLs');
+            useSignedUrls = false;
+        }
+    } catch (error) {
+        console.error('Error fetching signed URLs:', error);
+        console.warn('Falling back to direct URLs for old public images');
+        useSignedUrls = false;
+    }
+
     // Show ID Card section if images exist
     const idCardSection = document.getElementById('idCardSection');
-    if (app.idCardFrontImageUrl && app.idCardBackImageUrl) {
+    const frontUrl = useSignedUrls ? signedUrls.idCardFront : app.idCardFrontImageUrl;
+    const backUrl = useSignedUrls ? signedUrls.idCardBack : app.idCardBackImageUrl;
+
+    if (frontUrl && backUrl) {
         idCardSection.style.display = 'block';
-        document.getElementById('idCardFrontImage').src = app.idCardFrontImageUrl;
-        document.getElementById('idCardBackImage').src = app.idCardBackImageUrl;
+        document.getElementById('idCardFrontImage').src = frontUrl;
+        document.getElementById('idCardBackImage').src = backUrl;
     } else {
         idCardSection.style.display = 'none';
+    }
+
+    // Determine provider type
+    const type = providerAppMgmt.deriveProviderType(app);
+
+    // Show Selfie section for Individual
+    const selfieSection = document.getElementById('selfieSection');
+    if (selfieSection) {
+        const selfieUrl = useSignedUrls ? signedUrls.selfie : app.selfieImageUrl;
+        if (type === 'individual' && selfieUrl) {
+            selfieSection.style.display = 'block';
+            document.getElementById('selfieImage').src = selfieUrl;
+
+            const faceMatchInfo = document.getElementById('faceMatchInfo');
+            if (app.faceMatched !== undefined && faceMatchInfo) {
+                const matchHtml = app.faceMatched ?
+                    '<div style="padding:12px;background:#dcfce7;border-left:3px solid #16a34a;border-radius:4px"><strong style="color:#166534">✓ Face Matched</strong><br><span style="color:#15803d;font-size:13px">Score: ' + (app.faceMatchScore * 100).toFixed(1) + '%</span></div>' :
+                    '<div style="padding:12px;background:#fee2e2;border-left:3px solid #dc2626;border-radius:4px"><strong style="color:#991b1b">✗ Not Matched</strong></div>';
+                faceMatchInfo.innerHTML = matchHtml;
+            }
+        } else {
+            selfieSection.style.display = 'none';
+        }
+    }
+
+    // Show Business License for Business
+    const businessLicenseSection = document.getElementById('businessLicenseSection');
+    if (businessLicenseSection) {
+        const businessLicenseUrl = useSignedUrls ? signedUrls.businessLicense : app.businessLicenseImageUrl;
+        if (type === 'business' && businessLicenseUrl) {
+            businessLicenseSection.style.display = 'block';
+            document.getElementById('businessLicenseImage').src = businessLicenseUrl;
+        } else {
+            businessLicenseSection.style.display = 'none';
+        }
     }
 
     document.getElementById('detailModal').style.display = 'flex';
