@@ -72,30 +72,39 @@ namespace Services.OrderServices
 
         }
 
+        /// <summary>
+        /// Tạo đơn hàng mới từ giỏ hàng hoặc từ request trực tiếp
+        /// Xử lý: tính toán giá, phí hoa hồng, tiền cọc, gửi thông báo cho customer và provider
+        /// </summary>
+        /// <param name="dto">Thông tin đơn hàng cần tạo</param>
         public async Task CreateOrderAsync(CreateOrderDto dto)
         {
-            // Dùng mapper để map DTO sang entity
+            // Bước 1: Chuyển đổi DTO thành entity Order bằng AutoMapper
             var order = _mapper.Map<Order>(dto);
 
-            // Get commission rates from database
+            // Bước 2: Lấy tỷ lệ hoa hồng từ cấu hình hệ thống
+            // Hoa hồng cho thuê và mua có thể khác nhau
             var rentalCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("RENTAL_COMMISSION_RATE");
             var purchaseCommissionRate = await _systemConfigRepository.GetCommissionRateAsync("PURCHASE_COMMISSION_RATE");
 
-            // Map Items → liên kết OrderId sau khi có Order Id
+            // Bước 3: Xử lý từng OrderItem trong đơn hàng
             foreach (var item in order.Items)
             {
-                item.Id = Guid.NewGuid();
-                item.OrderId = order.Id;
+                item.Id = Guid.NewGuid(); // Tạo ID mới cho item
+                item.OrderId = order.Id; // Liên kết item với order
                 
-                // Calculate and store commission for each item
+                // Tính doanh thu của item này (để tính hoa hồng)
+                // - Nếu mua: giá * số lượng
+                // - Nếu thuê: giá/ngày * số ngày * số lượng
                 decimal itemRevenue = item.TransactionType == BusinessObject.Enums.TransactionType.purchase
                     ? item.DailyRate * item.Quantity
                     : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity;
                 
+                // Tính và lưu hoa hồng cho từng item
                 if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
                 {
                     item.RentalCommissionRate = rentalCommissionRate;
-                    item.CommissionAmount = itemRevenue * rentalCommissionRate;
+                    item.CommissionAmount = itemRevenue * rentalCommissionRate; // Hoa hồng = doanh thu * tỷ lệ
                 }
                 else // purchase
                 {
@@ -104,75 +113,98 @@ namespace Services.OrderServices
                 }
             }
 
-            // Calculate and set subtotal if not already set (chỉ giá thuê/mua, không bao gồm cọc)
+            // Bước 4: Tính tổng tiền hàng (subtotal) - không bao gồm tiền cọc
             if (order.Subtotal == 0 && order.Items.Any())
             {
                 order.Subtotal = order.Items.Sum(item => 
                     item.TransactionType == BusinessObject.Enums.TransactionType.purchase
-                        ? item.DailyRate * item.Quantity
-                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity);
+                        ? item.DailyRate * item.Quantity // Mua: giá * số lượng
+                        : item.DailyRate * (item.RentalDays ?? 1) * item.Quantity); // Thuê: giá/ngày * số ngày * số lượng
             }
             
-            // Calculate and set total deposit (chỉ tiền cọc)
+            // Bước 5: Tính tổng tiền cọc (chỉ áp dụng cho đơn thuê)
             if (order.TotalDeposit == 0 && order.Items.Any())
             {
                 order.TotalDeposit = order.Items
-                    .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
-                    .Sum(item => item.DepositPerUnit * item.Quantity);
+                    .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental) // Chỉ lấy item thuê
+                    .Sum(item => item.DepositPerUnit * item.Quantity); // Cọc/sản phẩm * số lượng
             }
             
-            // Calculate total amount = subtotal + deposit
+            // Bước 6: Tính tổng tiền phải trả = tiền hàng + tiền cọc
             if (order.TotalAmount == 0)
             {
                 order.TotalAmount = order.Subtotal + order.TotalDeposit;
             }
 
-            // Gọi repository để thêm vào DB
+            // Bước 7: Lưu đơn hàng vào database
             await _orderRepo.AddAsync(order);
 
+            // Bước 8: Gửi thông báo qua email và trong hệ thống
             await _notificationService.NotifyNewOrderCreated(order.Id);
 
-            // Send notifications to both parties
+            // Bước 9: Gửi thông báo real-time qua SignalR
+            // Thông báo cho customer (người mua/thuê)
             await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
                 .SendAsync("ReceiveNotification", $"New order #{order.Id} created (Status: {order.Status})");
 
+            // Thông báo cho provider (người bán/cho thuê)
             await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
                 .SendAsync("ReceiveNotification", $"New order #{order.Id} received (Status: {order.Status})");
         }
 
+        /// <summary>
+        /// Thay đổi trạng thái đơn hàng (pending → approved → shipping → delivered, etc.)
+        /// Cập nhật số lượng sản phẩm và gửi thông báo cho các bên liên quan
+        /// </summary>
+        /// <param name="orderId">ID đơn hàng cần thay đổi trạng thái</param>
+        /// <param name="newStatus">Trạng thái mới</param>
         public async Task ChangeOrderStatus(Guid orderId, OrderStatus newStatus)
         {
+            // Bước 1: Tìm đơn hàng theo ID
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
+            // Bước 2: Lưu trạng thái cũ để so sánh và gửi thông báo
             var oldStatus = order.Status;
             order.Status = newStatus;
-            order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+            order.UpdatedAt = DateTimeHelper.GetVietnamTime(); // Cập nhật thời gian sửa đổi
 
-            // Update product counts based on status change
+            // Bước 3: Cập nhật số lượng sản phẩm dựa trên thay đổi trạng thái
+            // Ví dụ: khi approved → giảm stock, khi cancelled → hoàn stock
             await UpdateProductCounts(order, oldStatus, newStatus);
 
+            // Bước 4: Lưu thay đổi vào database
             await _orderRepo.UpdateAsync(order);
+            
+            // Bước 5: Gửi thông báo qua email và trong hệ thống
             await _notificationService.NotifyOrderStatusChange(orderId, oldStatus, newStatus);
 
-            // Send notifications to both parties
+            // Bước 6: Gửi thông báo real-time qua SignalR cho customer
             await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
                 .SendAsync("ReceiveNotification",
                     $"Order #{orderId} status changed from {oldStatus} to {newStatus}");
 
+            // Gửi thông báo real-time cho provider
             await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
                 .SendAsync("ReceiveNotification",
                     $"Order #{orderId} status changed from {oldStatus} to {newStatus}");
         }
 
+        /// <summary>
+        /// Hủy đơn hàng và hoàn lại số lượng sản phẩm vào kho (nếu đã thanh toán)
+        /// Gửi thông báo hủy đơn cho customer và provider
+        /// </summary>
+        /// <param name="orderId">ID đơn hàng cần hủy</param>
         public async Task CancelOrderAsync(Guid orderId)
         {
+            // Bước 1: Tìm đơn hàng theo ID
             var order = await _orderRepo.GetByIdAsync(orderId);
             if (order == null) throw new Exception("Order not found");
 
             var oldStatus = order.Status;
 
-            // If order was approved (paid), restore stock quantities
+            // Bước 2: Nếu đơn hàng đã được thanh toán (approved/in_transit/in_use)
+            // thì cần hoàn lại số lượng sản phẩm vào kho
             if (oldStatus == OrderStatus.approved || oldStatus == OrderStatus.in_transit || oldStatus == OrderStatus.in_use)
             {
                 foreach (var item in order.Items)
@@ -180,23 +212,26 @@ namespace Services.OrderServices
                     var product = await _productRepository.GetByIdAsync(item.ProductId);
                     if (product != null)
                     {
+                        // Hoàn lại số lượng tùy theo loại giao dịch
                         if (item.TransactionType == BusinessObject.Enums.TransactionType.purchase)
                         {
-                            product.PurchaseQuantity += item.Quantity; // Restore quantity
+                            product.PurchaseQuantity += item.Quantity; // Hoàn số lượng mua
                         }
                         else // Rental
                         {
-                            product.RentalQuantity += item.Quantity; // Restore quantity
+                            product.RentalQuantity += item.Quantity; // Hoàn số lượng thuê
                         }
                         await _productRepository.UpdateAsync(product);
                     }
                 }
             }
 
+            // Bước 3: Cập nhật trạng thái đơn hàng thành cancelled
             order.Status = OrderStatus.cancelled;
             order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _orderRepo.UpdateAsync(order);
 
+            // Bước 4: Gửi thông báo hủy đơn
             await _notificationService.NotifyOrderCancellation(orderId);
 
             // Send notifications to both parties

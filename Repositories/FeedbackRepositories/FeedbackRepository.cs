@@ -12,6 +12,12 @@ namespace Repositories.FeedbackRepositories
     {
         public FeedbackRepository(ShareItDbContext context, IMapper mapper) : base(context) { }
 
+        /// <summary>
+        /// Lấy feedback theo ID với đầy đủ thông tin liên quan
+        /// Include: Customer, Product, Order, OrderItem, ProviderResponder
+        /// </summary>
+        /// <param name="id">Feedback ID</param>
+        /// <returns>Feedback entity với đầy đủ thông tin, null nếu không tồn tại</returns>
         public override async Task<Feedback?> GetByIdAsync(Guid id)
         {
             return await _context.Feedbacks
@@ -23,6 +29,13 @@ namespace Repositories.FeedbackRepositories
                 .FirstOrDefaultAsync(f => f.Id == id);
         }
 
+        /// <summary>
+        /// Lấy tất cả feedback cho một target cụ thể (Product hoặc Order)
+        /// Sắp xếp theo thời gian tạo mới nhất
+        /// </summary>
+        /// <param name="targetType">Loại target (Product hoặc Order)</param>
+        /// <param name="targetId">ID của target</param>
+        /// <returns>Danh sách Feedback entities</returns>
         public async Task<IEnumerable<Feedback>> GetFeedbacksByTargetAsync(FeedbackTargetType targetType, Guid targetId)
         {
             var query = _context.Feedbacks.AsQueryable();
@@ -59,12 +72,26 @@ namespace Repositories.FeedbackRepositories
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Kiểm tra customer đã feedback cho OrderItem này chưa
+        /// Dùng để validate không cho feedback trùng
+        /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <param name="orderItemId">ID order item</param>
+        /// <returns>true nếu đã feedback, false nếu chưa</returns>
         public async Task<bool> HasUserFeedbackedOrderItemAsync(Guid customerId, Guid orderItemId)
         {
             return await _context.Feedbacks
                 .AnyAsync(f => f.TargetType == FeedbackTargetType.Product && f.CustomerId == customerId && f.OrderItemId == orderItemId);
         }
 
+        /// <summary>
+        /// Kiểm tra customer đã feedback cho Order này chưa
+        /// Dùng để validate không cho feedback trùng
+        /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <param name="orderId">ID đơn hàng</param>
+        /// <returns>true nếu đã feedback, false nếu chưa</returns>
         public async Task<bool> HasUserFeedbackedOrderAsync(Guid customerId, Guid orderId)
         {
             return await _context.Feedbacks

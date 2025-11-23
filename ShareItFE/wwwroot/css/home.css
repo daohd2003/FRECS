@@ -538,6 +538,19 @@ body {
     color: #ffffff;
 }
 
+/* Section title and subtitle for white text (used in why-rent-section) */
+.section-title-white {
+    font-size: 2.25rem; /* text-4xl */
+    font-weight: 700; /* font-bold */
+    color: #ffffff; /* white text */
+    margin-bottom: 1rem; /* mb-4 */
+}
+
+.section-subtitle-white {
+    font-size: 1.25rem; /* text-xl */
+    color: #ffffff; /* white text */
+}
+
 .why-rent-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -679,6 +692,19 @@ body {
     padding-top: 5rem;
     padding-bottom: 5rem;
     background-color: #f9fafb;
+}
+
+/* Section title and subtitle for dark text (used in testimonials-section) */
+.section-title-dark {
+    font-size: 2.25rem; /* text-4xl */
+    font-weight: 700; /* font-bold */
+    color: #1f2937; /* text-gray-900 - dark text */
+    margin-bottom: 1rem; /* mb-4 */
+}
+
+.section-subtitle-dark {
+    font-size: 1.25rem; /* text-xl */
+    color: #4b5563; /* text-gray-600 - medium gray text */
 }
 
 .testimonial-slider-wrapper {

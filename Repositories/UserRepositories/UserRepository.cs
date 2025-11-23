@@ -20,85 +20,120 @@ namespace Repositories.UserRepositories
         {
         }
 
+        /// <summary>
+        /// Lấy tất cả users với Profile
+        /// Dùng AsNoTracking để tối ưu performance (read-only)
+        /// </summary>
+        /// <returns>Danh sách User entities</returns>
         public override async Task<IEnumerable<User>> GetAllAsync()
         {
             return await _context.Users
-                .Include(u => u.Profile)
-                .AsNoTracking()
+                .Include(u => u.Profile) // Eager loading Profile
+                .AsNoTracking() // Không track changes (read-only)
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy tất cả users với Profile và Orders (cả customer và provider orders)
+        /// Dùng cho admin dashboard hoặc báo cáo
+        /// </summary>
+        /// <returns>Danh sách User entities với đầy đủ thông tin orders</returns>
         public async Task<IEnumerable<User>> GetAllWithOrdersAsync()
         {
             return await _context.Users
                 .Include(u => u.Profile)
-                .Include(u => u.OrdersAsCustomer)
-                    .ThenInclude(o => o.Items)  // ✅ Include OrderItems
-                .Include(u => u.OrdersAsProvider)
-                    .ThenInclude(o => o.Items)  // ✅ Include OrderItems
+                .Include(u => u.OrdersAsCustomer) // Orders mà user là customer
+                    .ThenInclude(o => o.Items) // Include OrderItems
+                .Include(u => u.OrdersAsProvider) // Orders mà user là provider
+                    .ThenInclude(o => o.Items) // Include OrderItems
                 .AsNoTracking()
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy user theo ID với Profile
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <returns>User entity hoặc null nếu không tồn tại</returns>
         public override async Task<User?> GetByIdAsync(Guid id)
         {
             return await _context.Users
-                .Include(u => u.Profile)
+                .Include(u => u.Profile) // Eager loading Profile
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        /// <summary>
+        /// Lấy user theo email với Profile
+        /// Dùng cho login, forgot password, email verification
+        /// </summary>
+        /// <param name="email">Email của user</param>
+        /// <returns>User entity hoặc null nếu không tồn tại</returns>
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             return await _context.Users
-                .Include(u => u.Profile)
+                .Include(u => u.Profile) // Eager loading Profile
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
+        /// <summary>
+        /// Lấy hoặc tạo user từ Google OAuth
+        /// Logic: Kiểm tra email → Kiểm tra GoogleId → Tạo mới nếu chưa tồn tại
+        /// </summary>
+        /// <param name="payload">Thông tin từ Google (Email, Sub/GoogleId, Name, Picture)</param>
+        /// <returns>User entity (existing hoặc newly created), null nếu email đã đăng ký bằng traditional login</returns>
         public async Task<User> GetOrCreateUserAsync(GooglePayload payload)
         {
+            // Bước 1: Kiểm tra email đã tồn tại chưa
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == payload.Email);
 
             if (existingUser != null)
             {
+                // Nếu user đã tồn tại nhưng không có GoogleId
+                // → Đã đăng ký bằng email/password truyền thống
+                // → Không cho phép login bằng Google (tránh conflict)
                 if (string.IsNullOrEmpty(existingUser.GoogleId))
                 {
-                    // Đã đăng ký bằng tài khoản truyền thống
-                    return null;
+                    return null; // Email đã được dùng cho traditional login
                 }
 
+                // User đã tồn tại và có GoogleId → Trả về user hiện tại
                 return existingUser;
             }
 
+            // Bước 2: Kiểm tra GoogleId (Sub) đã tồn tại chưa
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.GoogleId == payload.Sub);
 
             if (user == null)
             {
+                // Bước 3: Tạo user mới nếu chưa tồn tại
+                // Tạo username ngẫu nhiên (user + 6 chữ số)
                 string username;
                 do
                 {
-                    // VD: "user" + 6 chữ số random
                     username = "user" + new Random().Next(100000, 999999);
                 }
-                while (await _context.Profiles.AnyAsync(u => u.FullName == username));
+                while (await _context.Profiles.AnyAsync(u => u.FullName == username)); // Đảm bảo unique
 
+                // Tạo user mới với thông tin từ Google
                 user = new User
                 {
                     Email = payload.Email,
-                    GoogleId = payload.Sub,
-                    Role = UserRole.customer,
-                    PasswordHash = "",
+                    GoogleId = payload.Sub, // Lưu Google ID để nhận diện sau này
+                    Role = UserRole.customer, // Mặc định là customer
+                    PasswordHash = "", // Không có password (login bằng Google)
                     RefreshToken = "",
                     RefreshTokenExpiryTime = DateTime.Now,
                     IsActive = true,
                     CreatedAt = DateTimeHelper.GetVietnamTime(),
+                    EmailConfirmed = true, // Google đã verify email
                     Profile = new Profile
                     {
-                        FullName = username,
-                        ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg"
+                        FullName = username, // Username tạm thời
+                        ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg" // Avatar mặc định
                     }
                 };
 
@@ -107,7 +142,7 @@ namespace Repositories.UserRepositories
             }
             else
             {
-                // Cập nhật email nếu có thay đổi
+                // User đã tồn tại với GoogleId → Cập nhật email nếu có thay đổi
                 if (user.Email != payload.Email)
                 {
                     user.Email = payload.Email;

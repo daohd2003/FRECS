@@ -86,6 +86,8 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Feature: Redeem discount codes
+        /// The user enters a discount code during checkout to apply a promotion to their order.
         /// Get discount code by code
         /// </summary>
         [HttpGet("code/{code}")]

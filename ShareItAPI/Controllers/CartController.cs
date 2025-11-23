@@ -66,6 +66,8 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Feature: Rent clothes / Purchase clothes
+        /// The user selects a product and rental duration (or purchase) to add to cart.
         /// Add product to cart
         /// </summary>
         [HttpPost]
@@ -211,6 +213,8 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Feature: Make payments
+        /// The user selects a method and enters details to pay for their rental or purchase order.
         /// Initiates the checkout process from the current user's cart, creating an order.
         /// </summary>
         [HttpPost("checkout")]

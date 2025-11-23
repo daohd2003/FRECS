@@ -32,34 +32,43 @@ namespace Services.CartServices
             _mapper = mapper;
         }
 
+        /// <summary>
+        /// Lấy giỏ hàng của người dùng với đầy đủ thông tin sản phẩm và tính toán giá
+        /// Tính tổng tiền hàng và tổng tiền cọc (cho đơn thuê)
+        /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <returns>CartDto chứa danh sách items và tổng tiền, null nếu chưa có giỏ hàng</returns>
         public async Task<CartDto> GetUserCartAsync(Guid customerId)
         {
+            // Bước 1: Lấy giỏ hàng từ database (đã include Items, Product)
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
-                return null;
+                return null; // Chưa có giỏ hàng
             }
 
+            // Bước 2: Chuyển đổi Entity sang DTO bằng AutoMapper
             var cartDto = _mapper.Map<CartDto>(cart);
 
-            // Get cart items with correct pricing based on transaction type
+            // Bước 3: Xử lý từng cart item để tính giá chính xác
             var cartItemDtos = new List<CartItemDto>();
             foreach (var cartItem in cart.Items)
             {
                 var cartItemDto = _mapper.Map<CartItemDto>(cartItem);
                 
-                // Set price and total based on transaction type - AutoMapper will handle this now
-                // but we'll keep this for any additional processing if needed
+                // AutoMapper đã tự động tính giá dựa trên transaction type
+                // - Thuê: giá/ngày × số ngày × số lượng
+                // - Mua: giá mua × số lượng
                 
                 cartItemDtos.Add(cartItemDto);
             }
 
             cartDto.Items = cartItemDtos;
 
-            // Sửa từ GrandTotal thành TotalAmount
+            // Bước 4: Tính tổng tiền hàng (không bao gồm cọc)
             cartDto.TotalAmount = cartDto.Items.Sum(item => item.TotalItemPrice);
             
-            // Calculate total deposit amount for all rental items
+            // Bước 5: Tính tổng tiền cọc (chỉ cho đơn thuê)
             cartDto.TotalDepositAmount = cartDto.Items
                 .Where(item => item.TransactionType == BusinessObject.Enums.TransactionType.rental)
                 .Sum(item => item.TotalDepositAmount);
@@ -67,23 +76,35 @@ namespace Services.CartServices
             return cartDto;
         }
 
+        /// <summary>
+        /// Thêm sản phẩm vào giỏ hàng với các validation về số lượng, trạng thái, và quyền sở hữu
+        /// Xử lý logic khác nhau cho thuê (có ngày bắt đầu, số ngày) và mua (không có)
+        /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <param name="cartAddRequestDto">Thông tin sản phẩm cần thêm (ProductId, Quantity, TransactionType, RentalDays, StartDate)</param>
+        /// <returns>true nếu thêm thành công</returns>
+        /// <exception cref="ArgumentException">Sản phẩm không tồn tại, không khả dụng, hoặc là sản phẩm của chính user</exception>
+        /// <exception cref="InvalidOperationException">Số lượng vượt quá tồn kho</exception>
         public async Task<bool> AddProductToCartAsync(Guid customerId, CartAddRequestDto cartAddRequestDto)
         {
+            // Bước 1: Kiểm tra sản phẩm có tồn tại không
             var product = await _productRepository.GetByIdAsync(cartAddRequestDto.ProductId);
             if (product == null)
             {
                 throw new ArgumentException("Product not found.");
             }
 
-            // Validate that user cannot add their own product to cart
+            // Bước 2: Validate user không thể thêm sản phẩm của chính mình vào giỏ
+            // (Provider không thể mua/thuê sản phẩm của chính mình)
             if (product.ProviderId == customerId)
             {
                 throw new ArgumentException("You cannot add your own product to cart.");
             }
 
-            // Validate transaction type availability
+            // Bước 3: Validate sản phẩm có khả dụng cho loại giao dịch không
             if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.purchase)
             {
+                // Kiểm tra trạng thái mua và số lượng
                 if (product.PurchaseStatus != BusinessObject.Enums.PurchaseStatus.Available || 
                     product.PurchaseQuantity <= 0)
                 {
@@ -92,6 +113,7 @@ namespace Services.CartServices
             }
             else // Rental
             {
+                // Kiểm tra trạng thái thuê và số lượng
                 if (product.RentalStatus != BusinessObject.Enums.RentalStatus.Available || 
                     product.RentalQuantity <= 0)
                 {
@@ -99,34 +121,39 @@ namespace Services.CartServices
                 }
             }
 
+            // Bước 4: Lấy hoặc tạo giỏ hàng cho customer
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
+                // Tạo giỏ hàng mới nếu chưa có
                 cart = new Cart { CustomerId = customerId, CreatedAt = DateTimeHelper.GetVietnamTime() };
                 await _cartRepository.CreateCartAsync(cart);
             }
 
-            // Handle rental-specific logic
+            // Bước 5: Xử lý logic riêng cho THUÊ
             if (cartAddRequestDto.TransactionType == BusinessObject.Enums.TransactionType.rental)
             {
-                // Defaults if not provided from Product Detail page
+                // Xác định số ngày thuê (mặc định 1 ngày nếu không có)
                 int rentalDays = cartAddRequestDto.RentalDays.HasValue && cartAddRequestDto.RentalDays.Value >= 1
                     ? cartAddRequestDto.RentalDays.Value
                     : 1;
                 
-                // Validate rental days maximum limit
+                // Validate số ngày thuê tối đa 7 ngày
                 if (rentalDays > 7)
                 {
                     throw new ArgumentException("Rental Days cannot exceed 7 days.");
                 }
                 
+                // Xác định ngày bắt đầu thuê (mặc định ngày mai nếu không có)
                 DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
                 if (startDate < DateTime.UtcNow.Date)
                 {
-                    startDate = DateTime.UtcNow.Date.AddDays(1);
+                    startDate = DateTime.UtcNow.Date.AddDays(1); // Không cho thuê ngày quá khứ
                 }
 
-                // Find existing rental item with same ProductId, Size, StartDate, RentalDays
+                // Tìm cart item đã tồn tại với cùng ProductId, StartDate, RentalDays
+                // Nếu có → Tăng số lượng
+                // Nếu không → Tạo mới
                 var existingCartItem = cart.Items.FirstOrDefault(ci =>
                     ci.ProductId == cartAddRequestDto.ProductId &&
                     ci.TransactionType == BusinessObject.Enums.TransactionType.rental &&
@@ -135,7 +162,8 @@ namespace Services.CartServices
 
                 if (existingCartItem != null)
                 {
-                    // Validate stock before adding to existing quantity
+                    // Đã có item → Tăng số lượng
+                    // Validate số lượng mới không vượt quá tồn kho
                     int newTotalQuantity = existingCartItem.Quantity + cartAddRequestDto.Quantity;
                     if (product.RentalQuantity > 0 && newTotalQuantity > product.RentalQuantity)
                     {
@@ -148,7 +176,8 @@ namespace Services.CartServices
                 }
                 else
                 {
-                    // Validate stock for new cart item
+                    // Chưa có item → Tạo mới
+                    // Validate số lượng không vượt quá tồn kho
                     if (product.RentalQuantity > 0 && cartAddRequestDto.Quantity > product.RentalQuantity)
                     {
                         throw new InvalidOperationException($"Cannot add to cart. Only {product.RentalQuantity} units available for rental, but you're trying to add {cartAddRequestDto.Quantity} units.");
@@ -157,7 +186,7 @@ namespace Services.CartServices
                     var newCartItem = _mapper.Map<CartItem>(cartAddRequestDto);
                     newCartItem.CartId = cart.Id;
                     newCartItem.Id = Guid.NewGuid();
-                    // Apply rental defaults
+                    // Gán thông tin thuê
                     newCartItem.StartDate = startDate;
                     newCartItem.RentalDays = rentalDays;
                     newCartItem.EndDate = newCartItem.StartDate.Value.AddDays(newCartItem.RentalDays.Value);
@@ -365,14 +394,22 @@ namespace Services.CartServices
             // Nếu bạn muốn số dòng (số loại sản phẩm khác nhau): return cart?.Items?.Count ?? 0;
         }
 
+        /// <summary>
+        /// Xóa toàn bộ sản phẩm trong giỏ hàng
+        /// Dùng khi: checkout thành công, user muốn làm mới giỏ hàng, hoặc rent again
+        /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <returns>true nếu xóa thành công hoặc giỏ hàng đã rỗng</returns>
         public async Task<bool> ClearCartAsync(Guid customerId)
         {
+            // Lấy giỏ hàng hiện tại
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null)
             {
-                return true; // Cart already empty
+                return true; // Giỏ hàng đã rỗng hoặc chưa tồn tại
             }
 
+            // Lấy tất cả cart items và xóa từng item
             var cartItems = await _cartRepository.GetCartItemsForCustomerQuery(customerId).ToListAsync();
             foreach (var item in cartItems)
             {
@@ -511,22 +548,26 @@ namespace Services.CartServices
         }
 
         /// <summary>
-        /// Validates that the total cart cost does not exceed 10,000,000 VND
-        /// Total includes rental/purchase price + deposit for rental items
+        /// Validate tổng giá trị giỏ hàng không vượt quá 10,000,000 VND
+        /// Tổng bao gồm: giá thuê/mua + tiền cọc (cho đơn thuê)
+        /// Mục đích: Giới hạn giá trị đơn hàng để giảm rủi ro gian lận và quản lý thanh toán
         /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <exception cref="InvalidOperationException">Tổng giá trị vượt quá giới hạn</exception>
         private async Task ValidateCartTotalCostAsync(Guid customerId)
         {
-            const decimal MAX_CART_COST = 10_000_000m;
+            const decimal MAX_CART_COST = 10_000_000m; // Giới hạn 10 triệu VND
             
+            // Lấy giỏ hàng hiện tại
             var cart = await _cartRepository.GetCartByCustomerIdAsync(customerId);
             if (cart == null || !cart.Items.Any())
             {
-                return;
+                return; // Giỏ hàng rỗng → Không cần validate
             }
 
-            // Calculate total cost including rental/purchase price AND deposit
-            decimal totalCost = 0m;
-            decimal totalDeposit = 0m;
+            // Tính tổng giá trị giỏ hàng
+            decimal totalCost = 0m; // Tổng tiền hàng (thuê/mua)
+            decimal totalDeposit = 0m; // Tổng tiền cọc (chỉ cho thuê)
             
             foreach (var item in cart.Items)
             {
@@ -535,20 +576,22 @@ namespace Services.CartServices
 
                 if (item.TransactionType == BusinessObject.Enums.TransactionType.rental)
                 {
-                    // For rental: (price per day * rental days * quantity) + (deposit * quantity)
+                    // Đơn THUÊ: (giá/ngày × số ngày × số lượng) + (cọc × số lượng)
                     decimal rentalDays = item.RentalDays ?? 1;
                     totalCost += product.PricePerDay * rentalDays * item.Quantity;
                     totalDeposit += product.SecurityDeposit * item.Quantity;
                 }
                 else
                 {
-                    // For purchase: price * quantity (no deposit)
+                    // Đơn MUA: giá mua × số lượng (không có cọc)
                     totalCost += product.PurchasePrice * item.Quantity;
                 }
             }
 
+            // Tổng giá trị = tiền hàng + tiền cọc
             decimal grandTotal = totalCost + totalDeposit;
 
+            // Kiểm tra vượt quá giới hạn
             if (grandTotal > MAX_CART_COST)
             {
                 throw new InvalidOperationException($"Total exceeds maximum allowed amount of {MAX_CART_COST:N0} VND. Please reduce quantity or rental days.");

@@ -27,16 +27,25 @@ namespace Services.NotificationServices
             _context = context;
         }
 
+        /// <summary>
+        /// Lấy danh sách thông báo của user (tất cả hoặc chỉ chưa đọc)
+        /// Xác định user là customer hay provider trong từng thông báo để hiển thị phù hợp
+        /// </summary>
+        /// <param name="userId">ID người dùng</param>
+        /// <param name="unreadOnly">true = chỉ lấy chưa đọc, false = lấy tất cả</param>
+        /// <returns>Danh sách NotificationResponse</returns>
         public async Task<IEnumerable<NotificationResponse>> GetUserNotifications(Guid userId, bool unreadOnly = false)
         {
-            // 1. Lấy danh sách các đối tượng Notification gốc từ repository
+            // Bước 1: Lấy danh sách thông báo từ repository
             IEnumerable<Notification> notifications;
             if (unreadOnly)
             {
+                // Chỉ lấy thông báo chưa đọc
                 notifications = await _notificationRepository.GetUnreadByUserIdAsync(userId);
             }
             else
             {
+                // Lấy tất cả thông báo
                 notifications = await _notificationRepository.GetByUserIdAsync(userId);
             }
 
@@ -45,14 +54,15 @@ namespace Services.NotificationServices
                 return Enumerable.Empty<NotificationResponse>();
             }
 
-            // 2. Chuyển đổi (Map) từ Notification sang NotificationResponse
+            // Bước 2: Chuyển đổi Entity sang DTO và xác định role của user
             var notificationResponses = new List<NotificationResponse>();
             
             foreach (var n in notifications)
             {
                 bool? isUserProvider = null;
                 
-                // Nếu notification có OrderId, kiểm tra user có phải là provider không
+                // Nếu thông báo liên quan đến đơn hàng, xác định user là customer hay provider
+                // Mục đích: Hiển thị thông báo khác nhau cho customer và provider
                 if (n.OrderId.HasValue && n.OrderId.Value != Guid.Empty)
                 {
                     var order = await _context.Orders
@@ -62,7 +72,7 @@ namespace Services.NotificationServices
                     
                     if (order != null)
                     {
-                        // Check nếu user là provider của bất kỳ item nào trong order
+                        // Kiểm tra user có phải là provider của đơn hàng không
                         // (tất cả items trong cùng 1 order thường cùng 1 provider)
                         var firstItem = order.Items.FirstOrDefault();
                         if (firstItem?.Product != null)
@@ -72,6 +82,7 @@ namespace Services.NotificationServices
                     }
                 }
                 
+                // Tạo NotificationResponse với thông tin đầy đủ
                 notificationResponses.Add(new NotificationResponse
                 {
                     Id = n.Id,
@@ -80,25 +91,35 @@ namespace Services.NotificationServices
                     CreatedAt = n.CreatedAt,
                     Type = n.Type,
                     OrderId = n.OrderId,
-                    IsUserProvider = isUserProvider
+                    IsUserProvider = isUserProvider // null nếu không liên quan đến order
                 });
             }
 
             return notificationResponses;
         }
 
+        /// <summary>
+        /// Gửi thông báo cho một user cụ thể
+        /// Lưu vào database để user có thể xem lại sau
+        /// </summary>
+        /// <param name="userId">ID người nhận thông báo</param>
+        /// <param name="message">Nội dung thông báo</param>
+        /// <param name="type">Loại thông báo (order, system, message, content_violation, etc.)</param>
+        /// <param name="orderId">ID đơn hàng liên quan (nếu có)</param>
         public async Task SendNotification(Guid userId, string message, NotificationType type, Guid? orderId = null)
         {
+            // Tạo notification entity
             var notification = new Notification
             {
                 UserId = userId,
                 Message = message,
                 Type = type,
-                IsRead = false,
-                OrderId = orderId,
+                IsRead = false, // Mặc định chưa đọc
+                OrderId = orderId, // Liên kết với đơn hàng (nếu có)
                 CreatedAt = DateTimeHelper.GetVietnamTime()
             };
 
+            // Lưu vào database
             await _notificationRepository.AddAsync(notification);
         }
 
@@ -107,6 +128,11 @@ namespace Services.NotificationServices
             return await _notificationRepository.GetUnreadCountByUserIdAsync(userId);
         }
 
+        /// <summary>
+        /// Đánh dấu một thông báo là đã đọc
+        /// Dùng khi user click vào thông báo
+        /// </summary>
+        /// <param name="notificationId">ID thông báo</param>
         public async Task MarkAsRead(Guid notificationId)
         {
             var notification = await _notificationRepository.GetByIdAsync(notificationId);
@@ -117,26 +143,40 @@ namespace Services.NotificationServices
             }
         }
 
+        /// <summary>
+        /// Đánh dấu tất cả thông báo của user là đã đọc
+        /// Dùng khi user click "Mark all as read"
+        /// </summary>
+        /// <param name="userId">ID người dùng</param>
         public async Task MarkAllAsRead(Guid userId)
         {
             await _notificationRepository.MarkAllAsReadByUserIdAsync(userId);
         }
 
+        /// <summary>
+        /// Gửi thông báo khi trạng thái đơn hàng thay đổi
+        /// Thông báo cho cả customer và provider về thay đổi
+        /// </summary>
+        /// <param name="orderId">ID đơn hàng</param>
+        /// <param name="oldStatus">Trạng thái cũ</param>
+        /// <param name="newStatus">Trạng thái mới</param>
         public async Task NotifyOrderStatusChange(Guid orderId, OrderStatus oldStatus, OrderStatus newStatus)
         {
+            // Lấy thông tin đơn hàng
             var order = await _orderRepository.GetByIdAsync(orderId);
             if (order == null) return;
 
+            // Tạo nội dung thông báo
             var message = $"Order #{orderId.ToString().Substring(0, 8)} status changed from {oldStatus} to {newStatus}";
 
-            // Notify customer
+            // Gửi thông báo cho customer (người mua/thuê)
             await CreateAndSendNotification(
                 order.CustomerId,
                 message,
                 NotificationType.order,
                 orderId);
 
-            // Notify provider
+            // Gửi thông báo cho provider (người bán/cho thuê)
             await CreateAndSendNotification(
                 order.ProviderId,
                 message,
@@ -201,6 +241,14 @@ namespace Services.NotificationServices
                 orderId);
         }
 
+        /// <summary>
+        /// Helper method: Tạo và lưu thông báo vào database
+        /// Dùng nội bộ để tránh code trùng lặp
+        /// </summary>
+        /// <param name="userId">ID người nhận</param>
+        /// <param name="message">Nội dung thông báo</param>
+        /// <param name="type">Loại thông báo</param>
+        /// <param name="orderId">ID đơn hàng liên quan</param>
         private async Task CreateAndSendNotification(Guid userId, string message, NotificationType type, Guid orderId)
         {
             var notification = new Notification

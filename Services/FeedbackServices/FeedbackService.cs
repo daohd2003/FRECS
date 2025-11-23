@@ -35,7 +35,17 @@ namespace Services.FeedbackServices
             _mapper = mapper;
         }
 
-        // --- SUBMIT Feedback (CREATE) ---
+        /// <summary>
+        /// Gửi feedback (đánh giá) cho sản phẩm hoặc đơn hàng
+        /// Validate: Chỉ cho phép feedback khi đơn hàng đã hoàn thành, không cho feedback trùng
+        /// Tự động tính lại rating trung bình của sản phẩm sau khi thêm feedback
+        /// </summary>
+        /// <param name="dto">Thông tin feedback (TargetType, TargetId, Rating, Comment, OrderItemId)</param>
+        /// <param name="customerId">ID khách hàng gửi feedback</param>
+        /// <returns>FeedbackResponseDto của feedback vừa tạo</returns>
+        /// <exception cref="ArgumentException">Target không hợp lệ hoặc không tồn tại</exception>
+        /// <exception cref="UnauthorizedAccessException">User không có quyền feedback đơn hàng này</exception>
+        /// <exception cref="InvalidOperationException">Đơn hàng chưa hoàn thành hoặc đã feedback rồi</exception>
         public async Task<FeedbackResponseDto> SubmitFeedbackAsync(FeedbackRequestDto dto, Guid customerId)
         {
             Guid? productId = null;
@@ -43,33 +53,41 @@ namespace Services.FeedbackServices
             Guid? orderItemId = null;
             Order order = null;
 
+            // Bước 1: Xử lý feedback cho SẢN PHẨM
             if (dto.TargetType == FeedbackTargetType.Product)
             {
                 productId = dto.TargetId;
+                // Yêu cầu OrderItemId để biết feedback cho sản phẩm trong đơn hàng nào
                 orderItemId = dto.OrderItemId ?? throw new ArgumentException("OrderItemId is required for Product feedback.");
 
+                // Validate OrderItem tồn tại và khớp với ProductId
                 var item = await _orderItemRepo.GetByIdAsync(orderItemId.Value);
                 if (item == null) throw new ArgumentException("Order item not found.");
                 if (item.ProductId != productId.Value) throw new ArgumentException("Product ID does not match the provided Order Item.");
 
+                // Lấy Order để kiểm tra quyền và trạng thái
                 order = await _orderRepo.GetByIdAsync(item.OrderId);
                 if (order == null) throw new InvalidOperationException("Order associated with this item not found.");
                 if (order.CustomerId != customerId) throw new UnauthorizedAccessException("You are not authorized to feedback this order item.");
                 
-                // Allow feedback for completed orders (rental: returned, purchase: in_use)
+                // Chỉ cho phép feedback khi đơn hàng đã hoàn thành
+                // - Thuê: trạng thái returned (đã trả hàng)
+                // - Mua: trạng thái in_use (đang sử dụng)
                 var validStatusesForFeedback = new[] { OrderStatus.returned, OrderStatus.in_use };
                 if (!validStatusesForFeedback.Contains(order.Status))
                 {
                     throw new InvalidOperationException("You can only provide feedback for completed orders (in use or returned).");
                 }
 
+                // Kiểm tra đã feedback cho OrderItem này chưa (không cho feedback trùng)
                 if (await _feedbackRepo.HasUserFeedbackedOrderItemAsync(customerId, orderItemId.Value))
                 {
                     throw new InvalidOperationException("You have already submitted feedback for this specific order item.");
                 }
 
-                orderId = order.Id; // Link the OrderId even for Product feedback
+                orderId = order.Id; // Liên kết OrderId cho Product feedback
             }
+            // Bước 2: Xử lý feedback cho ĐƠN HÀNG
             else if (dto.TargetType == FeedbackTargetType.Order)
             {
                 orderId = dto.TargetId;
@@ -77,13 +95,14 @@ namespace Services.FeedbackServices
                 if (order == null) throw new ArgumentException("Order not found.");
                 if (order.CustomerId != customerId) throw new UnauthorizedAccessException("You are not authorized to feedback this order.");
                 
-                // Allow feedback for completed orders (rental: returned, purchase: in_use)
+                // Chỉ cho phép feedback khi đơn hàng đã hoàn thành
                 var validStatusesForFeedback = new[] { OrderStatus.returned, OrderStatus.in_use };
                 if (!validStatusesForFeedback.Contains(order.Status))
                 {
                     throw new InvalidOperationException("You can only provide feedback for completed orders (in use or returned).");
                 }
 
+                // Kiểm tra đã feedback cho Order này chưa
                 if (await _feedbackRepo.HasUserFeedbackedOrderAsync(customerId, orderId.Value))
                 {
                     throw new InvalidOperationException("You have already submitted feedback for this order.");
@@ -94,7 +113,7 @@ namespace Services.FeedbackServices
                 throw new ArgumentException("Invalid feedback target type.");
             }
 
-            // Validate Product exists if it's a Product feedback
+            // Bước 3: Validate sản phẩm tồn tại (nếu là Product feedback)
             if (productId.HasValue)
             {
                 var product = await _productRepo.GetByIdAsync(productId.Value);
@@ -104,7 +123,7 @@ namespace Services.FeedbackServices
                 }
             }
 
-            // --- Create Feedback Entity ---
+            // Bước 4: Tạo Feedback entity
             var feedback = _mapper.Map<Feedback>(dto);
 
             feedback.TargetType = dto.TargetType;
@@ -116,32 +135,54 @@ namespace Services.FeedbackServices
             feedback.OrderId = orderId;
             feedback.OrderItemId = orderItemId;
 
+            // Bước 5: Lưu feedback vào database
             await _feedbackRepo.AddAsync(feedback);
 
-            // --- Recalculate Product Rating ---
+            // Bước 6: Tính lại rating trung bình của sản phẩm
+            // Mỗi khi có feedback mới, cập nhật AverageRating của Product
             if (feedback.TargetType == FeedbackTargetType.Product && feedback.ProductId.HasValue)
             {
                 await RecalculateProductRatingAsync(feedback.ProductId.Value);
             }
 
+            // Bước 7: Trả về feedback vừa tạo
             var createdFeedback = await _feedbackRepo.GetByIdAsync(feedback.Id);
             return _mapper.Map<FeedbackResponseDto>(createdFeedback);
         }
 
-        // --- READ ---
+        /// <summary>
+        /// Lấy thông tin chi tiết một feedback theo ID
+        /// </summary>
+        /// <param name="feedbackId">ID feedback cần lấy</param>
+        /// <returns>FeedbackResponseDto</returns>
+        /// <exception cref="KeyNotFoundException">Feedback không tồn tại</exception>
         public async Task<FeedbackResponseDto> GetFeedbackByIdAsync(Guid feedbackId)
         {
-            var feedback = await _feedbackRepo.GetByIdAsync(feedbackId); // Uses the overridden GetByIdAsync with Includes
+            // Repository đã include Customer, Product, Order để lấy đầy đủ thông tin
+            var feedback = await _feedbackRepo.GetByIdAsync(feedbackId);
             if (feedback == null) throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found.");
             return _mapper.Map<FeedbackResponseDto>(feedback);
         }
 
+        /// <summary>
+        /// Lấy tất cả feedback cho một target cụ thể (Product hoặc Order)
+        /// Dùng để hiển thị danh sách đánh giá trên trang product detail hoặc order detail
+        /// </summary>
+        /// <param name="targetType">Loại target (Product hoặc Order)</param>
+        /// <param name="targetId">ID của target</param>
+        /// <returns>Danh sách FeedbackResponseDto</returns>
         public async Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByTargetAsync(FeedbackTargetType targetType, Guid targetId)
         {
             var feedbacks = await _feedbackRepo.GetFeedbacksByTargetAsync(targetType, targetId);
             return _mapper.Map<IEnumerable<FeedbackResponseDto>>(feedbacks);
         }
 
+        /// <summary>
+        /// Lấy tất cả feedback mà customer đã gửi
+        /// Dùng để hiển thị lịch sử đánh giá của customer
+        /// </summary>
+        /// <param name="customerId">ID khách hàng</param>
+        /// <returns>Danh sách FeedbackResponseDto</returns>
         public async Task<IEnumerable<FeedbackResponseDto>> GetCustomerFeedbacksAsync(Guid customerId)
         {
             var feedbacks = await _feedbackRepo.GetFeedbacksByCustomerIdAsync(customerId);

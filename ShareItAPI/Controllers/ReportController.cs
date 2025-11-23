@@ -86,6 +86,8 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Feature: Report issues to staff
+        /// The user submits a formal support ticket to staff regarding system bugs, order problems, or other issues.
         /// Người dùng tạo mới một báo cáo
         /// </summary>
         [HttpPost]

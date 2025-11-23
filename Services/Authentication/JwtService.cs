@@ -42,31 +42,50 @@ namespace Services.Authentication
             _configuration = configuration;
         }
 
+        /// <summary>
+        /// Tạo refresh token ngẫu nhiên để duy trì phiên đăng nhập
+        /// Refresh token được sử dụng để lấy access token mới khi access token hết hạn
+        /// </summary>
+        /// <returns>Chuỗi Base64 64 bytes ngẫu nhiên</returns>
         public string GenerateRefreshToken()
         {
+            // Tạo 64 bytes ngẫu nhiên và chuyển thành chuỗi Base64
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
 
+        /// <summary>
+        /// Tạo JWT access token chứa thông tin xác thực người dùng
+        /// Token này được gửi kèm trong mỗi request để xác thực và phân quyền
+        /// </summary>
+        /// <param name="user">Thông tin người dùng cần tạo token</param>
+        /// <param name="rememberMe">Nếu true, token có thời gian sống lâu hơn (7 ngày thay vì 60 phút)</param>
+        /// <returns>Chuỗi JWT token</returns>
         public string GenerateToken(User user, bool rememberMe = false)
         {
+            // Lấy cấu hình JWT từ appsettings.json
             var secretKey = _jwtSettings.SecretKey;
             var issuer = _jwtSettings.Issuer;
             var audience = _jwtSettings.Audience;
+            // Thời gian hết hạn: 7 ngày nếu "Remember Me", 60 phút nếu không
             var expiryMinutes = rememberMe ? _jwtSettings.RememberMeExpiryMinutes : _jwtSettings.ExpiryMinutes;
 
+            // Tạo claims (thông tin người dùng) để nhúng vào token
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim("email", user.Email),
-                new Claim(ClaimTypes.Role, user.Role.ToString())
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // User ID
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Token ID duy nhất
+                new Claim("email", user.Email), // Email
+                new Claim(ClaimTypes.Role, user.Role.ToString()) // Role (customer, provider, admin, staff)
             };
 
+            // Tạo khóa bí mật để ký token
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+            // Thời điểm token hết hạn
             var expiryTime = DateTime.UtcNow.AddMinutes(expiryMinutes);
 
+            // Tạo JWT token với các thông tin trên
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
@@ -74,6 +93,8 @@ namespace Services.Authentication
                 expires: expiryTime,
                 signingCredentials: cred
                 );
+            
+            // Chuyển token thành chuỗi để trả về
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
@@ -205,29 +226,46 @@ namespace Services.Authentication
             };
         }
 
+        /// <summary>
+        /// Xác thực người dùng bằng email và password
+        /// Kiểm tra thông tin đăng nhập, trạng thái tài khoản và tạo token nếu hợp lệ
+        /// </summary>
+        /// <param name="email">Email đăng nhập</param>
+        /// <param name="password">Mật khẩu (plain text)</param>
+        /// <param name="rememberMe">Có duy trì đăng nhập lâu dài không</param>
+        /// <returns>TokenResponseDto chứa access token, refresh token và thông tin role</returns>
+        /// <exception cref="InvalidOperationException">Email chưa được xác thực</exception>
+        /// <exception cref="UnauthorizedAccessException">Tài khoản bị khóa hoặc thông tin đăng nhập sai</exception>
         public async Task<TokenResponseDto> Authenticate(string email, string password, bool rememberMe = false)
         {
+            // Tìm user theo email
             var user = await _userRepository.GetUserByEmailAsync(email);
+            
+            // Kiểm tra user tồn tại và password đúng (so sánh hash)
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
+                // Kiểm tra email đã được xác thực chưa
                 if (!user.EmailConfirmed) throw new InvalidOperationException("Email not verified");
                 
-                // Check if user is active/blocked
+                // Kiểm tra tài khoản có bị khóa không
                 if (user.IsActive == false)
                 {
                     throw new UnauthorizedAccessException("Your account has been blocked. Please contact support.");
                 }
 
+                // Tạo access token và refresh token
                 var token = GenerateToken(user, rememberMe);
                 var refreshToken = GenerateRefreshToken();
                 var refreshExpiry = GetRefreshTokenExpiryTime();
 
+                // Lưu refresh token vào database để sử dụng sau này
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = refreshExpiry;
-                user.LastLogin = DateTime.UtcNow;
+                user.LastLogin = DateTime.UtcNow; // Cập nhật thời gian đăng nhập cuối
 
                 await _userRepository.UpdateAsync(user);
 
+                // Trả về thông tin token cho client
                 return new TokenResponseDto
                 {
                     Token = token,
@@ -238,16 +276,25 @@ namespace Services.Authentication
             }
             else
             {
+                // Email không tồn tại hoặc password sai
                 throw new UnauthorizedAccessException("Invalid email or password");
             }
         }
 
+        /// <summary>
+        /// Đăng xuất người dùng bằng cách thêm token vào blacklist
+        /// Token sẽ không thể sử dụng lại cho đến khi hết hạn
+        /// </summary>
+        /// <param name="token">Access token cần vô hiệu hóa</param>
         public async Task LogoutAsync(string token)
         {
+            // Parse token để lấy thời gian hết hạn
             var tokenHander = new JwtSecurityTokenHandler();
             var jwtToken = tokenHander.ReadJwtToken(token);
             var expDate = jwtToken.ValidTo;
 
+            // Thêm token vào bảng LoggedOutTokens (blacklist)
+            // Token này sẽ bị từ chối khi validate trong middleware
             await _loggedOutTokenRepository.AddAsync(token, expDate);
         }
 
@@ -256,8 +303,16 @@ namespace Services.Authentication
             return !await _loggedOutTokenRepository.IsTokenLoggedOutAsync(token);
         }
 
+        /// <summary>
+        /// Đăng ký tài khoản mới cho người dùng
+        /// Xử lý logic: kiểm tra email trùng, tạo user mới, hash password, tạo profile mặc định, gửi email xác thực
+        /// </summary>
+        /// <param name="request">Thông tin đăng ký (email, password, fullname)</param>
+        /// <returns>TokenResponseDto nếu thành công, null nếu email đã tồn tại và đã xác thực</returns>
+        /// <exception cref="InvalidOperationException">Email đã đăng ký nhưng chưa xác thực và token còn hạn</exception>
         public async Task<TokenResponseDto?> RegisterAsync(RegisterRequest request)
         {
+            // Kiểm tra email đã tồn tại chưa
             var existingUser = await _userRepository.GetUserByEmailAsync(request.Email);
 
             if (existingUser != null)
@@ -284,33 +339,37 @@ namespace Services.Authentication
                 }
             }
 
+            // Tạo user mới với password đã hash
             var newUser = new User
             {
                 Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                IsActive = true
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password), // Hash password bằng BCrypt
+                IsActive = true // Tài khoản mặc định là active
             };
 
-            // Tạo profile mặc định cho user
+            // Tạo profile mặc định cho user (quan hệ 1-1)
             newUser.Profile = new Profile
             {
                 FullName = request.FullName ?? "",
-                ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg"
+                ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg" // Avatar mặc định
             };
 
+            // Tạo token để user có thể đăng nhập ngay (nhưng chưa xác thực email)
             var accessToken = GenerateToken(newUser);
             var refreshToken = GenerateRefreshToken();
             var refreshExpiry = GetRefreshTokenExpiryTime();
 
+            // Lưu refresh token vào user
             newUser.RefreshToken = refreshToken;
             newUser.RefreshTokenExpiryTime = refreshExpiry;
 
+            // Lưu user vào database
             await _userRepository.AddAsync(newUser);
 
-
+            // Gửi email xác thực đến user
             await SendEmailVerificationAsync(newUser.Id);
 
-
+            // Trả về token để user có thể sử dụng hệ thống (một số chức năng yêu cầu xác thực email)
             return new TokenResponseDto
             {
                 Token = accessToken,
@@ -320,32 +379,53 @@ namespace Services.Authentication
             };
         }
 
+        /// <summary>
+        /// Đổi mật khẩu cho người dùng đã đăng nhập
+        /// Yêu cầu xác thực mật khẩu hiện tại trước khi đổi
+        /// </summary>
+        /// <param name="userId">ID người dùng</param>
+        /// <param name="currentPassword">Mật khẩu hiện tại (để xác thực)</param>
+        /// <param name="newPassword">Mật khẩu mới</param>
+        /// <returns>true nếu đổi thành công, false nếu user không tồn tại hoặc mật khẩu hiện tại sai</returns>
         public async Task<bool> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
         {
+            // Tìm user theo ID
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null) return false;
 
+            // Xác thực mật khẩu hiện tại
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 return false;
 
+            // Hash mật khẩu mới và cập nhật
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             await _userRepository.UpdateAsync(user);
             return true;
         }
 
+        /// <summary>
+        /// Xử lý yêu cầu quên mật khẩu
+        /// Tạo token reset password và gửi link đặt lại mật khẩu qua email
+        /// </summary>
+        /// <param name="email">Email của người dùng quên mật khẩu</param>
+        /// <returns>true nếu gửi email thành công, false nếu email không tồn tại</returns>
         public async Task<bool> ForgotPasswordAsync(string email)
         {
+            // Tìm user theo email
             var user = await _userRepository.GetUserByEmailAsync(email);
             if (user == null) return false;
 
+            // Tạo token reset password (có thời hạn 30 phút)
             var token = GenerateTokenString();
             user.PasswordResetToken = token;
             user.PasswordResetTokenExpiry = DateTime.UtcNow.AddMinutes(30);
             await _userRepository.UpdateAsync(user);
 
+            // Tạo link reset password với token
             var baseUrl = GetFrontendBaseUrl();
             var resetLink = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
 
+            // Gửi email chứa link reset password
             _logger.LogInformation("Sending password reset to {Email} with link: {ResetLink}", email, resetLink);
             await _emailService.SendPasswordResetEmailAsync(email, resetLink);
             return true;
@@ -365,19 +445,29 @@ namespace Services.Authentication
             return true;
         }
 
+        /// <summary>
+        /// Gửi email xác thực tài khoản cho người dùng mới đăng ký
+        /// Email chứa link xác thực có thời hạn 1 giờ
+        /// </summary>
+        /// <param name="userId">ID người dùng cần xác thực email</param>
+        /// <returns>true nếu gửi thành công, false nếu user không tồn tại hoặc đã xác thực</returns>
         public async Task<bool> SendEmailVerificationAsync(Guid userId)
         {
+            // Tìm user và kiểm tra đã xác thực chưa
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null || user.EmailConfirmed) return false;
 
+            // Tạo token xác thực email (có thời hạn 1 giờ)
             var token = GenerateTokenString();
             user.EmailVerificationToken = token;
             user.EmailVerificationExpiry = DateTime.UtcNow.AddHours(1);
             await _userRepository.UpdateAsync(user);
 
+            // Tạo link xác thực email
             var baseUrl = GetFrontendBaseUrl();
             var verifyLink = $"{baseUrl}/verify-email?email={HttpUtility.UrlEncode(user.Email)}&token={HttpUtility.UrlEncode(token)}";
 
+            // Gửi email xác thực
             _logger.LogInformation("Sending email verification to {Email} with link: {VerifyLink}", user.Email, verifyLink);
             await _emailService.SendVerificationEmailAsync(user.Email, verifyLink);
             return true;

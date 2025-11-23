@@ -22,6 +22,10 @@ namespace ShareItAPI.Controllers
             _favoriteService = favoriteService;
         }
 
+        /// <summary>
+        /// Feature: View favorites
+        /// The user views items in their list of favorite products.
+        /// </summary>
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetFavorites(Guid userId, [FromQuery] bool includeDetails = false)
         {
@@ -44,6 +48,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<bool>("Favorite check successful", isFav));
         }
 
+        /// <summary>
+        /// Feature: Add to favorites
+        /// The user adds items to their list of favorite products.
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> AddFavorite([FromBody] FavoriteCreateDto dto)
         {
@@ -64,6 +72,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Added to favorites successfully", null));
         }
 
+        /// <summary>
+        /// Feature: Remove from favorites
+        /// The user removes items from their list of favorite products.
+        /// </summary>
         [HttpDelete]
         public async Task<IActionResult> RemoveFavorite(Guid userId, Guid productId)
         {

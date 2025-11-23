@@ -19,7 +19,10 @@ namespace ShareItAPI.Controllers
             _notificationService = notificationService;
         }
 
-        // GET: api/notification/user/{userId}?unreadOnly=true
+        /// <summary>
+        /// Feature: View notifications
+        /// The user views notifications from the system.
+        /// </summary>
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserNotifications(Guid userId, [FromQuery] bool unreadOnly = false)
         {
