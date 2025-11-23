@@ -149,6 +149,11 @@
                     
                     @if (userRole == "admin")
                     {
+                        <a asp-page="/Admin/TransactionManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/TransactionManagement" || ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/TransactionDetail" ? "active" : "")">
+                            <i class="bi bi-receipt"></i>
+                            <span>Transaction Management</span>
+                        </a>
+
                         <a asp-page="/Admin/CustomerRefunds" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/CustomerRefunds" ? "active" : "")">
                             <i class="bi bi-cash-coin"></i>
                             <span>Customer Refunds</span>

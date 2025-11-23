@@ -289,6 +289,10 @@ namespace ShareItAPI
             builder.Services.AddScoped<IProviderFinanceService, ProviderFinanceService>();
 
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+            
+            // Register Transaction Management services (TÁCH BIỆT với TransactionRepository)
+            builder.Services.AddScoped<ITransactionManagementRepository, TransactionManagementRepository>();
+            builder.Services.AddScoped<Services.TransactionManagementServices.ITransactionManagementService, Services.TransactionManagementServices.TransactionManagementService>();
 
             builder.Services.AddScoped<IProviderBankService, ProviderBankService>();
             builder.Services.AddScoped<IProviderApplicationRepository, ProviderApplicationRepository>();
