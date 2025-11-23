@@ -23,7 +23,10 @@ namespace ShareItAPI.Controllers
             _cloudinaryService = cloudinaryService;
         }
 
-        // GET: api/profile/{userId}
+        /// <summary>
+        /// Feature: View my profile
+        /// Allow the logged-in user to review the personal information (name, address, email, etc.) stored in their account profile.
+        /// </summary>
         [HttpGet("{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProfile(Guid userId)
@@ -35,7 +38,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<Profile>("Profile retrieved successfully", profile));
         }
 
-        // PUT: api/profile/{userId}
+        /// <summary>
+        /// Feature: Update personal profile
+        /// The user updates personal details such as name, address, or contact information.
+        /// </summary>
         [HttpPut("{userId}")]
         public async Task<IActionResult> UpdateProfile(Guid userId, [FromBody] ProfileUpdateDto profileDto)
         {

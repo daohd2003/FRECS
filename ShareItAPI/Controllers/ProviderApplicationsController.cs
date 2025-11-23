@@ -19,6 +19,10 @@ namespace ShareItAPI.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// Feature: Register to become provider
+        /// The customer applies form to become a provider.
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "customer")] // only customers can apply
         public async Task<IActionResult> Apply([FromForm] ProviderApplicationCreateDto dto)

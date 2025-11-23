@@ -29,7 +29,10 @@ namespace ShareItAPI.Controllers
             return userId;
         }
 
-        // POST- Submit feedback for a product or order
+        /// <summary>
+        /// Feature: Give feedback on products
+        /// The user writes a review and rates a product they have rented or purchased.
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> SubmitFeedback([FromBody] FeedbackRequestDto dto)
@@ -59,7 +62,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<FeedbackResponseDto>("Feedback retrieved successfully.", feedback));
         }
 
-        // GET - Get all feedback for a specific product or order
+        /// <summary>
+        /// Feature: View feedback
+        /// The user views existing customer reviews and ratings for a specific product.
+        /// </summary>
         [HttpGet("{targetType}/{targetId:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetFeedbacksByTarget(string targetType, Guid targetId)

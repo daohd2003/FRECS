@@ -30,6 +30,10 @@ namespace ShareItAPI.Controllers
             return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
         }
 
+        /// <summary>
+        /// Feature: View bank account information
+        /// Allow the logged-in user to review the bank account details currently linked to their profile for transactions.
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<BankAccountDto>>> GetBankAccounts()
         {
@@ -51,6 +55,10 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Feature: Add bank account
+        /// The user adds linked bank account details for transactions.
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult<BankAccountDto>> CreateBankAccount([FromBody] CreateBankAccountDto dto)
         {
@@ -77,6 +85,10 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Feature: Edit bank account
+        /// The user updates linked to bank account details for transactions.
+        /// </summary>
         [HttpPut("{accountId}")]
         public async Task<ActionResult> UpdateBankAccount(Guid accountId, [FromBody] CreateBankAccountDto dto)
         {
@@ -108,6 +120,10 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Feature: Remove bank account
+        /// The user removes linked bank account details for transactions.
+        /// </summary>
         [HttpDelete("{accountId}")]
         public async Task<ActionResult> DeleteBankAccount(Guid accountId)
         {

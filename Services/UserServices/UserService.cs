@@ -53,11 +53,25 @@ namespace Services.UserServices
             return await _userRepository.DeleteAsync(id);
         }
 
+        /// <summary>
+        /// Lấy hoặc tạo user từ Google OAuth
+        /// Nếu email đã tồn tại → Trả về user hiện tại
+        /// Nếu chưa tồn tại → Tạo user mới với thông tin từ Google
+        /// </summary>
+        /// <param name="payload">Thông tin từ Google (email, name, picture)</param>
+        /// <returns>User entity</returns>
         public async Task<User> GetOrCreateUserAsync(GooglePayload payload)
         {
             return await _userRepository.GetOrCreateUserAsync(payload);
         }
 
+        /// <summary>
+        /// Lấy hoặc tạo user từ Facebook OAuth
+        /// Nếu email đã tồn tại → Trả về user hiện tại
+        /// Nếu chưa tồn tại → Tạo user mới với thông tin từ Facebook
+        /// </summary>
+        /// <param name="payload">Thông tin từ Facebook (email, name, picture)</param>
+        /// <returns>User entity</returns>
         public async Task<User> GetOrCreateUserAsync(FacebookPayload payload)
         {
             return await _userRepository.GetOrCreateUserAsync(payload);
@@ -76,6 +90,12 @@ namespace Services.UserServices
             return _mapper.Map<IEnumerable<AdminViewModel>>(admins);
         }
 
+        /// <summary>
+        /// Khóa tài khoản user (Admin chức năng)
+        /// User bị khóa không thể đăng nhập và sử dụng hệ thống
+        /// </summary>
+        /// <param name="id">ID user cần khóa</param>
+        /// <returns>true nếu khóa thành công, false nếu user không tồn tại</returns>
         public async Task<bool> BlockUserAsync(Guid id)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -84,10 +104,16 @@ namespace Services.UserServices
                 return false;
             }
 
-            user.IsActive = false;
+            user.IsActive = false; // Đặt trạng thái không hoạt động
             return await _userRepository.UpdateAsync(user);
         }
 
+        /// <summary>
+        /// Mở khóa tài khoản user (Admin chức năng)
+        /// User được mở khóa có thể đăng nhập và sử dụng hệ thống trở lại
+        /// </summary>
+        /// <param name="id">ID user cần mở khóa</param>
+        /// <returns>true nếu mở khóa thành công, false nếu user không tồn tại</returns>
         public async Task<bool> UnblockUserAsync(Guid id)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -96,7 +122,7 @@ namespace Services.UserServices
                 return false;
             }
 
-            user.IsActive = true;
+            user.IsActive = true; // Đặt trạng thái hoạt động
             return await _userRepository.UpdateAsync(user);
         }
 

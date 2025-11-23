@@ -21,7 +21,10 @@ namespace ShareItAPI.Controllers
             _conversationService = conversationService;
         }
 
-        // GET: api/conversations
+        /// <summary>
+        /// Feature: Chat with provider / Chat with staff
+        /// Get all conversations for the current user (for messaging with providers or staff).
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetConversations()
         {

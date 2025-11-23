@@ -26,6 +26,11 @@ namespace ShareItAPI.Controllers
             _facebookAuthService = facebookAuthService;
         }
 
+        /// <summary>
+        /// Feature: Login using email and password
+        /// User enters their credentials (email and password) to access their registered account.
+        /// The system authenticates the information and grants access.
+        /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
@@ -49,6 +54,11 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Feature: Login via Facebook
+        /// The user chooses to log in via their Facebook account.
+        /// The system handles authentication through Facebook's service.
+        /// </summary>
         [HttpPost("facebook-login")]
         public async Task<IActionResult> FacebookLogin([FromBody] FacebookLoginRequestDto request)
         {
@@ -97,6 +107,11 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Feature: Login via Google
+        /// The user chooses to log in via their Google account.
+        /// The system handles authentication through Google's service.
+        /// </summary>
         [HttpPost("google-login")]
         public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequestDto request)
         {
@@ -164,6 +179,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<TokenResponseDto>("Token refreshed successfully", result));
         }
 
+        /// <summary>
+        /// Feature: Logout
+        /// The user securely ends the current login session.
+        /// </summary>
         [HttpPost("log-out")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -180,6 +199,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Logout successful", null));
         }
 
+        /// <summary>
+        /// Feature: Register Guest
+        /// The user provides necessary personal information (email, password, etc.) to create a new account in the system.
+        /// </summary>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
@@ -197,6 +220,10 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Feature: Change password
+        /// Allow the logged-in user to set a new password after verifying the current one.
+        /// </summary>
         [HttpPost("change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
@@ -221,6 +248,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Password changed successfully", null));
         }
 
+        /// <summary>
+        /// Feature: Forget password
+        /// When a user forgets their password, they can request a link to be sent to their email to reset it.
+        /// </summary>
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {

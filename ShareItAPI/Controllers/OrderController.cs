@@ -27,6 +27,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<string>("Order created", null));
         }
 
+        /// <summary>
+        /// Feature: Update order status
+        /// The user updates the status of an order to reflect its progress in the fulfillment lifecycle.
+        /// </summary>
         [HttpPut("{orderId:guid}/status")]
         public async Task<IActionResult> ChangeOrderStatus(Guid orderId, [FromQuery] OrderStatus newStatus)
         {
@@ -83,6 +87,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<object>($"Orders with status {status}", orders));
         }
 
+        /// <summary>
+        /// Feature: Track order status
+        /// The user checks the status of their order to know its progress.
+        /// </summary>
         [HttpGet("{orderId:guid}")]
         public async Task<IActionResult> GetOrderDetail(Guid orderId)
         {
@@ -252,7 +260,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<object>($"Orders for customer {customerId} list display retrieved", orders));
         }
 
-        // NEW: Endpoint to get orders for list display (by customer)
+        /// <summary>
+        /// Feature: View order history
+        /// The user reviews a list of their past rental or purchase orders.
+        /// </summary>
         [HttpGet("customer/{customerId:guid}/list-orders")]
         public async Task<IActionResult> GetCustomerOrders(Guid customerId)
         {
@@ -260,7 +271,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<object>($"Orders for customer {customerId} list display retrieved", orders));
         }
 
-        // GET: api/orders/{orderId}/details
+        /// <summary>
+        /// Feature: View order details
+        /// The user views an order with key information such as products, shipping, payment, and status.
+        /// </summary>
         [HttpGet("{orderId:guid}/details")]
         [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetOrderDetails(Guid orderId)

@@ -35,6 +35,10 @@ namespace ShareItAPI.Controllers
             _conversationService = conversationService;
         }
 
+        /// <summary>
+        /// Feature: View product details
+        /// The user views comprehensive information about a selected product, including images, full description, specifications, and price.
+        /// </summary>
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(Guid id)
@@ -44,6 +48,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<ProductDTO>("Product retrieved successfully", product));
         }
 
+        /// <summary>
+        /// Feature: View list of products
+        /// The user browses a list of available products.
+        /// </summary>
         [HttpGet()]
         [AllowAnonymous]
         public IActionResult GetAll()
