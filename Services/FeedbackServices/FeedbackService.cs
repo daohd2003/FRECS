@@ -365,5 +365,18 @@ namespace Services.FeedbackServices
 
             return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Success", paginatedDtoResponse);
         }
+
+        /// <summary>
+        /// Lấy tất cả feedback của một customer cụ thể cho một sản phẩm
+        /// Dùng cho Provider xem feedback của customer đã mua sản phẩm
+        /// </summary>
+        /// <param name="productId">ID sản phẩm</param>
+        /// <param name="customerId">ID customer</param>
+        /// <returns>Danh sách FeedbackResponseDto</returns>
+        public async Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId)
+        {
+            var feedbacks = await _feedbackRepo.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+            return _mapper.Map<IEnumerable<FeedbackResponseDto>>(feedbacks);
+        }
     }
 }

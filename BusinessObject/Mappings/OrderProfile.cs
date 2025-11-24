@@ -47,6 +47,7 @@ namespace BusinessObject.Mappings
 
             CreateMap<Order, OrderDetailsDto>()
             .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => $"ORD{src.Id.ToString().Substring(0, 3).ToUpper()}"))
+            .ForMember(dest => dest.CustomerId, opt => opt.MapFrom(src => src.CustomerId)) // Map CustomerId
             .ForMember(dest => dest.ProviderId, opt => opt.MapFrom(src => src.ProviderId)) // Map ProviderId for ownership verification
             .ForMember(dest => dest.OrderDate, opt => opt.MapFrom(src => src.CreatedAt))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt)) // Order Placed date
