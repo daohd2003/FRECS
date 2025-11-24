@@ -133,5 +133,21 @@ namespace Repositories.FeedbackRepositories
                 TotalItems = totalItems
             };
         }
+
+        /// <summary>
+        /// Lấy tất cả feedback của một customer cho một sản phẩm cụ thể
+        /// </summary>
+        public async Task<IEnumerable<Feedback>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId)
+        {
+            return await _context.Feedbacks
+                .Where(f => f.ProductId == productId && f.CustomerId == customerId)
+                .Include(f => f.Customer).ThenInclude(c => c.Profile)
+                .Include(f => f.Product)
+                .Include(f => f.Order)
+                .Include(f => f.OrderItem)
+                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile)
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+        }
     }
 }

@@ -128,5 +128,17 @@ namespace ShareItAPI.Controllers
             }
             return Ok(response);
         }
+
+        /// <summary>
+        /// Lấy tất cả feedback của một customer cụ thể cho một sản phẩm
+        /// Dùng cho Provider xem feedback của customer đã mua sản phẩm trong Order Detail
+        /// </summary>
+        [HttpGet("product/{productId}/customer/{customerId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetFeedbacksByProductAndCustomer(Guid productId, Guid customerId)
+        {
+            var feedbacks = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+            return Ok(new ApiResponse<object>("Feedbacks retrieved successfully.", feedbacks));
+        }
     }
 }
