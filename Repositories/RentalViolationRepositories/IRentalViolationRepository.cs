@@ -47,5 +47,10 @@ namespace Repositories.RentalViolationRepositories
         /// Lấy ảnh bằng chứng theo vi phạm
         /// </summary>
         Task<IEnumerable<RentalViolationImage>> GetEvidenceImagesAsync(Guid violationId);
+
+        /// <summary>
+        /// Lấy danh sách tất cả admin users để gửi thông báo
+        /// </summary>
+        Task<IEnumerable<User>> GetAdminUsersAsync();
     }
 }

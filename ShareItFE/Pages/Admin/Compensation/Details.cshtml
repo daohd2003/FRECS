@@ -1,0 +1,768 @@
+@page "{violationId:guid}"
+@model ShareItFE.Pages.Admin.Compensation.DetailsModel
+@{
+    ViewData["Title"] = "Dispute Case Details";
+    Layout = "~/Pages/Shared/_AdminLayout.cshtml";
+}
+
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-[1800px] mx-auto">
+        <!-- Back Button -->
+        <div class="mb-6">
+            <a href="/Admin/Compensation" class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                Back to Dispute List
+            </a>
+        </div>
+
+        <!-- Case Header -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Dispute Case Details</h1>
+                    <p class="text-gray-600 mt-1">
+                        Case ID: <span class="font-mono text-sm" id="case-id">@Model.ViolationId</span>
+                    </p>
+                </div>
+                <div class="text-right">
+                    <span id="case-status" class="inline-block px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-semibold">
+                        LOADING...
+                    </span>
+                    <p class="text-sm text-gray-600 mt-2" id="case-date">
+                        Filed: Loading...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Column 1: Product & Party Information -->
+            <div class="space-y-6">
+                <!-- Product Information -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="package" class="w-5 h-5 text-gray-700"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Product Information</h2>
+                    </div>
+
+                    <div id="product-info" class="space-y-4">
+                        <div class="animate-pulse">
+                            <div class="h-48 bg-gray-200 rounded-lg mb-4"></div>
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Provider Information -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Provider Information</h2>
+                    </div>
+
+                    <div id="provider-info" class="animate-pulse">
+                        <div class="h-12 bg-gray-200 rounded w-full"></div>
+                    </div>
+                </div>
+
+                <!-- Customer Information -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Customer Information</h2>
+                    </div>
+
+                    <div id="customer-info" class="animate-pulse">
+                        <div class="h-12 bg-gray-200 rounded w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Evidence & Communication -->
+            <div class="space-y-6">
+                <!-- Provider's Claim -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Provider's Claim</h2>
+                    </div>
+
+                    <div id="provider-claim" class="space-y-4">
+                        <div class="animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer's Response -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="message-square" class="w-5 h-5 text-blue-600"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Customer's Response</h2>
+                    </div>
+
+                    <div id="customer-response" class="space-y-4">
+                        <div class="animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-4/6"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Communication History -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="message-square" class="w-5 h-5 text-gray-700"></i>
+                        <h2 class="text-lg font-bold text-gray-900">Communication History</h2>
+                    </div>
+
+                    <div id="communication-history" class="space-y-3 max-h-96 overflow-y-auto">
+                        <div class="animate-pulse">
+                            <div class="h-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-16 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Admin's Decision -->
+            <div class="space-y-6">
+                <div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg shadow-md border-2 border-slate-300 p-6 sticky top-6">
+                    <div class="flex items-center gap-2 mb-6">
+                        <i data-lucide="scale" class="w-6 h-6 text-slate-700"></i>
+                        <h2 class="text-xl font-bold text-gray-900">Admin's Decision</h2>
+                    </div>
+
+                    <form id="decision-form" class="space-y-6">
+                        @Html.AntiForgeryToken()
+                        
+                        <input type="hidden" id="violation-id" value="@Model.ViolationId" />
+
+                        <!-- Resolution Type -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                Resolution Type <span class="text-red-600">*</span>
+                            </label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                                    <input type="radio" name="resolution-type" value="UPHOLD_CLAIM" class="w-5 h-5 text-red-600" />
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                                            <span class="font-semibold text-gray-900">Uphold Claim</span>
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-1">Rule in favor of the provider</p>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                                    <input type="radio" name="resolution-type" value="REJECT_CLAIM" class="w-5 h-5 text-red-600" />
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="x-circle" class="w-5 h-5 text-red-600"></i>
+                                            <span class="font-semibold text-gray-900">Reject Claim</span>
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-1">Rule in favor of the customer</p>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-white transition-colors">
+                                    <input type="radio" name="resolution-type" value="COMPROMISE" class="w-5 h-5 text-red-600" />
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="scale" class="w-5 h-5 text-blue-600"></i>
+                                            <span class="font-semibold text-gray-900">Compromise</span>
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-1">Adjust the compensation amount</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Adjusted Amount -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                Adjusted Penalty Amount
+                                <span id="compromise-required" class="text-red-600 hidden"> *</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₫</span>
+                                <input type="number" id="penalty-amount" step="1" min="0" 
+                                       class="w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                       placeholder="0" disabled />
+                            </div>
+                            <p class="text-xs text-gray-600 mt-1" id="original-amount-text">
+                                
+                            </p>
+                        </div>
+
+                        <!-- Admin Notes -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                Verdict Notes <span class="text-red-600">*</span>
+                            </label>
+                            <textarea id="admin-notes" rows="8" 
+                                      class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                                      placeholder="Please provide a clear and objective explanation for your decision. These notes will be sent to both parties."></textarea>
+                            <p class="text-xs text-gray-600 mt-1">
+                                <span id="notes-length">0</span> characters
+                            </p>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="submit-decision" 
+                                class="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-4 px-6 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg">
+                            <i data-lucide="save" class="w-5 h-5"></i>
+                            Submit Final Decision
+                        </button>
+
+                        <!-- Decision Summary -->
+                        <div id="decision-summary" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-sm font-semibold text-blue-900 mb-2">Decision Summary:</p>
+                            <ul class="text-sm text-blue-800 space-y-1" id="summary-content">
+                            </ul>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div id="image-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+    <div class="relative max-w-5xl max-h-full">
+        <img id="modal-image" src="" alt="Evidence" class="max-w-full max-h-[90vh] object-contain" />
+        <button id="close-modal" class="absolute top-4 right-4 bg-white text-gray-900 rounded-full p-2 hover:bg-gray-200">
+            <i data-lucide="x-circle" class="w-6 h-6"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Floating Chat Container -->
+<div id="floating-chat-container"></div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/js/floating-chat.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let disputeData = null;
+        const violationId = '@Model.ViolationId';
+
+        $(document).ready(function() {
+            loadDisputeDetails();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Resolution type change
+            $('input[name="resolution-type"]').change(function() {
+                const resolutionType = $(this).val();
+                handleResolutionTypeChange(resolutionType);
+            });
+
+            // Penalty amount input
+            $('#penalty-amount').on('input', function() {
+                updateDecisionSummary();
+            });
+
+            // Admin notes input
+            $('#admin-notes').on('input', function() {
+                const length = $(this).val().length;
+                $('#notes-length').text(length);
+                updateDecisionSummary();
+            });
+
+            // Form submit
+            $('#decision-form').submit(async function(e) {
+                e.preventDefault();
+                await submitDecision();
+            });
+
+            // Image modal
+            $('#close-modal, #image-modal').click(function(e) {
+                if (e.target === this) {
+                    $('#image-modal').addClass('hidden');
+                }
+            });
+        }
+
+        async function loadDisputeDetails() {
+            try {
+                const apiBaseUrl = window.apiSettings?.baseUrl || 'https://localhost:7256/api';
+                
+                // Get access token - try multiple sources
+                let accessToken = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+                
+                console.log('Access Token Available:', !!accessToken);
+                
+                const headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                };
+                
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                } else {
+                    console.error('No access token found! User may not be authenticated.');
+                }
+                
+                const response = await fetch(`${apiBaseUrl}/CompensationDispute/${violationId}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: headers
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`Failed to load dispute details: ${response.status}`);
+                }
+
+                disputeData = await response.json();
+                renderDisputeDetails();
+            } catch (error) {
+                console.error('Error loading dispute:', error);
+                alert('Failed to load dispute details. Please try again.');
+                window.location.href = '/Admin/Compensation';
+            }
+        }
+        
+        // Helper function to get cookie value
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function renderDisputeDetails() {
+            // Update header
+            $('#case-status').text(disputeData.status.replace(/_/g, ' '));
+            $('#case-date').text(`Filed: ${formatDate(disputeData.createdAt)}`);
+
+            // Product Information
+            renderProductInfo();
+
+            // Provider Information
+            renderProviderInfo();
+
+            // Customer Information
+            renderCustomerInfo();
+
+            // Provider's Claim
+            renderProviderClaim();
+
+            // Customer's Response
+            renderCustomerResponse();
+
+            // Communication History
+            renderCommunicationHistory();
+
+            // Set original amount text
+            $('#original-amount-text').text(`Original request: ₫${disputeData.requestedCompensation.toLocaleString('vi-VN')} | Max: ₫${(disputeData.orderItem?.totalDeposit || 0).toLocaleString('vi-VN')}`);
+
+            // Re-initialize icons
+            lucide.createIcons();
+        }
+
+        function renderProductInfo() {
+            const html = `
+                ${disputeData.product.imageUrl ? `
+                    <img src="${disputeData.product.imageUrl}" alt="${escapeHtml(disputeData.product.name)}" 
+                         class="w-full h-48 object-cover rounded-lg mb-4" />
+                ` : ''}
+                <div>
+                    <h3 class="font-semibold text-gray-900">${escapeHtml(disputeData.product.name)}</h3>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Product Value: <span class="font-semibold text-gray-900">₫${disputeData.product.value.toLocaleString('vi-VN')}</span>
+                    </p>
+                </div>
+                <div class="pt-4 border-t border-gray-200">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="store" class="w-4 h-4 text-gray-600"></i>
+                        <h4 class="font-semibold text-gray-900">Shop Policy</h4>
+                    </div>
+                    <p class="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                        ${escapeHtml(disputeData.product.compensationPolicy)}
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">Shop: ${escapeHtml(disputeData.product.shopName)}</p>
+                </div>
+            `;
+            $('#product-info').html(html);
+        }
+
+        function renderProviderInfo() {
+            const provider = disputeData.provider;
+            const html = `
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
+                        ${provider.profilePictureUrl ? 
+                            `<img src="${provider.profilePictureUrl}" alt="${escapeHtml(provider.name)}" class="w-full h-full object-cover" />` :
+                            `<i data-lucide="user" class="w-full h-full p-2 text-gray-600"></i>`
+                        }
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900">${escapeHtml(provider.name)}</h3>
+                        <p class="text-sm text-gray-600">${escapeHtml(provider.email)}</p>
+                    </div>
+                    <button onclick="openChatWithUser('${provider.id}', '${escapeHtml(provider.name)}')" 
+                            class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Chat with provider">
+                        <i data-lucide="message-circle" class="w-5 h-5 text-blue-600"></i>
+                    </button>
+                </div>
+            `;
+            $('#provider-info').html(html);
+        }
+
+        function renderCustomerInfo() {
+            const customer = disputeData.customer;
+            const html = `
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
+                        ${customer.profilePictureUrl ? 
+                            `<img src="${customer.profilePictureUrl}" alt="${escapeHtml(customer.name)}" class="w-full h-full object-cover" />` :
+                            `<i data-lucide="user" class="w-full h-full p-2 text-gray-600"></i>`
+                        }
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900">${escapeHtml(customer.name)}</h3>
+                        <p class="text-sm text-gray-600">${escapeHtml(customer.email)}</p>
+                    </div>
+                    <button onclick="openChatWithUser('${customer.id}', '${escapeHtml(customer.name)}')" 
+                            class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Chat with customer">
+                        <i data-lucide="message-circle" class="w-5 h-5 text-blue-600"></i>
+                    </button>
+                </div>
+            `;
+            $('#customer-info').html(html);
+        }
+
+        function renderProviderClaim() {
+            let html = `
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Damage Description</h3>
+                    <p class="text-gray-900 bg-gray-50 p-3 rounded-lg">${escapeHtml(disputeData.damageDescription)}</p>
+                </div>
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Financial Summary</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Total Deposit to Process:</span>
+                            <span class="font-semibold text-gray-900">₫${(disputeData.orderItem?.totalDeposit || 0).toLocaleString('vi-VN')}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Total Penalty:</span>
+                            <span class="font-semibold text-red-600">-₫${disputeData.requestedCompensation.toLocaleString('vi-VN')}</span>
+                        </div>
+                        <div class="border-t border-gray-300 pt-2 mt-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-semibold text-gray-700">Total Refund to Customer:</span>
+                                <span class="text-lg font-bold ${((disputeData.orderItem?.totalDeposit || 0) - disputeData.requestedCompensation) >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    ₫${((disputeData.orderItem?.totalDeposit || 0) - disputeData.requestedCompensation).toLocaleString('vi-VN')}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Requested Compensation</h3>
+                    <div class="flex items-center gap-2 bg-red-50 p-3 rounded-lg">
+                        <i data-lucide="dollar-sign" class="w-5 h-5 text-red-600"></i>
+                        <span class="text-xl font-bold text-red-600">₫${disputeData.requestedCompensation.toLocaleString('vi-VN')}</span>
+                    </div>
+                </div>
+            `;
+
+            // Provider Escalation Reason
+            if (disputeData.providerEscalationReason) {
+                html += `
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
+                        <h3 class="text-sm font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                            Provider's Escalation Reason
+                        </h3>
+                        <p class="text-gray-900 text-sm">${escapeHtml(disputeData.providerEscalationReason)}</p>
+                    </div>
+                `;
+            }
+
+            if (disputeData.providerEvidence.length > 0) {
+                html += `
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Evidence from Provider</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            ${disputeData.providerEvidence.map(evidence => `
+                                <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                                     onclick="showImage('${evidence.imageUrl}')">
+                                    <img src="${evidence.imageUrl}" alt="Evidence" class="w-full h-full object-cover" />
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            $('#provider-claim').html(html);
+        }
+
+        function renderCustomerResponse() {
+            let html = '';
+            
+            if (disputeData.customerNotes) {
+                html += `
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Complaint Details</h3>
+                        <p class="text-gray-900 bg-gray-50 p-3 rounded-lg">${escapeHtml(disputeData.customerNotes)}</p>
+                    </div>
+                `;
+            } else {
+                html += `<p class="text-gray-500 italic">No response provided by customer</p>`;
+            }
+
+            // Customer Escalation Reason
+            if (disputeData.customerEscalationReason) {
+                html += `
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+                        <h3 class="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                            Customer's Escalation Reason
+                        </h3>
+                        <p class="text-gray-900 text-sm">${escapeHtml(disputeData.customerEscalationReason)}</p>
+                    </div>
+                `;
+            }
+
+            if (disputeData.customerEvidence.length > 0) {
+                html += `
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Rebuttal Evidence</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            ${disputeData.customerEvidence.map(evidence => `
+                                <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                                     onclick="showImage('${evidence.imageUrl}')">
+                                    <img src="${evidence.imageUrl}" alt="Customer Evidence" class="w-full h-full object-cover" />
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            $('#customer-response').html(html);
+        }
+
+        function renderCommunicationHistory() {
+            if (disputeData.messages.length === 0) {
+                $('#communication-history').html('<p class="text-gray-500 italic text-sm">No messages exchanged</p>');
+                return;
+            }
+
+            const html = disputeData.messages.map(message => {
+                const isProvider = message.senderId === disputeData.provider.id;
+                return `
+                    <div class="p-3 rounded-lg ${isProvider ? 'bg-red-50 ml-4' : 'bg-blue-50 mr-4'}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs font-semibold text-gray-700">${escapeHtml(message.senderName)}</span>
+                            <span class="text-xs text-gray-500">${formatDate(message.sentAt)}</span>
+                        </div>
+                        <p class="text-sm text-gray-900">${escapeHtml(message.content)}</p>
+                    </div>
+                `;
+            }).join('');
+
+            $('#communication-history').html(html);
+        }
+
+        function handleResolutionTypeChange(resolutionType) {
+            const penaltyInput = $('#penalty-amount');
+            const compromiseRequired = $('#compromise-required');
+
+            if (resolutionType === 'COMPROMISE') {
+                penaltyInput.prop('disabled', false);
+                compromiseRequired.removeClass('hidden');
+            } else {
+                penaltyInput.prop('disabled', true);
+                penaltyInput.val('');
+                compromiseRequired.addClass('hidden');
+            }
+
+            updateDecisionSummary();
+        }
+
+        function updateDecisionSummary() {
+            const resolutionType = $('input[name="resolution-type"]:checked').val();
+            const penaltyAmount = parseFloat($('#penalty-amount').val()) || 0;
+            const adminNotes = $('#admin-notes').val().trim();
+
+            if (!resolutionType) {
+                $('#decision-summary').addClass('hidden');
+                return;
+            }
+
+            let finalAmount = 0;
+            if (resolutionType === 'UPHOLD_CLAIM') {
+                finalAmount = disputeData.requestedCompensation;
+            } else if (resolutionType === 'COMPROMISE') {
+                finalAmount = penaltyAmount;
+            }
+
+            const summaryHtml = `
+                <li>• Resolution: <span class="font-semibold">${resolutionType.replace(/_/g, ' ')}</span></li>
+                <li>• Penalty: <span class="font-semibold">₫${finalAmount.toLocaleString('vi-VN')}</span></li>
+                <li>• Both parties will be notified via email</li>
+                ${adminNotes ? '<li>• Verdict notes provided</li>' : ''}
+            `;
+
+            $('#summary-content').html(summaryHtml);
+            $('#decision-summary').removeClass('hidden');
+        }
+
+        async function submitDecision() {
+            const resolutionType = $('input[name="resolution-type"]:checked').val();
+            const penaltyAmountInput = $('#penalty-amount').val();
+            const adminNotes = $('#admin-notes').val().trim();
+
+            // Validation
+            if (!resolutionType) {
+                alert('Please select a resolution type');
+                return;
+            }
+
+            if (!adminNotes) {
+                alert('Please provide verdict notes explaining your decision');
+                return;
+            }
+
+            if (adminNotes.length < 10) {
+                alert('Verdict notes must be at least 10 characters long');
+                return;
+            }
+
+            let customerFineAmount = 0;
+            let providerCompensationAmount = 0;
+
+            if (resolutionType === 'UPHOLD_CLAIM') {
+                customerFineAmount = disputeData.requestedCompensation;
+                providerCompensationAmount = disputeData.requestedCompensation;
+            } else if (resolutionType === 'COMPROMISE') {
+                if (!penaltyAmountInput) {
+                    alert('Please enter a penalty amount for the compromise');
+                    return;
+                }
+                const penaltyAmount = parseFloat(penaltyAmountInput);
+                const maxAmount = disputeData.orderItem?.totalDeposit || 0;
+                if (penaltyAmount < 0 || penaltyAmount > maxAmount) {
+                    alert(`Penalty amount must be between ₫0 and ₫${maxAmount.toLocaleString('vi-VN')}`);
+                    return;
+                }
+                customerFineAmount = penaltyAmount;
+                providerCompensationAmount = penaltyAmount;
+            }
+            // REJECT_CLAIM keeps both amounts at 0
+
+            const requestData = {
+                violationId: violationId,
+                resolutionType: resolutionType,
+                customerFineAmount: customerFineAmount,
+                providerCompensationAmount: providerCompensationAmount,
+                reason: adminNotes
+            };
+
+            try {
+                $('#submit-decision').prop('disabled', true).html('<i data-lucide="loader" class="w-5 h-5 animate-spin"></i> Submitting...');
+                lucide.createIcons();
+
+                const apiBaseUrl = window.apiSettings?.baseUrl || 'https://localhost:7256/api';
+                
+                // Get access token - try multiple sources
+                let accessToken = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+                const headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                };
+                
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                } else {
+                    console.error('No access token found!');
+                }
+                
+                const response = await fetch(`${apiBaseUrl}/CompensationDispute/resolve`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: headers,
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to submit decision');
+                }
+
+                alert('Decision submitted successfully! Both parties will be notified.');
+                window.location.href = '/Admin/Compensation';
+            } catch (error) {
+                console.error('Error submitting decision:', error);
+                alert(`Failed to submit decision: ${error.message}`);
+                $('#submit-decision').prop('disabled', false).html('<i data-lucide="save" class="w-5 h-5"></i> Submit Final Decision');
+                lucide.createIcons();
+            }
+        }
+
+        function showImage(url) {
+            $('#modal-image').attr('src', url);
+            $('#image-modal').removeClass('hidden');
+            lucide.createIcons();
+        }
+
+        function openChatWithUser(userId, userName) {
+            if (!userId) return;
+            
+            // Use FloatingChatManager (loaded from _AdminLayout.cshtml)
+            if (typeof window.floatingChatManager !== 'undefined' && window.floatingChatManager.openChat) {
+                window.floatingChatManager.openChat(userId, userName, null, false);
+            } else {
+                console.error('FloatingChatManager not available');
+                alert('Chat feature is not available at the moment. Please refresh the page.');
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.toString().replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+}
+
+

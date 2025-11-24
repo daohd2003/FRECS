@@ -591,6 +591,28 @@
         </div>
     }
 
+    <!-- Existing Violations Status (Edit Mode) -->
+    @if (Model.IsEditMode && Model.ExistingViolations != null && Model.ExistingViolations.Any())
+    {
+        var rejectedViolations = Model.ExistingViolations.Where(v => v.Status == BusinessObject.Enums.ViolationStatus.CUSTOMER_REJECTED).ToList();
+        
+        @if (rejectedViolations.Any())
+        {
+            <div class="alert" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b; color: #78350f; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <i class="bi bi-exclamation-triangle-fill" style="margin-right: 8px;"></i>
+                        <strong>Customer Rejected Violation</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 14px;">The customer has rejected the violation. You can adjust it below or escalate to admin for review.</p>
+                    </div>
+                    <button type="button" class="btn btn-warning" onclick="showEscalateModal()" style="white-space: nowrap;">
+                        <i class="bi bi-shield-exclamation"></i> Escalate to Admin
+                    </button>
+                </div>
+            </div>
+        }
+    }
+
     <!-- Guidelines - Static Info Box -->
     <div class="guidelines-box">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -709,6 +731,42 @@
                                           placeholder="Example: Screen cracked at top left corner, crack is about 5cm long. Customer signed for the product in perfect condition upon delivery."></textarea>
                                 <div class="small-text">Maximum 2000 characters</div>
                             </div>
+
+                            <!-- Customer Response (Show if customer has provided notes) -->
+                            @{
+                                var existingViolation = Model.ExistingViolations?.FirstOrDefault(v => v.OrderItemId == item.Id);
+                                
+                                // Show customer notes if they exist, regardless of status
+                                // This covers CUSTOMER_REJECTED, PENDING_ADMIN_REVIEW (escalated), etc.
+                                if (existingViolation != null && !string.IsNullOrWhiteSpace(existingViolation.CustomerNotes))
+                                {
+                                    <div class="form-group" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 20px;">
+                                        <label style="color: #78350f; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                            <i class="bi bi-chat-left-text-fill" style="font-size: 18px;"></i>
+                                            <strong>Customer's Response</strong>
+                                            @if (existingViolation.Status == BusinessObject.Enums.ViolationStatus.PENDING_ADMIN_REVIEW)
+                                            {
+                                                <span class="badge" style="background: #dc2626; color: white; font-size: 11px; padding: 3px 8px; border-radius: 12px; margin-left: 8px;">
+                                                    <i class="bi bi-shield-exclamation"></i> Escalated to Admin
+                                                </span>
+                                            }
+                                            else if (existingViolation.Status == BusinessObject.Enums.ViolationStatus.CUSTOMER_REJECTED)
+                                            {
+                                                <span class="badge" style="background: #f59e0b; color: white; font-size: 11px; padding: 3px 8px; border-radius: 12px; margin-left: 8px;">
+                                                    <i class="bi bi-x-circle"></i> Rejected
+                                                </span>
+                                            }
+                                        </label>
+                                        <div style="background: white; padding: 12px; border-radius: 6px; color: #1f2937; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">@existingViolation.CustomerNotes</div>
+                                        @if (existingViolation.CustomerResponseAt.HasValue)
+                                        {
+                                            <div class="small-text" style="margin-top: 8px; color: #92400e;">
+                                                <i class="bi bi-clock"></i> Responded at: @existingViolation.CustomerResponseAt.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
 
                             <!-- Damage Percentage (Only for DAMAGED) -->
                             <div class="form-group" id="damage_@item.Id" style="display: none;">
@@ -879,3 +937,86 @@
     </script>
 }
 
+
+
+<!-- Escalate Modal -->
+<div id="escalate-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <div class="modal-header" style="margin-bottom: 20px;">
+            <h3 style="margin: 0; color: #2d3748;"><i class="bi bi-shield-exclamation"></i> Escalate to Admin</h3>
+        </div>
+        <div class="modal-body">
+            <p style="color: #4a5568; margin-bottom: 16px;">This will send all rejected violations to admin for final review. The admin will make the final decision.</p>
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2d3748;">Reason (Optional):</label>
+            <textarea id="escalate-reason" placeholder="Explain why you need admin intervention..." style="width: 100%; min-height: 100px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit;"></textarea>
+        </div>
+        <div class="modal-actions" style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn btn-secondary" onclick="closeEscalateModal()">
+                <i class="bi bi-x"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-warning" onclick="confirmEscalateAll()">
+                <i class="bi bi-send"></i> Send to Admin
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Escalate functions
+    function showEscalateModal() {
+        document.getElementById('escalate-modal').style.display = 'flex';
+    }
+
+    function closeEscalateModal() {
+        document.getElementById('escalate-modal').style.display = 'none';
+        document.getElementById('escalate-reason').value = '';
+    }
+
+    async function confirmEscalateAll() {
+        const reason = document.getElementById('escalate-reason').value.trim();
+
+        try {
+            @if (Model.ExistingViolations != null && Model.ExistingViolations.Any())
+            {
+                var rejectedViolations = Model.ExistingViolations.Where(v => v.Status == BusinessObject.Enums.ViolationStatus.CUSTOMER_REJECTED).ToList();
+                if (rejectedViolations.Any())
+                {
+                    <text>
+                    const rejectedViolationIds = @Html.Raw(JsonSerializer.Serialize(rejectedViolations.Select(v => v.ViolationId)));
+                    
+                    // Escalate each violation
+                    const escalatePromises = rejectedViolationIds.map(violationId => 
+                        fetch(`@Model.ApiBaseUrl/rental-violations/${violationId}/escalate`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer @(Request.Cookies["AccessToken"])',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ reason: reason || null })
+                        })
+                    );
+
+                    const results = await Promise.all(escalatePromises);
+                    const allSuccess = results.every(r => r.ok);
+
+                    if (allSuccess) {
+                        window.location.href = '/provider/order/@Model.Order.Id';
+                    } else {
+                        alert('Failed to escalate. Please try again.');
+                    }
+                    </text>
+                }
+            }
+        } catch (error) {
+            console.error('Error escalating violations:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('escalate-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEscalateModal();
+        }
+    });
+</script>

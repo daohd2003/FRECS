@@ -1,0 +1,321 @@
+@page
+@model ShareItFE.Pages.Admin.TransactionDetailModel
+@{
+    ViewData["Title"] = "Transaction Details";
+    Layout = "~/Pages/Shared/_AdminLayout.cshtml";
+}
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a asp-page="/Admin/TransactionManagement">Transaction Management</a></li>
+                    <li class="breadcrumb-item active">Details</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">Transaction Details</h1>
+        </div>
+        <a asp-page="/Admin/TransactionManagement" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+
+    @if (Model.Transaction != null)
+    {
+        <div class="row g-4">
+            <!-- Main Information -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0">Main Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="text-muted small mb-1">Transaction ID</label>
+                                <div class="fw-medium">
+                                    <code>@Model.Transaction.Id.ToString().Substring(0, 8).ToUpper()</code>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted small mb-1">Transaction Date</label>
+                                <div class="fw-medium">
+                                    @Model.Transaction.TransactionDate.ToString("dd/MM/yyyy HH:mm:ss")
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted small mb-1">Category</label>
+                                <div>
+                                    <span class="badge @Model.GetCategoryBadgeClass(Model.Transaction.Category) fs-6">
+                                        @Model.Transaction.CategoryDisplay
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted small mb-1">Status</label>
+                                <div>
+                                    <span class="badge @Model.GetStatusBadgeClass(Model.Transaction.Status) fs-6">
+                                        @Model.Transaction.StatusDisplay
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <hr class="my-2">
+                            </div>
+                            <div class="col-12">
+                                <label class="text-muted small mb-1">Transaction Amount</label>
+                                <div class="fs-3 fw-bold text-primary">
+                                    @Model.FormatCurrency(Model.Transaction.Amount)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer & Provider Information -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0">Related Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            @if (Model.Transaction.Category != BusinessObject.Enums.TransactionCategory.ProviderWithdrawal)
+                            {
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3">
+                                        <h6 class="text-muted mb-3">
+                                            <i class="bi bi-person-circle me-2"></i>Customer
+                                        </h6>
+                                        <div class="mb-2">
+                                            <strong>Name:</strong> @Model.Transaction.CustomerName
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong>Email:</strong> @Model.Transaction.CustomerEmail
+                                        </div>
+                                        <div>
+                                            <strong>ID:</strong> <code class="small">@Model.Transaction.CustomerId.ToString().Substring(0, 8)</code>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Transaction.ProviderName) && Model.Transaction.ProviderName != "N/A")
+                            {
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3">
+                                        <h6 class="text-muted mb-3">
+                                            <i class="bi bi-shop me-2"></i>Provider
+                                        </h6>
+                                        <div class="mb-2">
+                                            <strong>Name:</strong> @Model.Transaction.ProviderName
+                                        </div>
+                                        <div class="mb-2">
+                                            <strong>Email:</strong> @Model.Transaction.ProviderEmail
+                                        </div>
+                                        <div>
+                                            <strong>ID:</strong> <code class="small">@Model.Transaction.ProviderId?.ToString().Substring(0, 8)</code>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction Details based on Category -->
+                @if (Model.Transaction.DetailInfo != null)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0">Transaction Details</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (Model.Transaction.Category == BusinessObject.Enums.TransactionCategory.Purchase || 
+                                 Model.Transaction.Category == BusinessObject.Enums.TransactionCategory.Rental)
+                            {
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="text-muted small mb-1">Order Type</label>
+                                        <div class="fw-medium">
+                                            @(Model.Transaction.DetailInfo.OrderType == BusinessObject.Enums.TransactionType.purchase ? "Purchase" : "Rental")
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="text-muted small mb-1">Number of Items</label>
+                                        <div class="fw-medium">@Model.Transaction.DetailInfo.TotalItems</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="text-muted small mb-1">Total Order Amount</label>
+                                        <div class="fw-medium text-success">
+                                            @Model.FormatCurrency(Model.Transaction.DetailInfo.TotalOrderAmount ?? 0)
+                                        </div>
+                                    </div>
+                                    @if (Model.Transaction.DetailInfo.SecurityDeposit.HasValue && Model.Transaction.DetailInfo.SecurityDeposit > 0)
+                                    {
+                                        <div class="col-md-6">
+                                            <label class="text-muted small mb-1">Security Deposit</label>
+                                            <div class="fw-medium text-info">
+                                                @Model.FormatCurrency(Model.Transaction.DetailInfo.SecurityDeposit.Value)
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.PaymentMethod))
+                                    {
+                                        <div class="col-md-6">
+                                            <label class="text-muted small mb-1">Payment Method</label>
+                                            <div class="fw-medium">@Model.Transaction.PaymentMethod</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (Model.Transaction.Category == BusinessObject.Enums.TransactionCategory.DepositRefund)
+                            {
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="text-muted small mb-1">Original Deposit</label>
+                                        <div class="fw-medium text-primary">
+                                            @Model.FormatCurrency(Model.Transaction.DetailInfo.OriginalDepositAmount ?? 0)
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="text-muted small mb-1">Penalty Amount</label>
+                                        <div class="fw-medium text-danger">
+                                            -@Model.FormatCurrency(Model.Transaction.DetailInfo.TotalPenaltyAmount ?? 0)
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="text-muted small mb-1">Refund Amount</label>
+                                        <div class="fw-bold text-success fs-5">
+                                            @Model.FormatCurrency(Model.Transaction.DetailInfo.RefundAmount ?? 0)
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.DetailInfo.RefundBankAccountInfo) && 
+                                         Model.Transaction.DetailInfo.RefundBankAccountInfo != "N/A")
+                                    {
+                                        <div class="col-12">
+                                            <label class="text-muted small mb-1">Bank Account</label>
+                                            <div class="fw-medium">@Model.Transaction.DetailInfo.RefundBankAccountInfo</div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.DetailInfo.ExternalTransactionId))
+                                    {
+                                        <div class="col-12">
+                                            <label class="text-muted small mb-1">External Transaction ID</label>
+                                            <div><code>@Model.Transaction.DetailInfo.ExternalTransactionId</code></div>
+                                        </div>
+                                    }
+                                    @if (Model.Transaction.DetailInfo.ProcessedAt.HasValue)
+                                    {
+                                        <div class="col-md-6">
+                                            <label class="text-muted small mb-1">Processed At</label>
+                                            <div class="fw-medium">
+                                                @Model.Transaction.DetailInfo.ProcessedAt.Value.ToString("dd/MM/yyyy HH:mm")
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="text-muted small mb-1">Processed By</label>
+                                            <div class="fw-medium">@Model.Transaction.DetailInfo.ProcessedByAdminName</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (Model.Transaction.Category == BusinessObject.Enums.TransactionCategory.ProviderWithdrawal)
+                            {
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="text-muted small mb-1">Withdrawal Amount</label>
+                                        <div class="fw-bold text-warning fs-5">
+                                            @Model.FormatCurrency(Model.Transaction.DetailInfo.WithdrawalAmount ?? 0)
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="text-muted small mb-1">Request Date</label>
+                                        <div class="fw-medium">
+                                            @Model.Transaction.DetailInfo.RequestDate?.ToString("dd/MM/yyyy HH:mm")
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.DetailInfo.WithdrawalBankAccountInfo) && 
+                                         Model.Transaction.DetailInfo.WithdrawalBankAccountInfo != "N/A")
+                                    {
+                                        <div class="col-12">
+                                            <label class="text-muted small mb-1">Bank Account</label>
+                                            <div class="fw-medium">@Model.Transaction.DetailInfo.WithdrawalBankAccountInfo</div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.DetailInfo.ExternalTransactionId))
+                                    {
+                                        <div class="col-12">
+                                            <label class="text-muted small mb-1">External Transaction ID</label>
+                                            <div><code>@Model.Transaction.DetailInfo.ExternalTransactionId</code></div>
+                                        </div>
+                                    }
+                                    @if (Model.Transaction.DetailInfo.ProcessedAt.HasValue)
+                                    {
+                                        <div class="col-md-6">
+                                            <label class="text-muted small mb-1">Processed At</label>
+                                            <div class="fw-medium">
+                                                @Model.Transaction.DetailInfo.ProcessedAt.Value.ToString("dd/MM/yyyy HH:mm")
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="text-muted small mb-1">Processed By</label>
+                                            <div class="fw-medium">@Model.Transaction.DetailInfo.ProcessedByAdminName</div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.DetailInfo.RejectionReason))
+                                    {
+                                        <div class="col-12">
+                                            <div class="alert alert-danger mb-0">
+                                                <strong>Rejection Reason:</strong> @Model.Transaction.DetailInfo.RejectionReason
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Transaction.DetailInfo.AdminNotes))
+                                    {
+                                        <div class="col-12">
+                                            <label class="text-muted small mb-1">Admin Notes</label>
+                                            <div class="border rounded p-2">@Model.Transaction.DetailInfo.AdminNotes</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Order Information -->
+                @if (Model.Transaction.OrderId.HasValue)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white py-3">
+                            <h6 class="mb-0">Related Order</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="text-muted small mb-1">Order Code</label>
+                                <div class="fw-medium">
+                                    <code class="fs-6">@Model.Transaction.OrderCode</code>
+                                </div>
+                            </div>
+                            <a href="/provider/order/@Model.Transaction.OrderId" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-box-seam me-2"></i>View Order Details
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .card {
+            transition: transform 0.2s;
+        }
+    </style>
+}

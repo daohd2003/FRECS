@@ -38,6 +38,7 @@ namespace DataAccess
         // Rental Violation tables
         public DbSet<RentalViolation> RentalViolations { get; set; }
         public DbSet<RentalViolationImage> RentalViolationImages { get; set; }
+        public DbSet<IssueResolution> IssueResolutions { get; set; }
 
         // Deposit Refund table
         public DbSet<DepositRefund> DepositRefunds { get; set; }
@@ -461,7 +462,32 @@ namespace DataAccess
             modelBuilder.Entity<WithdrawalRequest>()
                 .HasOne(wr => wr.BankAccount)
                 .WithMany()
-                .HasForeignKey(wr => wr.BankAccountId)
+                .HasForeignKey(wr => wr.BankAccountId);
+
+            // IssueResolution configuration
+            modelBuilder.Entity<IssueResolution>()
+                .Property(ir => ir.ResolutionType)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<IssueResolution>()
+                .Property(ir => ir.ResolutionStatus)
+                .HasConversion<string>();
+
+            // One-to-One relationship between RentalViolation and IssueResolution
+            modelBuilder.Entity<IssueResolution>()
+                .HasIndex(ir => ir.ViolationId)
+                .IsUnique();
+
+            modelBuilder.Entity<IssueResolution>()
+                .HasOne(ir => ir.RentalViolation)
+                .WithOne()
+                .HasForeignKey<IssueResolution>(ir => ir.ViolationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<IssueResolution>()
+                .HasOne(ir => ir.ProcessedByAdmin)
+                .WithMany()
+                .HasForeignKey(ir => ir.ProcessedByAdminId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             base.OnModelCreating(modelBuilder);

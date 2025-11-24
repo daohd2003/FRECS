@@ -72,5 +72,10 @@ namespace Services.RentalViolationServices
         /// Manually resolve order with violations - chuyển từ return_with_issue sang returned và cập nhật product counts
         /// </summary>
         Task<bool> ResolveOrderWithViolationsAsync(Guid orderId);
+
+        /// <summary>
+        /// Escalate violation to admin for review (can be called by customer or provider)
+        /// </summary>
+        Task<bool> EscalateViolationToAdminAsync(Guid violationId, Guid userId, UserRole userRole, string? escalationReason = null);
     }
 }

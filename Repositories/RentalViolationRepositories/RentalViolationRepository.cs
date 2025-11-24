@@ -117,5 +117,12 @@ namespace Repositories.RentalViolationRepositories
                 .OrderBy(i => i.UploadedAt)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<User>> GetAdminUsersAsync()
+        {
+            return await _context.Users
+                .Where(u => u.Role == BusinessObject.Enums.UserRole.admin)
+                .ToListAsync();
+        }
     }
 }

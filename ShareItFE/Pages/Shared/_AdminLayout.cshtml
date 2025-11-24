@@ -146,9 +146,19 @@
                         <i class="bi bi-star"></i>
                         <span>Product Feedback</span>
                     </a>
+
+                    <a asp-page="/Admin/Compensation/Index" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Compensation") == true ? "active" : "")">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span>Compensation Disputes</span>
+                    </a>
                     
                     @if (userRole == "admin")
                     {
+                        <a asp-page="/Admin/TransactionManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/TransactionManagement" || ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/TransactionDetail" ? "active" : "")">
+                            <i class="bi bi-receipt"></i>
+                            <span>Transaction Management</span>
+                        </a>
+
                         <a asp-page="/Admin/CustomerRefunds" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/CustomerRefunds" ? "active" : "")">
                             <i class="bi bi-cash-coin"></i>
                             <span>Customer Refunds</span>

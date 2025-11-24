@@ -19,6 +19,8 @@ namespace BusinessObject.DTOs.RentalViolationDto
         public ViolationStatus Status { get; set; }
         public string? CustomerNotes { get; set; }
         public DateTime? CustomerResponseAt { get; set; }
+        public string? ProviderEscalationReason { get; set; }
+        public string? CustomerEscalationReason { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
