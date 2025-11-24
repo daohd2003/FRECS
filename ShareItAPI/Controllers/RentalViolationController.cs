@@ -362,5 +362,59 @@ namespace ShareItAPI.Controllers
                 return BadRequest(new ApiResponse<string>(ex.Message, null));
             }
         }
+
+        /// <summary>
+        /// [CUSTOMER/PROVIDER] Escalate violation to admin for review
+        /// </summary>
+        /// <remarks>
+        /// Both customer and provider can escalate a violation to admin when they cannot resolve it themselves.
+        /// This changes the status to PENDING_ADMIN_REVIEW.
+        /// </remarks>
+        /// <param name="violationId">ID của vi phạm cần escalate</param>
+        [HttpPost("{violationId:guid}/escalate")]
+        [Authorize(Roles = "customer,provider")]
+        public async Task<IActionResult> EscalateToAdmin(Guid violationId, [FromBody] EscalateViolationDto? dto)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+                {
+                    return Unauthorized();
+                }
+
+                if (!Enum.TryParse<UserRole>(roleClaim, out UserRole userRole))
+                {
+                    return Unauthorized();
+                }
+
+                var escalationReason = dto?.Reason;
+                var result = await _violationService.EscalateViolationToAdminAsync(violationId, userId, userRole, escalationReason);
+
+                if (!result)
+                {
+                    return NotFound(new ApiResponse<string>("Violation not found", null));
+                }
+
+                return Ok(new ApiResponse<string>(
+                    "Violation has been escalated to admin for review",
+                    null
+                ));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
     }
 }

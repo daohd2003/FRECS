@@ -393,6 +393,9 @@ namespace ShareItAPI
             // Register PolicyConfig services
             builder.Services.AddScoped<Repositories.PolicyConfigRepositories.IPolicyConfigRepository, Repositories.PolicyConfigRepositories.PolicyConfigRepository>();
             builder.Services.AddScoped<Services.PolicyConfigServices.IPolicyConfigService, Services.PolicyConfigServices.PolicyConfigService>();
+            // Compensation Dispute Services
+            builder.Services.AddScoped<Repositories.CompensationDisputeRepositories.ICompensationDisputeRepository, Repositories.CompensationDisputeRepositories.CompensationDisputeRepository>();
+            builder.Services.AddScoped<Services.CompensationDisputeServices.ICompensationDisputeService, Services.CompensationDisputeServices.CompensationDisputeService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 

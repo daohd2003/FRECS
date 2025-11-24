@@ -420,7 +420,7 @@ namespace Services.RentalViolationServices
             }
             else
             {
-                // Customer rejects
+                // Customer rejects - does not automatically escalate to admin
                 violation.Status = ViolationStatus.CUSTOMER_REJECTED;
                 violation.CustomerNotes = dto.CustomerNotes;
                 violation.CustomerResponseAt = DateTime.UtcNow;
@@ -452,6 +452,14 @@ namespace Services.RentalViolationServices
                         await _violationRepo.AddEvidenceImageAsync(image);
                     }
                 }
+
+                // Notify provider that customer rejected
+                await _notificationService.SendNotification(
+                    violation.OrderItem.Order.ProviderId,
+                    $"❌ Customer has rejected the violation claim. You can adjust the claim or escalate to admin for review.",
+                    NotificationType.order,
+                    violation.OrderItem.OrderId
+                );
             }
 
             return await _violationRepo.UpdateViolationAsync(violation);
@@ -671,11 +679,92 @@ namespace Services.RentalViolationServices
                 ViolationStatus.PENDING => "Chờ phản hồi",
                 ViolationStatus.CUSTOMER_ACCEPTED => "Khách hàng đã đồng ý",
                 ViolationStatus.CUSTOMER_REJECTED => "Khách hàng từ chối",
+                ViolationStatus.PENDING_ADMIN_REVIEW => "Chờ Admin xem xét",
+                ViolationStatus.RESOLVED_BY_ADMIN => "Admin đã giải quyết",
                 ViolationStatus.RESOLVED => "Đã giải quyết",
                 _ => status.ToString()
             };
         }
 
         #endregion
+
+        public async Task<bool> EscalateViolationToAdminAsync(Guid violationId, Guid userId, UserRole userRole, string? escalationReason = null)
+        {
+            var violation = await _violationRepo.GetViolationWithDetailsAsync(violationId);
+            if (violation == null)
+                return false;
+
+            // Verify user has permission to escalate
+            bool canEscalate = false;
+            if (userRole == UserRole.customer && violation.OrderItem.Order.CustomerId == userId)
+            {
+                canEscalate = true;
+            }
+            else if (userRole == UserRole.provider && violation.OrderItem.Order.ProviderId == userId)
+            {
+                canEscalate = true;
+            }
+
+            if (!canEscalate)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to escalate this violation");
+            }
+
+            // Only allow escalation if status is PENDING or CUSTOMER_REJECTED
+            if (violation.Status != ViolationStatus.PENDING && violation.Status != ViolationStatus.CUSTOMER_REJECTED)
+            {
+                throw new InvalidOperationException("This violation cannot be escalated at this time");
+            }
+
+            // Update status to PENDING_ADMIN_REVIEW
+            violation.Status = ViolationStatus.PENDING_ADMIN_REVIEW;
+            violation.UpdatedAt = DateTime.UtcNow;
+
+            // Store escalation reason if provided (we can add a new field or use existing notes)
+            // For now, we'll add it to the description
+            if (!string.IsNullOrEmpty(escalationReason))
+            {
+                violation.Description += $"\n\n[Escalation Reason by {userRole}]: {escalationReason}";
+            }
+
+            var updateResult = await _violationRepo.UpdateViolationAsync(violation);
+
+            if (updateResult)
+            {
+                // Send notification to all admins
+                var adminUsers = await _violationRepo.GetAdminUsersAsync();
+                foreach (var admin in adminUsers)
+                {
+                    await _notificationService.SendNotification(
+                        admin.Id,
+                        $"⚖️ New dispute case requires review. A violation has been escalated to admin by {userRole}.",
+                        NotificationType.order,
+                        violation.OrderItem.OrderId
+                    );
+                }
+
+                // Notify the other party
+                if (userRole == UserRole.customer)
+                {
+                    await _notificationService.SendNotification(
+                        violation.OrderItem.Order.ProviderId,
+                        $"⚖️ Customer has escalated the violation dispute to admin for review.",
+                        NotificationType.order,
+                        violation.OrderItem.OrderId
+                    );
+                }
+                else if (userRole == UserRole.provider)
+                {
+                    await _notificationService.SendNotification(
+                        violation.OrderItem.Order.CustomerId,
+                        $"⚖️ Provider has escalated the violation dispute to admin for review.",
+                        NotificationType.order,
+                        violation.OrderItem.OrderId
+                    );
+                }
+            }
+
+            return updateResult;
+        }
     }
 }

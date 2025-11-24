@@ -4,6 +4,7 @@ using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ShareItDbContext))]
-    partial class ShareItDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251016141141_AddIssueResolutionAndUpdateViolationStatus")]
+    partial class AddIssueResolutionAndUpdateViolationStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -28,11 +31,6 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AccountHolderName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
                     b.Property<string>("AccountNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -46,16 +44,17 @@ namespace DataAccess.Migrations
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("bit");
 
+                    b.Property<Guid>("ProviderId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("RoutingNumber")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("ProviderId");
 
                     b.ToTable("BankAccounts");
                 });
@@ -147,7 +146,6 @@ namespace DataAccess.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -200,65 +198,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("User2Id");
 
                     b.ToTable("Conversations");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.DepositRefund", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ExternalTransactionId")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("OriginalDepositAmount")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ProcessedByAdminId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("RefundAmount")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<Guid?>("RefundBankAccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("TotalPenaltyAmount")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("OrderId")
-                        .IsUnique();
-
-                    b.HasIndex("ProcessedByAdminId");
-
-                    b.HasIndex("RefundBankAccountId");
-
-                    b.ToTable("DepositRefunds");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.DiscountCode", b =>
@@ -608,9 +547,6 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal>("CommissionAmount")
-                        .HasColumnType("decimal(10,2)");
-
                     b.Property<decimal>("DailyRate")
                         .HasColumnType("decimal(10,2)");
 
@@ -623,14 +559,8 @@ namespace DataAccess.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal?>("PurchaseCommissionRate")
-                        .HasColumnType("decimal(5,2)");
-
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
-
-                    b.Property<decimal?>("RentalCommissionRate")
-                        .HasColumnType("decimal(5,2)");
 
                     b.Property<int?>("RentalDays")
                         .HasColumnType("int");
@@ -646,37 +576,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("OrderItems");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.PolicyConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("PolicyName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("UpdatedByAdminId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UpdatedByAdminId");
-
-                    b.ToTable("PolicyConfigs");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Product", b =>
@@ -758,10 +657,6 @@ namespace DataAccess.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("ViolationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
@@ -846,47 +741,10 @@ namespace DataAccess.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("BusinessLicenseImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("BusinessName")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("CccdAddress")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<double?>("CccdConfidenceScore")
-                        .HasColumnType("float");
-
-                    b.Property<string>("CccdDateOfBirth")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("CccdFullName")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("CccdIdNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("CccdSex")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("CccdVerificationError")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<bool>("CccdVerified")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("CccdVerifiedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("ContactPhone")
                         .HasMaxLength(255)
@@ -895,34 +753,9 @@ namespace DataAccess.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<double?>("FaceMatchScore")
-                        .HasColumnType("float");
-
-                    b.Property<bool>("FaceMatched")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("IdCardBackImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("IdCardFrontImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("PrivacyPolicyAgreed")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("PrivacyPolicyAgreedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ProviderType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ReviewComment")
                         .HasMaxLength(500)
@@ -933,10 +766,6 @@ namespace DataAccess.Migrations
 
                     b.Property<Guid?>("ReviewedByAdminId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("SelfieImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1059,21 +888,8 @@ namespace DataAccess.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("EvidenceImages")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("OrderId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("OrderItemId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("Priority")
                         .HasColumnType("int");
-
-                    b.Property<string>("ReportType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("ReporteeId")
                         .HasColumnType("uniqueidentifier");
@@ -1094,41 +910,11 @@ namespace DataAccess.Migrations
 
                     b.HasIndex("AssignedAdminId");
 
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("OrderItemId");
-
                     b.HasIndex("ReporteeId");
 
                     b.HasIndex("ReporterId");
 
                     b.ToTable("Reports");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.SystemConfig", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("UpdatedByAdminId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Key");
-
-                    b.ToTable("SystemConfigs");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Transaction", b =>
@@ -1252,61 +1038,6 @@ namespace DataAccess.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("BusinessObject.Models.WithdrawalRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AdminNotes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18, 0)");
-
-                    b.Property<Guid>("BankAccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ExternalTransactionId")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ProcessedByAdminId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProviderId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime>("RequestDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BankAccountId");
-
-                    b.HasIndex("ProcessedByAdminId");
-
-                    b.HasIndex("ProviderId");
-
-                    b.ToTable("WithdrawalRequests");
-                });
-
             modelBuilder.Entity("OrderTransaction", b =>
                 {
                     b.Property<Guid>("OrdersId")
@@ -1324,13 +1055,13 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("BusinessObject.Models.BankAccount", b =>
                 {
-                    b.HasOne("BusinessObject.Models.User", "User")
+                    b.HasOne("BusinessObject.Models.User", "Provider")
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("User");
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Cart", b =>
@@ -1386,39 +1117,6 @@ namespace DataAccess.Migrations
                     b.Navigation("User1");
 
                     b.Navigation("User2");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.DepositRefund", b =>
-                {
-                    b.HasOne("BusinessObject.Models.User", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObject.Models.Order", "Order")
-                        .WithOne("DepositRefund")
-                        .HasForeignKey("BusinessObject.Models.DepositRefund", "OrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObject.Models.User", "ProcessedByAdmin")
-                        .WithMany()
-                        .HasForeignKey("ProcessedByAdminId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("BusinessObject.Models.BankAccount", "RefundBankAccount")
-                        .WithMany()
-                        .HasForeignKey("RefundBankAccountId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Order");
-
-                    b.Navigation("ProcessedByAdmin");
-
-                    b.Navigation("RefundBankAccount");
                 });
 
             modelBuilder.Entity("BusinessObject.Models.Favorite", b =>
@@ -1590,15 +1288,6 @@ namespace DataAccess.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("BusinessObject.Models.PolicyConfig", b =>
-                {
-                    b.HasOne("BusinessObject.Models.User", "UpdatedByAdmin")
-                        .WithMany()
-                        .HasForeignKey("UpdatedByAdminId");
-
-                    b.Navigation("UpdatedByAdmin");
-                });
-
             modelBuilder.Entity("BusinessObject.Models.Product", b =>
                 {
                     b.HasOne("BusinessObject.Models.Category", "Category")
@@ -1686,14 +1375,6 @@ namespace DataAccess.Migrations
                         .WithMany()
                         .HasForeignKey("AssignedAdminId");
 
-                    b.HasOne("BusinessObject.Models.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId");
-
-                    b.HasOne("BusinessObject.Models.OrderItem", "OrderItem")
-                        .WithMany()
-                        .HasForeignKey("OrderItemId");
-
                     b.HasOne("BusinessObject.Models.User", "Reportee")
                         .WithMany("ReportsReceived")
                         .HasForeignKey("ReporteeId")
@@ -1706,10 +1387,6 @@ namespace DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("AssignedAdmin");
-
-                    b.Navigation("Order");
-
-                    b.Navigation("OrderItem");
 
                     b.Navigation("Reportee");
 
@@ -1741,32 +1418,6 @@ namespace DataAccess.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("BusinessObject.Models.WithdrawalRequest", b =>
-                {
-                    b.HasOne("BusinessObject.Models.BankAccount", "BankAccount")
-                        .WithMany()
-                        .HasForeignKey("BankAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BusinessObject.Models.User", "ProcessedByAdmin")
-                        .WithMany()
-                        .HasForeignKey("ProcessedByAdminId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("BusinessObject.Models.User", "Provider")
-                        .WithMany()
-                        .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("BankAccount");
-
-                    b.Navigation("ProcessedByAdmin");
-
-                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("OrderTransaction", b =>
@@ -1806,8 +1457,6 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("BusinessObject.Models.Order", b =>
                 {
-                    b.Navigation("DepositRefund");
-
                     b.Navigation("Items");
                 });
 

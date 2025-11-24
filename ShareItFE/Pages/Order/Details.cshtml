@@ -949,6 +949,52 @@
         justify-content: flex-end;
     }
 
+    .escalation-form {
+        margin: 16px 20px 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-radius: 8px;
+        border: 1px solid #fbbf24;
+    }
+
+    .escalation-form-header h6 {
+        color: #92400e;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .escalation-form-header p {
+        margin-bottom: 12px;
+        font-size: 0.9rem;
+        color: #78350f;
+    }
+
+    .escalation-form textarea {
+        width: 100%;
+        min-height: 80px;
+        margin-bottom: 16px;
+        padding: 12px;
+        border: 1px solid #fbbf24;
+        border-radius: 6px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .escalation-form textarea:focus {
+        outline: none;
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .escalation-form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
     .violation-resolved {
         display: flex;
         align-items: center;
@@ -2008,24 +2054,66 @@
                                         <i class="bi bi-chat-dots"></i>
                                     </button>
                                     <button class="btn btn-outline-danger reject-violation-btn" data-violation-id="${violation.violationId}">
-                                        <i class="bi bi-x-circle"></i> Reject & Dispute
+                                        <i class="bi bi-x-circle"></i> Reject
                                     </button>
                                     <button class="btn btn-success accept-violation-btn" data-violation-id="${violation.violationId}">
                                         <i class="bi bi-check-circle"></i> Accept & Pay
                                     </button>
+                                    <button class="btn btn-warning escalate-to-admin-btn" data-violation-id="${violation.violationId}" style="margin-left: auto;">
+                                        <i class="bi bi-shield-exclamation"></i> Escalate to Admin
+                                    </button>
                                 </div>
                                 <div class="rejection-form hidden" id="rejection-form-${violation.violationId}">
                                     <div class="rejection-form-header">
-                                        <h6><i class="bi bi-chat-left-text"></i> Dispute this violation</h6>
-                                        <p class="text-muted">Please provide detailed reasons for disputing this violation:</p>
+                                        <h6><i class="bi bi-chat-left-text"></i> Reject this violation</h6>
+                                        <p class="text-muted">Please provide your reasons for rejecting this violation:</p>
                                     </div>
-                                    <textarea placeholder="Explain why you disagree with this violation. Include any evidence or circumstances that support your case..." id="rejection-notes-${violation.violationId}"></textarea>
+                                    <textarea placeholder="Explain why you disagree with this violation..." id="rejection-notes-${violation.violationId}"></textarea>
                                     <div class="rejection-form-actions">
                                         <button class="btn btn-secondary cancel-rejection-btn" data-violation-id="${violation.violationId}">
                                             <i class="bi bi-arrow-left"></i> Cancel
                                         </button>
                                         <button class="btn btn-danger confirm-rejection-btn" data-violation-id="${violation.violationId}">
-                                            <i class="bi bi-send"></i> Submit Dispute
+                                            <i class="bi bi-send"></i> Submit Rejection
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="escalation-form hidden" id="escalation-form-${violation.violationId}">
+                                    <div class="escalation-form-header">
+                                        <h6><i class="bi bi-shield-exclamation"></i> Escalate to Admin</h6>
+                                        <p class="text-muted">This will send the dispute to admin for final review. Please provide additional context:</p>
+                                    </div>
+                                    <textarea placeholder="Optional: Explain why you need admin intervention..." id="escalation-reason-${violation.violationId}"></textarea>
+                                    <div class="escalation-form-actions">
+                                        <button class="btn btn-secondary cancel-escalation-btn" data-violation-id="${violation.violationId}">
+                                            <i class="bi bi-arrow-left"></i> Cancel
+                                        </button>
+                                        <button class="btn btn-warning confirm-escalation-btn" data-violation-id="${violation.violationId}">
+                                            <i class="bi bi-send"></i> Send to Admin
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : violation.status === 'CUSTOMER_REJECTED' ? `
+                                <div class="violation-actions">
+                                    <button class="btn btn-outline-primary message-provider-btn" data-violation-id="${violation.violationId}" data-provider-id="${violation.orderItem?.productId || violation.orderItem?.ProductId || ''}" data-product-id="${violation.orderItem?.productId || violation.orderItem?.ProductId || ''}" title="Message Provider">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </button>
+                                    <button class="btn btn-warning escalate-to-admin-btn" data-violation-id="${violation.violationId}">
+                                        <i class="bi bi-shield-exclamation"></i> Escalate to Admin
+                                    </button>
+                                </div>
+                                <div class="escalation-form hidden" id="escalation-form-${violation.violationId}">
+                                    <div class="escalation-form-header">
+                                        <h6><i class="bi bi-shield-exclamation"></i> Escalate to Admin</h6>
+                                        <p class="text-muted">This will send the dispute to admin for final review. Please provide additional context:</p>
+                                    </div>
+                                    <textarea placeholder="Optional: Explain why you need admin intervention..." id="escalation-reason-${violation.violationId}"></textarea>
+                                    <div class="escalation-form-actions">
+                                        <button class="btn btn-secondary cancel-escalation-btn" data-violation-id="${violation.violationId}">
+                                            <i class="bi bi-arrow-left"></i> Cancel
+                                        </button>
+                                        <button class="btn btn-warning confirm-escalation-btn" data-violation-id="${violation.violationId}">
+                                            <i class="bi bi-send"></i> Send to Admin
                                         </button>
                                     </div>
                                 </div>
@@ -2083,6 +2171,30 @@
                     
                     startConversationWithProvider(productId, violationId);
                 });
+
+                // Handle escalate to admin button
+                $('.escalate-to-admin-btn').on('click', function() {
+                    const violationId = $(this).data('violation-id');
+                    $(`#escalation-form-${violationId}`).removeClass('hidden');
+                    $(this).prop('disabled', true);
+                });
+
+                $('.cancel-escalation-btn').on('click', function() {
+                    const violationId = $(this).data('violation-id');
+                    $(`#escalation-form-${violationId}`).addClass('hidden');
+                    $(`.escalate-to-admin-btn[data-violation-id="${violationId}"]`).prop('disabled', false);
+                });
+
+                $('.confirm-escalation-btn').on('click', function() {
+                    const violationId = $(this).data('violation-id');
+                    const reason = $(`#escalation-reason-${violationId}`).val().trim();
+                    
+                    if (!confirm('Are you sure you want to escalate this dispute to admin? This action cannot be undone.')) {
+                        return;
+                    }
+                    
+                    escalateToAdmin(violationId, reason);
+                });
             }
 
             async function respondToViolation(violationId, isAccepted, customerNotes = '') {
@@ -2138,6 +2250,38 @@
                     }
                 } catch (error) {
                     console.error('Error responding to violation:', error);
+                    alert('An error occurred. Please try again.');
+                }
+            }
+
+            async function escalateToAdmin(violationId, reason = '') {
+                try {
+                    console.log('Escalating to admin:', { violationId, reason });
+                    
+                    const response = await fetch(`@Model.ApiBaseUrl/rental-violations/${violationId}/escalate`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer @(Request.Cookies["AccessToken"])`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            reason: reason || null
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Success response:', result);
+                        alert(result.message || 'Dispute has been escalated to admin for review.');
+                        // Reload the page to reflect changes
+                        location.reload();
+                    } else {
+                        const result = await response.json();
+                        console.log('Error response:', result);
+                        alert('Error: ' + (result.message || 'Failed to escalate dispute'));
+                    }
+                } catch (error) {
+                    console.error('Error escalating to admin:', error);
                     alert('An error occurred. Please try again.');
                 }
             }
