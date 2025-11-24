@@ -146,6 +146,7 @@ namespace Repositories.FeedbackRepositories
                 .Include(f => f.Order)
                 .Include(f => f.OrderItem)
                 .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile)
+                .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
 
