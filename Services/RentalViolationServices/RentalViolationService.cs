@@ -720,11 +720,17 @@ namespace Services.RentalViolationServices
             violation.Status = ViolationStatus.PENDING_ADMIN_REVIEW;
             violation.UpdatedAt = DateTime.UtcNow;
 
-            // Store escalation reason if provided (we can add a new field or use existing notes)
-            // For now, we'll add it to the description
+            // Store escalation reason in separate fields based on who escalated
             if (!string.IsNullOrEmpty(escalationReason))
             {
-                violation.Description += $"\n\n[Escalation Reason by {userRole}]: {escalationReason}";
+                if (userRole == UserRole.customer)
+                {
+                    violation.CustomerEscalationReason = escalationReason;
+                }
+                else if (userRole == UserRole.provider)
+                {
+                    violation.ProviderEscalationReason = escalationReason;
+                }
             }
 
             var updateResult = await _violationRepo.UpdateViolationAsync(violation);

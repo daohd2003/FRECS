@@ -89,6 +89,20 @@ namespace BusinessObject.Models
         public DateTime? CustomerResponseAt { get; set; }
 
         /// <summary>
+        /// Lý do Provider escalate lên Admin
+        /// Chỉ có giá trị khi Provider escalate dispute
+        /// </summary>
+        [StringLength(2000)]
+        public string? ProviderEscalationReason { get; set; }
+
+        /// <summary>
+        /// Lý do Customer escalate lên Admin
+        /// Chỉ có giá trị khi Customer escalate dispute
+        /// </summary>
+        [StringLength(2000)]
+        public string? CustomerEscalationReason { get; set; }
+
+        /// <summary>
         /// Ngày/giờ tạo biên bản vi phạm
         /// </summary>
         [Required]

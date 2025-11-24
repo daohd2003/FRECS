@@ -19,6 +19,8 @@ namespace BusinessObject.DTOs.IssueResolutionDto
         public DateTime CreatedAt { get; set; }
         public string? CustomerNotes { get; set; }
         public DateTime? CustomerResponseAt { get; set; }
+        public string? ProviderEscalationReason { get; set; }
+        public string? CustomerEscalationReason { get; set; }
 
         // Product Info
         public ProductInfoDto Product { get; set; } = new();

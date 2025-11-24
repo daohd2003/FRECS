@@ -14,6 +14,7 @@
 
 
         <nav class="main-nav">
+            <a asp-page="/Index">Home</a>
             <a asp-page="/Products/Products">Browse</a>
             @if (Model.IsUserLoggedIn && string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
             {
@@ -295,6 +296,10 @@
         <div class="mobile-menu-content">
             <nav>
                 <!-- Main Navigation Links (from header only) -->
+                <a asp-page="/Index" class="mobile-menu-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Home</span>
+                </a>
                 <a asp-page="/Products/Products" class="mobile-menu-item">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
                     <span>Browse</span>

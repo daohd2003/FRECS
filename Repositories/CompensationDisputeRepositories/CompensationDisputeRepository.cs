@@ -108,6 +108,8 @@ namespace Repositories.CompensationDisputeRepositories
                 CreatedAt = violation.CreatedAt,
                 CustomerNotes = violation.CustomerNotes,
                 CustomerResponseAt = violation.CustomerResponseAt,
+                ProviderEscalationReason = violation.ProviderEscalationReason,
+                CustomerEscalationReason = violation.CustomerEscalationReason,
                 Product = new ProductInfoDto
                 {
                     Id = violation.OrderItem.Product.Id,
