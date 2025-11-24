@@ -38,6 +38,10 @@ namespace ShareItAPI.Controllers
             _orderService = orderService;
         }
 
+        /// <summary>
+        /// Feature: Track spending
+        /// The user reviews reports and summaries of financial transactions to monitor their spending.
+        /// </summary>
         [HttpGet("my")]
         public async Task<IActionResult> GetMyTransactions()
         {

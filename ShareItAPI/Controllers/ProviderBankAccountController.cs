@@ -47,6 +47,15 @@ namespace ShareItAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] BankAccountCreateDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return BadRequest(new ApiResponse<object>(string.Join(" ", errors), null));
+            }
+
             var providerId = _userHelper.GetCurrentUserId();
             await _service.AddBankAccount(providerId, dto);
             return Ok(new ApiResponse<object>("Bank account added", null));
@@ -55,6 +64,15 @@ namespace ShareItAPI.Controllers
         [HttpPut]
         public async Task<IActionResult> Update([FromBody] BankAccountUpdateDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return BadRequest(new ApiResponse<object>(string.Join(" ", errors), null));
+            }
+
             var providerId = _userHelper.GetCurrentUserId();
             var success = await _service.UpdateBankAccount(providerId, dto);
             if (!success)

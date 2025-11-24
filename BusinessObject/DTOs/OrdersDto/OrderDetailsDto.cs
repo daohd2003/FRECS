@@ -7,6 +7,7 @@ namespace BusinessObject.DTOs.OrdersDto
     {
         public Guid Id { get; set; }
         public string OrderCode { get; set; }
+        public Guid CustomerId { get; set; } // Customer who placed this order
         public Guid ProviderId { get; set; } // Provider who owns this order
         public DateTime RentalStartDate { get; set; }
         public DateTime RentalEndDate { get; set; }

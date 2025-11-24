@@ -29,7 +29,10 @@ namespace ShareItAPI.Controllers
             return userId;
         }
 
-        // POST- Submit feedback for a product or order
+        /// <summary>
+        /// Feature: Give feedback on products
+        /// The user writes a review and rates a product they have rented or purchased.
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> SubmitFeedback([FromBody] FeedbackRequestDto dto)
@@ -59,7 +62,10 @@ namespace ShareItAPI.Controllers
             return Ok(new ApiResponse<FeedbackResponseDto>("Feedback retrieved successfully.", feedback));
         }
 
-        // GET - Get all feedback for a specific product or order
+        /// <summary>
+        /// Feature: View feedback
+        /// The user views existing customer reviews and ratings for a specific product.
+        /// </summary>
         [HttpGet("{targetType}/{targetId:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetFeedbacksByTarget(string targetType, Guid targetId)
@@ -121,6 +127,18 @@ namespace ShareItAPI.Controllers
                 return BadRequest(response);
             }
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Lấy tất cả feedback của một customer cụ thể cho một sản phẩm
+        /// Dùng cho Provider xem feedback của customer đã mua sản phẩm trong Order Detail
+        /// </summary>
+        [HttpGet("product/{productId}/customer/{customerId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetFeedbacksByProductAndCustomer(Guid productId, Guid customerId)
+        {
+            var feedbacks = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+            return Ok(new ApiResponse<object>("Feedbacks retrieved successfully.", feedbacks));
         }
     }
 }

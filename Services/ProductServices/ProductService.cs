@@ -44,8 +44,15 @@ namespace Services.ProductServices
             _notificationService = notificationService;
         }
 
+        /// <summary>
+        /// Lấy danh sách tất cả sản phẩm có trạng thái AVAILABLE (cho khách hàng xem)
+        /// Sử dụng AutoMapper ProjectTo để chuyển đổi Entity sang DTO hiệu quả
+        /// </summary>
+        /// <returns>IQueryable ProductDTO để có thể filter, sort, paginate thêm</returns>
         public IQueryable<ProductDTO> GetAll()
         {
+            // Lấy products từ repository (đã include Category, Provider, Images)
+            // ProjectTo: Chuyển đổi Entity sang DTO ngay trong query (hiệu quả hơn)
             return _productRepository.GetAllWithIncludes()
                 .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
         }
@@ -56,25 +63,43 @@ namespace Services.ProductServices
                 .ProjectTo<ProductDTO>(_mapper.ConfigurationProvider);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết một sản phẩm theo ID (bao gồm hình ảnh, category, provider)
+        /// Dùng cho trang product detail
+        /// </summary>
+        /// <param name="id">ID sản phẩm cần lấy</param>
+        /// <returns>ProductDTO nếu tìm thấy, null nếu không tồn tại</returns>
         public async Task<ProductDTO?> GetByIdAsync(Guid id)
         {
+            // Lấy product từ repository (đã include Images, Category, Provider)
             var product = await _productRepository.GetProductWithImagesByIdAsync(id);
+            
+            // Chuyển đổi Entity sang DTO bằng AutoMapper
             return product == null ? null : _mapper.Map<ProductDTO>(product);
         }
 
 
 
+        /// <summary>
+        /// Thêm sản phẩm mới với kiểm tra nội dung tự động bằng AI
+        /// Quy trình: Tạo sản phẩm → Kiểm tra AI → Cập nhật trạng thái → Gửi thông báo nếu vi phạm
+        /// </summary>
+        /// <param name="dto">Thông tin sản phẩm cần tạo (tên, mô tả, giá, hình ảnh, etc.)</param>
+        /// <returns>ProductDTO của sản phẩm vừa tạo</returns>
         public async Task<ProductDTO> AddAsync(ProductRequestDTO dto)
         {
-            // Bước 1: Tạo product với images thông qua repository
+            // Bước 1: Tạo sản phẩm mới trong database (bao gồm cả hình ảnh)
+            // Repository xử lý việc lưu product và images vào database
             var newProduct = await _productRepository.AddProductWithImagesAsync(dto);
 
-            // Bước 2: SYNCHRONOUS AI Moderation Check (AFTER creation)
+            // Bước 2: KIỂM TRA NỘI DUNG ĐỒNG BỘ bằng AI (sau khi tạo)
+            // Mục đích: Phát hiện nội dung không phù hợp (từ ngữ tục tĩu, spam, etc.)
             Console.WriteLine($"[PRODUCT SERVICE] Running SYNCHRONOUS AI moderation check for: '{newProduct.Name}'");
 
             ContentModerationResultDTO moderationResult;
             try
             {
+                // Gọi AI service để kiểm tra tên và mô tả sản phẩm
                 moderationResult = await _contentModerationService.CheckProductContentAsync(
                     newProduct.Name,
                     newProduct.Description
@@ -86,8 +111,8 @@ namespace Services.ProductServices
             {
                 Console.WriteLine($"[PRODUCT SERVICE] AI moderation failed: {ex.Message}");
 
-                // FAIL-SAFE: If AI service is down, set to PENDING for manual review
-                // This ensures NO violated content ever goes live
+                // FAIL-SAFE: Nếu AI service lỗi, đặt sản phẩm về PENDING để staff kiểm tra thủ công
+                // Điều này đảm bảo KHÔNG có nội dung vi phạm nào được hiển thị cho khách hàng
                 moderationResult = new ContentModerationResultDTO
                 {
                     IsAppropriate = false,
@@ -96,10 +121,11 @@ namespace Services.ProductServices
                 };
             }
 
-            // Bước 3: Set product status based on AI result
+            // Bước 3: Cập nhật trạng thái sản phẩm dựa trên kết quả AI
             if (!moderationResult.IsAppropriate)
             {
-                // VIOLATED - Set to Pending (customers CANNOT see)
+                // VI PHẠM - Đặt trạng thái PENDING (khách hàng KHÔNG thể xem)
+                // Sản phẩm cần được staff duyệt thủ công trước khi hiển thị
                 await _productRepository.UpdateProductAvailabilityStatusAsync(
                     newProduct.Id,
                     AvailabilityStatus.pending
@@ -110,29 +136,32 @@ namespace Services.ProductServices
             }
             else
             {
-                // PASSED - Keep as Available (customers can see)
+                // PASS - Giữ trạng thái AVAILABLE (khách hàng có thể xem ngay)
                 Console.WriteLine($"[PRODUCT SERVICE] PASSED - Product remains AVAILABLE");
             }
 
             Console.WriteLine($"[PRODUCT SERVICE] Product {newProduct.Id} created with status: {newProduct.AvailabilityStatus}");
 
-            // Bước 4: Send notification if violated
+            // Bước 4: Gửi thông báo cho provider nếu sản phẩm vi phạm
             if (!moderationResult.IsAppropriate)
             {
+                // Lấy thông tin provider để gửi thông báo
                 var productWithProvider = await _productRepository.GetProductWithProviderByIdAsync(newProduct.Id);
 
                 if (productWithProvider?.Provider != null)
                 {
-                    // Gửi thông báo qua Notification System
+                    // Gửi thông báo qua hệ thống notification
                     try
                     {
+                        // Tạo danh sách các từ vi phạm
                         var violatedTermsText = moderationResult.ViolatedTerms != null && moderationResult.ViolatedTerms.Any()
                             ? string.Join(", ", moderationResult.ViolatedTerms)
                             : "inappropriate content";
 
-                        // Full message (will be truncated in UI for bell notification)
+                        // Tạo nội dung thông báo chi tiết
                         var notificationMessage = $"Your product '{newProduct.Name}' has been flagged for review due to: {moderationResult.Reason ?? "content policy violation"}. Violated terms: {violatedTermsText}. Please update your product to comply with our guidelines.";
 
+                        // Gửi thông báo qua NotificationService
                         await _notificationService.SendNotification(
                             userId: productWithProvider.ProviderId,
                             message: notificationMessage,

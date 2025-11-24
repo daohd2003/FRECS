@@ -25,46 +25,71 @@ namespace Repositories.OrderRepositories
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy order theo ID với OrderItems
+        /// Dùng cho xem chi tiết đơn hàng, cập nhật trạng thái
+        /// </summary>
+        /// <param name="id">Order ID</param>
+        /// <returns>Order entity với Items, null nếu không tồn tại</returns>
         public override async Task<Order?> GetByIdAsync(Guid id)
         {
             return await _context.Orders
-              .Include(o => o.Items)
+              .Include(o => o.Items) // Eager loading OrderItems
                   .FirstOrDefaultAsync(o => o.Id == id);
         }
 
+        /// <summary>
+        /// Lấy tất cả orders theo trạng thái với đầy đủ thông tin
+        /// Dùng cho admin/staff quản lý đơn hàng theo trạng thái
+        /// </summary>
+        /// <param name="status">Trạng thái đơn hàng (pending, approved, shipping, etc.)</param>
+        /// <returns>Danh sách OrderWithDetailsDto</returns>
         public async Task<IEnumerable<OrderWithDetailsDto>> GetOrdersByStatusAsync(OrderStatus status)
         {
             return await _context.Orders
-                .Where(o => o.Status == status)
-                .Include(o => o.Items)
-                .Include(o => o.Customer)
-                .Include(o => o.Provider)
-                .ProjectTo<OrderWithDetailsDto>(_mapper.ConfigurationProvider)
+                .Where(o => o.Status == status) // Filter theo trạng thái
+                .Include(o => o.Items) // Include OrderItems
+                .Include(o => o.Customer) // Include Customer info
+                .Include(o => o.Provider) // Include Provider info
+                .ProjectTo<OrderWithDetailsDto>(_mapper.ConfigurationProvider) // Map sang DTO
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy tất cả orders của một provider
+        /// Dùng cho provider xem danh sách đơn hàng của mình
+        /// </summary>
+        /// <param name="providerId">Provider ID</param>
+        /// <returns>Danh sách Order entities, sắp xếp theo thời gian tạo mới nhất</returns>
         public async Task<IEnumerable<Order>> GetByProviderIdAsync(Guid providerId)
         {
             return await _context.Orders
-                .Where(o => o.ProviderId == providerId)
-                .Include(o => o.Items)
-                .Include(o => o.Customer)
-                .OrderByDescending(o => o.CreatedAt)
+                .Where(o => o.ProviderId == providerId) // Filter theo provider
+                .Include(o => o.Items) // Include OrderItems
+                .Include(o => o.Customer) // Include Customer info
+                .OrderByDescending(o => o.CreatedAt) // Sắp xếp mới nhất trước
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Cập nhật order và xử lý OrderItems (thêm/sửa/xóa)
+        /// Logic phức tạp: So sánh items hiện tại với items mới để xác định thao tác
+        /// </summary>
+        /// <param name="order">Order entity cần cập nhật (bao gồm Items)</param>
+        /// <returns>true nếu cập nhật thành công</returns>
         public override async Task<bool> UpdateAsync(Order order)
         {
-            // Lấy danh sách Id của các item hiện có trong DB
+            // Bước 1: Lấy danh sách Id của các item hiện có trong DB
             var existingItemIds = await _context.OrderItems
                 .Where(i => i.OrderId == order.Id)
                 .Select(i => i.Id)
                 .ToListAsync();
 
-            // Các Id item hiện tại trong order.Items (từ client gửi lên)
+            // Bước 2: Lấy danh sách Id của các item hiện tại (từ client gửi lên)
             var currentItemIds = order.Items.Select(i => i.Id).ToList();
 
-            // Xóa những item có trong DB nhưng không có trong client gửi lên (tức là bị remove)
+            // Bước 3: Xóa những item có trong DB nhưng không có trong client
+            // (User đã remove item khỏi order)
             var itemsToRemove = existingItemIds.Except(currentItemIds).ToList();
             foreach (var idToRemove in itemsToRemove)
             {
@@ -73,9 +98,10 @@ namespace Repositories.OrderRepositories
                 _context.OrderItems.Remove(itemToRemove);
             }
 
-            // Cập nhật trạng thái các item còn lại (add hoặc update)
+            // Bước 4: Cập nhật hoặc thêm mới các item còn lại
             foreach (var item in order.Items)
             {
+                // Attach item nếu chưa được track bởi context
                 if (_context.Entry(item).State == EntityState.Detached)
                 {
                     _context.Attach(item);
@@ -83,19 +109,21 @@ namespace Repositories.OrderRepositories
 
                 if (item.Id == Guid.Empty)
                 {
-                    // Item mới
-                    item.Id = Guid.NewGuid(); // Phát sinh Id mới nếu chưa có
+                    // Item mới (chưa có Id) → Thêm mới
+                    item.Id = Guid.NewGuid();
                     _context.Entry(item).State = EntityState.Added;
                 }
                 else
                 {
+                    // Item đã tồn tại → Cập nhật
                     _context.Entry(item).State = EntityState.Modified;
                 }
             }
 
-            // Update order
+            // Bước 5: Cập nhật order
             _context.Orders.Update(order);
 
+            // Bước 6: Lưu tất cả thay đổi vào database
             await _context.SaveChangesAsync();
             return true;
         }

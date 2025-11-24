@@ -18,5 +18,6 @@ namespace Services.FeedbackServices
 
         Task RecalculateProductRatingAsync(Guid productId);
         Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize);
+        Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId);
     }
 }

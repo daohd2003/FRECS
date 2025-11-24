@@ -84,6 +84,8 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Feature: View deposit history
+        /// The user views the history of funds deposited.
         /// Get customer's refund history
         /// </summary>
         [HttpGet("my")]

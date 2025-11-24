@@ -280,6 +280,12 @@
                                                 }
                                             }
                                         </div>
+                                        <button type="button" 
+                                                class="btn btn-sm" 
+                                                style="background-color: #8b5cf6; color: white; margin-top: 8px; font-size: 0.875rem; padding: 6px 12px;" 
+                                                onclick="openFeedbackModal('@item.ProductId', '@Model.Order.CustomerId')">
+                                            <i class="bi bi-chat-square-text"></i> View Feedback
+                                        </button>
                                     </div>
                                 </div>
                             }
@@ -476,9 +482,169 @@
     
 </div>
 
+<!-- Feedback Modal -->
+<div id="feedbackModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 10; border-radius: 12px 12px 0 0;">
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; color: #111827;">Product Feedback</h2>
+            <button onclick="closeFeedbackModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div id="feedbackContent" style="padding: 20px;">
+            <div style="text-align: center; padding: 40px 20px;">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p style="margin-top: 16px; color: #6b7280;">Loading feedback...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         lucide.createIcons();
+
+        let currentProductId = null;
+        let currentCustomerId = null;
+
+        function openFeedbackModal(productId, customerId) {
+            console.log('=== Opening Feedback Modal ===');
+            console.log('Product ID:', productId);
+            console.log('Customer ID:', customerId);
+            
+            currentProductId = productId;
+            currentCustomerId = customerId;
+            document.getElementById('feedbackModal').style.display = 'block';
+            loadFeedback(productId, customerId);
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            currentProductId = null;
+            currentCustomerId = null;
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('feedbackModal');
+            if (event.target == modal) {
+                closeFeedbackModal();
+            }
+        }
+
+        async function loadFeedback(productId, customerId) {
+            const contentDiv = document.getElementById('feedbackContent');
+            
+            try {
+                console.log('=== Loading Feedback ===');
+                console.log('Product ID:', productId);
+                console.log('Customer ID:', customerId);
+                console.log('API Base URL:', '@Model.ApiBaseUrl');
+                
+                // Lấy TẤT CẢ feedback của sản phẩm, sau đó filter theo customerId
+                const apiUrl = `@Model.ApiBaseUrl/feedbacks/product/${productId}`;
+                console.log('Full API URL:', apiUrl);
+                
+                const response = await fetch(apiUrl + '?page=1&pageSize=100');
+                console.log('Response:', response);
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`Failed to load feedback: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                // API trả về format: { message: "...", data: { items: [...] } }
+                let allFeedbacks = data.data?.items || [];
+                console.log('All feedbacks:', allFeedbacks);
+                
+                // Filter chỉ lấy feedback của customer này
+                const feedbacks = allFeedbacks.filter(f => f.customerId === customerId);
+                console.log('Filtered feedbacks for customer', customerId, ':', feedbacks);
+
+                if (feedbacks.length === 0) {
+                    contentDiv.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px;">
+                            <i class="bi bi-chat-square-text" style="font-size: 3rem; color: #d1d5db;"></i>
+                            <p style="margin-top: 16px; color: #6b7280; font-size: 1rem;">This customer hasn't left any feedback for this product yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '<div style="display: flex; flex-direction: column; gap: 16px;">';
+                
+                feedbacks.forEach(feedback => {
+                    const stars = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
+                    
+                    // Format date - use submittedAt field from API
+                    let date = 'Unknown date';
+                    try {
+                        const dateField = feedback.submittedAt || feedback.createdAt;
+                        if (dateField) {
+                            const dateObj = new Date(dateField);
+                            
+                            if (!isNaN(dateObj.getTime())) {
+                                // Format: 24 Nov, 2025 (short format like Product Detail)
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                const day = dateObj.getDate();
+                                const month = months[dateObj.getMonth()];
+                                const year = dateObj.getFullYear();
+                                date = `${day} ${month}, ${year}`;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing date:', e);
+                    }
+
+                    html += `
+                        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #f9fafb;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <div style="color: #fbbf24; font-size: 1.25rem; margin-bottom: 4px;">${stars}</div>
+                                    <div style="font-weight: 600; color: #111827; font-size: 0.95rem;">${feedback.customerName || 'Anonymous'}</div>
+                                    <div style="color: #6b7280; font-size: 0.875rem;">${date}</div>
+                                </div>
+                            </div>
+                            <p style="color: #374151; line-height: 1.6; margin: 0;">${feedback.comment || 'No comment provided.'}</p>
+                            ${feedback.providerResponse ? `
+                                <div style="margin-top: 12px; padding: 12px; background: #ede9fe; border-left: 3px solid #8b5cf6; border-radius: 4px;">
+                                    <div style="font-weight: 600; color: #6b21a8; font-size: 0.875rem; margin-bottom: 4px;">
+                                        <i class="bi bi-reply-fill"></i> Provider Response
+                                    </div>
+                                    <p style="color: #5b21b6; margin: 0; font-size: 0.875rem;">${feedback.providerResponse}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                contentDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading feedback:', error);
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ef4444;"></i>
+                        <p style="margin-top: 16px; color: #ef4444; font-size: 1rem;">Failed to load feedback.</p>
+                        <p style="margin-top: 8px; color: #6b7280; font-size: 0.875rem;">${error.message}</p>
+                        <button onclick="loadFeedback('${productId}', '${customerId}')" style="margin-top: 16px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
     </script>
 }
 

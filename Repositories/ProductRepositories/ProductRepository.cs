@@ -19,17 +19,28 @@ namespace Repositories.ProductRepositories
         {
         }
 
+        /// <summary>
+        /// Lấy tất cả sản phẩm AVAILABLE với đầy đủ thông tin (Images, Category, Provider)
+        /// Dùng cho customer xem danh sách sản phẩm
+        /// AsNoTracking: Tối ưu performance cho read-only queries
+        /// </summary>
+        /// <returns>IQueryable Product để có thể filter/sort/paginate thêm</returns>
         public IQueryable<Product> GetAllWithIncludes()
         {
             return _context.Products
-                .AsNoTracking()
-                .Include(p => p.Images.Where(img => img.IsPrimary || img.ImageUrl != null))
-                .Include(p => p.Category)
-                .Include(p => p.Provider)
-                    .ThenInclude(u => u.Profile)
-                .Where(p => p.AvailabilityStatus == AvailabilityStatus.available); // Only available products
+                .AsNoTracking() // Read-only, không track changes
+                .Include(p => p.Images.Where(img => img.IsPrimary || img.ImageUrl != null)) // Chỉ lấy ảnh primary hoặc có URL
+                .Include(p => p.Category) // Eager loading Category
+                .Include(p => p.Provider) // Eager loading Provider
+                    .ThenInclude(u => u.Profile) // Eager loading Provider Profile
+                .Where(p => p.AvailabilityStatus == AvailabilityStatus.available); // Chỉ lấy sản phẩm available
         }
 
+        /// <summary>
+        /// Lấy TẤT CẢ sản phẩm (không filter status) với đầy đủ thông tin
+        /// Dùng cho admin/staff quản lý tất cả sản phẩm (kể cả pending, rejected, archived)
+        /// </summary>
+        /// <returns>IQueryable Product để có thể filter/sort/paginate thêm</returns>
         public IQueryable<Product> GetAllWithIncludesNoFilter()
         {
             return _context.Products
@@ -38,7 +49,7 @@ namespace Repositories.ProductRepositories
                 .Include(p => p.Category)
                 .Include(p => p.Provider)
                     .ThenInclude(u => u.Profile);
-            // No status filter - returns ALL products
+            // Không filter status - trả về TẤT CẢ sản phẩm
         }
 
         public async Task<IEnumerable<Product>> GetProductsWithImagesAsync()
@@ -86,13 +97,21 @@ namespace Repositories.ProductRepositories
             return !conflictingOrders;
         }
 
+        /// <summary>
+        /// Thêm sản phẩm mới với hình ảnh trong một transaction
+        /// Đảm bảo toàn vẹn dữ liệu: Nếu lỗi thì rollback cả product và images
+        /// </summary>
+        /// <param name="dto">Thông tin sản phẩm và danh sách hình ảnh</param>
+        /// <returns>Product entity vừa tạo (đã có Id)</returns>
+        /// <exception cref="Exception">Lỗi khi lưu database</exception>
         public async Task<Product> AddProductWithImagesAsync(ProductRequestDTO dto)
         {
             // Bắt đầu transaction để đảm bảo toàn vẹn dữ liệu
+            // Nếu có lỗi ở bất kỳ bước nào → Rollback tất cả
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Bước 1: Tạo đối tượng Product Entity từ DTO
+                // Bước 1: Tạo Product Entity từ DTO
                 var newProduct = new Product
                 {
                     ProviderId = dto.ProviderId,
@@ -106,52 +125,50 @@ namespace Repositories.ProductRepositories
                     PurchaseQuantity = dto.PurchaseQuantity ?? 0,
                     RentalQuantity = dto.RentalQuantity ?? 0,
                     SecurityDeposit = dto.SecurityDeposit,
-                    // Map 3 fields mới từ string sang enum
+                    // Parse string sang enum
                     Gender = Enum.Parse<Gender>(dto.Gender ?? "Unisex"),
                     RentalStatus = Enum.Parse<RentalStatus>(dto.RentalStatus ?? "Available"),
                     PurchaseStatus = Enum.Parse<PurchaseStatus>(dto.PurchaseStatus ?? "NotForSale"),
                     CreatedAt = DateTimeHelper.GetVietnamTime(),
-                    AvailabilityStatus = AvailabilityStatus.available,
+                    AvailabilityStatus = AvailabilityStatus.available, // Mặc định available (sẽ được AI check sau)
                     UpdatedAt = DateTimeHelper.GetVietnamTime(),
-                    AverageRating = 0,
+                    AverageRating = 0, // Chưa có đánh giá
                     RatingCount = 0,
                     IsPromoted = false
                 };
 
-                // Bước 2: Thêm Product vào DbContext và Lưu để lấy Id
+                // Bước 2: Lưu Product để database sinh Id
                 _context.Products.Add(newProduct);
-                await _context.SaveChangesAsync(); // <-- DB sẽ sinh ra Id cho newProduct tại đây
+                await _context.SaveChangesAsync(); // Database sinh Id cho newProduct
 
-                // Bước 3: Dùng newProduct.Id để tạo các bản ghi ProductImage
+                // Bước 3: Tạo ProductImages với ProductId vừa được sinh
                 if (dto.Images != null && dto.Images.Any())
                 {
                     foreach (var imageDto in dto.Images)
                     {
                         var productImage = new ProductImage
                         {
-                            ProductId = newProduct.Id, // <-- Dùng Id vừa được tạo
+                            ProductId = newProduct.Id, // Dùng Id vừa được tạo
                             ImageUrl = imageDto.ImageUrl,
-                            IsPrimary = imageDto.IsPrimary,
-                            // Nếu bạn đã thêm cột PublicId, hãy gán nó ở đây
-                            // PublicId = imageDto.PublicId 
+                            IsPrimary = imageDto.IsPrimary
                         };
                         _context.ProductImages.Add(productImage);
                     }
 
-                    // Lưu tất cả các ảnh vào DB
+                    // Lưu tất cả images
                     await _context.SaveChangesAsync();
                 }
 
-                // Bước 4: Nếu mọi thứ thành công, commit transaction
+                // Bước 4: Commit transaction nếu mọi thứ thành công
                 await transaction.CommitAsync();
 
                 return newProduct;
             }
             catch (Exception)
             {
-                // Nếu có lỗi, rollback tất cả
+                // Rollback nếu có lỗi (xóa cả product và images đã thêm)
                 await transaction.RollbackAsync();
-                throw; // Ném lại lỗi để Service/Controller bắt và xử lý
+                throw; // Ném lại lỗi để Service/Controller xử lý
             }
         }
 
