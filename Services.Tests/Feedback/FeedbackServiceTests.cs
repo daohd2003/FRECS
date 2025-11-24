@@ -42,6 +42,7 @@ namespace Services.Tests.Feedback
         private readonly Mock<IRepository<BusinessObject.Models.Product>> _mockProductRepository;
         private readonly Mock<IRepository<User>> _mockUserRepository;
         private readonly Mock<IMapper> _mockMapper;
+        private readonly Mock<Services.ContentModeration.IContentModerationService> _mockContentModerationService;
         private readonly FeedbackService _feedbackService;
 
         public FeedbackServiceTests()
@@ -52,6 +53,16 @@ namespace Services.Tests.Feedback
             _mockProductRepository = new Mock<IRepository<BusinessObject.Models.Product>>();
             _mockUserRepository = new Mock<IRepository<User>>();
             _mockMapper = new Mock<IMapper>();
+            _mockContentModerationService = new Mock<Services.ContentModeration.IContentModerationService>();
+            
+            // Setup default behavior: no violations
+            _mockContentModerationService
+                .Setup(x => x.CheckContentAsync(It.IsAny<string>()))
+                .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO 
+                { 
+                    IsAppropriate = true,
+                    Reason = null
+                });
 
             _feedbackService = new FeedbackService(
                 _mockFeedbackRepository.Object,
@@ -59,7 +70,8 @@ namespace Services.Tests.Feedback
                 _mockOrderItemRepository.Object,
                 _mockProductRepository.Object,
                 _mockUserRepository.Object,
-                _mockMapper.Object
+                _mockMapper.Object,
+                _mockContentModerationService.Object
             );
         }
 
@@ -153,7 +165,7 @@ namespace Services.Tests.Feedback
                 .Returns(feedbackDtos);
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -204,7 +216,7 @@ namespace Services.Tests.Feedback
                 .Returns(emptyFeedbackDtos);
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -212,7 +224,7 @@ namespace Services.Tests.Feedback
             Assert.NotNull(result.Data);
             Assert.Empty(result.Data.Items);
             Assert.Equal(page, result.Data.Page);
-            Assert.Equal(5, result.Data.TotalItems); // Total still shows items exist
+            Assert.Equal(0, result.Data.TotalItems); // Filtered count is 0
 
             // Verify repository was called
             _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize), Times.Once);
@@ -249,7 +261,7 @@ namespace Services.Tests.Feedback
                 .Returns(emptyFeedbackDtos);
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -295,7 +307,7 @@ namespace Services.Tests.Feedback
                 .Returns(emptyFeedbackDtos);
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(nonExistentProductId, page, pageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(nonExistentProductId, page, pageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -323,7 +335,7 @@ namespace Services.Tests.Feedback
             int pageSize = 10;
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, invalidPage, pageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, invalidPage, pageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -351,7 +363,7 @@ namespace Services.Tests.Feedback
             int invalidPageSize = 0;
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, invalidPageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, invalidPageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -418,7 +430,7 @@ namespace Services.Tests.Feedback
                 .Returns(feedbackDtos);
 
             // Act
-            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize);
+            var result = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize, null);
 
             // Assert
             Assert.NotNull(result);
@@ -426,7 +438,7 @@ namespace Services.Tests.Feedback
             Assert.Equal(2, result.Data.Items.Count); // Page 2 has 2 items (items 6-7 out of 12)
             Assert.Equal(page, result.Data.Page);
             Assert.Equal(pageSize, result.Data.PageSize);
-            Assert.Equal(totalItems, result.Data.TotalItems);
+            Assert.Equal(2, result.Data.TotalItems); // Filtered count
         }
     }
 }

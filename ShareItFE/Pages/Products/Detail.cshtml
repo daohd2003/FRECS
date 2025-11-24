@@ -349,7 +349,28 @@
                                         </div>
                                     </div>
                                 </div>
-                                <p class="text-gray-700">@feedback.Comment</p>
+                                @if (!string.IsNullOrEmpty(feedback.ViolationReason))
+                                {
+                                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-4">
+                                        <div class="flex items-center mb-2">
+                                            <i data-lucide="alert-triangle" class="h-5 w-5 text-orange-600 mr-2"></i>
+                                            <strong class="text-orange-800">Content Hidden Due to Violation</strong>
+                                        </div>
+                                        <p class="text-orange-700 text-sm mb-2">
+                                            <strong>Reason:</strong> @feedback.ViolationReason
+                                        </p>
+                                        <details class="mt-2">
+                                            <summary class="cursor-pointer text-gray-600 text-sm hover:text-gray-800">Show original comment (visible only to you)</summary>
+                                            <p class="mt-2 p-3 bg-gray-100 rounded text-gray-600 opacity-60 text-sm">
+                                                @feedback.Comment
+                                            </p>
+                                        </details>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-gray-700">@feedback.Comment</p>
+                                }
                             </div>
                         }
                     </div>

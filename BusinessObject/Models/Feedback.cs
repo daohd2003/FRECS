@@ -48,5 +48,18 @@ namespace BusinessObject.Models
         public Guid? ProviderResponseById { get; set; } // ID của Provider/Admin đã phản hồi
         [ForeignKey(nameof(ProviderResponseById))]
         public User? ProviderResponder { get; set; }
+
+        // Feedback Management fields
+        public bool IsBlocked { get; set; } = false;
+        public DateTime? BlockedAt { get; set; }
+        public Guid? BlockedById { get; set; }
+        [ForeignKey(nameof(BlockedById))]
+        public User? BlockedBy { get; set; }
+
+        public bool IsFlagged { get; set; } = false;
+        public bool IsVisible { get; set; } = true;
+        
+        [MaxLength(500)]
+        public string? ViolationReason { get; set; } // Lý do vi phạm từ AI moderation
     }
 }

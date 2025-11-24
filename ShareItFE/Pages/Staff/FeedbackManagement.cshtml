@@ -1,0 +1,187 @@
+@page
+@model ShareItFE.Pages.Staff.FeedbackManagementModel
+@{
+    ViewData["Title"] = "Feedback Management";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/feedback-management.css" asp-append-version="true" />
+}
+
+<div class="feedback-management-container">
+    <!-- Header Section -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1 class="page-title">Product Feedback Management</h1>
+                <p class="page-description">Monitor and manage customer feedback for rental products</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Total Feedbacks</p>
+                <p class="stat-value" id="totalFeedbacks">0</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-yellow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Average Rating</p>
+                <p class="stat-value" id="averageRating">0.0</p>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <p class="stat-label">Blocked Content</p>
+                <p class="stat-value" id="blockedContent">0</p>
+            </div>
+        </div>
+
+
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <button class="tab-button active" data-tab="all">All Feedbacks (<span id="allCount">0</span>)</button>
+        <button class="tab-button" data-tab="blocked">Blocked Content (<span id="blockedCount">0</span>)</button>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="search-filter-container">
+        <div class="search-section">
+            <div class="search-input-group">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search feedbacks..." class="search-input">
+            </div>
+        </div>
+        <div class="filter-section">
+            <select id="ratingFilter" class="filter-select">
+                <option value="">All Ratings</option>
+                <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                <option value="4">⭐⭐⭐⭐ (4)</option>
+                <option value="3">⭐⭐⭐ (3)</option>
+                <option value="2">⭐⭐ (2)</option>
+                <option value="1">⭐ (1)</option>
+            </select>
+
+            <select id="timeFilter" class="filter-select">
+                <option value="">All Time</option>
+                <option value="Today">Today</option>
+                <option value="ThisWeek">This Week</option>
+                <option value="ThisMonth">This Month</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Feedback Table -->
+    <div class="table-container">
+        <table class="feedback-table">
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="25%">Product</th>
+                    <th width="12%">Total Reviews</th>
+                    <th width="12%">Avg Rating</th>
+                    <th width="12%">Latest Review</th>
+                    <th width="12%">Flagged</th>
+                    <th width="12%">Blocked</th>
+                    <th width="10%">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="feedbackTableBody">
+                <tr>
+                    <td colspan="8" class="text-center">
+                        <div class="loading-spinner">Loading...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container" id="paginationContainer">
+        <!-- Pagination will be generated by JavaScript -->
+    </div>
+</div>
+
+<!-- Feedback Detail Modal -->
+<div id="feedbackDetailModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2>Feedback Details</h2>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body" id="feedbackDetailContent">
+            <!-- Content will be loaded by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Image Lightbox Modal -->
+<div id="imageLightbox" class="image-lightbox" style="display: none;">
+    <span class="lightbox-close">&times;</span>
+    <img class="lightbox-content" id="lightboxImage">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<!-- Expanded Comment Row Template -->
+<template id="expandedCommentTemplate">
+    <tr class="expanded-row">
+        <td colspan="8">
+            <div class="expanded-content">
+                <div class="expanded-section">
+                    <strong>Full Comment:</strong>
+                    <p class="full-comment"></p>
+                </div>
+                <div class="expanded-section" style="display:none;" id="providerResponseSection">
+                    <strong>Provider Response:</strong>
+                    <div class="provider-response-box">
+                        <p class="provider-response-text"></p>
+                        <p class="provider-response-meta"></p>
+                    </div>
+                </div>
+                <div class="expanded-meta">
+                    <span><strong>Feedback ID:</strong> <span class="feedback-id"></span></span>
+                    <span><strong>Product ID:</strong> <span class="product-id"></span></span>
+                    <span><strong>Customer ID:</strong> <span class="customer-id"></span></span>
+                </div>
+            </div>
+        </td>
+    </tr>
+</template>
+
+@section Scripts {
+    <script>
+        // Inject token from server-side
+        if ('@Model.AccessToken' && '@Model.AccessToken' !== '') {
+            localStorage.setItem('AccessToken', '@Model.AccessToken');
+        }
+    </script>
+    <script src="~/js/feedback-management.js" asp-append-version="true"></script>
+}

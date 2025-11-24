@@ -28,5 +28,10 @@ namespace BusinessObject.DTOs.FeedbackDto
         
         // Added for frontend display
         public string? ProfilePictureUrl { get; set; }
+        
+        // Moderation fields
+        public bool IsBlocked { get; set; }
+        public bool IsVisible { get; set; }
+        public string? ViolationReason { get; set; }
     }
 }

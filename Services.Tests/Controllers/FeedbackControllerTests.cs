@@ -31,6 +31,19 @@ namespace Services.Tests.Controllers
         {
             _mockFeedbackService = new Mock<IFeedbackService>();
             _controller = new FeedbackController(_mockFeedbackService.Object);
+            
+            // Setup mock User context for controller (anonymous user)
+            var claims = new List<System.Security.Claims.Claim>();
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuthType");
+            var claimsPrincipal = new System.Security.Claims.ClaimsPrincipal(identity);
+            
+            _controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = claimsPrincipal
+                }
+            };
         }
 
         #region GetFeedbacksByProduct Tests
@@ -76,7 +89,7 @@ namespace Services.Tests.Controllers
                 paginatedResponse
             );
 
-            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<Guid?>()))
                 .ReturnsAsync(serviceResponse);
 
             // Act
@@ -92,7 +105,7 @@ namespace Services.Tests.Controllers
             Assert.Equal(1, apiResponse.Data.Items.Count);
             Assert.Equal("Great product!", apiResponse.Data.Items.First().Comment);
 
-            _mockFeedbackService.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize), Times.Once);
+            _mockFeedbackService.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<Guid?>()), Times.Once);
         }
 
         /// <summary>
@@ -121,7 +134,7 @@ namespace Services.Tests.Controllers
                 paginatedResponse
             );
 
-            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<Guid?>()))
                 .ReturnsAsync(serviceResponse);
 
             // Act
@@ -154,7 +167,7 @@ namespace Services.Tests.Controllers
                 null // Data is null
             );
 
-            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<Guid?>()))
                 .ReturnsAsync(serviceResponse);
 
             // Act
@@ -168,7 +181,7 @@ namespace Services.Tests.Controllers
             Assert.Equal("Invalid page number", apiResponse.Message); // Verify API message
             Assert.Null(apiResponse.Data);
 
-            _mockFeedbackService.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize), Times.Once);
+            _mockFeedbackService.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<Guid?>()), Times.Once);
         }
 
         /// <summary>
@@ -195,7 +208,7 @@ namespace Services.Tests.Controllers
                 paginatedResponse
             );
 
-            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<Guid?>()))
                 .ReturnsAsync(serviceResponse);
 
             // Act
@@ -205,7 +218,8 @@ namespace Services.Tests.Controllers
             _mockFeedbackService.Verify(x => x.GetFeedbacksByProductAsync(
                 It.Is<Guid>(id => id == productId),
                 It.Is<int>(p => p == page),
-                It.Is<int>(ps => ps == pageSize)
+                It.Is<int>(ps => ps == pageSize),
+                It.IsAny<Guid?>()
             ), Times.Once);
         }
 

@@ -7,6 +7,7 @@ using BusinessObject.Utilities;
 using Repositories.FeedbackRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
+using Services.ContentModeration;
 
 namespace Services.FeedbackServices
 {
@@ -18,6 +19,7 @@ namespace Services.FeedbackServices
         private readonly IRepository<Product> _productRepo;
         private readonly IRepository<User> _userRepo;
         private readonly IMapper _mapper;
+        private readonly IContentModerationService _contentModerationService;
 
         public FeedbackService(
             IFeedbackRepository feedbackRepo,
@@ -25,7 +27,8 @@ namespace Services.FeedbackServices
             IRepository<OrderItem> orderItemRepo,
             IRepository<Product> productRepo,
             IRepository<User> userRepo,
-            IMapper mapper)
+            IMapper mapper,
+            IContentModerationService contentModerationService)
         {
             _feedbackRepo = feedbackRepo;
             _orderRepo = orderRepo;
@@ -33,6 +36,7 @@ namespace Services.FeedbackServices
             _productRepo = productRepo;
             _userRepo = userRepo;
             _mapper = mapper;
+            _contentModerationService = contentModerationService;
         }
 
         /// <summary>
@@ -123,7 +127,16 @@ namespace Services.FeedbackServices
                 }
             }
 
-            // Bước 4: Tạo Feedback entity
+            // --- Check content moderation ---
+            var moderationResult = await _contentModerationService.CheckContentAsync(dto.Comment ?? "");
+            var isViolation = !moderationResult.IsAppropriate;
+            var violationReason = moderationResult.Reason;
+            
+            Console.WriteLine($"[MODERATION] Comment: {dto.Comment}");
+            Console.WriteLine($"[MODERATION] IsViolation: {isViolation}");
+            Console.WriteLine($"[MODERATION] Reason: {violationReason}");
+            
+            // --- Create Feedback Entity ---
             var feedback = _mapper.Map<Feedback>(dto);
 
             feedback.TargetType = dto.TargetType;
@@ -134,6 +147,23 @@ namespace Services.FeedbackServices
             feedback.ProductId = productId;
             feedback.OrderId = orderId;
             feedback.OrderItemId = orderItemId;
+            
+            // Simplified: If AI detects violation → Block immediately
+            if (isViolation)
+            {
+                Console.WriteLine($"[MODERATION] Blocking feedback {feedback.Id} due to AI detection");
+                feedback.IsBlocked = true;
+                feedback.IsVisible = false; // Hidden from public
+                feedback.ViolationReason = violationReason;
+                feedback.BlockedAt = DateTimeHelper.GetVietnamTime();
+                // Note: BlockedById is null (auto-blocked by AI, not by staff)
+            }
+            else
+            {
+                Console.WriteLine($"[MODERATION] Feedback {feedback.Id} is clean");
+                feedback.IsBlocked = false;
+                feedback.IsVisible = true;
+            }
 
             // Bước 5: Lưu feedback vào database
             await _feedbackRepo.AddAsync(feedback);
@@ -344,7 +374,14 @@ namespace Services.FeedbackServices
             var user = await _userRepo.GetByIdAsync(userId);
             return user?.Role == UserRole.admin;
         }
+        // Overload for backward compatibility with tests
         public async Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize)
+        {
+            return await GetFeedbacksByProductAsync(productId, page, pageSize, null);
+        }
+        
+        // For Staff/Admin - return ALL feedbacks without filtering
+        public async Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetAllFeedbacksByProductForStaffAsync(Guid productId, int page, int pageSize)
         {
             if (page < 1 || pageSize < 1)
             {
@@ -352,8 +389,15 @@ namespace Services.FeedbackServices
             }
 
             var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize);
-
             var responseDtos = _mapper.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items);
+            
+            // Map moderation fields
+            for (int i = 0; i < paginatedFeedbacks.Items.Count; i++)
+            {
+                responseDtos[i].IsBlocked = paginatedFeedbacks.Items[i].IsBlocked;
+                responseDtos[i].IsVisible = paginatedFeedbacks.Items[i].IsVisible;
+                responseDtos[i].ViolationReason = paginatedFeedbacks.Items[i].ViolationReason;
+            }
 
             var paginatedDtoResponse = new PaginatedResponse<FeedbackResponseDto>
             {
@@ -366,17 +410,270 @@ namespace Services.FeedbackServices
             return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Success", paginatedDtoResponse);
         }
 
-        /// <summary>
-        /// Lấy tất cả feedback của một customer cụ thể cho một sản phẩm
-        /// Dùng cho Provider xem feedback của customer đã mua sản phẩm
-        /// </summary>
-        /// <param name="productId">ID sản phẩm</param>
-        /// <param name="customerId">ID customer</param>
-        /// <returns>Danh sách FeedbackResponseDto</returns>
-        public async Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId)
+        public async Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize, Guid? currentUserId)
         {
-            var feedbacks = await _feedbackRepo.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
-            return _mapper.Map<IEnumerable<FeedbackResponseDto>>(feedbacks);
+            if (page < 1 || pageSize < 1)
+            {
+                return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Invalid page or pageSize", null);
+            }
+
+            var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize);
+
+            // Filter feedbacks based on visibility rules
+            var filteredFeedbacks = paginatedFeedbacks.Items.Where(f =>
+            {
+                // Always show visible feedbacks
+                if (f.IsVisible) return true;
+                
+                // Show flagged/hidden feedbacks only to the author
+                if (!f.IsVisible && currentUserId.HasValue && f.CustomerId == currentUserId.Value)
+                {
+                    return true;
+                }
+                
+                // Hide from everyone else
+                return false;
+            }).ToList();
+
+            var responseDtos = _mapper.Map<List<FeedbackResponseDto>>(filteredFeedbacks);
+            
+            // Map moderation fields manually
+            for (int i = 0; i < filteredFeedbacks.Count; i++)
+            {
+                responseDtos[i].IsBlocked = filteredFeedbacks[i].IsBlocked;
+                responseDtos[i].IsVisible = filteredFeedbacks[i].IsVisible;
+                
+                // Show ViolationReason only to the author
+                if (!filteredFeedbacks[i].IsVisible && 
+                    currentUserId.HasValue && 
+                    filteredFeedbacks[i].CustomerId == currentUserId.Value)
+                {
+                    responseDtos[i].ViolationReason = filteredFeedbacks[i].ViolationReason;
+                }
+            }
+
+            var paginatedDtoResponse = new PaginatedResponse<FeedbackResponseDto>
+            {
+                Items = responseDtos,
+                Page = paginatedFeedbacks.Page,
+                PageSize = paginatedFeedbacks.PageSize,
+                TotalItems = filteredFeedbacks.Count // Use filtered count
+            };
+
+            return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Success", paginatedDtoResponse);
+        }
+
+        // Feedback Management Methods
+        public async Task<ApiResponse<PaginatedResponse<FeedbackManagementDto>>> GetAllFeedbacksAsync(FeedbackFilterDto filter)
+        {
+            try
+            {
+                var paginatedFeedbacks = await _feedbackRepo.GetAllFeedbacksWithFilterAsync(filter);
+
+                var managementDtos = paginatedFeedbacks.Items.Select(f => new FeedbackManagementDto
+                {
+                    FeedbackId = f.Id,
+                    ProductId = f.ProductId,
+                    ProductName = f.Product?.Name,
+                    ProductImageUrl = f.Product?.Images?.FirstOrDefault()?.ImageUrl,
+                    ProductPrice = f.Product?.PricePerDay,
+                    ProviderName = f.Product?.Provider?.Profile?.FullName,
+                    CustomerId = f.CustomerId,
+                    CustomerName = f.Customer?.Profile?.FullName ?? "Unknown",
+                    CustomerEmail = f.Customer?.Email,
+                    CustomerProfilePicture = f.Customer?.Profile?.ProfilePictureUrl,
+                    Rating = f.Rating,
+                    Comment = f.Comment,
+                    CreatedAt = f.CreatedAt,
+                    ProviderResponse = f.ProviderResponse,
+                    ProviderResponseAt = f.ProviderResponseAt,
+                    ProviderResponderName = f.ProviderResponder?.Profile?.FullName,
+                    IsBlocked = f.IsBlocked,
+                    IsVisible = f.IsVisible,
+                    BlockedAt = f.BlockedAt,
+                    BlockedByName = f.BlockedBy?.Profile?.FullName,
+                    Status = GetFeedbackStatus(f)
+                }).ToList();
+
+                var response = new PaginatedResponse<FeedbackManagementDto>
+                {
+                    Items = managementDtos,
+                    Page = paginatedFeedbacks.Page,
+                    PageSize = paginatedFeedbacks.PageSize,
+                    TotalItems = paginatedFeedbacks.TotalItems
+                };
+
+                return new ApiResponse<PaginatedResponse<FeedbackManagementDto>>("Success", response);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<PaginatedResponse<FeedbackManagementDto>>($"Error: {ex.Message}", null);
+            }
+        }
+
+        public async Task<ApiResponse<FeedbackDetailDto>> GetFeedbackDetailAsync(Guid feedbackId)
+        {
+            try
+            {
+                var feedback = await _feedbackRepo.GetFeedbackDetailAsync(feedbackId);
+                if (feedback == null)
+                    return new ApiResponse<FeedbackDetailDto>("Feedback not found", null);
+
+                // Get OrderItem information if available
+                OrderItemInfoDto? orderItemInfo = null;
+                if (feedback.OrderItemId.HasValue)
+                {
+                    var orderItem = await _orderItemRepo.GetByIdAsync(feedback.OrderItemId.Value);
+                    if (orderItem != null)
+                    {
+                        decimal totalPrice = orderItem.TransactionType == TransactionType.rental
+                            ? orderItem.DailyRate * (orderItem.RentalDays ?? 1) * orderItem.Quantity
+                            : orderItem.DailyRate * orderItem.Quantity;
+
+                        orderItemInfo = new OrderItemInfoDto
+                        {
+                            OrderItemId = orderItem.Id,
+                            OrderId = orderItem.OrderId,
+                            TransactionType = orderItem.TransactionType.ToString(),
+                            Quantity = orderItem.Quantity,
+                            RentalDays = orderItem.RentalDays,
+                            DailyRate = orderItem.DailyRate,
+                            DepositPerUnit = orderItem.DepositPerUnit,
+                            TotalPrice = totalPrice
+                        };
+                    }
+                }
+
+                var detailDto = new FeedbackDetailDto
+                {
+                    FeedbackId = feedback.Id,
+                    Product = feedback.Product != null ? new ProductInfoDto
+                    {
+                        ProductId = feedback.Product.Id,
+                        ProductName = feedback.Product.Name,
+                        Description = feedback.Product.Description,
+                        PricePerDay = feedback.Product.PricePerDay,
+                        PurchasePrice = feedback.Product.PurchasePrice,
+                        RentalStatus = feedback.Product.RentalStatus.ToString(),
+                        PurchaseStatus = feedback.Product.PurchaseStatus.ToString(),
+                        RentalQuantity = feedback.Product.RentalQuantity,
+                        PurchaseQuantity = feedback.Product.PurchaseQuantity,
+                        ImageUrl = feedback.Product.Images?.FirstOrDefault()?.ImageUrl,
+                        ProviderName = feedback.Product.Provider?.Profile?.FullName ?? "Unknown",
+                        ProviderEmail = feedback.Product.Provider?.Email,
+                        AverageRating = (double)feedback.Product.AverageRating,
+                        TotalReviews = feedback.Product.RatingCount
+                    } : null,
+                    OrderItem = orderItemInfo,
+                    Customer = new CustomerInfoDto
+                    {
+                        CustomerId = feedback.CustomerId,
+                        CustomerName = feedback.Customer?.Profile?.FullName ?? "Unknown",
+                        Email = feedback.Customer?.Email,
+                        ProfilePicture = feedback.Customer?.Profile?.ProfilePictureUrl,
+                        SubmittedAt = feedback.CreatedAt
+                    },
+                    Rating = feedback.Rating,
+                    Comment = feedback.Comment,
+                    CreatedAt = feedback.CreatedAt,
+                    UpdatedAt = feedback.UpdatedAt,
+                    ProviderResponse = feedback.ProviderResponse != null ? new ProviderResponseInfoDto
+                    {
+                        ResponseText = feedback.ProviderResponse,
+                        ResponderName = feedback.ProviderResponder?.Profile?.FullName ?? "Unknown",
+                        RespondedAt = feedback.ProviderResponseAt ?? DateTime.UtcNow
+                    } : null,
+                    Status = new StatusInfoDto
+                    {
+                        Visibility = feedback.IsVisible ? "Visible to public" : "Hidden from public",
+                        ContentStatus = feedback.IsBlocked ? "Blocked content" : "Clear content",
+                        ResponseStatus = feedback.ProviderResponse != null ? "Responded" : "No response",
+                        IsBlocked = feedback.IsBlocked,
+                        BlockedAt = feedback.BlockedAt,
+                        BlockedByName = feedback.BlockedBy?.Profile?.FullName
+                    }
+                };
+
+                return new ApiResponse<FeedbackDetailDto>("Success", detailDto);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<FeedbackDetailDto>($"Error: {ex.Message}", null);
+            }
+        }
+
+        public async Task<ApiResponse<bool>> BlockFeedbackAsync(Guid feedbackId, Guid staffId)
+        {
+            try
+            {
+                var result = await _feedbackRepo.BlockFeedbackAsync(feedbackId, staffId);
+                if (!result)
+                    return new ApiResponse<bool>("Feedback not found", false);
+
+                // Recalculate product rating after blocking
+                var feedback = await _feedbackRepo.GetByIdAsync(feedbackId);
+                if (feedback?.ProductId != null)
+                {
+                    await RecalculateProductRatingAsync(feedback.ProductId.Value);
+                }
+
+                return new ApiResponse<bool>("Feedback blocked successfully", true);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>($"Error: {ex.Message}", false);
+            }
+        }
+
+        public async Task<ApiResponse<bool>> UnblockFeedbackAsync(Guid feedbackId)
+        {
+            try
+            {
+                var result = await _feedbackRepo.UnblockFeedbackAsync(feedbackId);
+                if (!result)
+                    return new ApiResponse<bool>("Feedback not found", false);
+
+                // Clear violation info when unblocking
+                var feedback = await _feedbackRepo.GetByIdAsync(feedbackId);
+                if (feedback != null)
+                {
+                    feedback.IsVisible = true;
+                    feedback.ViolationReason = null;
+                    await _feedbackRepo.UpdateAsync(feedback);
+                    
+                    // Recalculate product rating after unblocking
+                    if (feedback.ProductId != null)
+                    {
+                        await RecalculateProductRatingAsync(feedback.ProductId.Value);
+                    }
+                }
+
+                return new ApiResponse<bool>("Feedback unblocked successfully", true);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>($"Error: {ex.Message}", false);
+            }
+        }
+
+        public async Task<ApiResponse<FeedbackStatisticsDto>> GetFeedbackStatisticsAsync()
+        {
+            try
+            {
+                var stats = await _feedbackRepo.GetFeedbackStatisticsAsync();
+                return new ApiResponse<FeedbackStatisticsDto>("Success", stats);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<FeedbackStatisticsDto>($"Error: {ex.Message}", null);
+            }
+        }
+
+        private string GetFeedbackStatus(Feedback feedback)
+        {
+            if (feedback.IsBlocked) return "Blocked";
+            if (feedback.ProviderResponse != null) return "Responded";
+            return "Active";
         }
     }
 }
