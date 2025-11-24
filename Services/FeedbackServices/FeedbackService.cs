@@ -218,6 +218,20 @@ namespace Services.FeedbackServices
             var feedbacks = await _feedbackRepo.GetFeedbacksByCustomerIdAsync(customerId);
             return _mapper.Map<IEnumerable<FeedbackResponseDto>>(feedbacks);
         }
+
+        /// <summary>
+        /// Lấy tất cả feedback của một customer cụ thể cho một sản phẩm
+        /// Dùng cho Provider xem feedback của customer đã mua sản phẩm
+        /// </summary>
+        /// <param name="productId">ID sản phẩm</param>
+        /// <param name="customerId">ID customer</param>
+        /// <returns>Danh sách FeedbackResponseDto</returns>
+        public async Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId)
+        {
+            var feedbacks = await _feedbackRepo.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+            return _mapper.Map<IEnumerable<FeedbackResponseDto>>(feedbacks);
+        }
+
         public async Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByProviderIdAsync(Guid providerId, Guid currentUserId, bool isAdmin)
         {
             if (!isAdmin && providerId != currentUserId)
@@ -674,6 +688,6 @@ namespace Services.FeedbackServices
             if (feedback.IsBlocked) return "Blocked";
             if (feedback.ProviderResponse != null) return "Responded";
             return "Active";
-        }
+        }       
     }
 }

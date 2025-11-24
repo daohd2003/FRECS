@@ -161,6 +161,7 @@ namespace ShareItAPI.Controllers
         {
             var feedbacks = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
             return Ok(new ApiResponse<object>("Feedbacks retrieved successfully.", feedbacks));
+        }
         // ===== FEEDBACK MANAGEMENT ENDPOINTS (Staff/Admin) =====
         
         // GET - Get all feedbacks with filters (Staff/Admin)

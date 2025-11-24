@@ -146,6 +146,9 @@ namespace Repositories.FeedbackRepositories
                 .Include(f => f.Order)
                 .Include(f => f.OrderItem)
                 .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile)
+                .ToListAsync();
+        }
+
         // Feedback Management Methods
         public async Task<PaginatedResponse<Feedback>> GetAllFeedbacksWithFilterAsync(FeedbackFilterDto filter)
         {
