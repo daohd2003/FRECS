@@ -14,5 +14,13 @@ namespace Repositories.FeedbackRepositories
         Task<bool> HasUserFeedbackedOrderAsync(Guid customerId, Guid orderId);
         Task<PaginatedResponse<Feedback>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize);
         Task<IEnumerable<Feedback>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId);
+        
+        // Feedback Management
+        Task<PaginatedResponse<Feedback>> GetAllFeedbacksWithFilterAsync(FeedbackFilterDto filter);
+        Task<Feedback?> GetFeedbackDetailAsync(Guid feedbackId);
+        Task<bool> BlockFeedbackAsync(Guid feedbackId, Guid blockedById);
+        Task<bool> UnblockFeedbackAsync(Guid feedbackId);
+        Task<FeedbackStatisticsDto> GetFeedbackStatisticsAsync();
+        Task<IEnumerable<Feedback>> GetFlaggedFeedbacksAsync();
     }
 }

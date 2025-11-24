@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -21,8 +21,16 @@ namespace ShareItAPI.Controllers
 
         private Guid GetCurrentUserId()
         {
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userIdString, out Guid userId))
+            // Try multiple claim types
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier) 
+                            ?? User.FindFirstValue("sub") 
+                            ?? User.FindFirstValue("userId")
+                            ?? User.FindFirstValue("id");
+            
+            Console.WriteLine($"User claims: {string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"))}");
+            Console.WriteLine($"UserIdString: {userIdString}");
+            
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 throw new InvalidOperationException("User ID from authentication token is missing or invalid.");
             }
@@ -121,7 +129,21 @@ namespace ShareItAPI.Controllers
         [HttpGet("product/{productId}")]
         public async Task<IActionResult> GetFeedbacksByProduct(Guid productId, [FromQuery] int page = 1, [FromQuery] int pageSize = 5)
         {
-            var response = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize);
+            // Get current user ID if authenticated
+            Guid? currentUserId = null;
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                try
+                {
+                    currentUserId = GetCurrentUserId();
+                }
+                catch
+                {
+                    // User not authenticated, continue as anonymous
+                }
+            }
+            
+            var response = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize, currentUserId);
             if (response.Data == null)
             {
                 return BadRequest(response);
@@ -139,6 +161,117 @@ namespace ShareItAPI.Controllers
         {
             var feedbacks = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
             return Ok(new ApiResponse<object>("Feedbacks retrieved successfully.", feedbacks));
+        }
+        // ===== FEEDBACK MANAGEMENT ENDPOINTS (Staff/Admin) =====
+        
+        // GET - Get all feedbacks with filters (Staff/Admin)
+        [HttpGet("management")]
+         [Authorize(Roles = "staff,admin")] // TODO: Uncomment sau khi test xong
+        public async Task<IActionResult> GetAllFeedbacks([FromQuery] FeedbackFilterDto filter)
+        {
+            var response = await _feedbackService.GetAllFeedbacksAsync(filter);
+            if (response.Data == null)
+                return BadRequest(response);
+            return Ok(response);
+        }
+
+        // GET - Get feedback detail (Staff/Admin)
+        [HttpGet("management/{feedbackId}")]
+         [Authorize(Roles = "staff,admin")] // TODO: Uncomment sau khi test xong
+        public async Task<IActionResult> GetFeedbackDetail(Guid feedbackId)
+        {
+            var response = await _feedbackService.GetFeedbackDetailAsync(feedbackId);
+            if (response.Data == null)
+                return NotFound(response);
+            return Ok(response);
+        }
+
+        // PUT - Block feedback (Staff/Admin)
+        [HttpPut("management/{feedbackId}/block")]
+         [Authorize(Roles = "staff,admin")] // TODO: Uncomment sau khi test xong
+        public async Task<IActionResult> BlockFeedback(Guid feedbackId)
+        {
+            try
+            {
+                Console.WriteLine($"BlockFeedback called with feedbackId: {feedbackId}");
+                var staffId = GetCurrentUserId();
+                Console.WriteLine($"StaffId: {staffId}");
+                
+                var response = await _feedbackService.BlockFeedbackAsync(feedbackId, staffId);
+                Console.WriteLine($"Service response - Success: {response.Data}, Message: {response.Message}");
+                
+                if (!response.Data)
+                    return BadRequest(response);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in BlockFeedback: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace });
+            }
+        }
+
+        // PUT - Unblock feedback (Staff/Admin)
+        [HttpPut("management/{feedbackId}/unblock")]
+        [Authorize(Roles = "staff,admin")]
+        public async Task<IActionResult> UnblockFeedback(Guid feedbackId)
+        {
+            var response = await _feedbackService.UnblockFeedbackAsync(feedbackId);
+            if (!response.Data)
+                return BadRequest(response);
+            return Ok(response);
+        }
+
+        // TEST - Test content moderation
+        [HttpPost("test-moderation")]
+        public async Task<IActionResult> TestModeration([FromBody] string content)
+        {
+            try
+            {
+                var moderationService = HttpContext.RequestServices.GetService<Services.ContentModeration.IContentModerationService>();
+                if (moderationService == null)
+                {
+                    return Ok(new { error = "ContentModerationService not registered" });
+                }
+                
+                var result = await moderationService.CheckContentAsync(content);
+                return Ok(new { 
+                    content = content,
+                    isViolation = !result.IsAppropriate, 
+                    reason = result.Reason,
+                    violatedTerms = result.ViolatedTerms,
+                    message = "Moderation check completed"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { error = ex.Message, stackTrace = ex.StackTrace });
+            }
+        }
+        
+        // GET - Get all feedbacks for a product (Staff/Admin - no filtering)
+        [HttpGet("management/product/{productId}")]
+         [Authorize(Roles = "staff,admin")]
+        public async Task<IActionResult> GetAllFeedbacksForProduct(Guid productId, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
+        {
+            var response = await _feedbackService.GetAllFeedbacksByProductForStaffAsync(productId, page, pageSize);
+            if (response.Data == null)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+        
+        // GET - Get feedback statistics (Staff/Admin)
+        [HttpGet("management/statistics")]
+         [Authorize(Roles = "staff,admin")] // TODO: Uncomment sau khi test xong
+        public async Task<IActionResult> GetFeedbackStatistics()
+        {
+            var response = await _feedbackService.GetFeedbackStatisticsAsync();
+            if (response.Data == null)
+                return BadRequest(response);
+            return Ok(response);
         }
     }
 }

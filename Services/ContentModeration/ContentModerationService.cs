@@ -30,6 +30,16 @@ namespace Services.ContentModeration
             _cache = cache;
         }
 
+        /// <summary>
+        /// Check single content string (for Feedback, comments, etc.)
+        /// Reuses the same AI moderation logic as product checking
+        /// </summary>
+        public async Task<ContentModerationResultDTO> CheckContentAsync(string content)
+        {
+            // Reuse existing logic - treat content as "name" with no description
+            return await CheckProductContentAsync(content, null);
+        }
+
         public async Task<ContentModerationResultDTO> CheckProductContentAsync(string name, string? description)
         {
             try

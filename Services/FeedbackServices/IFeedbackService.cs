@@ -17,7 +17,16 @@ namespace Services.FeedbackServices
         Task SubmitProviderResponseAsync(Guid feedbackId, SubmitProviderResponseDto responseDto, Guid providerOrAdminId);
 
         Task RecalculateProductRatingAsync(Guid productId);
+        Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize, Guid? currentUserId);
         Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize);
         Task<IEnumerable<FeedbackResponseDto>> GetFeedbacksByProductAndCustomerAsync(Guid productId, Guid customerId);
+        Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetAllFeedbacksByProductForStaffAsync(Guid productId, int page, int pageSize);
+        
+        // Feedback Management
+        Task<ApiResponse<PaginatedResponse<FeedbackManagementDto>>> GetAllFeedbacksAsync(FeedbackFilterDto filter);
+        Task<ApiResponse<FeedbackDetailDto>> GetFeedbackDetailAsync(Guid feedbackId);
+        Task<ApiResponse<bool>> BlockFeedbackAsync(Guid feedbackId, Guid staffId);
+        Task<ApiResponse<bool>> UnblockFeedbackAsync(Guid feedbackId);
+        Task<ApiResponse<FeedbackStatisticsDto>> GetFeedbackStatisticsAsync();
     }
 }
