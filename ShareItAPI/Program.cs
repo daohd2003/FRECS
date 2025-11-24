@@ -397,7 +397,7 @@ namespace ShareItAPI
             builder.Services.AddScoped<Repositories.CompensationDisputeRepositories.ICompensationDisputeRepository, Repositories.CompensationDisputeRepositories.CompensationDisputeRepository>();
             builder.Services.AddScoped<Services.CompensationDisputeServices.ICompensationDisputeService, Services.CompensationDisputeServices.CompensationDisputeService>();
 
-            //builder.WebHost.UseUrls($"http://*:80");
+            builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();
 
