@@ -126,20 +126,10 @@ namespace Services.AI
                 
                 var priceString = pricingInfo.Any() ? string.Join(" | ", pricingInfo) : "Contact for pricing";
                 
-                // Add description if available (truncate to 150 characters to avoid overly long context)
-                var description = "";
-                if (!string.IsNullOrEmpty(p.Description))
-                {
-                    var desc = p.Description.Length > 150 
-                        ? p.Description.Substring(0, 150) + "..." 
-                        : p.Description;
-                    description = $"\n  Description: {desc}";
-                }
-                
                 // Add gender
                 var gender = p.Gender.ToString();
                 
-                return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color} | Gender: {gender}\n  {priceString}{description}\n  [Xem chi tiết]({link})";
+                return $"- {p.Name} | Size: {p.Size} | Category: {p.Category} | Color: {p.Color} | Gender: {gender}\n  {priceString}\n  [Xem chi tiết]({link})";
             });
 
             return string.Join("\n", lines);
@@ -263,8 +253,7 @@ CRITICAL INSTRUCTIONS - MUST FOLLOW:
    - Rental price format: number VND/day for rental options
    - Purchase price format: number VND for purchase options
    - Show both if available
-6. Products now include Description and Gender information. Use these fields to provide better recommendations:
-   - Description helps understand the product style and features
+6. Products now include Gender information. Use this field to provide better recommendations:
    - Gender helps filter products appropriate for the user
 7. If no matching products are found, politely inform the user in English.
 8. Keep responses concise, helpful, and friendly.
@@ -274,7 +263,6 @@ Example response format:
 Here are the matching products:
 - White Shirt | Size: M | Category: Shirt | Color: White | Gender: Male
   Rental: 50,000 VND/day | Purchase: 500,000 VND
-  Description: Classic white dress shirt perfect for formal occasions
   [View Details](link)
 
 Answer in English:";
