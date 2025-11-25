@@ -131,7 +131,11 @@
                     @if (Model.CurrentStep == 1)
                     {
                         <div class="space-y-6">
-                            <div><label class="block text-sm font-medium text-gray-700 mb-2">Item Title *</label><input type="text" asp-for="Product.Name" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" /><span asp-validation-for="Product.Name" class="text-red-500 text-sm"></span></div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Item Title *</label>
+                                <input type="text" asp-for="Product.Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+                                <span asp-validation-for="Product.Name" class="text-red-500 text-sm block mt-1"></span>
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Description *</label>
                                 <div id="quill-editor" style="height: 200px; background: white;"></div>
@@ -165,7 +169,10 @@
                                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Primary Image</h3>
                                 <p class="text-sm text-gray-600 mb-4">This is the main image shown on the homepage. (Required)</p>
                                 <div id="primary-image-wrapper" class="w-full sm:w-1/2 md:w-1/3"></div>
-                                <span asp-validation-for="PrimaryImageUrl" class="text-red-500 text-sm"></span>
+                                <span asp-validation-for="PrimaryImageUrl"
+                                      id="primary-image-error"
+                                      data-required-message="Please upload a primary image."
+                                      class="text-red-500 text-sm"></span>
                             </div>
                             <div>
                                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Secondary Images</h3>
@@ -478,12 +485,114 @@
             quill.on('text-change', function() {
                 $('#description-hidden').val(quill.root.innerHTML);
             });
-            
-            // Ensure hidden field is updated before form submission
-            $('form').on('submit', function() {
-                $('#description-hidden').val(quill.root.innerHTML);
-            });
         }
+        
+        // Form validation - outside quill initialization to ensure it always runs
+        $(document).ready(function() {
+            $('#postItemForm').on('submit', function (event) {
+                // Update description from Quill if it exists
+                if (quill) {
+                    $('#description-hidden').val(quill.root.innerHTML);
+                }
+
+                // Only enforce validation while user is on Step 1
+                if (@Model.CurrentStep === 1) {
+                    let hasError = false;
+                    let firstErrorElement = null;
+
+                    // Validate Item Title
+                    const itemTitle = $('#Product_Name').val();
+                    const nameErrorSpan = $('#Product_Name').siblings('span.text-red-500').first();
+                    
+                    if (!itemTitle || itemTitle.trim().length === 0) {
+                        event.preventDefault();
+                        hasError = true;
+                        nameErrorSpan.text('Item title is required.').show();
+                        if (!firstErrorElement) {
+                            firstErrorElement = $('#Product_Name');
+                        }
+                    } else {
+                        nameErrorSpan.text('').hide();
+                    }
+
+                    // Validate Description
+                    if (quill) {
+                        const descriptionErrorSpan = $('#description-hidden').siblings('span.text-red-500').first();
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = quill.root.innerHTML;
+                        const plainText = (tmp.textContent || tmp.innerText || '').trim();
+
+                        if (plainText.length === 0) {
+                            event.preventDefault();
+                            hasError = true;
+                            descriptionErrorSpan.text('Description is required.').show();
+                            if (!firstErrorElement) {
+                                firstErrorElement = $('#quill-editor');
+                            }
+                        } else {
+                            descriptionErrorSpan.text('').hide();
+                        }
+                    }
+
+                    // Validate Category
+                    const categoryId = $('#Product_CategoryId').val();
+                    const categoryErrorSpan = $('#Product_CategoryId').siblings('span.text-red-500').first();
+                    
+                    if (!categoryId || categoryId === '') {
+                        event.preventDefault();
+                        hasError = true;
+                        categoryErrorSpan.text('Please select a category.').show();
+                        if (!firstErrorElement) {
+                            firstErrorElement = $('#Product_CategoryId');
+                        }
+                    } else {
+                        categoryErrorSpan.text('').hide();
+                    }
+
+                    // Validate Size
+                    const size = $('#selectedSizeInput').val();
+                    const sizeErrorSpan = $('#selectedSizeInput').siblings('span.text-red-500').first();
+                    
+                    if (!size || size.trim().length === 0) {
+                        event.preventDefault();
+                        hasError = true;
+                        sizeErrorSpan.text('Please select a size.').show();
+                        if (!firstErrorElement) {
+                            firstErrorElement = $('.size-btn').first();
+                        }
+                    } else {
+                        sizeErrorSpan.text('').hide();
+                    }
+
+                    // Validate Color
+                    const color = $('#Product_Color').val();
+                    const colorErrorSpan = $('#Product_Color').siblings('span.text-red-500').first();
+                    
+                    if (!color || color.trim().length === 0) {
+                        event.preventDefault();
+                        hasError = true;
+                        colorErrorSpan.text('Color is required.').show();
+                        if (!firstErrorElement) {
+                            firstErrorElement = $('#Product_Color');
+                        }
+                    } else {
+                        colorErrorSpan.text('').hide();
+                    }
+
+                    if (hasError && firstErrorElement) {
+                        // Scroll to first error with smooth animation
+                        $('html, body').animate({
+                            scrollTop: firstErrorElement.offset().top - 100
+                        }, 500);
+                        
+                        // Focus on the first error field
+                        firstErrorElement.focus();
+                        
+                        return false;
+                    }
+                }
+            });
+        });
         
         $(document).ready(function () {
             $('.size-btn').on('click', function () {
@@ -496,12 +605,27 @@
                 const token = $('input[name="__RequestVerificationToken"]').val();
                 let primaryImageUrl = @Html.Raw(Json.Serialize(Model.PrimaryImageUrl));
                 let secondaryImageUrls = @Html.Raw(Json.Serialize(Model.SecondaryImageUrls));
+                const primaryImageErrorEl = document.getElementById('primary-image-error');
+
+                function hidePrimaryImageError() {
+                    if (!primaryImageErrorEl) return;
+                    primaryImageErrorEl.textContent = '';
+                    primaryImageErrorEl.classList.add('hidden');
+                }
+
+                function showPrimaryImageError(message) {
+                    if (!primaryImageErrorEl) return;
+                    const fallbackMessage = primaryImageErrorEl.dataset.requiredMessage || 'Please upload a primary image.';
+                    primaryImageErrorEl.textContent = message || fallbackMessage;
+                    primaryImageErrorEl.classList.remove('hidden');
+                }
 
                 function renderPrimaryImage() {
                     const wrapper = $('#primary-image-wrapper');
                     wrapper.empty();
                     if (primaryImageUrl) {
                         wrapper.html(`<div class="image-container"><img src="${primaryImageUrl}" /><div class="remove-btn" id="remove-primary-btn" title="Remove"><i data-lucide="x" class="h-4 w-4"></i></div></div>`);
+                        hidePrimaryImageError();
                     } else {
                         wrapper.html(`<label for="primary-upload-input" class="upload-box h-48"><i data-lucide="image-plus" class="h-10 w-10 text-gray-400 mb-2"></i><span class="text-sm font-semibold text-gray-600">Add Primary Image</span><input type="file" id="primary-upload-input" class="hidden" accept="image/*" /></label>`);
                     }
@@ -548,7 +672,13 @@
                 $('#primary-image-wrapper').on('click', '#remove-primary-btn', function () {
                     $.ajax({
                         url: '/provider/postItem?handler=RemovePrimaryImage', type: 'POST', headers: { 'RequestVerificationToken': token },
-                        success: (res) => { if (res.success) { primaryImageUrl = null; renderPrimaryImage(); } }
+                        success: (res) => { 
+                            if (res.success) { 
+                                primaryImageUrl = null; 
+                                renderPrimaryImage(); 
+                                showPrimaryImageError(); 
+                            } 
+                        }
                     });
                 });
                 $('#secondary-images-grid').on('click', '.remove-secondary-btn', function () {
