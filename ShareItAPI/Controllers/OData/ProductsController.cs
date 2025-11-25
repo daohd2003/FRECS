@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.AspNetCore.OData.Routing.Controllers;
 using Microsoft.Extensions.Caching.Memory;
 using Services.ProductServices;
+using System.Security.Claims;
 
 namespace ShareItAPI.Controllers.OData
 {
@@ -37,7 +38,17 @@ namespace ShareItAPI.Controllers.OData
                 _logger.LogInformation("OData Products request started");
                 var startTime = DateTime.UtcNow;
                 
-                var query = _productService.GetAll();
+                // If user is authenticated and is a Provider, return ALL products (including archived, pending, etc.)
+                // Otherwise, return only available products (for customers/public)
+                IQueryable<ProductDTO> query;
+                if (User.Identity?.IsAuthenticated == true && User.IsInRole("provider"))
+                {
+                    query = _productService.GetAllNoFilter();
+                }
+                else
+                {
+                    query = _productService.GetAll();
+                }
                 
                 var duration = DateTime.UtcNow - startTime;
                 _logger.LogInformation("OData Products request completed in {Duration}ms", duration.TotalMilliseconds);
