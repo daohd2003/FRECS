@@ -9,9 +9,10 @@
     var priceRanges = new List<SelectListItem>
     {
         new SelectListItem { Value = "", Text = "All Prices" },
-        new SelectListItem { Value = "0-20", Text = "$0 - $20" },
-        new SelectListItem { Value = "20-40", Text = "$20 - $40" },
-        new SelectListItem { Value = "40", Text = "$40+" },
+        new SelectListItem { Value = "0-500000", Text = "Under 500K" },
+        new SelectListItem { Value = "500000-1000000", Text = "500K - 1M" },
+        new SelectListItem { Value = "1000000-2000000", Text = "1M - 2M" },
+        new SelectListItem { Value = "2000000", Text = "Over 2M" },
     };
 
     var sizes = new List<SelectListItem>

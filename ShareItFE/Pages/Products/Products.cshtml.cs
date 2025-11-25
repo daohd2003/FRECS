@@ -130,28 +130,6 @@ namespace ShareItFE.Pages.Products
                     filters.Add($"AverageRating ge {minRating}");
                 }
 
-                if (!string.IsNullOrEmpty(PriceRangeFilter))
-                {
-                    if (PriceRangeFilter.Contains('-'))
-                    {
-                        var parts = PriceRangeFilter.Split('-');
-                        if (parts.Length == 2 && int.TryParse(parts[0], out var minPrice) && int.TryParse(parts[1], out var maxPrice))
-                        {
-                            filters.Add($"PricePerDay ge {minPrice} and PricePerDay le {maxPrice}");
-                        }
-                    }
-                    else if (int.TryParse(PriceRangeFilter, out var startPrice))
-                    {
-                        filters.Add($"PricePerDay ge {startPrice}");
-                    }
-                }
-
-                // Gender filter
-                if (!string.IsNullOrEmpty(GenderFilter))
-                {
-                    filters.Add($"Gender eq '{GenderFilter}'");
-                }
-
                 // Product Type filter (Rental/Purchase)
                 if (!string.IsNullOrEmpty(ProductTypeFilter))
                 {
@@ -163,6 +141,54 @@ namespace ShareItFE.Pages.Products
                     {
                         filters.Add("PurchaseStatus eq 'Available'");
                     }
+                }
+
+                // Price filter - depends on ProductTypeFilter
+                if (!string.IsNullOrEmpty(PriceRangeFilter))
+                {
+                    if (PriceRangeFilter.Contains('-'))
+                    {
+                        var parts = PriceRangeFilter.Split('-');
+                        if (parts.Length == 2 && int.TryParse(parts[0], out var minPrice) && int.TryParse(parts[1], out var maxPrice))
+                        {
+                            if (ProductTypeFilter == "Rental")
+                            {
+                                // Only filter by rental price
+                                filters.Add($"(PricePerDay ge {minPrice} and PricePerDay le {maxPrice})");
+                            }
+                            else if (ProductTypeFilter == "Purchase")
+                            {
+                                // Only filter by purchase price
+                                filters.Add($"(PurchasePrice ge {minPrice} and PurchasePrice le {maxPrice})");
+                            }
+                            else
+                            {
+                                // Filter by rental price OR purchase price
+                                filters.Add($"((PricePerDay ge {minPrice} and PricePerDay le {maxPrice}) or (PurchasePrice ge {minPrice} and PurchasePrice le {maxPrice}))");
+                            }
+                        }
+                    }
+                    else if (int.TryParse(PriceRangeFilter, out var startPrice))
+                    {
+                        if (ProductTypeFilter == "Rental")
+                        {
+                            filters.Add($"PricePerDay ge {startPrice}");
+                        }
+                        else if (ProductTypeFilter == "Purchase")
+                        {
+                            filters.Add($"PurchasePrice ge {startPrice}");
+                        }
+                        else
+                        {
+                            filters.Add($"(PricePerDay ge {startPrice} or PurchasePrice ge {startPrice})");
+                        }
+                    }
+                }
+
+                // Gender filter
+                if (!string.IsNullOrEmpty(GenderFilter))
+                {
+                    filters.Add($"Gender eq '{GenderFilter}'");
                 }
 
                 if (filters.Any())
