@@ -976,8 +976,9 @@
                     }
                     
                     const garmentImageUrls = @Html.Raw(JsonSerializer.Serialize(Model.Product?.Images?.Select(i => i.ImageUrl).ToList() ?? new List<string>()));
+                    const productId = '@Model.Product?.Id';
                     if (garmentImageUrls.length > 0) {
-                        window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}`;
+                        window.location.href = `/AI/AIGeneration?GarmentImageUrls=${encodeURIComponent(JSON.stringify(garmentImageUrls))}&ProductId=${productId}`;
                     } else {
                         showToast('No garment image available for try-on', 'error');
                     }
