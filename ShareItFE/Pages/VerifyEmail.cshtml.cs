@@ -72,7 +72,9 @@ namespace ShareItFE.Pages
                             Expires = apiResponse.Data.RefreshTokenExpiryTime
                         });
 
-                        Message = apiResponse?.Message ?? "Email verified successfully! You are now logged in.";
+                        Message = !string.IsNullOrEmpty(apiResponse?.Message) 
+                            ? apiResponse.Message 
+                            : "Email verified successfully! You are now logged in.";
                         IsSuccess = true;
                         _logger.LogInformation($"Email '{email}' successfully verified and user automatically logged in. API Response: {responseContent}");
                     }

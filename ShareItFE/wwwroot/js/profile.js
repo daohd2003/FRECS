@@ -106,7 +106,7 @@
     if (saveModalBtn) {
         saveModalBtn.addEventListener('click', () => {
             if (avatarForm) avatarForm.submit();
-            closeModal();
+            // Không cần closeModal() vì page sẽ reload sau khi submit
         });
     }
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
