@@ -1,7 +1,12 @@
 @page
 @model ShareItFE.Pages.AI.AIGeneration
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Environment
 @{
     ViewData["Title"] = "AIGeneration";
+    var accessToken = HttpContextAccessor.HttpContext?.Request.Cookies["AccessToken"] ?? "";
+    var productId = HttpContextAccessor.HttpContext?.Request.Query["ProductId"].ToString() ?? "";
 }
 
 <!DOCTYPE html>
@@ -126,6 +131,14 @@
         </footer>
     </div>
 
+    <script>
+        // API Settings for saving Try-On images to gallery
+        window.apiSettings = {
+            baseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
+            accessToken: '@accessToken',
+            productId: '@productId' || null
+        };
+    </script>
     <script src="~/js/Ai/index.js"></script>
     
     <style>

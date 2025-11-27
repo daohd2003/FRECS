@@ -52,6 +52,9 @@ namespace DataAccess
         // Policy Configuration table
         public DbSet<PolicyConfig> PolicyConfigs { get; set; }
 
+        // Try-On Images table
+        public DbSet<TryOnImage> TryOnImages { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>()
@@ -489,6 +492,28 @@ namespace DataAccess
                 .WithMany()
                 .HasForeignKey(ir => ir.ProcessedByAdminId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // TryOnImage configuration
+            modelBuilder.Entity<TryOnImage>()
+                .HasOne(t => t.Customer)
+                .WithMany()
+                .HasForeignKey(t => t.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TryOnImage>()
+                .HasOne(t => t.Product)
+                .WithMany()
+                .HasForeignKey(t => t.ProductId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<TryOnImage>()
+                .HasIndex(t => t.CustomerId);
+
+            modelBuilder.Entity<TryOnImage>()
+                .HasIndex(t => t.ExpiresAt);
+
+            modelBuilder.Entity<TryOnImage>()
+                .HasIndex(t => new { t.IsDeleted, t.ExpiresAt });
 
             base.OnModelCreating(modelBuilder);
         }

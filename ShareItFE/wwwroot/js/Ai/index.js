@@ -1,6 +1,6 @@
 // API Base URL - Change this to your API endpoint
 const API_BASE_URL =
-  'https://8000-dep-01k4ce57rkq640n1z4f9zzxn3c-d.cloudspaces.litng.ai'
+  'https://8000-dep-01kb077485kv26jmaryem0bqmq-d.cloudspaces.litng.ai'
 
 // Elements
 const personInput = document.getElementById('personInput')
@@ -453,11 +453,24 @@ async function handleGenerate() {
     }
 
     const result = await response.json()
-    console.log('Full process result:', result.result_url)
-      localStorage.setItem('generatedImageUrl', result.result_url)
+    localStorage.setItem('generatedImageUrl', result.result_url)
 
-      tryOnResultId = result.result_id || result.tryOnImage_id
-      localStorage.setItem('lastTryOnResultId', tryOnResultId)
+    tryOnResultId = result.result_id
+    localStorage.setItem('lastTryOnResultId', tryOnResultId)
+
+    // Lưu ảnh Try-On vào database (tự động xóa sau 7 ngày)
+    // Sử dụng URL và ID từ AI response
+    const selectedClothType = document.getElementById('clothTypeSelector')?.value || 'upper';
+    
+    await saveTryOnImageToGalleryV2({
+        resultUrl: result.result_url,
+        resultPublicId: result.result_id,
+        personUrl: result.person_url,
+        personPublicId: result.person_id,
+        garmentUrl: result.clothing_url,
+        garmentPublicId: result.clothing_id,
+        clothingType: selectedClothType
+    });
 
       if (!tryOnResultId) {
           console.warn('Backend did not return a result_id. Cannot fetch feedback.')
@@ -825,3 +838,61 @@ window.addEventListener('load', () => {
         })
     })
 })
+
+// Extract Cloudinary public_id from URL
+function extractCloudinaryPublicId(url) {
+    if (!url) return null;
+    try {
+        // URL format: https://res.cloudinary.com/xxx/image/upload/v123/folder/filename.ext
+        const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/);
+        if (match && match[1]) {
+            return match[1]; // Returns folder/filename without extension
+        }
+        // Fallback: just get filename without extension
+        return url.split('/').pop()?.split('.')[0] || null;
+    } catch {
+        return null;
+    }
+}
+
+// Function để lưu ảnh Try-On vào database (Gallery) - V2 với đúng public_id từ AI
+async function saveTryOnImageToGalleryV2(data) {
+    try {
+        const backendApiUrl = window.apiSettings?.baseUrl || 'https://localhost:7256/api';
+        const token = window.apiSettings?.accessToken;
+        const productId = window.apiSettings?.productId;
+        
+        if (!token) return;
+
+        // Extract Cloudinary public_id từ URL
+        const resultPublicId = extractCloudinaryPublicId(data.resultUrl);
+        const personPublicId = extractCloudinaryPublicId(data.personUrl);
+        const garmentPublicId = extractCloudinaryPublicId(data.garmentUrl);
+
+        const requestBody = {
+            productId: productId && productId !== '' ? productId : null,
+            imageUrl: data.resultUrl,
+            cloudinaryPublicId: resultPublicId,
+            personImageUrl: data.personUrl,
+            personPublicId: personPublicId,
+            garmentImageUrl: data.garmentUrl,
+            garmentPublicId: garmentPublicId,
+            clothingType: data.clothingType || null
+        };
+
+        const response = await fetch(`${backendApiUrl}/try-on-images`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (response.ok) {
+            showToast('Image saved to your gallery!', 'success');
+        }
+    } catch (error) {
+        // Silent fail
+    }
+}
