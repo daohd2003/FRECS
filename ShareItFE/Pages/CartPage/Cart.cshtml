@@ -256,9 +256,50 @@
                             </div>
 
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Discount</span>
+                                <span class="text-gray-600">Discount Code</span>
                                 <span class="font-semibold text-green-600" id="cart-discount">0 VND</span>
                             </div>
+
+                            @* Auto Discount for rental items *@
+                            @if (Model.HasRentalItems)
+                            {
+                                <div id="auto-discount-section">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600 flex items-center gap-1">
+                                            Rental Days Discount
+                                            <span class="text-xs text-gray-500">(@Model.RentalDaysDiscountPercent%)</span>
+                                            <span class="text-xs text-gray-400 cursor-help" title="3% discount per rental day × number of items, max 25%">ⓘ</span>
+                                        </span>
+                                        <span class="font-semibold text-green-600">
+                                            @if (Model.RentalDaysDiscount > 0)
+                                            {
+                                                <text>-@Model.RentalDaysDiscount.ToString("N0") VND</text>
+                                            }
+                                            else
+                                            {
+                                                <text>0 VND</text>
+                                            }
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600 flex items-center gap-1">
+                                            Loyalty Discount
+                                            <span class="text-xs text-gray-500">(@Model.LoyaltyDiscountPercent%)</span>
+                                            <span class="text-xs text-gray-400 cursor-help" title="2% discount per previous completed rental × number of items, max 15%. You have @Model.PreviousRentalCount previous rental(s).">ⓘ</span>
+                                        </span>
+                                        <span class="font-semibold text-green-600">
+                                            @if (Model.LoyaltyDiscount > 0)
+                                            {
+                                                <text>-@Model.LoyaltyDiscount.ToString("N0") VND</text>
+                                            }
+                                            else
+                                            {
+                                                <text>0 VND</text>
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            }
 
                             @* Security Deposit for rental items *@
                             @if (Model.TotalDeposit > 0)
@@ -283,7 +324,7 @@
                                    class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                                    @(Model.Total > 50_000_000 ? "disabled" : "")>
                             <label for="hasAgreedToPolicies" class="ml-2 text-sm @(Model.Total > 50_000_000 ? "text-gray-400" : "text-gray-700")">
-                                I have read and agree to the <a href="/rental-and-sales-policy" target="_blank" class="@(Model.Total > 50_000_000 ? "text-gray-400 pointer-events-none" : "text-purple-600 hover:underline")">Rental and Sales Policy</a>.
+                                I have read and agree to the <a href="#" onclick="event.preventDefault(); openPolicyModal();" class="@(Model.Total > 50_000_000 ? "text-gray-400 pointer-events-none" : "text-purple-600 hover:underline cursor-pointer")">Rental and Sales Policy</a>.
                             </label>
                             <div id="policy-error" class="text-red-600 text-sm mt-1 hidden">
                                 Please read the rental and purchase policy carefully and tick the checkbox to continue.
@@ -303,6 +344,8 @@
         }
     </div>
 </div>
+
+
 
 @* Discount Code Selection Modal *@
 <div id="discountCodeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4" style="z-index: 9999;">
@@ -335,8 +378,42 @@
     </div>
 </div>
 
+@* Policy Modal - placed at root level for proper z-index stacking *@
+<div id="policyModal" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 0.75rem; max-width: 56rem; width: 100%; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); margin: auto;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #111827;">Rental and Sales Policy</h3>
+            <button type="button" onclick="closePolicyModal()" style="color: #9ca3af; cursor: pointer; background: none; border: none; font-size: 1.5rem;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div id="policyContent" style="padding: 1.5rem; overflow-y: auto; max-height: calc(90vh - 140px);">
+            <div style="display: flex; justify-content: center; align-items: center; padding: 2rem;">
+                <div style="width: 2rem; height: 2rem; border: 2px solid #9333ea; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <span style="margin-left: 0.75rem; color: #6b7280;">Loading policy...</span>
+            </div>
+        </div>
+        <div style="padding: 1rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" onclick="closePolicyModal()" style="padding: 0.5rem 1.5rem; background: #e5e7eb; color: #374151; border-radius: 0.5rem; border: none; cursor: pointer;">
+                Close
+            </button>
+            <button type="button" onclick="acceptPolicy()" style="padding: 0.5rem 1.5rem; background: #9333ea; color: white; border-radius: 0.5rem; border: none; cursor: pointer;">
+                I Accept
+            </button>
+        </div>
+    </div>
+</div>
+<style>
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
 @section Scripts {
     <script>
+        // Auto discount data
+        let autoDiscountData = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             const toastSuccess = document.getElementById('toast-success');
             const toastError = document.getElementById('toast-error');
@@ -353,6 +430,8 @@
 
             // Restore scroll position after quantity update
             restoreScrollPosition();
+
+            // Auto discount is now loaded from server-side (Model)
 
             // Auto-submit global schedule on change
             const globalForm = document.getElementById('global-schedule-form');
@@ -381,6 +460,81 @@
         window.addEventListener('load', () => {
             restoreScrollPosition();
         });
+
+        // Fetch auto discount preview from API
+        async function fetchAutoDiscount() {
+            try {
+                const apiUrl = window.apiSettings?.baseUrl || '@Model.ApiBaseUrl';
+                const response = await fetch(`${apiUrl}/cart/preview-discount`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${document.cookie.split('; ').find(row => row.startsWith('AccessToken='))?.split('=')[1] || ''}`
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.data) {
+                        autoDiscountData = result.data;
+                        updateAutoDiscountDisplay();
+                    }
+                } else {
+                    console.log('Auto discount API response:', response.status);
+                }
+            } catch (error) {
+                console.error('Error fetching auto discount:', error);
+            }
+        }
+
+        // Update auto discount display in Order Summary
+        function updateAutoDiscountDisplay() {
+            const section = document.getElementById('auto-discount-section');
+            if (!autoDiscountData) {
+                if (section) section.classList.add('hidden');
+                return;
+            }
+
+            // Always show section when we have rental items (even if discount is 0)
+            if (section) section.classList.remove('hidden');
+
+            // Update rental days discount
+            const rentalDaysDiscount = document.getElementById('rental-days-discount');
+            const rentalDaysPercent = document.getElementById('rental-days-percent');
+            if (rentalDaysDiscount && autoDiscountData.rentalDaysDiscountAmount > 0) {
+                rentalDaysDiscount.textContent = `-${autoDiscountData.rentalDaysDiscountAmount.toLocaleString()} VND`;
+                rentalDaysPercent.textContent = `(${autoDiscountData.rentalDaysDiscountPercent}%)`;
+            } else if (rentalDaysDiscount) {
+                rentalDaysDiscount.textContent = '0 VND';
+                rentalDaysPercent.textContent = '(0%)';
+            }
+
+            // Update loyalty discount
+            const loyaltyDiscount = document.getElementById('loyalty-discount');
+            const loyaltyPercent = document.getElementById('loyalty-percent');
+            if (loyaltyDiscount && autoDiscountData.loyaltyDiscountAmount > 0) {
+                loyaltyDiscount.textContent = `-${autoDiscountData.loyaltyDiscountAmount.toLocaleString()} VND`;
+                loyaltyPercent.textContent = `(${autoDiscountData.loyaltyDiscountPercent}%)`;
+            } else if (loyaltyDiscount) {
+                loyaltyDiscount.textContent = '0 VND';
+                loyaltyPercent.textContent = '(0%)';
+            }
+
+            // Recalculate total with auto discount
+            // Update total directly since we have the data
+            const totalElement = document.getElementById('cart-total');
+            if (totalElement) {
+                const subtotal = @Model.Subtotal;
+                const deposit = @Model.TotalDeposit;
+                // Get current discount code amount (if any)
+                const discountText = document.getElementById('cart-discount')?.textContent || '0';
+                const discountCodeAmount = parseInt(discountText.replace(/[^0-9-]/g, '')) || 0;
+                const totalDiscount = Math.abs(discountCodeAmount) + (autoDiscountData?.totalAutoDiscount || 0);
+                const newTotal = subtotal - totalDiscount + deposit;
+                totalElement.textContent = newTotal.toLocaleString() + ' VND';
+            }
+        }
 
         function handleMakePayment(event) {
             event.preventDefault();
@@ -1015,7 +1169,7 @@
 
         // Calculate discount amount based on discount code usage type
         function updateDiscountCalculation(useCurrentSubtotals = false, currentRental = null, currentPurchase = null, currentTotal = null, currentDeposit = null) {
-            let discountAmount = 0;
+            let discountCodeAmount = 0;
             
             // Use provided subtotals if available (from quantity update), otherwise use initial values
             const effectiveRentalSubtotal = useCurrentSubtotals && currentRental !== null ? currentRental : rentalSubtotal;
@@ -1035,22 +1189,28 @@
                 
                 // Calculate discount amount
                 if (selectedDiscountCode.discountType === 'Percentage') {
-                    discountAmount = Math.round(applicableSubtotal * (selectedDiscountCode.value / 100));
+                    discountCodeAmount = Math.round(applicableSubtotal * (selectedDiscountCode.value / 100));
                 } else {
-                    discountAmount = selectedDiscountCode.value;
+                    discountCodeAmount = selectedDiscountCode.value;
                 }
                 
                 // Ensure discount doesn't exceed applicable subtotal
-                discountAmount = Math.min(discountAmount, applicableSubtotal);
+                discountCodeAmount = Math.min(discountCodeAmount, applicableSubtotal);
             }
             
-            // Update discount display
-            document.getElementById('cart-discount').textContent = discountAmount > 0 
-                ? `-${discountAmount.toLocaleString()} VND` 
+            // Update discount code display
+            document.getElementById('cart-discount').textContent = discountCodeAmount > 0 
+                ? `-${discountCodeAmount.toLocaleString()} VND` 
                 : '0 VND';
             
+            // Calculate total discount (discount code + auto discount)
+            let totalDiscount = discountCodeAmount;
+            if (autoDiscountData) {
+                totalDiscount += autoDiscountData.totalAutoDiscount || 0;
+            }
+            
             // Update total
-            const newTotal = effectiveSubtotal - discountAmount + effectiveDeposit;
+            const newTotal = effectiveSubtotal - totalDiscount + effectiveDeposit;
             document.getElementById('cart-total').textContent = newTotal.toLocaleString() + ' VND';
         }
         
@@ -1060,5 +1220,78 @@
         };
         
         })(); // End of initDiscountCodeModal IIFE
+
+        // ===== Policy Modal Functions =====
+        let policyLoaded = false;
+
+        async function openPolicyModal() {
+            const modal = document.getElementById('policyModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+            
+            if (!policyLoaded) {
+                await loadPolicyContent();
+            }
+        }
+
+        function closePolicyModal() {
+            const modal = document.getElementById('policyModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            document.body.style.overflow = ''; // Restore scroll
+        }
+
+        function acceptPolicy() {
+            document.getElementById('hasAgreedToPolicies').checked = true;
+            document.getElementById('policy-error').classList.add('hidden');
+            closePolicyModal();
+            showToast('Policy accepted!', 'success');
+        }
+
+        async function loadPolicyContent() {
+            const contentDiv = document.getElementById('policyContent');
+            try {
+                const apiUrl = window.apiSettings?.baseUrl || '@Model.ApiBaseUrl';
+                const response = await fetch(`${apiUrl}/policy-configs/active`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const policies = result.data || result;
+                    
+                    if (policies && policies.length > 0) {
+                        let html = '<div class="space-y-8">';
+                        policies.forEach(policy => {
+                            html += `
+                                <div class="policy-section">
+                                    <h2 class="text-xl font-bold text-gray-900 mb-4 pb-2 border-b-2 border-purple-200">${policy.policyName}</h2>
+                                    <div class="prose prose-sm max-w-none text-gray-700">${policy.content}</div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        contentDiv.innerHTML = html;
+                        policyLoaded = true;
+                    } else {
+                        contentDiv.innerHTML = '<p class="text-gray-500 text-center py-8">No policies available at the moment.</p>';
+                    }
+                } else {
+                    contentDiv.innerHTML = '<p class="text-red-500 text-center py-8">Failed to load policies. Please try again.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading policies:', error);
+                contentDiv.innerHTML = '<p class="text-red-500 text-center py-8">Failed to load policies. Please try again.</p>';
+            }
+        }
+
+        // Close policy modal when clicking outside
+        document.getElementById('policyModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'policyModal') {
+                closePolicyModal();
+            }
+        });
     </script>
 }

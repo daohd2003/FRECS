@@ -89,6 +89,24 @@ namespace ShareItAPI.Controllers
                 return StatusCode(500, new { message = "An error occurred while creating resolution", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Sync order status for all resolved violations
+        /// Updates orders from "returned_with_issue" to "returned" if all violations are resolved
+        /// </summary>
+        [HttpPost("sync-order-status")]
+        public async Task<IActionResult> SyncOrderStatus()
+        {
+            try
+            {
+                var updatedCount = await _service.SyncResolvedOrderStatusesAsync();
+                return Ok(new { message = $"Successfully updated {updatedCount} order(s) to 'returned' status" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while syncing order status", error = ex.Message });
+            }
+        }
     }
 }
 

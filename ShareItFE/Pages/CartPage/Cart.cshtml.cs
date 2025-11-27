@@ -62,6 +62,31 @@ namespace ShareItFE.Pages.CartPage
         /// </summary>
         public DiscountCodeSessionDto? SelectedDiscountCode { get; set; }
 
+        /// <summary>
+        /// Auto discount for rental days (3% per day × items, max 25%)
+        /// </summary>
+        public decimal RentalDaysDiscount { get; set; }
+
+        /// <summary>
+        /// Auto discount for loyalty (2% per previous rental × items, max 15%)
+        /// </summary>
+        public decimal LoyaltyDiscount { get; set; }
+
+        /// <summary>
+        /// Rental days discount percentage
+        /// </summary>
+        public decimal RentalDaysDiscountPercent { get; set; }
+
+        /// <summary>
+        /// Loyalty discount percentage
+        /// </summary>
+        public decimal LoyaltyDiscountPercent { get; set; }
+
+        /// <summary>
+        /// Number of previous completed rentals
+        /// </summary>
+        public int PreviousRentalCount { get; set; }
+
         [TempData]
         public string SuccessMessage { get; set; }
 
@@ -120,9 +145,12 @@ namespace ShareItFE.Pages.CartPage
                         // Load discount code from session (if exists)
                         LoadDiscountFromSession();
                         
-                        //DeliveryFee = Subtotal > 100000 ? 0 : 15000; // Ví dụ: miễn phí giao hàng nếu tổng tiền > 100
-                        //Total = Subtotal + DeliveryFee + TotalDeposit;
-                        Total = Subtotal + TotalDeposit;
+                        // Fetch auto discount for rental items
+                        await FetchAutoDiscountAsync(client);
+                        
+                        // Calculate total with auto discount
+                        var totalAutoDiscount = RentalDaysDiscount + LoyaltyDiscount;
+                        Total = Subtotal + TotalDeposit - totalAutoDiscount;
                     }
                     else
                     {
@@ -526,6 +554,53 @@ namespace ShareItFE.Pages.CartPage
                 SelectedDiscountCode = null;
             }
         }
+
+        /// <summary>
+        /// Fetch auto discount preview from API
+        /// - Rental days discount: 3% per day × items, max 25%
+        /// - Loyalty discount: 2% per previous rental × items, max 15%
+        /// </summary>
+        private async Task FetchAutoDiscountAsync(HttpClient client)
+        {
+            try
+            {
+                var response = await client.GetAsync("api/cart/preview-discount");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var apiResponse = JsonSerializer.Deserialize<ApiResponse<AutoDiscountPreviewDto>>(content, options);
+                    
+                    if (apiResponse?.Data != null)
+                    {
+                        RentalDaysDiscount = apiResponse.Data.RentalDaysDiscountAmount;
+                        LoyaltyDiscount = apiResponse.Data.LoyaltyDiscountAmount;
+                        RentalDaysDiscountPercent = apiResponse.Data.RentalDaysDiscountPercent;
+                        LoyaltyDiscountPercent = apiResponse.Data.LoyaltyDiscountPercent;
+                        PreviousRentalCount = apiResponse.Data.PreviousRentalCount;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Continue without auto discount if fetch fails
+                RentalDaysDiscount = 0;
+                LoyaltyDiscount = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// DTO for auto discount preview response
+    /// </summary>
+    public class AutoDiscountPreviewDto
+    {
+        public decimal RentalDaysDiscountPercent { get; set; }
+        public decimal RentalDaysDiscountAmount { get; set; }
+        public decimal LoyaltyDiscountPercent { get; set; }
+        public decimal LoyaltyDiscountAmount { get; set; }
+        public decimal TotalAutoDiscount { get; set; }
+        public int PreviousRentalCount { get; set; }
     }
 
     /// <summary>

@@ -353,7 +353,7 @@
                                 <span class="text-gray-700">${formatDate(dispute.complaintDate)}</span>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="font-semibold text-red-600">$${dispute.requestedCompensation.toFixed(2)}</span>
+                                <span class="font-semibold text-red-600">${dispute.requestedCompensation.toLocaleString('vi-VN')} VND</span>
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <a href="/Admin/Compensation/Details/${dispute.violationId}" 

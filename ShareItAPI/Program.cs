@@ -397,6 +397,9 @@ namespace ShareItAPI
             builder.Services.AddScoped<Repositories.CompensationDisputeRepositories.ICompensationDisputeRepository, Repositories.CompensationDisputeRepositories.CompensationDisputeRepository>();
             builder.Services.AddScoped<Services.CompensationDisputeServices.ICompensationDisputeService, Services.CompensationDisputeServices.CompensationDisputeService>();
 
+            // Discount Calculation Services (auto discount for rentals)
+            builder.Services.AddScoped<Services.DiscountCalculationServices.IDiscountCalculationService, Services.DiscountCalculationServices.DiscountCalculationService>();
+
             builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();

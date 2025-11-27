@@ -1958,8 +1958,8 @@
                     console.log('Evidence count extracted:', evidenceCount); // Debug evidence count
                     console.log('Raw images array:', violation.images); // Debug images array
                     
-                    const statusClass = violation.status.toLowerCase().replace('_', '-');
-                    const statusDisplay = violation.status.replace('_', ' ');
+                    const statusClass = violation.status.toLowerCase().replace(/_/g, '-');
+                    const statusDisplay = violation.status.replace(/_/g, ' ');
                     const canRespond = violation.status === 'PENDING';
                     
                     // Get product info from OrderItem (note: field names are PascalCase from API)
