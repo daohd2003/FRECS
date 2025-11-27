@@ -224,6 +224,302 @@ namespace Services.Tests.Controllers
         }
 
         #endregion
+
+        #region GetFeedbacksByProductAndCustomer Tests (Provider Role - View Customer Comments in Order Detail)
+
+        /// <summary>
+        /// UTCID01: Provider views customer feedback for a specific product and customer
+        /// Expected: 200 OK with feedback list
+        /// API Message: "Feedbacks retrieved successfully."
+        /// Use case: Provider viewing customer comments in Order Detail page
+        /// </summary>
+        [Fact]
+        public async Task UTCID01_GetFeedbacksByProductAndCustomer_ProviderView_ShouldReturn200WithFeedbackList()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var customerId = Guid.NewGuid();
+            
+            var feedbacks = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    TargetType = FeedbackTargetType.Product,
+                    TargetId = productId,
+                    CustomerId = customerId,
+                    CustomerName = "Test Customer",
+                    Rating = 5,
+                    Comment = "Great product, very satisfied!",
+                    SubmittedAt = DateTime.UtcNow
+                }
+            };
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId))
+                .ReturnsAsync(feedbacks);
+
+            // Act
+            var result = await _controller.GetFeedbacksByProductAndCustomer(productId, customerId);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, okResult.StatusCode);
+
+            var apiResponse = Assert.IsType<ApiResponse<object>>(okResult.Value);
+            Assert.Equal("Feedbacks retrieved successfully.", apiResponse.Message);
+            Assert.NotNull(apiResponse.Data);
+
+            var returnedFeedbacks = Assert.IsAssignableFrom<IEnumerable<FeedbackResponseDto>>(apiResponse.Data);
+            Assert.Single(returnedFeedbacks);
+            Assert.Equal("Great product, very satisfied!", returnedFeedbacks.First().Comment);
+            Assert.Equal(customerId, returnedFeedbacks.First().CustomerId);
+
+            _mockFeedbackService.Verify(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID02: Provider views customer feedback - no feedback exists
+        /// Expected: 200 OK with empty list
+        /// API Message: "Feedbacks retrieved successfully."
+        /// </summary>
+        [Fact]
+        public async Task UTCID02_GetFeedbacksByProductAndCustomer_NoFeedback_ShouldReturn200WithEmptyList()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var customerId = Guid.NewGuid();
+            var emptyFeedbacks = new List<FeedbackResponseDto>();
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId))
+                .ReturnsAsync(emptyFeedbacks);
+
+            // Act
+            var result = await _controller.GetFeedbacksByProductAndCustomer(productId, customerId);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var apiResponse = Assert.IsType<ApiResponse<object>>(okResult.Value);
+            Assert.Equal("Feedbacks retrieved successfully.", apiResponse.Message);
+            
+            var returnedFeedbacks = Assert.IsAssignableFrom<IEnumerable<FeedbackResponseDto>>(apiResponse.Data);
+            Assert.Empty(returnedFeedbacks);
+        }
+
+        /// <summary>
+        /// UTCID03: Provider views customer feedback - multiple feedbacks
+        /// Expected: 200 OK with multiple feedbacks
+        /// </summary>
+        [Fact]
+        public async Task UTCID03_GetFeedbacksByProductAndCustomer_MultipleFeedbacks_ShouldReturn200WithMultipleFeedbacks()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var customerId = Guid.NewGuid();
+            
+            var feedbacks = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    TargetType = FeedbackTargetType.Product,
+                    TargetId = productId,
+                    CustomerId = customerId,
+                    Rating = 5,
+                    Comment = "First feedback",
+                    SubmittedAt = DateTime.UtcNow.AddDays(-5)
+                },
+                new FeedbackResponseDto
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    TargetType = FeedbackTargetType.Product,
+                    TargetId = productId,
+                    CustomerId = customerId,
+                    Rating = 4,
+                    Comment = "Second feedback",
+                    SubmittedAt = DateTime.UtcNow.AddDays(-2)
+                }
+            };
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId))
+                .ReturnsAsync(feedbacks);
+
+            // Act
+            var result = await _controller.GetFeedbacksByProductAndCustomer(productId, customerId);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var apiResponse = Assert.IsType<ApiResponse<object>>(okResult.Value);
+            var returnedFeedbacks = Assert.IsAssignableFrom<IEnumerable<FeedbackResponseDto>>(apiResponse.Data);
+            Assert.Equal(2, returnedFeedbacks.Count());
+        }
+
+        #endregion
+
+        #region GetFeedbacksByProviderIdAsync Tests (Provider Role - View All Customer Comments)
+
+        /// <summary>
+        /// UTCID04: Provider views all feedbacks for their products/orders
+        /// Expected: 200 OK with feedback list
+        /// API Message: "Owned feedbacks retrieved successfully."
+        /// </summary>
+        [Fact]
+        public async Task UTCID04_GetFeedbacksByProviderId_ProviderOwnFeedbacks_ShouldReturn200WithFeedbackList()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+
+            var feedbacks = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    TargetType = FeedbackTargetType.Product,
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "Customer A",
+                    Rating = 5,
+                    Comment = "Excellent product!",
+                    SubmittedAt = DateTime.UtcNow
+                },
+                new FeedbackResponseDto
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    TargetType = FeedbackTargetType.Order,
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "Customer B",
+                    Rating = 4,
+                    Comment = "Good service",
+                    SubmittedAt = DateTime.UtcNow
+                }
+            };
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProviderIdAsync(providerId, providerId, false))
+                .ReturnsAsync(feedbacks);
+
+            // Act
+            var result = await _controller.GetFeedbacksByProviderIdAsync(providerId);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, okResult.StatusCode);
+
+            var apiResponse = Assert.IsType<ApiResponse<object>>(okResult.Value);
+            Assert.Equal("Owned feedbacks retrieved successfully.", apiResponse.Message);
+            Assert.NotNull(apiResponse.Data);
+
+            var returnedFeedbacks = Assert.IsAssignableFrom<IEnumerable<FeedbackResponseDto>>(apiResponse.Data);
+            Assert.Equal(2, returnedFeedbacks.Count());
+
+            _mockFeedbackService.Verify(x => x.GetFeedbacksByProviderIdAsync(providerId, providerId, false), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID05: Provider views feedbacks - no feedbacks exist
+        /// Expected: 200 OK with empty list
+        /// </summary>
+        [Fact]
+        public async Task UTCID05_GetFeedbacksByProviderId_NoFeedbacks_ShouldReturn200WithEmptyList()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            var emptyFeedbacks = new List<FeedbackResponseDto>();
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProviderIdAsync(providerId, providerId, false))
+                .ReturnsAsync(emptyFeedbacks);
+
+            // Act
+            var result = await _controller.GetFeedbacksByProviderIdAsync(providerId);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var apiResponse = Assert.IsType<ApiResponse<object>>(okResult.Value);
+            var returnedFeedbacks = Assert.IsAssignableFrom<IEnumerable<FeedbackResponseDto>>(apiResponse.Data);
+            Assert.Empty(returnedFeedbacks);
+        }
+
+        /// <summary>
+        /// UTCID06: Provider tries to view another provider's feedbacks - should throw UnauthorizedAccessException
+        /// Expected: Service throws UnauthorizedAccessException
+        /// </summary>
+        [Fact]
+        public async Task UTCID06_GetFeedbacksByProviderId_DifferentProvider_ShouldThrowUnauthorized()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var differentProviderId = Guid.NewGuid();
+            SetupProvider(providerId);
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProviderIdAsync(differentProviderId, providerId, false))
+                .ThrowsAsync(new UnauthorizedAccessException("You are not authorized to view feedbacks of other providers."));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _controller.GetFeedbacksByProviderIdAsync(differentProviderId));
+        }
+
+        /// <summary>
+        /// UTCID07: Provider views feedbacks with provider response
+        /// Expected: 200 OK with feedbacks including provider responses
+        /// </summary>
+        [Fact]
+        public async Task UTCID07_GetFeedbacksByProviderId_WithProviderResponse_ShouldReturn200WithResponses()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+
+            var feedbacks = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = Guid.NewGuid(),
+                    TargetType = FeedbackTargetType.Product,
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "Customer A",
+                    Rating = 5,
+                    Comment = "Great product!",
+                    ProviderResponse = "Thank you for your feedback!",
+                    ProviderResponseAt = DateTime.UtcNow,
+                    SubmittedAt = DateTime.UtcNow
+                }
+            };
+
+            _mockFeedbackService.Setup(x => x.GetFeedbacksByProviderIdAsync(providerId, providerId, false))
+                .ReturnsAsync(feedbacks);
+
+            // Act
+            var result = await _controller.GetFeedbacksByProviderIdAsync(providerId);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var apiResponse = Assert.IsType<ApiResponse<object>>(okResult.Value);
+            var returnedFeedbacks = Assert.IsAssignableFrom<IEnumerable<FeedbackResponseDto>>(apiResponse.Data);
+            Assert.Single(returnedFeedbacks);
+            Assert.NotNull(returnedFeedbacks.First().ProviderResponse);
+            Assert.Equal("Thank you for your feedback!", returnedFeedbacks.First().ProviderResponse);
+        }
+
+        #endregion
+
+        private void SetupProvider(Guid providerId)
+        {
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, providerId.ToString()),
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "provider")
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuthType");
+            var claimsPrincipal = new System.Security.Claims.ClaimsPrincipal(identity);
+            
+            _controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = claimsPrincipal
+                }
+            };
+        }
     }
 }
 
