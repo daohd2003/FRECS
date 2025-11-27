@@ -75,13 +75,15 @@ namespace Repositories.RevenueRepositories
             // Net revenue from orders = Gross - Platform Fee
             decimal netOrderRevenue = totalGrossRevenue - totalPlatformFee;
 
-            // Get penalty revenue (all time)
+            // Get penalty revenue (all time) - includes RESOLVED_BY_ADMIN
             var penaltyRevenue = await _context.RentalViolations
                 .AsNoTracking()  // Read-only query optimization
                 .Include(rv => rv.OrderItem)
                     .ThenInclude(oi => oi.Order)
                 .Where(rv => rv.OrderItem.Order.ProviderId == providerId
-                    && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED || rv.Status == ViolationStatus.RESOLVED))
+                    && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED 
+                        || rv.Status == ViolationStatus.RESOLVED 
+                        || rv.Status == ViolationStatus.RESOLVED_BY_ADMIN))
                 .SumAsync(rv => rv.PenaltyAmount);
 
             // Total Earnings = Net from Orders + Penalties
@@ -100,16 +102,19 @@ namespace Repositories.RevenueRepositories
         {
             // Get all violations where:
             // 1. OrderItem belongs to this provider
-            // 2. Status is CUSTOMER_ACCEPTED or RESOLVED
-            // 3. Created within the period
+            // 2. Status is CUSTOMER_ACCEPTED, RESOLVED, or RESOLVED_BY_ADMIN
+            // 3. Updated within the period (when the violation was resolved)
             var penaltyRevenue = await _context.RentalViolations
                 .AsNoTracking()  // Read-only query optimization
                 .Include(rv => rv.OrderItem)
                     .ThenInclude(oi => oi.Order)
                 .Where(rv => rv.OrderItem.Order.ProviderId == providerId
-                    && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED || rv.Status == ViolationStatus.RESOLVED)
-                    && rv.CreatedAt >= start
-                    && rv.CreatedAt < end)
+                    && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED 
+                        || rv.Status == ViolationStatus.RESOLVED 
+                        || rv.Status == ViolationStatus.RESOLVED_BY_ADMIN)
+                    && rv.UpdatedAt.HasValue
+                    && rv.UpdatedAt >= start
+                    && rv.UpdatedAt < end)
                 .SumAsync(rv => rv.PenaltyAmount);
 
             return penaltyRevenue;

@@ -100,6 +100,15 @@ namespace Services.CompensationDisputeServices
             // Cập nhật violation penalty amount
             await _repository.UpdateViolationAsync(violation);
 
+            // Cập nhật order status sang "returned" sau khi admin đã resolve violation
+            var orderToUpdate = await _context.Orders.FindAsync(violation.OrderItem.OrderId);
+            if (orderToUpdate != null && orderToUpdate.Status == OrderStatus.returned_with_issue)
+            {
+                orderToUpdate.Status = OrderStatus.returned;
+                orderToUpdate.UpdatedAt = DateTime.UtcNow;
+                _context.Orders.Update(orderToUpdate);
+            }
+
             // Tạo hoặc cập nhật DepositRefund record
             var orderId = violation.OrderItem.OrderId;
             var existingRefund = await _context.DepositRefunds
@@ -144,6 +153,32 @@ namespace Services.CompensationDisputeServices
             await _context.SaveChangesAsync();
 
             return _mapper.Map<IssueResolutionResponseDto>(createdResolution);
+        }
+
+        /// <summary>
+        /// Sync order status for all resolved violations
+        /// Updates orders from "returned_with_issue" to "returned" if all violations are resolved
+        /// </summary>
+        public async Task<int> SyncResolvedOrderStatusesAsync()
+        {
+            // Find all orders with status "returned_with_issue" that have all violations resolved
+            var ordersToUpdate = await _context.Orders
+                .Where(o => o.Status == OrderStatus.returned_with_issue)
+                .Where(o => o.Items.All(item => 
+                    !_context.RentalViolations.Any(v => v.OrderItemId == item.Id) ||
+                    _context.RentalViolations.Where(v => v.OrderItemId == item.Id)
+                        .All(v => v.Status == ViolationStatus.RESOLVED_BY_ADMIN || 
+                                  v.Status == ViolationStatus.CUSTOMER_ACCEPTED)))
+                .ToListAsync();
+
+            foreach (var order in ordersToUpdate)
+            {
+                order.Status = OrderStatus.returned;
+                order.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            return ordersToUpdate.Count;
         }
     }
 }

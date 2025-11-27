@@ -246,7 +246,7 @@
                         </div>
 
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Discount</span>
+                            <span class="text-gray-600">Discount Code</span>
                             <span class="font-semibold text-green-600" id="checkout-discount">
                                 @if (Model.DiscountAmount > 0)
                                 {
@@ -262,6 +262,45 @@
                                 }
                             </span>
                         </div>
+
+                        @* Auto Discount for rental items *@
+                        @if (Model.RentalDaysDiscount > 0 || Model.LoyaltyDiscount > 0)
+                        {
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 flex items-center gap-1">
+                                    Rental Days Discount
+                                    <span class="text-xs text-gray-500">(@Model.RentalDaysDiscountPercent%)</span>
+                                    <span class="text-xs text-gray-400 cursor-help" title="3% discount per rental day × number of items, max 25%">ⓘ</span>
+                                </span>
+                                <span class="font-semibold text-green-600">
+                                    @if (Model.RentalDaysDiscount > 0)
+                                    {
+                                        <text>-@Model.RentalDaysDiscount.ToString("N0") VND</text>
+                                    }
+                                    else
+                                    {
+                                        <text>0 VND</text>
+                                    }
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 flex items-center gap-1">
+                                    Loyalty Discount
+                                    <span class="text-xs text-gray-500">(@Model.LoyaltyDiscountPercent%)</span>
+                                    <span class="text-xs text-gray-400 cursor-help" title="2% discount per previous completed rental × number of items, max 15%">ⓘ</span>
+                                </span>
+                                <span class="font-semibold text-green-600">
+                                    @if (Model.LoyaltyDiscount > 0)
+                                    {
+                                        <text>-@Model.LoyaltyDiscount.ToString("N0") VND</text>
+                                    }
+                                    else
+                                    {
+                                        <text>0 VND</text>
+                                    }
+                                </span>
+                            </div>
+                        }
 
                         @* Security Deposit for rental items *@
                         @if (Model.TotalDeposit > 0)

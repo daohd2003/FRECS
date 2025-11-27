@@ -231,6 +231,8 @@ namespace Services.RentalViolationServices
                 StatusDisplay = GetViolationStatusDisplay(violation.Status),
                 CustomerNotes = violation.CustomerNotes,
                 CustomerResponseAt = violation.CustomerResponseAt,
+                ProviderResponseToCustomer = violation.ProviderResponseToCustomer,
+                ProviderResponseAt = violation.ProviderResponseAt,
                 CreatedAt = violation.CreatedAt,
                 UpdatedAt = violation.UpdatedAt,
                 OrderItem = _mapper.Map<BusinessObject.DTOs.OrdersDto.OrderItemDetailsDto>(violation.OrderItem),
@@ -298,6 +300,8 @@ namespace Services.RentalViolationServices
                     StatusDisplay = GetViolationStatusDisplay(violation.Status),
                     CustomerNotes = violation.CustomerNotes,
                     CustomerResponseAt = violation.CustomerResponseAt,
+                    ProviderResponseToCustomer = violation.ProviderResponseToCustomer,
+                    ProviderResponseAt = violation.ProviderResponseAt,
                     CreatedAt = violation.CreatedAt,
                     UpdatedAt = violation.UpdatedAt,
                     OrderItem = _mapper.Map<OrderItemDetailsDto>(violation.OrderItem),
@@ -397,8 +401,8 @@ namespace Services.RentalViolationServices
             if (violation.OrderItem.Order.CustomerId != customerId)
                 throw new UnauthorizedAccessException("Bạn không có quyền phản hồi vi phạm này");
 
-            // Only allow response if status is PENDING
-            if (violation.Status != ViolationStatus.PENDING)
+            // Allow response if status is PENDING or CUSTOMER_REJECTED (customer can change their decision)
+            if (violation.Status != ViolationStatus.PENDING && violation.Status != ViolationStatus.CUSTOMER_REJECTED)
                 throw new InvalidOperationException("Vi phạm này đã được xử lý");
 
             if (dto.IsAccepted)
@@ -768,6 +772,45 @@ namespace Services.RentalViolationServices
                         violation.OrderItem.OrderId
                     );
                 }
+            }
+
+            return updateResult;
+        }
+
+        public async Task<bool> ProviderRespondToCustomerAsync(Guid violationId, string response, Guid providerId)
+        {
+            var violation = await _violationRepo.GetViolationWithDetailsAsync(violationId);
+            if (violation == null)
+                return false;
+
+            // Verify provider owns this violation
+            if (violation.OrderItem.Order.ProviderId != providerId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to respond to this violation");
+            }
+
+            // Only allow response if customer has rejected (has CustomerNotes)
+            if (string.IsNullOrWhiteSpace(violation.CustomerNotes))
+            {
+                throw new InvalidOperationException("Cannot respond - customer has not provided any rejection notes");
+            }
+
+            // Update provider response
+            violation.ProviderResponseToCustomer = response;
+            violation.ProviderResponseAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTime.UtcNow;
+
+            var updateResult = await _violationRepo.UpdateViolationAsync(violation);
+
+            if (updateResult)
+            {
+                // Notify customer about provider's response
+                await _notificationService.SendNotification(
+                    violation.OrderItem.Order.CustomerId,
+                    $"📝 Provider has responded to your rejection notes for the violation report.",
+                    NotificationType.order,
+                    violation.OrderItem.OrderId
+                );
             }
 
             return updateResult;

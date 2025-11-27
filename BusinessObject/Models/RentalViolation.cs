@@ -89,6 +89,18 @@ namespace BusinessObject.Models
         public DateTime? CustomerResponseAt { get; set; }
 
         /// <summary>
+        /// Phản hồi của Provider đối với Customer's rejection notes
+        /// Provider có thể giải thích hoặc phản bác lý do từ chối của Customer
+        /// </summary>
+        [StringLength(2000)]
+        public string? ProviderResponseToCustomer { get; set; }
+
+        /// <summary>
+        /// Thời điểm Provider phản hồi Customer's rejection
+        /// </summary>
+        public DateTime? ProviderResponseAt { get; set; }
+
+        /// <summary>
         /// Lý do Provider escalate lên Admin
         /// Chỉ có giá trị khi Provider escalate dispute
         /// </summary>

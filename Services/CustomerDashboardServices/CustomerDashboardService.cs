@@ -137,13 +137,15 @@ namespace Services.CustomerDashboardServices
         private async Task<decimal> GetPenaltyPaidAsync(Guid customerId, DateTime startDate, DateTime endDate)
         {
             // Get all violations for this customer's orders within the period
-            // Status must be CUSTOMER_ACCEPTED or RESOLVED
+            // Status must be CUSTOMER_ACCEPTED, RESOLVED, or RESOLVED_BY_ADMIN
             var penaltyPaid = await _context.RentalViolations
                 .Where(v => v.OrderItem.Order.CustomerId == customerId
-                         && v.CustomerResponseAt.HasValue
-                         && v.CustomerResponseAt >= startDate
-                         && v.CustomerResponseAt <= endDate
-                         && (v.Status == ViolationStatus.CUSTOMER_ACCEPTED || v.Status == ViolationStatus.RESOLVED))
+                         && v.UpdatedAt.HasValue
+                         && v.UpdatedAt >= startDate
+                         && v.UpdatedAt <= endDate
+                         && (v.Status == ViolationStatus.CUSTOMER_ACCEPTED 
+                             || v.Status == ViolationStatus.RESOLVED 
+                             || v.Status == ViolationStatus.RESOLVED_BY_ADMIN))
                 .SumAsync(v => v.PenaltyAmount);
 
             return penaltyPaid;
@@ -152,10 +154,12 @@ namespace Services.CustomerDashboardServices
         private async Task<decimal> GetTotalPenaltiesAllTimeAsync(Guid customerId)
         {
             // Get all violations for this customer's orders from the beginning
-            // Status must be CUSTOMER_ACCEPTED or RESOLVED
+            // Status must be CUSTOMER_ACCEPTED, RESOLVED, or RESOLVED_BY_ADMIN
             var totalPenalties = await _context.RentalViolations
                 .Where(v => v.OrderItem.Order.CustomerId == customerId
-                         && (v.Status == ViolationStatus.CUSTOMER_ACCEPTED || v.Status == ViolationStatus.RESOLVED))
+                         && (v.Status == ViolationStatus.CUSTOMER_ACCEPTED 
+                             || v.Status == ViolationStatus.RESOLVED 
+                             || v.Status == ViolationStatus.RESOLVED_BY_ADMIN))
                 .SumAsync(v => v.PenaltyAmount);
 
             return totalPenalties;

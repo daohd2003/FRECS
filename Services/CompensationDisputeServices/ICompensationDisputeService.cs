@@ -21,6 +21,11 @@ namespace Services.CompensationDisputeServices
         /// Admin tạo quyết định cuối cùng cho tranh chấp
         /// </summary>
         Task<IssueResolutionResponseDto> CreateAdminResolutionAsync(CreateIssueResolutionDto dto, Guid adminId);
+
+        /// <summary>
+        /// Sync order status for all resolved violations
+        /// </summary>
+        Task<int> SyncResolvedOrderStatusesAsync();
     }
 }
 

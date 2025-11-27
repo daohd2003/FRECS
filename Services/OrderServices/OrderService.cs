@@ -14,6 +14,7 @@ using Repositories.RepositoryBase;
 using Repositories.UserRepositories;
 using Repositories.SystemConfigRepositories;
 using Services.NotificationServices;
+using Services.DiscountCalculationServices;
 using BusinessObject.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Repositories.ProductRepositories;
@@ -39,6 +40,7 @@ namespace Services.OrderServices
         private readonly IEmailRepository _emailRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly IDiscountCalculationService _discountCalculationService;
 
         public OrderService(
             IOrderRepository orderRepo,
@@ -53,7 +55,8 @@ namespace Services.OrderServices
             IEmailRepository emailRepository,
             IProductRepository productRepo,
             INotificationRepository notificationRepository,
-            ISystemConfigRepository systemConfigRepository
+            ISystemConfigRepository systemConfigRepository,
+            IDiscountCalculationService discountCalculationService
             )
         {
             _orderRepo = orderRepo;
@@ -69,7 +72,7 @@ namespace Services.OrderServices
             _productRepo = productRepo;
             _notificationRepository = notificationRepository;
             _systemConfigRepository = systemConfigRepository;
-
+            _discountCalculationService = discountCalculationService;
         }
 
         /// <summary>
@@ -786,6 +789,38 @@ namespace Services.OrderServices
                             }
                         }
 
+                        // Calculate automatic discounts for rental items
+                        decimal rentalDaysDiscount = 0;
+                        decimal loyaltyDiscount = 0;
+                        decimal rentalDaysDiscountPercent = 0;
+                        decimal loyaltyDiscountPercent = 0;
+                        
+                        var rentalItems = orderItems.Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.rental).ToList();
+                        if (rentalItems.Any())
+                        {
+                            // Get rental subtotal (only rental items)
+                            var rentalSubtotal = rentalItems.Sum(oi => oi.DailyRate * (oi.RentalDays ?? 1) * oi.Quantity);
+                            
+                            // Get max rental days and total item count
+                            var maxRentalDays = rentalItems.Max(oi => oi.RentalDays ?? 1);
+                            var rentalItemCount = rentalItems.Sum(oi => oi.Quantity);
+
+                            // Calculate auto discounts (3% per day × items, max 25% + 2% per previous rental × items, max 15%)
+                            var autoDiscount = await _discountCalculationService.CalculateAutoDiscountsAsync(
+                                customerId, 
+                                maxRentalDays, 
+                                rentalItemCount, 
+                                rentalSubtotal);
+
+                            rentalDaysDiscount = autoDiscount.RentalDaysDiscountAmount;
+                            loyaltyDiscount = autoDiscount.LoyaltyDiscountAmount;
+                            rentalDaysDiscountPercent = autoDiscount.RentalDaysDiscountPercent;
+                            loyaltyDiscountPercent = autoDiscount.LoyaltyDiscountPercent;
+                        }
+
+                        // Total discount = discount code + auto discounts
+                        var totalDiscount = discountAmount + rentalDaysDiscount + loyaltyDiscount;
+
                         var newOrder = new Order
                         {
                             Id = Guid.NewGuid(),
@@ -795,8 +830,12 @@ namespace Services.OrderServices
                             Subtotal = subtotalAmount, // Chỉ giá thuê/mua
                             TotalDeposit = depositAmount, // Chỉ tiền cọc
                             DiscountCodeId = discountCodeIdToStore,
-                            DiscountAmount = discountAmount,
-                            TotalAmount = subtotalAmount + depositAmount - discountAmount, // Tổng = subtotal + deposit - discount
+                            DiscountAmount = discountAmount, // Chỉ discount từ code
+                            RentalDaysDiscount = rentalDaysDiscount,
+                            LoyaltyDiscount = loyaltyDiscount,
+                            RentalDaysDiscountPercent = rentalDaysDiscountPercent,
+                            LoyaltyDiscountPercent = loyaltyDiscountPercent,
+                            TotalAmount = subtotalAmount + depositAmount - totalDiscount, // Tổng = subtotal + deposit - all discounts
                             RentalStart = rentalStart,
                             RentalEnd = rentalEnd,
                             Items = orderItems,

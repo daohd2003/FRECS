@@ -62,12 +62,14 @@ namespace Repositories.TransactionRepositories
             // Net earnings = Gross Revenue - Platform Fee
             decimal netEarnings = totalGrossRevenue - totalPlatformFee;
 
-            // Get penalty revenue for this provider
+            // Get penalty revenue for this provider - includes RESOLVED_BY_ADMIN
             var penaltyRevenue = await _context.RentalViolations
                 .Include(rv => rv.OrderItem)
                     .ThenInclude(oi => oi.Order)
                 .Where(rv => rv.OrderItem.Order.ProviderId == providerId
-                    && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED || rv.Status == ViolationStatus.RESOLVED))
+                    && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED 
+                        || rv.Status == ViolationStatus.RESOLVED 
+                        || rv.Status == ViolationStatus.RESOLVED_BY_ADMIN))
                 .SumAsync(rv => rv.PenaltyAmount);
 
             // Total Received = Net from Orders + Penalties (same as Provider Dashboard)
@@ -130,12 +132,14 @@ namespace Repositories.TransactionRepositories
                 // Net earnings = Gross Revenue - Platform Fee
                 decimal netEarnings = totalGrossRevenue - totalPlatformFee;
 
-                // Get penalty revenue for this provider
+                // Get penalty revenue for this provider - includes RESOLVED_BY_ADMIN
                 var penaltyRevenue = await _context.RentalViolations
                     .Include(rv => rv.OrderItem)
                         .ThenInclude(oi => oi.Order)
                     .Where(rv => rv.OrderItem.Order.ProviderId == provider.ProviderId
-                        && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED || rv.Status == ViolationStatus.RESOLVED))
+                        && (rv.Status == ViolationStatus.CUSTOMER_ACCEPTED 
+                            || rv.Status == ViolationStatus.RESOLVED 
+                            || rv.Status == ViolationStatus.RESOLVED_BY_ADMIN))
                     .SumAsync(rv => rv.PenaltyAmount);
 
                 // Total Earned = Net from Orders + Penalties (same as Provider Dashboard)

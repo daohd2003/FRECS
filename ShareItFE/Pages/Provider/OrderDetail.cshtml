@@ -366,9 +366,25 @@
                             </div>
                             
                             <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Discount</span>
+                                <span class="text-gray-600">Discount Code</span>
                                 <span class="text-gray-900">@(Model.Order.DiscountAmount > 0 ? "-₫" + Model.Order.DiscountAmount.ToString("N0") : "₫0")</span>
                             </div>
+                            
+                            @if (Model.Order.RentalDaysDiscount > 0)
+                            {
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">Rental Days Discount <span class="text-xs text-gray-400">(@Model.Order.RentalDaysDiscountPercent.ToString("0.##")%)</span></span>
+                                    <span class="text-green-600">-₫@Model.Order.RentalDaysDiscount.ToString("N0")</span>
+                                </div>
+                            }
+                            
+                            @if (Model.Order.LoyaltyDiscount > 0)
+                            {
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">Loyalty Discount <span class="text-xs text-gray-400">(@Model.Order.LoyaltyDiscountPercent.ToString("0.##")%)</span></span>
+                                    <span class="text-green-600">-₫@Model.Order.LoyaltyDiscount.ToString("N0")</span>
+                                </div>
+                            }
                             
                             @if (Model.Order.TotalDepositAmount > 0)
                             {

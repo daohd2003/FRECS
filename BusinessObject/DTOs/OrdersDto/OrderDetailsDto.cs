@@ -24,9 +24,15 @@ namespace BusinessObject.DTOs.OrdersDto
         public decimal Shipping { get; set; }
         public decimal Tax { get; set; }
         public decimal TotalDepositAmount { get; set; } = 0m; // Tổng tiền cọc cho các items thuê
-        public decimal DiscountAmount { get; set; } = 0m; // Số tiền giảm giá
+        public decimal DiscountAmount { get; set; } = 0m; // Số tiền giảm giá từ discount code
         public Guid? DiscountCodeId { get; set; } // ID mã giảm giá (nếu có)
         public string? DiscountCodeName { get; set; } // Tên mã giảm giá (nếu có)
+        
+        // Auto discount fields
+        public decimal RentalDaysDiscount { get; set; } = 0m; // Giảm giá theo số ngày thuê
+        public decimal LoyaltyDiscount { get; set; } = 0m; // Giảm giá khách hàng thân thiết
+        public decimal RentalDaysDiscountPercent { get; set; } = 0m; // % giảm giá theo ngày thuê
+        public decimal LoyaltyDiscountPercent { get; set; } = 0m; // % giảm giá khách hàng thân thiết
         public decimal TotalAmount { get; set; }
         public ShippingAddressDto ShippingAddress { get; set; }
         public string? TrackingNumber { get; set; }

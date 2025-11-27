@@ -1,11 +1,13 @@
 using BusinessObject.DTOs.CartDto;
 using BusinessObject.DTOs.OrdersDto;
-using BusinessObject.DTOs.ApiResponses; // Add this using statement
+using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.Discount;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Services.CartServices;
 using Services.OrderServices;
+using Services.DiscountCalculationServices;
 using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
@@ -17,11 +19,13 @@ namespace ShareItAPI.Controllers
     {
         private readonly ICartService _cartService;
         private readonly IOrderService _orderService;
+        private readonly IDiscountCalculationService _discountCalculationService;
 
-        public CartController(ICartService cartService, IOrderService orderService)
+        public CartController(ICartService cartService, IOrderService orderService, IDiscountCalculationService discountCalculationService)
         {
             _cartService = cartService;
             _orderService = orderService;
+            _discountCalculationService = discountCalculationService;
         }
 
         private Guid GetCustomerId()
@@ -278,6 +282,59 @@ namespace ShareItAPI.Controllers
             };
 
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Preview automatic discounts for rental items in cart
+        /// - Rental days discount: 3% per day × item count, max 25%
+        /// - Loyalty discount: 2% per previous rental × item count, max 15%
+        /// </summary>
+        [HttpGet("preview-discount")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiResponse<AutoDiscountResultDto>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ApiResponse<object>))]
+        public async Task<IActionResult> PreviewDiscount()
+        {
+            try
+            {
+                var customerId = GetCustomerId();
+                var cart = await _cartService.GetUserCartAsync(customerId);
+
+                if (cart == null || !cart.Items.Any())
+                {
+                    return Ok(new ApiResponse<AutoDiscountResultDto>("No items in cart.", new AutoDiscountResultDto()));
+                }
+
+                // Filter rental items only
+                var rentalItems = cart.Items.Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental).ToList();
+                if (!rentalItems.Any())
+                {
+                    return Ok(new ApiResponse<AutoDiscountResultDto>("No rental items in cart. Auto discount only applies to rentals.", new AutoDiscountResultDto()));
+                }
+
+                // Calculate rental subtotal
+                var rentalSubtotal = rentalItems.Sum(i => i.PricePerUnit * (i.RentalDays ?? 1) * i.Quantity);
+                
+                // Get max rental days and total item count
+                var maxRentalDays = rentalItems.Max(i => i.RentalDays ?? 1);
+                var rentalItemCount = rentalItems.Sum(i => i.Quantity);
+
+                // Calculate auto discounts
+                var autoDiscount = await _discountCalculationService.CalculateAutoDiscountsAsync(
+                    customerId, 
+                    maxRentalDays, 
+                    rentalItemCount, 
+                    rentalSubtotal);
+
+                return Ok(new ApiResponse<AutoDiscountResultDto>("Discount preview calculated successfully.", autoDiscount));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new ApiResponse<object>("Unauthorized access.", null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<object>($"An unexpected error occurred: {ex.Message}", null));
+            }
         }
 
         /// <summary>

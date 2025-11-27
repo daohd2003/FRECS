@@ -77,5 +77,10 @@ namespace Services.RentalViolationServices
         /// Escalate violation to admin for review (can be called by customer or provider)
         /// </summary>
         Task<bool> EscalateViolationToAdminAsync(Guid violationId, Guid userId, UserRole userRole, string? escalationReason = null);
+
+        /// <summary>
+        /// Provider phản hồi Customer's rejection notes
+        /// </summary>
+        Task<bool> ProviderRespondToCustomerAsync(Guid violationId, string response, Guid providerId);
     }
 }

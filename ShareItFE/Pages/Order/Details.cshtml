@@ -410,7 +410,7 @@
                         <span>@(Model.Order.Shipping == 0 ? "FREE" : "₫" + Model.Order.Shipping.ToString("N0"))</span>
                     </div>
                     <div class="summary-item">
-                        <span>Discount</span>
+                        <span>Discount Code</span>
                         <span class="@(Model.Order.DiscountAmount > 0 ? "text-success" : "")">
                             @if (Model.Order.DiscountAmount > 0)
                             {
@@ -426,6 +426,20 @@
                             }
                         </span>
                     </div>
+                    @if (Model.Order.RentalDaysDiscount > 0)
+                    {
+                        <div class="summary-item">
+                            <span>Rental Days Discount <small class="text-muted">(@Model.Order.RentalDaysDiscountPercent.ToString("0.##")%)</small></span>
+                            <span class="text-success">-₫@Model.Order.RentalDaysDiscount.ToString("N0")</span>
+                        </div>
+                    }
+                    @if (Model.Order.LoyaltyDiscount > 0)
+                    {
+                        <div class="summary-item">
+                            <span>Loyalty Discount <small class="text-muted">(@Model.Order.LoyaltyDiscountPercent.ToString("0.##")%)</small></span>
+                            <span class="text-success">-₫@Model.Order.LoyaltyDiscount.ToString("N0")</span>
+                        </div>
+                    }
                     @if (Model.Order.TotalDepositAmount > 0)
                     {
                         <div class="summary-item">
@@ -1958,8 +1972,8 @@
                     console.log('Evidence count extracted:', evidenceCount); // Debug evidence count
                     console.log('Raw images array:', violation.images); // Debug images array
                     
-                    const statusClass = violation.status.toLowerCase().replace('_', '-');
-                    const statusDisplay = violation.status.replace('_', ' ');
+                    const statusClass = violation.status.toLowerCase().replace(/_/g, '-');
+                    const statusDisplay = violation.status.replace(/_/g, ' ');
                     const canRespond = violation.status === 'PENDING';
                     
                     // Get product info from OrderItem (note: field names are PascalCase from API)
@@ -2045,6 +2059,20 @@
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    ${violation.providerResponseToCustomer ? `
+                                        <div class="provider-response-section" style="margin-top: 16px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                            <h6 style="color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600;">
+                                                <i class="bi bi-reply-fill"></i> Provider's Response
+                                            </h6>
+                                            <div style="background: white; padding: 12px; border-radius: 6px; color: #1f2937; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${violation.providerResponseToCustomer}</div>
+                                            ${violation.providerResponseAt ? `
+                                                <div style="margin-top: 8px; font-size: 12px; color: #1e40af;">
+                                                    <i class="bi bi-clock"></i> Responded at: ${new Date(violation.providerResponseAt).toLocaleString()}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    ` : ''}
                                 </div>
                             </div>
                             
@@ -2098,7 +2126,10 @@
                                     <button class="btn btn-outline-primary message-provider-btn" data-violation-id="${violation.violationId}" data-provider-id="${violation.orderItem?.productId || violation.orderItem?.ProductId || ''}" data-product-id="${violation.orderItem?.productId || violation.orderItem?.ProductId || ''}" title="Message Provider">
                                         <i class="bi bi-chat-dots"></i>
                                     </button>
-                                    <button class="btn btn-warning escalate-to-admin-btn" data-violation-id="${violation.violationId}">
+                                    <button class="btn btn-success accept-violation-btn" data-violation-id="${violation.violationId}">
+                                        <i class="bi bi-check-circle"></i> Accept & Pay
+                                    </button>
+                                    <button class="btn btn-warning escalate-to-admin-btn" data-violation-id="${violation.violationId}" style="margin-left: auto;">
                                         <i class="bi bi-shield-exclamation"></i> Escalate to Admin
                                     </button>
                                 </div>
@@ -2132,7 +2163,12 @@
                 // Bind event handlers
                 $('.accept-violation-btn').on('click', function() {
                     const violationId = $(this).data('violation-id');
-                    respondToViolation(violationId, true);
+                    const violationCard = $(this).closest('.violation-card');
+                    const penaltyAmount = violationCard.find('.penalty-amount-badge').text();
+                    
+                    if (confirm(`Are you sure you want to accept this violation and pay the penalty amount of ${penaltyAmount}?\n\nThis action cannot be undone.`)) {
+                        respondToViolation(violationId, true);
+                    }
                 });
                 
                 $('.reject-violation-btn').on('click', function() {

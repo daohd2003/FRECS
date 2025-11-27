@@ -410,6 +410,8 @@ namespace ShareItAPI
             builder.Services.AddScoped<Repositories.CompensationDisputeRepositories.ICompensationDisputeRepository, Repositories.CompensationDisputeRepositories.CompensationDisputeRepository>();
             builder.Services.AddScoped<Services.CompensationDisputeServices.ICompensationDisputeService, Services.CompensationDisputeServices.CompensationDisputeService>();
 
+            // Discount Calculation Services (auto discount for rentals)
+            builder.Services.AddScoped<Services.DiscountCalculationServices.IDiscountCalculationService, Services.DiscountCalculationServices.DiscountCalculationService>();
             // Try-On Image Services (lưu ảnh AI Try-On, tự động xóa sau 1 tuần)
             builder.Services.AddScoped<ITryOnImageRepository, TryOnImageRepository>();
             builder.Services.AddScoped<ITryOnImageService, TryOnImageService>();

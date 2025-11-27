@@ -33,6 +33,17 @@ namespace BusinessObject.DTOs.RentalViolationDto
         public string StatusDisplay { get; set; } // "Chờ phản hồi", "Đã đồng ý", etc.
         public string? CustomerNotes { get; set; }
         public DateTime? CustomerResponseAt { get; set; }
+
+        /// <summary>
+        /// Phản hồi của Provider đối với Customer's rejection
+        /// </summary>
+        public string? ProviderResponseToCustomer { get; set; }
+
+        /// <summary>
+        /// Thời điểm Provider phản hồi Customer's rejection
+        /// </summary>
+        public DateTime? ProviderResponseAt { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
