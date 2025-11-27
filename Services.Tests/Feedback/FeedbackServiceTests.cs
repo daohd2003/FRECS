@@ -440,6 +440,342 @@ namespace Services.Tests.Feedback
             Assert.Equal(pageSize, result.Data.PageSize);
             Assert.Equal(2, result.Data.TotalItems); // Filtered count
         }
+
+        #region GetFeedbacksByProductAndCustomerAsync Tests (Provider Role - View Customer Comments)
+
+        /// <summary>
+        /// UTCID01: Provider views customer feedback for specific product and customer
+        /// Expected: Return feedback list mapped from repository
+        /// Use case: Provider viewing customer comments in Order Detail page
+        /// </summary>
+        [Fact]
+        public async Task UTCID01_GetFeedbacksByProductAndCustomer_ShouldReturnMappedFeedbacks()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var customerId = Guid.NewGuid();
+            
+            var feedbacks = new List<BusinessObject.Models.Feedback>
+            {
+                new BusinessObject.Models.Feedback
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = productId,
+                    CustomerId = customerId,
+                    Rating = 5,
+                    Comment = "Great product!",
+                    TargetType = FeedbackTargetType.Product,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            var feedbackDtos = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = feedbacks[0].Id,
+                    TargetType = FeedbackTargetType.Product,
+                    TargetId = productId,
+                    CustomerId = customerId,
+                    Rating = 5,
+                    Comment = "Great product!",
+                    SubmittedAt = feedbacks[0].CreatedAt
+                }
+            };
+
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId))
+                .ReturnsAsync(feedbacks);
+            _mockMapper.Setup(x => x.Map<IEnumerable<FeedbackResponseDto>>(feedbacks))
+                .Returns(feedbackDtos);
+
+            // Act
+            var result = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result);
+            Assert.Equal("Great product!", result.First().Comment);
+            Assert.Equal(customerId, result.First().CustomerId);
+            Assert.Equal(productId, result.First().TargetId);
+
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId), Times.Once);
+            _mockMapper.Verify(x => x.Map<IEnumerable<FeedbackResponseDto>>(feedbacks), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID02: Provider views customer feedback - no feedback exists
+        /// Expected: Return empty list
+        /// </summary>
+        [Fact]
+        public async Task UTCID02_GetFeedbacksByProductAndCustomer_NoFeedback_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var customerId = Guid.NewGuid();
+            var emptyFeedbacks = new List<BusinessObject.Models.Feedback>();
+            var emptyDtos = new List<FeedbackResponseDto>();
+
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId))
+                .ReturnsAsync(emptyFeedbacks);
+            _mockMapper.Setup(x => x.Map<IEnumerable<FeedbackResponseDto>>(emptyFeedbacks))
+                .Returns(emptyDtos);
+
+            // Act
+            var result = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        /// <summary>
+        /// UTCID03: Provider views customer feedback - multiple feedbacks
+        /// Expected: Return all feedbacks for that product and customer
+        /// </summary>
+        [Fact]
+        public async Task UTCID03_GetFeedbacksByProductAndCustomer_MultipleFeedbacks_ShouldReturnAllFeedbacks()
+        {
+            // Arrange
+            var productId = Guid.NewGuid();
+            var customerId = Guid.NewGuid();
+            
+            var feedbacks = new List<BusinessObject.Models.Feedback>
+            {
+                new BusinessObject.Models.Feedback
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = productId,
+                    CustomerId = customerId,
+                    Rating = 5,
+                    Comment = "First feedback",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5)
+                },
+                new BusinessObject.Models.Feedback
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = productId,
+                    CustomerId = customerId,
+                    Rating = 4,
+                    Comment = "Second feedback",
+                    CreatedAt = DateTime.UtcNow.AddDays(-2)
+                }
+            };
+
+            var feedbackDtos = feedbacks.Select(f => new FeedbackResponseDto
+            {
+                FeedbackId = f.Id,
+                Rating = f.Rating,
+                Comment = f.Comment
+            }).ToList();
+
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAndCustomerAsync(productId, customerId))
+                .ReturnsAsync(feedbacks);
+            _mockMapper.Setup(x => x.Map<IEnumerable<FeedbackResponseDto>>(feedbacks))
+                .Returns(feedbackDtos);
+
+            // Act
+            var result = await _feedbackService.GetFeedbacksByProductAndCustomerAsync(productId, customerId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count());
+        }
+
+        #endregion
+
+        #region GetFeedbacksByProviderIdAsync Tests (Provider Role - View All Customer Comments)
+
+        /// <summary>
+        /// UTCID04: Provider views all feedbacks for their products/orders
+        /// Expected: Return mapped feedback list from repository
+        /// </summary>
+        [Fact]
+        public async Task UTCID04_GetFeedbacksByProviderId_ProviderOwnFeedbacks_ShouldReturnMappedFeedbacks()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var providerUser = new User
+            {
+                Id = providerId,
+                Role = UserRole.provider
+            };
+
+            var feedbacks = new List<BusinessObject.Models.Feedback>
+            {
+                new BusinessObject.Models.Feedback
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = Guid.NewGuid(),
+                    CustomerId = Guid.NewGuid(),
+                    Rating = 5,
+                    Comment = "Excellent product!",
+                    TargetType = FeedbackTargetType.Product,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            var feedbackDtos = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = feedbacks[0].Id,
+                    Rating = 5,
+                    Comment = "Excellent product!"
+                }
+            };
+
+            _mockUserRepository.Setup(x => x.GetByIdAsync(providerId))
+                .ReturnsAsync(providerUser);
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProviderIdAsync(providerId))
+                .ReturnsAsync(feedbacks);
+            _mockMapper.Setup(x => x.Map<IEnumerable<FeedbackResponseDto>>(feedbacks))
+                .Returns(feedbackDtos);
+
+            // Act
+            var result = await _feedbackService.GetFeedbacksByProviderIdAsync(providerId, providerId, false);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result);
+            Assert.Equal("Excellent product!", result.First().Comment);
+
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProviderIdAsync(providerId), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID05: Provider views feedbacks - no feedbacks exist
+        /// Expected: Return empty list
+        /// </summary>
+        [Fact]
+        public async Task UTCID05_GetFeedbacksByProviderId_NoFeedbacks_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var providerUser = new User
+            {
+                Id = providerId,
+                Role = UserRole.provider
+            };
+            var emptyFeedbacks = new List<BusinessObject.Models.Feedback>();
+            var emptyDtos = new List<FeedbackResponseDto>();
+
+            _mockUserRepository.Setup(x => x.GetByIdAsync(providerId))
+                .ReturnsAsync(providerUser);
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProviderIdAsync(providerId))
+                .ReturnsAsync(emptyFeedbacks);
+            _mockMapper.Setup(x => x.Map<IEnumerable<FeedbackResponseDto>>(emptyFeedbacks))
+                .Returns(emptyDtos);
+
+            // Act
+            var result = await _feedbackService.GetFeedbacksByProviderIdAsync(providerId, providerId, false);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Empty(result);
+        }
+
+        /// <summary>
+        /// UTCID06: Provider tries to view another provider's feedbacks
+        /// Expected: Throw UnauthorizedAccessException
+        /// </summary>
+        [Fact]
+        public async Task UTCID06_GetFeedbacksByProviderId_DifferentProvider_ShouldThrowUnauthorized()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var differentProviderId = Guid.NewGuid();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _feedbackService.GetFeedbacksByProviderIdAsync(differentProviderId, providerId, false));
+
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProviderIdAsync(It.IsAny<Guid>()), Times.Never);
+        }
+
+        /// <summary>
+        /// UTCID07: Provider views feedbacks with provider response
+        /// Expected: Return feedbacks including provider responses
+        /// </summary>
+        [Fact]
+        public async Task UTCID07_GetFeedbacksByProviderId_WithProviderResponse_ShouldReturnFeedbacksWithResponses()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var providerUser = new User
+            {
+                Id = providerId,
+                Role = UserRole.provider
+            };
+
+            var feedbacks = new List<BusinessObject.Models.Feedback>
+            {
+                new BusinessObject.Models.Feedback
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = Guid.NewGuid(),
+                    CustomerId = Guid.NewGuid(),
+                    Rating = 5,
+                    Comment = "Great product!",
+                    ProviderResponse = "Thank you for your feedback!",
+                    ProviderResponseAt = DateTime.UtcNow,
+                    ProviderResponseById = providerId,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            var feedbackDtos = new List<FeedbackResponseDto>
+            {
+                new FeedbackResponseDto
+                {
+                    FeedbackId = feedbacks[0].Id,
+                    Rating = 5,
+                    Comment = "Great product!",
+                    ProviderResponse = "Thank you for your feedback!",
+                    ProviderResponseAt = feedbacks[0].ProviderResponseAt
+                }
+            };
+
+            _mockUserRepository.Setup(x => x.GetByIdAsync(providerId))
+                .ReturnsAsync(providerUser);
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProviderIdAsync(providerId))
+                .ReturnsAsync(feedbacks);
+            _mockMapper.Setup(x => x.Map<IEnumerable<FeedbackResponseDto>>(feedbacks))
+                .Returns(feedbackDtos);
+
+            // Act
+            var result = await _feedbackService.GetFeedbacksByProviderIdAsync(providerId, providerId, false);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result);
+            Assert.NotNull(result.First().ProviderResponse);
+            Assert.Equal("Thank you for your feedback!", result.First().ProviderResponse);
+        }
+
+        /// <summary>
+        /// UTCID08: Invalid provider ID (not a provider)
+        /// Expected: Throw ArgumentException
+        /// </summary>
+        [Fact]
+        public async Task UTCID08_GetFeedbacksByProviderId_InvalidProviderId_ShouldThrowArgumentException()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var customerUser = new User
+            {
+                Id = providerId,
+                Role = UserRole.customer // Not a provider
+            };
+
+            _mockUserRepository.Setup(x => x.GetByIdAsync(providerId))
+                .ReturnsAsync(customerUser);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                _feedbackService.GetFeedbacksByProviderIdAsync(providerId, providerId, false));
+        }
+
+        #endregion
     }
 }
 
