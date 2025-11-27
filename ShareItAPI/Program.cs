@@ -78,6 +78,8 @@ using Services.DepositServices;
 using Repositories.DepositRepositories;
 using Services.WithdrawalServices;
 using Repositories.WithdrawalRepositories;
+using Repositories.TryOnImageRepositories;
+using Services.TryOnImageServices;
 
 namespace ShareItAPI
 {
@@ -244,11 +246,22 @@ namespace ShareItAPI
                 return new Cloudinary(account);
             });
 
+            // Đăng ký AI Cloudinary (cho Try-On images) - dùng keyed service
+            builder.Services.AddKeyedSingleton<Cloudinary>("AICloudinary", (provider, key) =>
+            {
+                var aiCloudName = builder.Configuration["AICloudSettings:CloudName"];
+                var aiApiKey = builder.Configuration["AICloudSettings:APIKey"];
+                var aiApiSecret = builder.Configuration["AICloudSettings:APISecret"];
+                var account = new Account(aiCloudName, aiApiKey, aiApiSecret);
+                return new Cloudinary(account);
+            });
+
             builder.Services.AddScoped<ITransactionService, TransactionService>();
             builder.Services.AddSingleton<IVnpay, Vnpay>();
             builder.Services.Configure<BankQrConfig>(builder.Configuration.GetSection("BankQrConfig"));
 
             builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+            builder.Services.AddScoped<IAICloudinaryService, AICloudinaryService>();
 
             builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
             builder.Services.AddScoped<IFeedbackService, FeedbackService>();
@@ -399,6 +412,10 @@ namespace ShareItAPI
 
             // Discount Calculation Services (auto discount for rentals)
             builder.Services.AddScoped<Services.DiscountCalculationServices.IDiscountCalculationService, Services.DiscountCalculationServices.DiscountCalculationService>();
+            // Try-On Image Services (lưu ảnh AI Try-On, tự động xóa sau 1 tuần)
+            builder.Services.AddScoped<ITryOnImageRepository, TryOnImageRepository>();
+            builder.Services.AddScoped<ITryOnImageService, TryOnImageService>();
+            builder.Services.AddHostedService<TryOnImageCleanupService>();
 
             builder.WebHost.UseUrls($"http://*:80");
 
