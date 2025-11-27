@@ -595,8 +595,37 @@
     @if (Model.IsEditMode && Model.ExistingViolations != null && Model.ExistingViolations.Any())
     {
         var rejectedViolations = Model.ExistingViolations.Where(v => v.Status == BusinessObject.Enums.ViolationStatus.CUSTOMER_REJECTED).ToList();
+        var pendingAdminViolations = Model.ExistingViolations.Where(v => v.Status == BusinessObject.Enums.ViolationStatus.PENDING_ADMIN_REVIEW).ToList();
+        var acceptedViolations = Model.ExistingViolations.Where(v => v.Status == BusinessObject.Enums.ViolationStatus.CUSTOMER_ACCEPTED).ToList();
+        var resolvedViolations = Model.ExistingViolations.Where(v => v.Status == BusinessObject.Enums.ViolationStatus.RESOLVED).ToList();
         
-        @if (rejectedViolations.Any())
+        @if (pendingAdminViolations.Any())
+        {
+            <div class="alert" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; color: #92400e; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-hourglass-split" style="font-size: 20px;"></i>
+                    <div>
+                        <strong>Pending Admin Review</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 14px;">This violation is being reviewed by admin. You cannot make changes until admin makes a decision.</p>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        @if (acceptedViolations.Any() || resolvedViolations.Any())
+        {
+            <div class="alert" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981; color: #065f46; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-check-circle-fill" style="font-size: 20px;"></i>
+                    <div>
+                        <strong>Violation Resolved</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 14px;">This violation has been accepted by customer or resolved by admin. No further changes can be made.</p>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        @if (rejectedViolations.Any() && !pendingAdminViolations.Any() && !acceptedViolations.Any() && !resolvedViolations.Any())
         {
             <div class="alert" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b; color: #78350f; margin-bottom: 20px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -931,13 +960,30 @@
         </div>
 
         <!-- Form Actions -->
+        @{
+            // Check if any violation is in a finalized or pending admin review status
+            var hasNonEditableViolation = Model.ExistingViolations?.Any(v => 
+                v.Status == BusinessObject.Enums.ViolationStatus.CUSTOMER_ACCEPTED ||
+                v.Status == BusinessObject.Enums.ViolationStatus.RESOLVED ||
+                v.Status == BusinessObject.Enums.ViolationStatus.PENDING_ADMIN_REVIEW
+            ) ?? false;
+        }
         <div class="form-actions">
             <a asp-page="/Provider/OrderDetail" asp-route-id="@Model.Order.Id" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Cancel
             </a>
-            <button type="submit" class="btn btn-danger" id="submitBtn" disabled>
-                <i class="fas fa-paper-plane"></i> @(Model.IsEditMode ? "Update violations" : "Submit violations")
-            </button>
+            @if (hasNonEditableViolation)
+            {
+                <button type="button" class="btn btn-secondary" disabled title="Cannot update - violation is being reviewed by admin or already resolved">
+                    <i class="fas fa-lock"></i> Cannot Update
+                </button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-danger" id="submitBtn" disabled>
+                    <i class="fas fa-paper-plane"></i> @(Model.IsEditMode ? "Update violations" : "Submit violations")
+                </button>
+            }
         </div>
     </form>
     }

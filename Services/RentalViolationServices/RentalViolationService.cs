@@ -231,6 +231,8 @@ namespace Services.RentalViolationServices
                 StatusDisplay = GetViolationStatusDisplay(violation.Status),
                 CustomerNotes = violation.CustomerNotes,
                 CustomerResponseAt = violation.CustomerResponseAt,
+                ProviderResponseToCustomer = violation.ProviderResponseToCustomer,
+                ProviderResponseAt = violation.ProviderResponseAt,
                 CreatedAt = violation.CreatedAt,
                 UpdatedAt = violation.UpdatedAt,
                 OrderItem = _mapper.Map<BusinessObject.DTOs.OrdersDto.OrderItemDetailsDto>(violation.OrderItem),
@@ -298,6 +300,8 @@ namespace Services.RentalViolationServices
                     StatusDisplay = GetViolationStatusDisplay(violation.Status),
                     CustomerNotes = violation.CustomerNotes,
                     CustomerResponseAt = violation.CustomerResponseAt,
+                    ProviderResponseToCustomer = violation.ProviderResponseToCustomer,
+                    ProviderResponseAt = violation.ProviderResponseAt,
                     CreatedAt = violation.CreatedAt,
                     UpdatedAt = violation.UpdatedAt,
                     OrderItem = _mapper.Map<OrderItemDetailsDto>(violation.OrderItem),
@@ -397,8 +401,8 @@ namespace Services.RentalViolationServices
             if (violation.OrderItem.Order.CustomerId != customerId)
                 throw new UnauthorizedAccessException("Bạn không có quyền phản hồi vi phạm này");
 
-            // Only allow response if status is PENDING
-            if (violation.Status != ViolationStatus.PENDING)
+            // Allow response if status is PENDING or CUSTOMER_REJECTED (customer can change their decision)
+            if (violation.Status != ViolationStatus.PENDING && violation.Status != ViolationStatus.CUSTOMER_REJECTED)
                 throw new InvalidOperationException("Vi phạm này đã được xử lý");
 
             if (dto.IsAccepted)

@@ -410,7 +410,7 @@
                         <span>@(Model.Order.Shipping == 0 ? "FREE" : "₫" + Model.Order.Shipping.ToString("N0"))</span>
                     </div>
                     <div class="summary-item">
-                        <span>Discount</span>
+                        <span>Discount Code</span>
                         <span class="@(Model.Order.DiscountAmount > 0 ? "text-success" : "")">
                             @if (Model.Order.DiscountAmount > 0)
                             {
@@ -426,6 +426,20 @@
                             }
                         </span>
                     </div>
+                    @if (Model.Order.RentalDaysDiscount > 0)
+                    {
+                        <div class="summary-item">
+                            <span>Rental Days Discount <small class="text-muted">(@Model.Order.RentalDaysDiscountPercent.ToString("0.##")%)</small></span>
+                            <span class="text-success">-₫@Model.Order.RentalDaysDiscount.ToString("N0")</span>
+                        </div>
+                    }
+                    @if (Model.Order.LoyaltyDiscount > 0)
+                    {
+                        <div class="summary-item">
+                            <span>Loyalty Discount <small class="text-muted">(@Model.Order.LoyaltyDiscountPercent.ToString("0.##")%)</small></span>
+                            <span class="text-success">-₫@Model.Order.LoyaltyDiscount.ToString("N0")</span>
+                        </div>
+                    }
                     @if (Model.Order.TotalDepositAmount > 0)
                     {
                         <div class="summary-item">
@@ -2112,7 +2126,10 @@
                                     <button class="btn btn-outline-primary message-provider-btn" data-violation-id="${violation.violationId}" data-provider-id="${violation.orderItem?.productId || violation.orderItem?.ProductId || ''}" data-product-id="${violation.orderItem?.productId || violation.orderItem?.ProductId || ''}" title="Message Provider">
                                         <i class="bi bi-chat-dots"></i>
                                     </button>
-                                    <button class="btn btn-warning escalate-to-admin-btn" data-violation-id="${violation.violationId}">
+                                    <button class="btn btn-success accept-violation-btn" data-violation-id="${violation.violationId}">
+                                        <i class="bi bi-check-circle"></i> Accept & Pay
+                                    </button>
+                                    <button class="btn btn-warning escalate-to-admin-btn" data-violation-id="${violation.violationId}" style="margin-left: auto;">
                                         <i class="bi bi-shield-exclamation"></i> Escalate to Admin
                                     </button>
                                 </div>
@@ -2146,7 +2163,12 @@
                 // Bind event handlers
                 $('.accept-violation-btn').on('click', function() {
                     const violationId = $(this).data('violation-id');
-                    respondToViolation(violationId, true);
+                    const violationCard = $(this).closest('.violation-card');
+                    const penaltyAmount = violationCard.find('.penalty-amount-badge').text();
+                    
+                    if (confirm(`Are you sure you want to accept this violation and pay the penalty amount of ${penaltyAmount}?\n\nThis action cannot be undone.`)) {
+                        respondToViolation(violationId, true);
+                    }
                 });
                 
                 $('.reject-violation-btn').on('click', function() {
