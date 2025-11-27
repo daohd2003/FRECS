@@ -57,10 +57,10 @@ namespace Services.CloudServices
                 await _profileService.AddAsync(profile);
             }
 
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             var extension = Path.GetExtension(file.FileName)?.ToLower() ?? "";
             if (!allowedExtensions.Contains(extension))
-                throw new ArgumentException("Only JPG/JPEG/PNG files are allowed");
+                throw new ArgumentException("Only JPG/JPEG/PNG/WEBP files are allowed");
 
             if (file.Length > 5 * 1024 * 1024)
                 throw new ArgumentException("File size exceeds 5MB");
