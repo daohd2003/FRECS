@@ -15,6 +15,7 @@ using Repositories.ProductRepositories;
 using Repositories.RepositoryBase;
 using Repositories.SystemConfigRepositories;
 using Repositories.UserRepositories;
+using Services.DiscountCalculationServices;
 using Services.NotificationServices;
 using Services.OrderServices;
 using AutoMapper;
@@ -41,6 +42,7 @@ namespace Services.Tests.OrderServices
         private readonly Mock<IProductRepository> _mockProductRepo;
         private readonly Mock<INotificationRepository> _mockNotificationRepository;
         private readonly Mock<ISystemConfigRepository> _mockSystemConfigRepository;
+        private readonly Mock<IDiscountCalculationService> _mockDiscountCalculationService;
         private readonly ShareItDbContext _context;
         private readonly OrderService _service;
 
@@ -58,6 +60,7 @@ namespace Services.Tests.OrderServices
             _mockProductRepo = new Mock<IProductRepository>();
             _mockNotificationRepository = new Mock<INotificationRepository>();
             _mockSystemConfigRepository = new Mock<ISystemConfigRepository>();
+            _mockDiscountCalculationService = new Mock<IDiscountCalculationService>();
 
             var options = new DbContextOptionsBuilder<ShareItDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -77,7 +80,8 @@ namespace Services.Tests.OrderServices
                 _mockEmailRepository.Object,
                 _mockProductRepo.Object,
                 _mockNotificationRepository.Object,
-                _mockSystemConfigRepository.Object
+                _mockSystemConfigRepository.Object,
+                _mockDiscountCalculationService.Object
             );
         }
 

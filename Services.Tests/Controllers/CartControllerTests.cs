@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Services.CartServices;
+using Services.DiscountCalculationServices;
 using Services.OrderServices;
 using ShareItAPI.Controllers;
 using System.Security.Claims;
@@ -32,13 +33,15 @@ namespace Services.Tests.Controllers
     {
         private readonly Mock<ICartService> _mockCartService;
         private readonly Mock<IOrderService> _mockOrderService;
+        private readonly Mock<IDiscountCalculationService> _mockDiscountCalculationService;
         private readonly CartController _controller;
 
         public CartControllerTests()
         {
             _mockCartService = new Mock<ICartService>();
             _mockOrderService = new Mock<IOrderService>();
-            _controller = new CartController(_mockCartService.Object, _mockOrderService.Object);
+            _mockDiscountCalculationService = new Mock<IDiscountCalculationService>();
+            _controller = new CartController(_mockCartService.Object, _mockOrderService.Object, _mockDiscountCalculationService.Object);
         }
 
         private void SetupUserContext(Guid userId)
