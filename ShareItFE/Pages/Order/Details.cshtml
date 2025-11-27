@@ -2045,6 +2045,20 @@
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    ${violation.providerResponseToCustomer ? `
+                                        <div class="provider-response-section" style="margin-top: 16px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                            <h6 style="color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600;">
+                                                <i class="bi bi-reply-fill"></i> Provider's Response
+                                            </h6>
+                                            <div style="background: white; padding: 12px; border-radius: 6px; color: #1f2937; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${violation.providerResponseToCustomer}</div>
+                                            ${violation.providerResponseAt ? `
+                                                <div style="margin-top: 8px; font-size: 12px; color: #1e40af;">
+                                                    <i class="bi bi-clock"></i> Responded at: ${new Date(violation.providerResponseAt).toLocaleString()}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    ` : ''}
                                 </div>
                             </div>
                             

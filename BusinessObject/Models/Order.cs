@@ -65,10 +65,34 @@ namespace BusinessObject.Models
         public DiscountCode? DiscountCode { get; set; }
 
         /// <summary>
-        /// Discount amount applied to this order
+        /// Discount amount from discount code only
         /// </summary>
         [Column(TypeName = "decimal(10,2)")]
         public decimal DiscountAmount { get; set; } = 0m;
+
+        /// <summary>
+        /// Rental days discount amount (3% per day × items, max 25%)
+        /// </summary>
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal RentalDaysDiscount { get; set; } = 0m;
+
+        /// <summary>
+        /// Loyalty discount amount (2% per previous rental × items, max 15%)
+        /// </summary>
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal LoyaltyDiscount { get; set; } = 0m;
+
+        /// <summary>
+        /// Rental days discount percentage applied
+        /// </summary>
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal RentalDaysDiscountPercent { get; set; } = 0m;
+
+        /// <summary>
+        /// Loyalty discount percentage applied
+        /// </summary>
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal LoyaltyDiscountPercent { get; set; } = 0m;
 
         /// <summary>
         /// Deposit refund for this order (1-1 relationship)

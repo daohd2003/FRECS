@@ -364,6 +364,48 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// [PROVIDER] Phản hồi Customer's rejection notes
+        /// </summary>
+        /// <remarks>
+        /// Provider có thể phản hồi lý do từ chối của Customer.
+        /// Chỉ có thể phản hồi khi Customer đã từ chối và có ghi chú.
+        /// </remarks>
+        /// <param name="violationId">ID của vi phạm cần phản hồi</param>
+        [HttpPost("{violationId:guid}/provider-respond")]
+        [Authorize(Roles = "provider")]
+        public async Task<IActionResult> ProviderRespondToCustomer(Guid violationId, [FromBody] ProviderRespondToCustomerDto dto)
+        {
+            try
+            {
+                var providerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(providerIdClaim) || !Guid.TryParse(providerIdClaim, out Guid providerId))
+                {
+                    return Unauthorized();
+                }
+
+                var result = await _violationService.ProviderRespondToCustomerAsync(violationId, dto.Response, providerId);
+                if (!result)
+                {
+                    return NotFound(new ApiResponse<string>("Violation not found", null));
+                }
+
+                return Ok(new ApiResponse<string>("Response sent successfully", null));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+        }
+
+        /// <summary>
         /// [CUSTOMER/PROVIDER] Escalate violation to admin for review
         /// </summary>
         /// <remarks>

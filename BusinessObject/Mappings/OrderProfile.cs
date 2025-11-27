@@ -67,6 +67,11 @@ namespace BusinessObject.Mappings
             .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src => src.DiscountAmount))
             .ForMember(dest => dest.DiscountCodeId, opt => opt.MapFrom(src => src.DiscountCodeId))
             .ForMember(dest => dest.DiscountCodeName, opt => opt.MapFrom(src => src.DiscountCode != null ? src.DiscountCode.Code : null))
+            // Map auto discount fields
+            .ForMember(dest => dest.RentalDaysDiscount, opt => opt.MapFrom(src => src.RentalDaysDiscount))
+            .ForMember(dest => dest.LoyaltyDiscount, opt => opt.MapFrom(src => src.LoyaltyDiscount))
+            .ForMember(dest => dest.RentalDaysDiscountPercent, opt => opt.MapFrom(src => src.RentalDaysDiscountPercent))
+            .ForMember(dest => dest.LoyaltyDiscountPercent, opt => opt.MapFrom(src => src.LoyaltyDiscountPercent))
             // AutoMapper sẽ tự động map List<OrderItem> sang List<OrderItemDetailsDto> nếu bạn đã định nghĩa mapping cho item
             .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
             // Map từ thông tin Profile của Customer

@@ -772,5 +772,44 @@ namespace Services.RentalViolationServices
 
             return updateResult;
         }
+
+        public async Task<bool> ProviderRespondToCustomerAsync(Guid violationId, string response, Guid providerId)
+        {
+            var violation = await _violationRepo.GetViolationWithDetailsAsync(violationId);
+            if (violation == null)
+                return false;
+
+            // Verify provider owns this violation
+            if (violation.OrderItem.Order.ProviderId != providerId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to respond to this violation");
+            }
+
+            // Only allow response if customer has rejected (has CustomerNotes)
+            if (string.IsNullOrWhiteSpace(violation.CustomerNotes))
+            {
+                throw new InvalidOperationException("Cannot respond - customer has not provided any rejection notes");
+            }
+
+            // Update provider response
+            violation.ProviderResponseToCustomer = response;
+            violation.ProviderResponseAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTime.UtcNow;
+
+            var updateResult = await _violationRepo.UpdateViolationAsync(violation);
+
+            if (updateResult)
+            {
+                // Notify customer about provider's response
+                await _notificationService.SendNotification(
+                    violation.OrderItem.Order.CustomerId,
+                    $"📝 Provider has responded to your rejection notes for the violation report.",
+                    NotificationType.order,
+                    violation.OrderItem.OrderId
+                );
+            }
+
+            return updateResult;
+        }
     }
 }

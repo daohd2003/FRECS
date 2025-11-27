@@ -764,6 +764,45 @@
                                                 <i class="bi bi-clock"></i> Responded at: @existingViolation.CustomerResponseAt.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
                                             </div>
                                         }
+
+                                        @* Provider's Response Section *@
+                                        @if (!string.IsNullOrWhiteSpace(existingViolation.ProviderResponseToCustomer))
+                                        {
+                                            <div style="margin-top: 16px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                                                <label style="color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px;">
+                                                    <i class="bi bi-reply-fill"></i>
+                                                    <strong>Your Response</strong>
+                                                </label>
+                                                <div style="background: white; padding: 10px; border-radius: 4px; color: #1f2937; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">@existingViolation.ProviderResponseToCustomer</div>
+                                                @if (existingViolation.ProviderResponseAt.HasValue)
+                                                {
+                                                    <div class="small-text" style="margin-top: 6px; color: #1e40af;">
+                                                        <i class="bi bi-clock"></i> Responded at: @existingViolation.ProviderResponseAt.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @* Provider Response Form *@
+                                            <div style="margin-top: 16px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 16px; border-radius: 8px; border: 1px dashed #3b82f6;">
+                                                <label style="color: #1e40af; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                                    <i class="bi bi-reply"></i>
+                                                    <strong>Respond to Customer</strong>
+                                                </label>
+                                                <textarea id="provider-response-@existingViolation.ViolationId" 
+                                                          placeholder="Enter your response to customer's rejection notes..."
+                                                          style="width: 100%; min-height: 80px; padding: 12px; border: 1px solid #93c5fd; border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
+                                                <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                                                    <button type="button" 
+                                                            class="btn" 
+                                                            style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px;"
+                                                            onclick="submitProviderResponse('@existingViolation.ViolationId')">
+                                                        <i class="bi bi-send"></i> Send Response
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
                                     </div>
                                 }
                             }
@@ -1019,4 +1058,37 @@
             closeEscalateModal();
         }
     });
+
+    // Provider respond to customer's rejection
+    async function submitProviderResponse(violationId) {
+        const textarea = document.getElementById(`provider-response-${violationId}`);
+        const response = textarea?.value?.trim();
+
+        if (!response) {
+            alert('Please enter your response before submitting.');
+            return;
+        }
+
+        try {
+            const result = await fetch(`@Model.ApiBaseUrl/rental-violations/${violationId}/provider-respond`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer @(Request.Cookies["AccessToken"])',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ response: response })
+            });
+
+            if (result.ok) {
+                alert('Response sent successfully!');
+                window.location.reload();
+            } else {
+                const errorData = await result.json();
+                alert('Failed to send response: ' + (errorData.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error sending provider response:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
 </script>

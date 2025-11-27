@@ -19,6 +19,17 @@ namespace BusinessObject.DTOs.RentalViolationDto
         public ViolationStatus Status { get; set; }
         public string? CustomerNotes { get; set; }
         public DateTime? CustomerResponseAt { get; set; }
+
+        /// <summary>
+        /// Phản hồi của Provider đối với Customer's rejection
+        /// </summary>
+        public string? ProviderResponseToCustomer { get; set; }
+
+        /// <summary>
+        /// Thời điểm Provider phản hồi Customer's rejection
+        /// </summary>
+        public DateTime? ProviderResponseAt { get; set; }
+
         public string? ProviderEscalationReason { get; set; }
         public string? CustomerEscalationReason { get; set; }
         public DateTime CreatedAt { get; set; }

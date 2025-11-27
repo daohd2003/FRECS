@@ -790,7 +790,11 @@ namespace Services.OrderServices
                         }
 
                         // Calculate automatic discounts for rental items
-                        decimal autoDiscountAmount = 0;
+                        decimal rentalDaysDiscount = 0;
+                        decimal loyaltyDiscount = 0;
+                        decimal rentalDaysDiscountPercent = 0;
+                        decimal loyaltyDiscountPercent = 0;
+                        
                         var rentalItems = orderItems.Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.rental).ToList();
                         if (rentalItems.Any())
                         {
@@ -808,11 +812,14 @@ namespace Services.OrderServices
                                 rentalItemCount, 
                                 rentalSubtotal);
 
-                            autoDiscountAmount = autoDiscount.TotalAutoDiscount;
+                            rentalDaysDiscount = autoDiscount.RentalDaysDiscountAmount;
+                            loyaltyDiscount = autoDiscount.LoyaltyDiscountAmount;
+                            rentalDaysDiscountPercent = autoDiscount.RentalDaysDiscountPercent;
+                            loyaltyDiscountPercent = autoDiscount.LoyaltyDiscountPercent;
                         }
 
-                        // Total discount = discount code + auto discount
-                        var totalDiscount = discountAmount + autoDiscountAmount;
+                        // Total discount = discount code + auto discounts
+                        var totalDiscount = discountAmount + rentalDaysDiscount + loyaltyDiscount;
 
                         var newOrder = new Order
                         {
@@ -823,7 +830,11 @@ namespace Services.OrderServices
                             Subtotal = subtotalAmount, // Chỉ giá thuê/mua
                             TotalDeposit = depositAmount, // Chỉ tiền cọc
                             DiscountCodeId = discountCodeIdToStore,
-                            DiscountAmount = totalDiscount, // Tổng discount (code + auto)
+                            DiscountAmount = discountAmount, // Chỉ discount từ code
+                            RentalDaysDiscount = rentalDaysDiscount,
+                            LoyaltyDiscount = loyaltyDiscount,
+                            RentalDaysDiscountPercent = rentalDaysDiscountPercent,
+                            LoyaltyDiscountPercent = loyaltyDiscountPercent,
                             TotalAmount = subtotalAmount + depositAmount - totalDiscount, // Tổng = subtotal + deposit - all discounts
                             RentalStart = rentalStart,
                             RentalEnd = rentalEnd,
