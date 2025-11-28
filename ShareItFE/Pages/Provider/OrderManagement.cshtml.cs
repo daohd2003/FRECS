@@ -28,7 +28,7 @@ namespace ShareItFE.Pages.Provider
         public List<OrderListDto> AllOrders { get; set; } = new List<OrderListDto>();
         
         // Stats - Provider focused
-        public int ToShipCount { get; set; } // Approved - Need to ship
+        public int ToShipCount { get; set; } // Paid - Need to ship
         public int InTransitCount { get; set; } // In Transit - Currently delivering
         public int InUseCount { get; set; } // In Use - Active rentals (revenue)
         public int ToConfirmReturnCount { get; set; } // Returning - Need to confirm return
@@ -60,7 +60,7 @@ namespace ShareItFE.Pages.Provider
         {
             new SelectListItem { Value = "All", Text = "All Status" },
             new SelectListItem { Value = "pending", Text = "Pending" },
-            new SelectListItem { Value = "approved", Text = "Approved" },
+            new SelectListItem { Value = "approved", Text = "Paid" },
             new SelectListItem { Value = "in_transit", Text = "In Transit" },
             new SelectListItem { Value = "in_use", Text = "In Use" },
             new SelectListItem { Value = "returning", Text = "Returning" },
@@ -312,7 +312,7 @@ namespace ShareItFE.Pages.Provider
             return status switch
             {
                 OrderStatus.pending => "Pending",
-                OrderStatus.approved => "Approved",
+                OrderStatus.approved => "Paid",
                 OrderStatus.in_transit => "In Transit",
                 OrderStatus.in_use => "In Use",
                 OrderStatus.returning => "Returning",

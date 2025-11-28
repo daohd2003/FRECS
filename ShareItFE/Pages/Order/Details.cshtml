@@ -112,6 +112,22 @@
             _ => method ?? "Không xác định"
         };
     };
+    
+    Func<BusinessObject.Enums.OrderStatus, string> GetStatusText = status =>
+    {
+        return status switch
+        {
+            BusinessObject.Enums.OrderStatus.pending => "Pending",
+            BusinessObject.Enums.OrderStatus.approved => "Paid",
+            BusinessObject.Enums.OrderStatus.in_transit => "In Transit",
+            BusinessObject.Enums.OrderStatus.in_use => "In Use",
+            BusinessObject.Enums.OrderStatus.returning => "Returning",
+            BusinessObject.Enums.OrderStatus.returned => "Returned",
+            BusinessObject.Enums.OrderStatus.returned_with_issue => "Returned with Issue",
+            BusinessObject.Enums.OrderStatus.cancelled => "Cancelled",
+            _ => status.ToString().Replace("_", " ")
+        };
+    };
 
 }
 
@@ -140,7 +156,7 @@
                         <p>Placed on @Model.Order.OrderDate.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
                     </div>
                     <span class="status-badge @GetStatusColor(Model.Order.Status)">
-                        @Model.Order.Status.ToString().Replace("_", " ")
+                        @GetStatusText(Model.Order.Status)
                     </span>
                 </div>
             </div>
@@ -1406,7 +1422,7 @@
                             
                             if (status === 'completed') {
                                 clearInterval(paymentPollingInterval);
-                                alert('Payment successful! Your order has been approved.');
+                                alert('Payment successful! Your order has been paid.');
                                 location.reload();
                             } else if (status === 'failed') {
                                 clearInterval(paymentPollingInterval);
