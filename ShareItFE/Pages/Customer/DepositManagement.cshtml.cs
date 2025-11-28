@@ -38,7 +38,9 @@ namespace ShareItFE.Pages.Customer
         public List<BankAccountDto> BankAccounts { get; set; } = new();
         public List<DepositRefundDto> DepositRefunds { get; set; } = new();
 
+        [TempData]
         public string SuccessMessage { get; set; } = "";
+        [TempData]
         public string ErrorMessage { get; set; } = "";
 
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
