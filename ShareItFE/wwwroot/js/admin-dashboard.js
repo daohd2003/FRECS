@@ -1,5 +1,28 @@
 // Admin Dashboard JavaScript
 
+// Format order status text for display
+function formatOrderStatus(status) {
+    const statusMap = {
+        'approved': 'Paid',
+        'Approved': 'Paid',
+        'pending': 'Pending',
+        'Pending': 'Pending',
+        'in_transit': 'In Transit',
+        'In_transit': 'In Transit',
+        'in_use': 'In Use',
+        'In_use': 'In Use',
+        'returning': 'Returning',
+        'Returning': 'Returning',
+        'returned': 'Returned',
+        'Returned': 'Returned',
+        'cancelled': 'Cancelled',
+        'Cancelled': 'Cancelled',
+        'returned_with_issue': 'Returned with Issue',
+        'Returned_with_issue': 'Returned with Issue'
+    };
+    return statusMap[status] || status.replace('_', ' ');
+}
+
 // Chart.js configuration
 Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 Chart.defaults.color = '#718096';
@@ -913,7 +936,7 @@ function renderOrdersTablePaginated(paginationInfo, filter) {
                             <td>${item.customerName}</td>
                             <td>${item.providerName}</td>
                             <td>${item.totalAmount.toLocaleString('vi-VN')}₫</td>
-                            <td><span class="status-badge status-${item.status.toLowerCase().replace('_', '-')}">${item.status.replace('_', ' ')}</span></td>
+                            <td><span class="status-badge status-${item.status.toLowerCase().replace('_', '-')}">${formatOrderStatus(item.status)}</span></td>
                             <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
                         </tr>
                     `).join('')}

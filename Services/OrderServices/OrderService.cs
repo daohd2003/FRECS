@@ -185,12 +185,12 @@ namespace Services.OrderServices
             // Bước 6: Gửi thông báo real-time qua SignalR cho customer
             await _hubContext.Clients.Group($"notifications-{order.CustomerId}")
                 .SendAsync("ReceiveNotification",
-                    $"Order #{orderId} status changed from {oldStatus} to {newStatus}");
+                    $"Order #{orderId} status changed from {FormatOrderStatusText(oldStatus)} to {FormatOrderStatusText(newStatus)}");
 
             // Gửi thông báo real-time cho provider
             await _hubContext.Clients.Group($"notifications-{order.ProviderId}")
                 .SendAsync("ReceiveNotification",
-                    $"Order #{orderId} status changed from {oldStatus} to {newStatus}");
+                    $"Order #{orderId} status changed from {FormatOrderStatusText(oldStatus)} to {FormatOrderStatusText(newStatus)}");
         }
 
         /// <summary>
@@ -472,7 +472,7 @@ namespace Services.OrderServices
             
             await _orderRepo.UpdateAsync(order);
             await _notificationService.NotifyOrderStatusChange(order.Id, OrderStatus.pending, OrderStatus.approved);
-            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been marked as approved");
+            await NotifyBothParties(order.CustomerId, order.ProviderId, $"Order #{order.Id} has been paid");
         }
 
         public async Task MarkAsShipingAsync(Guid orderId)
@@ -1611,6 +1611,25 @@ namespace Services.OrderServices
                 // Additional Information
                 Note = null,
                 UpdatedAt = order.UpdatedAt
+            };
+        }
+
+        /// <summary>
+        /// Format order status text for display in notifications
+        /// </summary>
+        private string FormatOrderStatusText(OrderStatus status)
+        {
+            return status switch
+            {
+                OrderStatus.pending => "Pending",
+                OrderStatus.approved => "Paid",
+                OrderStatus.in_transit => "In Transit",
+                OrderStatus.in_use => "In Use",
+                OrderStatus.returning => "Returning",
+                OrderStatus.returned => "Returned",
+                OrderStatus.returned_with_issue => "Returned with Issue",
+                OrderStatus.cancelled => "Cancelled",
+                _ => status.ToString()
             };
         }
     }

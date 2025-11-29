@@ -41,6 +41,7 @@
             <button class="filter-btn @(Model.Period == "month" ? "active" : "")" onclick="location.href='?period=month'">Month</button>
             <button class="filter-btn @(Model.Period == "year" ? "active" : "")" onclick="location.href='?period=year'">Year</button>
         </div>
+        @* Export Report button - hidden for now
         <form method="post" asp-page-handler="ExportReport">
             <button type="submit" class="export-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -49,6 +50,7 @@
                 Export Report
             </button>
         </form>
+        *@
         </div>
 
     <!-- Statistics Cards -->

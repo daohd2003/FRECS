@@ -167,7 +167,7 @@ namespace Services.NotificationServices
             if (order == null) return;
 
             // Tạo nội dung thông báo
-            var message = $"Order #{orderId.ToString().Substring(0, 8)} status changed from {oldStatus} to {newStatus}";
+            var message = $"Order #{orderId.ToString().Substring(0, 8)} status changed from {FormatOrderStatusText(oldStatus)} to {FormatOrderStatusText(newStatus)}";
 
             // Gửi thông báo cho customer (người mua/thuê)
             await CreateAndSendNotification(
@@ -374,5 +374,24 @@ namespace Services.NotificationServices
                     return null; // Không có link cho các loại thông báo chung
             }
         }*/
+
+        /// <summary>
+        /// Format order status text for display in notifications
+        /// </summary>
+        private string FormatOrderStatusText(OrderStatus status)
+        {
+            return status switch
+            {
+                OrderStatus.pending => "Pending",
+                OrderStatus.approved => "Paid",
+                OrderStatus.in_transit => "In Transit",
+                OrderStatus.in_use => "In Use",
+                OrderStatus.returning => "Returning",
+                OrderStatus.returned => "Returned",
+                OrderStatus.returned_with_issue => "Returned with Issue",
+                OrderStatus.cancelled => "Cancelled",
+                _ => status.ToString()
+            };
+        }
     }
 }

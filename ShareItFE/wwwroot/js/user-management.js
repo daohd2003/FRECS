@@ -897,7 +897,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                         <div class="stat-value">${ordersByStatus.Pending || ordersByStatus.pending || 0}</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Approved</div>
+                        <div class="stat-label">Paid</div>
                         <div class="stat-value">${ordersByStatus.Approved || ordersByStatus.approved || 0}</div>
                     </div>
                     <div class="stat-card">

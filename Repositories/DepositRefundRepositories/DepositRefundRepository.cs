@@ -22,6 +22,7 @@ namespace Repositories.DepositRefundRepositories
         public async Task<IEnumerable<DepositRefundDto>> GetAllRefundRequestsAsync(TransactionStatus? status = null)
         {
             var query = _context.DepositRefunds
+                .AsNoTracking()
                 .Include(dr => dr.Customer)
                     .ThenInclude(c => c.Profile)
                 .Include(dr => dr.Order)
@@ -78,6 +79,7 @@ namespace Repositories.DepositRefundRepositories
         public async Task<DepositRefundDetailDto?> GetRefundDetailAsync(Guid refundId)
         {
             var refund = await _context.DepositRefunds
+                .AsNoTracking()
                 .Include(dr => dr.Customer)
                     .ThenInclude(c => c.Profile)
                 .Include(dr => dr.Order)
@@ -152,9 +154,9 @@ namespace Repositories.DepositRefundRepositories
         public async Task<IEnumerable<DepositRefundDto>> GetCustomerRefundsAsync(Guid customerId)
         {
             var refunds = await _context.DepositRefunds
+                .AsNoTracking()
                 .Include(dr => dr.Customer)
                     .ThenInclude(c => c.Profile)
-                .Include(dr => dr.Order)
                 .Include(dr => dr.RefundBankAccount)
                 .Where(dr => dr.CustomerId == customerId)
                 .OrderByDescending(dr => dr.CreatedAt)

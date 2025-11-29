@@ -4,6 +4,22 @@
 @{
     ViewData["Title"] = "My Profile";
     var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    
+    Func<OrderStatus, string> GetStatusText = status =>
+    {
+        return status switch
+        {
+            OrderStatus.pending => "Pending",
+            OrderStatus.approved => "Paid",
+            OrderStatus.in_transit => "In Transit",
+            OrderStatus.in_use => "In Use",
+            OrderStatus.returning => "Returning",
+            OrderStatus.returned => "Returned",
+            OrderStatus.returned_with_issue => "Returned with Issue",
+            OrderStatus.cancelled => "Cancelled",
+            _ => status.ToString().Replace("_", " ")
+        };
+    };
 }
 
 @section Styles {
@@ -203,7 +219,7 @@
                                                 <h3 class="order-id">Order #@order.OrderCode</h3>
                                                 <p class="order-date">Placed on: @order.CreatedAt.ToString("dd/M/yyyy")</p>
                                             </div>
-                                            <span class="status-badge @statusClass">@order.Status.ToString().Replace("_", " ")</span>
+                                            <span class="status-badge @statusClass">@GetStatusText(order.Status)</span>
                                         </div>
 
                                         @if (order.Items != null && order.Items.Any())
