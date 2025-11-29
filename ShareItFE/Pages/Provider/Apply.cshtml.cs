@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.ProviderApplications;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShareItFE.Common.Utilities;
@@ -9,6 +10,7 @@ using ShareItFE.Extensions;
 
 namespace ShareItFE.Pages.Provider
 {
+    [Authorize]
     public class ApplyModel : PageModel
     {
         private readonly AuthenticatedHttpClientHelper _clientHelper;

@@ -15,6 +15,8 @@ namespace Services.FeedbackServices
         Task DeleteFeedbackAsync(Guid feedbackId, Guid currentUserId);
 
         Task SubmitProviderResponseAsync(Guid feedbackId, SubmitProviderResponseDto responseDto, Guid providerOrAdminId);
+        Task UpdateProviderResponseAsync(Guid feedbackId, UpdateProviderResponseDto dto, Guid providerOrAdminId);
+        Task UpdateCustomerFeedbackAsync(Guid feedbackId, UpdateFeedbackDto dto, Guid customerId);
 
         Task RecalculateProductRatingAsync(Guid productId);
         Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize, Guid? currentUserId);

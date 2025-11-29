@@ -1457,8 +1457,8 @@ namespace Services.OrderServices
         {
             var orders = await _orderRepo.GetAllOrdersWithDetailsAsync();
             
-            // Filter: only show orders with status = returned
-            var validOrders = orders.Where(o => o.Status == OrderStatus.returned);
+            // Show all orders for admin (no status filter)
+            var validOrders = orders;
             
             var result = new List<AdminOrderListDto>();
             
@@ -1475,8 +1475,10 @@ namespace Services.OrderServices
                 // If order is determined as rental, only create rental entry
                 if (transactionType == "rental")
                 {
-                    // Calculate total from all items (treat as rental)
-                    var rentalTotal = order.Items?.Sum(i => i.DailyRate * (i.RentalDays ?? 1) * i.Quantity) ?? 0;
+                    // Use order's Subtotal and DiscountAmount from database
+                    // TotalAmount should be: Subtotal - DiscountAmount (for display in list)
+                    var displayTotal = order.Subtotal - order.DiscountAmount;
+                    
                     result.Add(new AdminOrderListDto
                     {
                         Id = order.Id,
@@ -1489,15 +1491,19 @@ namespace Services.OrderServices
                         RentalStartDate = order.RentalStart,
                         RentalEndDate = order.RentalEnd,
                         Status = order.Status,
-                        TotalAmount = rentalTotal,
+                        TotalAmount = displayTotal,
+                        Subtotal = order.Subtotal,
+                        DiscountAmount = order.DiscountAmount,
                         CreatedAt = order.CreatedAt
                     });
                 }
                 // If order is determined as purchase, only create purchase entry
                 else
                 {
-                    // Calculate total from all items (treat as purchase)
-                    var purchaseTotal = order.Items?.Sum(i => i.DailyRate * i.Quantity) ?? 0;
+                    // Use order's Subtotal and DiscountAmount from database
+                    // TotalAmount should be: Subtotal - DiscountAmount (for display in list)
+                    var displayTotal = order.Subtotal - order.DiscountAmount;
+                    
                     result.Add(new AdminOrderListDto
                     {
                         Id = order.Id,
@@ -1510,7 +1516,9 @@ namespace Services.OrderServices
                         RentalStartDate = null,
                         RentalEndDate = null,
                         Status = order.Status,
-                        TotalAmount = purchaseTotal,
+                        TotalAmount = displayTotal,
+                        Subtotal = order.Subtotal,
+                        DiscountAmount = order.DiscountAmount,
                         CreatedAt = order.CreatedAt
                     });
                 }

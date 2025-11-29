@@ -1371,9 +1371,8 @@
         <div class="stat-card">
             <div class="stat-card-header">
                 <div class="stat-icon stat-icon-yellow">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="1" x2="12" y2="23"></line>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <text x="12" y="18" font-size="20" font-weight="bold" text-anchor="middle" fill="currentColor">đ</text>
                     </svg>
                 </div>
                 <div class="stat-content">
@@ -2067,6 +2066,8 @@
                 return;
             }
             
+            // Performance optimization: Use innerHTML with join for faster rendering
+            // This is faster than creating DOM elements one by one
             tbody.innerHTML = orders.map(order => `
                 <tr>
                     <td>
