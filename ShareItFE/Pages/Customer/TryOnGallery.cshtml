@@ -497,7 +497,7 @@
                 <p id="modalExpiry" style="color: #f59e0b; font-weight: 500;"></p>
             </div>
             <div class="modal-actions">
-                <a id="modalDownload" href="" download class="btn-download">⬇ Download</a>
+                <button id="modalDownload" class="btn-download" onclick="downloadImage()">⬇ Download</button>
                 <button id="modalDelete" class="btn-delete">🗑 Delete</button>
             </div>
         </div>
@@ -612,14 +612,45 @@
         }
     }
 
+    let currentImageUrl = '';
+    
     function openModal(id, imageUrl, createdAt, expiresAt) {
         currentImageId = id;
+        currentImageUrl = imageUrl;
         document.getElementById('modalImage').src = imageUrl;
-        document.getElementById('modalDownload').href = imageUrl;
         document.getElementById('modalDate').textContent = `📅 Created: ${formatDateTime(createdAt)}`;
         document.getElementById('modalExpiry').textContent = `⏰ Expires: ${formatDateTime(expiresAt)}`;
         document.getElementById('imageModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+    }
+    
+    async function downloadImage() {
+        if (!currentImageUrl) return;
+        
+        const downloadBtn = document.getElementById('modalDownload');
+        const originalText = downloadBtn.textContent;
+        downloadBtn.textContent = '⏳ Downloading...';
+        downloadBtn.disabled = true;
+        
+        try {
+            const response = await fetch(currentImageUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tryon-${currentImageId || Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showToast('Image downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Download error:', error);
+            showToast('Failed to download image', 'error');
+        } finally {
+            downloadBtn.textContent = originalText;
+            downloadBtn.disabled = false;
+        }
     }
 
     function closeModal() {
