@@ -54,6 +54,8 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 
+@Html.AntiForgeryToken()
+
 <div class="page-container">
     <div class="page-header">
         <a href="/provider/orders" class="back-link">
@@ -299,6 +301,22 @@
                             <a href="/Contact" class="btn btn-primary">
                                 <i class="bi bi-chat-dots"></i> Contact Support
                             </a>
+                            
+                            @* Ship Order - Only enabled when status is "approved" *@
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.approved)
+                            {
+                                <button type="button" class="btn btn-success" onclick="markAsShipped('@Model.Order.Id')">
+                                    <i class="bi bi-truck"></i> Ship Order
+                                </button>
+                            }
+                            
+                            @* Confirm Return - Only enabled when status is "returning" *@
+                            @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returning)
+                            {
+                                <button type="button" class="btn btn-primary" onclick="confirmReturn('@Model.Order.Id')">
+                                    <i class="bi bi-check-circle"></i> Confirm Return
+                                </button>
+                            }
                             
                             @* Report Issue / Edit Report Issue - Only enabled when status is "returning" or "returned_with_issue" *@
                             @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returning || Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
@@ -659,6 +677,44 @@
                         </button>
                     </div>
                 `;
+            }
+        }
+
+        // Ship Order function
+        function markAsShipped(orderId) {
+            if (confirm('Mark this order as shipped? The delivered date will be set to now.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/provider/order/' + orderId + '?handler=ShipOrder';
+                
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token;
+                
+                form.appendChild(tokenInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Confirm Return function
+        function confirmReturn(orderId) {
+            if (confirm('Confirm that the item has been returned? This will mark the order as returned.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/provider/order/' + orderId + '?handler=ConfirmReturn';
+                
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token;
+                
+                form.appendChild(tokenInput);
+                document.body.appendChild(form);
+                form.submit();
             }
         }
     </script>

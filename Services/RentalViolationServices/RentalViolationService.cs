@@ -4,6 +4,8 @@ using BusinessObject.DTOs.RentalViolationDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using BusinessObject.Utilities;
+using DataAccess;
+using Microsoft.EntityFrameworkCore;
 using Repositories.OrderRepositories;
 using Repositories.ProductRepositories;
 using Repositories.RentalViolationRepositories;
@@ -20,6 +22,7 @@ namespace Services.RentalViolationServices
         private readonly ICloudinaryService _cloudinaryService;
         private readonly INotificationService _notificationService;
         private readonly IMapper _mapper;
+        private readonly ShareItDbContext _context;
 
         public RentalViolationService(
             IRentalViolationRepository violationRepo,
@@ -27,7 +30,8 @@ namespace Services.RentalViolationServices
             IProductRepository productRepository,
             ICloudinaryService cloudinaryService,
             INotificationService notificationService,
-            IMapper mapper)
+            IMapper mapper,
+            ShareItDbContext context)
         {
             _violationRepo = violationRepo;
             _orderRepo = orderRepo;
@@ -35,6 +39,7 @@ namespace Services.RentalViolationServices
             _cloudinaryService = cloudinaryService;
             _notificationService = notificationService;
             _mapper = mapper;
+            _context = context;
         }
 
         public async Task<List<Guid>> CreateMultipleViolationsAsync(CreateMultipleViolationsRequestDto dto, Guid providerId)
@@ -411,13 +416,11 @@ namespace Services.RentalViolationServices
                 violation.Status = ViolationStatus.CUSTOMER_ACCEPTED;
                 violation.CustomerResponseAt = DateTime.UtcNow;
 
-                // TODO: Process financial transaction here
-                // await ProcessViolationFinancialAsync(violationId);
-
                 // Update violation first
                 var updateResult = await _violationRepo.UpdateViolationAsync(violation);
 
                 // Check if all violations in this order are resolved and update order status if needed
+                // This will also create/update deposit refund ONLY when ALL violations are resolved
                 await CheckAndUpdateOrderStatusIfAllViolationsResolvedAsync(violation.OrderItem.Order.Id);
 
                 return updateResult;
@@ -511,48 +514,125 @@ namespace Services.RentalViolationServices
             return false;
         }
 
+        /// <summary>
+        /// Creates or updates deposit refund request ONLY when ALL violations are resolved
+        /// This ensures refund is created with complete penalty information
+        /// Similar to admin's Submit final decision logic
+        /// </summary>
+        private async Task CreateOrUpdateDepositRefundAfterAcceptanceAsync(Guid orderId)
+        {
+            // Get order with items
+            var order = await _context.Orders
+                .Include(o => o.Items)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            if (order == null || order.TotalDeposit <= 0)
+            {
+                return;
+            }
+
+            // Calculate total penalties from all accepted violations
+            var totalPenalties = await _context.RentalViolations
+                .Where(v => order.Items.Select(i => i.Id).Contains(v.OrderItemId) &&
+                           (v.Status == ViolationStatus.CUSTOMER_ACCEPTED ||
+                            v.Status == ViolationStatus.RESOLVED ||
+                            v.Status == ViolationStatus.RESOLVED_BY_ADMIN))
+                .SumAsync(v => v.PenaltyAmount);
+
+            // Check if deposit refund already exists
+            var existingRefund = await _context.DepositRefunds
+                .FirstOrDefaultAsync(dr => dr.OrderId == orderId);
+
+            if (existingRefund != null)
+            {
+                // Update existing refund with new penalty amount (when all violations are resolved)
+                existingRefund.TotalPenaltyAmount = totalPenalties;
+                existingRefund.RefundAmount = Math.Max(0, order.TotalDeposit - totalPenalties);
+                existingRefund.Notes = $"Updated after all violations resolved. Total penalties: {totalPenalties:N0} ₫";
+                _context.DepositRefunds.Update(existingRefund);
+            }
+            else
+            {
+                // Create new deposit refund (only when all violations are resolved)
+                var depositRefund = new DepositRefund
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = orderId,
+                    CustomerId = order.CustomerId,
+                    OriginalDepositAmount = order.TotalDeposit,
+                    TotalPenaltyAmount = totalPenalties,
+                    RefundAmount = Math.Max(0, order.TotalDeposit - totalPenalties),
+                    Status = TransactionStatus.initiated,
+                    Notes = totalPenalties > 0
+                        ? $"Deposit refund after all violations resolved. Total penalties: {totalPenalties:N0} ₫"
+                        : "Full deposit refund - no penalties",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _context.DepositRefunds.AddAsync(depositRefund);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
         public async Task CheckAndUpdateOrderStatusIfAllViolationsResolvedAsync(Guid orderId)
         {
             // Lấy order hiện tại
             var order = await _orderRepo.GetByIdAsync(orderId);
-            if (order == null || order.Status != OrderStatus.returned_with_issue)
+            if (order == null)
                 return;
 
             // Lấy tất cả violations của order này
             var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
 
+            // Nếu không có violation nào, không cần xử lý
+            if (!violations.Any())
+            {
+                return;
+            }
+
             // Kiểm tra xem tất cả violations đã được xử lý chưa
-            // Violation được coi là đã xử lý khi status = CUSTOMER_ACCEPTED hoặc RESOLVED
+            // Violation được coi là đã xử lý khi status = CUSTOMER_ACCEPTED hoặc RESOLVED hoặc RESOLVED_BY_ADMIN
+            // Violation chưa xử lý: PENDING, CUSTOMER_REJECTED
             var allViolationsResolved = violations.All(v =>
                 v.Status == ViolationStatus.CUSTOMER_ACCEPTED ||
-                v.Status == ViolationStatus.RESOLVED);
+                v.Status == ViolationStatus.RESOLVED ||
+                v.Status == ViolationStatus.RESOLVED_BY_ADMIN);
 
-            // Nếu tất cả violations đã được xử lý, chuyển order status sang returned
-            if (allViolationsResolved && violations.Any()) // Đảm bảo có ít nhất 1 violation
+            // CHỈ tạo/update deposit refund khi TẤT CẢ violations đã được resolve
+            // Điều này đảm bảo refund chỉ được tạo khi đã có đầy đủ thông tin về tất cả penalties
+            if (allViolationsResolved)
             {
-                var oldStatus = order.Status; // Store old status for UpdateProductCounts
-                order.Status = OrderStatus.returned;
-                order.UpdatedAt = DateTime.UtcNow;
+                // Create or update deposit refund request ONLY when ALL violations are resolved
+                await CreateOrUpdateDepositRefundAfterAcceptanceAsync(orderId);
 
-                // Update product counts (RentCount/BuyCount) when order becomes returned
-                await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
+                // Nếu order status là returned_with_issue, chuyển sang returned
+                if (order.Status == OrderStatus.returned_with_issue)
+                {
+                    var oldStatus = order.Status; // Store old status for UpdateProductCounts
+                    order.Status = OrderStatus.returned;
+                    order.UpdatedAt = DateTime.UtcNow;
 
-                await _orderRepo.UpdateAsync(order);
+                    // Update product counts (RentCount/BuyCount) when order becomes returned
+                    await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
 
-                // Gửi thông báo
-                await _notificationService.SendNotification(
-                    order.CustomerId,
-                    "✅ All violation issues have been resolved. Your order has been marked as returned.",
-                    NotificationType.order,
-                    order.Id
-                );
+                    await _orderRepo.UpdateAsync(order);
 
-                await _notificationService.SendNotification(
-                    order.ProviderId,
-                    $"✅ All violation issues for order #{order.Id} have been resolved. Order status updated to returned.",
-                    NotificationType.order,
-                    order.Id
-                );
+                    // Gửi thông báo
+                    await _notificationService.SendNotification(
+                        order.CustomerId,
+                        "✅ All violation issues have been resolved. Your order has been marked as returned.",
+                        NotificationType.order,
+                        order.Id
+                    );
+
+                    await _notificationService.SendNotification(
+                        order.ProviderId,
+                        $"✅ All violation issues for order #{order.Id} have been resolved. Order status updated to returned.",
+                        NotificationType.order,
+                        order.Id
+                    );
+                }
             }
         }
 
