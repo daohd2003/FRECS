@@ -748,14 +748,31 @@
                 let products = result.data?.items || [];
                 const totalPages = result.data?.totalPages || 1;
                 
+                // Debug: Log first product to check structure
+                if (products.length > 0 && searchTerm) {
+                    console.log('Search term:', searchTerm);
+                    console.log('Sample product:', products[0]);
+                    console.log('Product fields:', {
+                        name: products[0].name,
+                        providerName: products[0].providerName,
+                        category: products[0].category,
+                        description: products[0].description
+                    });
+                }
+                
                 // Apply client-side filters
                 if (searchTerm) {
-                    products = products.filter(p => 
-                        p.name.toLowerCase().includes(searchTerm) ||
-                        p.providerName?.toLowerCase().includes(searchTerm) ||
-                        p.category?.toLowerCase().includes(searchTerm) ||
-                        p.description?.toLowerCase().includes(searchTerm)
-                    );
+                    products = products.filter(p => {
+                        const name = (p.name || '').toLowerCase();
+                        const providerName = (p.providerName || '').toLowerCase();
+                        const category = (p.category || '').toLowerCase();
+                        const description = (p.description || '').toLowerCase();
+                        
+                        return name.includes(searchTerm) ||
+                               providerName.includes(searchTerm) ||
+                               category.includes(searchTerm) ||
+                               description.includes(searchTerm);
+                    });
                 }
                 
                 if (statusFilter && statusFilter !== 'all') {
@@ -1255,11 +1272,17 @@
             
             // Apply search filter
             if (searchTerm) {
-                filteredProducts = filteredProducts.filter(p => 
-                    p.name.toLowerCase().includes(searchTerm) ||
-                    p.category?.toLowerCase().includes(searchTerm) ||
-                    p.id.toLowerCase().includes(searchTerm)
-                );
+                filteredProducts = filteredProducts.filter(p => {
+                    const name = (p.name || '').toLowerCase();
+                    const category = (p.category || '').toLowerCase();
+                    const id = (p.id || '').toLowerCase();
+                    const description = (p.description || '').toLowerCase();
+                    
+                    return name.includes(searchTerm) ||
+                           category.includes(searchTerm) ||
+                           id.includes(searchTerm) ||
+                           description.includes(searchTerm);
+                });
             }
             
             // Apply status filter

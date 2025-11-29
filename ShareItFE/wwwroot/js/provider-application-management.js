@@ -7,7 +7,7 @@ class ProviderApplicationManagement {
         this.currentPage = 1;
         this.itemsPerPage = 10;
         this.searchQuery = '';
-        this.statusFilter = 'pending';
+        this.statusFilter = 'all';
         this.providerTypeFilter = 'all';
         this.sortBy = 'created-desc';
         this.selectedApplication = null;
@@ -26,7 +26,7 @@ class ProviderApplicationManagement {
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
-                this.searchQuery = e.target.value.toLowerCase();
+                this.searchQuery = e.target.value.trim().toLowerCase();
                 this.filterAndRenderApplications();
             });
         }

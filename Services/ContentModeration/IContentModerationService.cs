@@ -13,6 +13,12 @@ namespace Services.ContentModeration
         /// Check product content (name + description)
         /// </summary>
         Task<ContentModerationResultDTO> CheckProductContentAsync(string name, string? description);
+        
+        /// <summary>
+        /// Check feedback content (comment + provider response)
+        /// Can check either comment only, response only, or both
+        /// </summary>
+        Task<ContentModerationResultDTO> CheckFeedbackContentAsync(string? comment, string? providerResponse = null);
     }
 }
 

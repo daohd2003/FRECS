@@ -40,6 +40,33 @@ namespace Services.ContentModeration
             return await CheckProductContentAsync(content, null);
         }
 
+        /// <summary>
+        /// Check feedback content (comment + provider response)
+        /// Can check either comment only, response only, or both
+        /// </summary>
+        public async Task<ContentModerationResultDTO> CheckFeedbackContentAsync(string? comment, string? providerResponse = null)
+        {
+            // Combine both comment and response for checking
+            var combinedContent = new List<string>();
+            
+            if (!string.IsNullOrWhiteSpace(comment))
+                combinedContent.Add($"Customer comment: {comment}");
+            
+            if (!string.IsNullOrWhiteSpace(providerResponse))
+                combinedContent.Add($"Provider response: {providerResponse}");
+            
+            if (combinedContent.Count == 0)
+                return new ContentModerationResultDTO
+                {
+                    IsAppropriate = true,
+                    Reason = null,
+                    ViolatedTerms = new List<string>()
+                };
+            
+            var fullContent = string.Join(" | ", combinedContent);
+            return await CheckContentAsync(fullContent);
+        }
+
         public async Task<ContentModerationResultDTO> CheckProductContentAsync(string name, string? description)
         {
             try
