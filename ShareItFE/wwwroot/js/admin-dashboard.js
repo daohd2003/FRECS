@@ -497,6 +497,25 @@ function setCustomDate() {
     // Set preset to "Custom" when user manually selects dates
     document.getElementById('presetInput').value = 'Custom';
     
+    // Validate date range
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        if (end < start) {
+            // Show error message using toast if available, otherwise alert
+            if (window.toastManager) {
+                window.toastManager.error('End date must be after start date. Please select a valid date range.');
+            } else {
+                alert('End date must be after start date. Please select a valid date range.');
+            }
+            return; // Don't submit form
+        }
+    }
+    
     // Submit form
     document.getElementById('dateFilterForm').submit();
 }

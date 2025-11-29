@@ -442,11 +442,11 @@
                             }
                         </span>
                     </div>
-                    @if (Model.Order.RentalDaysDiscount > 0)
+                    @if (Model.Order.ItemRentalCountDiscount > 0)
                     {
                         <div class="summary-item">
-                            <span>Rental Days Discount <small class="text-muted">(@Model.Order.RentalDaysDiscountPercent.ToString("0.##")%)</small></span>
-                            <span class="text-success">-₫@Model.Order.RentalDaysDiscount.ToString("N0")</span>
+                            <span>Item Rental Discount <small class="text-muted">(@Model.Order.ItemRentalCountDiscountPercent.ToString("0.##")%)</small></span>
+                            <span class="text-success">-₫@Model.Order.ItemRentalCountDiscount.ToString("N0")</span>
                         </div>
                     }
                     @if (Model.Order.LoyaltyDiscount > 0)

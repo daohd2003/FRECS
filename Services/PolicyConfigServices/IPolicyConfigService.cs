@@ -8,6 +8,7 @@ namespace Services.PolicyConfigServices
         Task<ApiResponse<IEnumerable<PolicyConfigDto>>> GetAllPoliciesAsync();
         Task<ApiResponse<IEnumerable<PolicyConfigDto>>> GetActivePoliciesAsync();
         Task<ApiResponse<PolicyConfigDto>> GetPolicyByIdAsync(Guid id);
+        Task<ApiResponse<PolicyConfigDto>> GetActivePolicyByNameAsync(string policyName);
         Task<ApiResponse<PolicyConfigDto>> CreatePolicyAsync(CreatePolicyConfigDto dto, Guid adminId);
         Task<ApiResponse<PolicyConfigDto>> UpdatePolicyAsync(Guid id, UpdatePolicyConfigDto dto, Guid adminId);
         Task<ApiResponse<bool>> DeletePolicyAsync(Guid id);

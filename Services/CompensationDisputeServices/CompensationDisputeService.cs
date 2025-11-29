@@ -42,6 +42,14 @@ namespace Services.CompensationDisputeServices
                 throw new ArgumentException("Violation not found");
             }
 
+            // Kiểm tra xem đã có resolution cho violation này chưa
+            var existingResolution = await _context.IssueResolutions
+                .FirstOrDefaultAsync(r => r.ViolationId == dto.ViolationId);
+            if (existingResolution != null)
+            {
+                throw new ArgumentException("This dispute has already been resolved. Please refresh the page.");
+            }
+
             // Lấy thông tin violation để xử lý
             var violation = await _repository.GetViolationAsync(dto.ViolationId);
             if (violation == null)
@@ -114,12 +122,17 @@ namespace Services.CompensationDisputeServices
             var existingRefund = await _context.DepositRefunds
                 .FirstOrDefaultAsync(dr => dr.OrderId == orderId);
 
+            // Truncate reason to fit within Notes column limit (1000 chars)
+            var truncatedReason = dto.Reason?.Length > 900 
+                ? dto.Reason.Substring(0, 900) + "..." 
+                : dto.Reason;
+
             if (existingRefund != null)
             {
                 // Cập nhật refund hiện có
                 existingRefund.TotalPenaltyAmount = customerFineAmount;
                 existingRefund.RefundAmount = existingRefund.OriginalDepositAmount - customerFineAmount;
-                existingRefund.Notes = $"Updated after admin resolution: {dto.ResolutionType}. Reason: {dto.Reason}";
+                existingRefund.Notes = $"Updated after admin resolution: {dto.ResolutionType}. Reason: {truncatedReason}";
                 _context.DepositRefunds.Update(existingRefund);
             }
             else
@@ -142,7 +155,7 @@ namespace Services.CompensationDisputeServices
                         TotalPenaltyAmount = customerFineAmount,
                         RefundAmount = totalDeposit - customerFineAmount,
                         Status = TransactionStatus.initiated,
-                        Notes = $"Refund after admin resolution: {dto.ResolutionType}. Reason: {dto.Reason}",
+                        Notes = $"Refund after admin resolution: {dto.ResolutionType}. Reason: {truncatedReason}",
                         CreatedAt = DateTime.UtcNow
                     };
 

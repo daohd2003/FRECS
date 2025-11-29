@@ -421,6 +421,12 @@ namespace Repositories.DashboardRepositories
 
         public async Task<List<DailyRevenueDto>> GetDailyRevenueAsync(DateTime startDate, DateTime endDate)
         {
+            // Validate date range - swap if endDate < startDate
+            if (endDate < startDate)
+            {
+                (startDate, endDate) = (endDate, startDate);
+            }
+
             var dailyRevenue = await _context.Transactions
                 .Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate && t.Status == TransactionStatus.completed)
                 .GroupBy(t => t.TransactionDate.Date)
@@ -434,7 +440,8 @@ namespace Repositories.DashboardRepositories
                 .ToListAsync();
 
             // Fill in missing dates with zero revenue
-            var allDates = Enumerable.Range(0, (endDate - startDate).Days + 1)
+            var dayCount = Math.Max(0, (endDate - startDate).Days + 1);
+            var allDates = Enumerable.Range(0, dayCount)
                 .Select(offset => startDate.AddDays(offset).Date)
                 .ToList();
 

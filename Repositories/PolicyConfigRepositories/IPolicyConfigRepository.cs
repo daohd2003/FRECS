@@ -8,6 +8,7 @@ namespace Repositories.PolicyConfigRepositories
         Task<IEnumerable<PolicyConfig>> GetActivePoliciesAsync();
         Task<PolicyConfig?> GetPolicyByIdAsync(Guid id);
         Task<PolicyConfig?> GetPolicyByNameAsync(string policyName);
+        Task<PolicyConfig?> GetActivePolicyByNameAsync(string policyName);
         Task<PolicyConfig> CreatePolicyAsync(PolicyConfig policy);
         Task<PolicyConfig> UpdatePolicyAsync(PolicyConfig policy);
         Task<bool> DeletePolicyAsync(Guid id);

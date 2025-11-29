@@ -5,10 +5,20 @@ namespace Services.DiscountCalculationServices
     public interface IDiscountCalculationService
     {
         /// <summary>
-        /// Calculate automatic discounts for rental orders
-        /// - Rental days discount: 3% per day × item count, max 25%
+        /// Calculate automatic discounts for rental orders (legacy method)
         /// - Loyalty discount: 2% per previous rental × item count, max 15%
         /// </summary>
         Task<AutoDiscountResultDto> CalculateAutoDiscountsAsync(Guid customerId, int rentalDays, int itemCount, decimal subtotal);
+
+        /// <summary>
+        /// Calculate automatic discounts with specific product IDs
+        /// - Item Rental Discount: Based on previous rentals of specific product, applied to daily rate × quantity (fixed, not affected by rental days)
+        /// - Loyalty Discount: Based on total completed rentals on platform, fixed amount (not affected by quantity or days)
+        /// </summary>
+        /// <param name="customerId">Customer ID</param>
+        /// <param name="productIds">List of product IDs being rented</param>
+        /// <param name="baseDailyTotal">Total daily rate × quantity for all rental items</param>
+        /// <param name="baseAmountForLoyalty">Fixed base amount for loyalty discount calculation</param>
+        Task<AutoDiscountResultDto> CalculateAutoDiscountsWithItemsAsync(Guid customerId, List<Guid> productIds, decimal baseDailyTotal, decimal baseAmountForLoyalty);
     }
 }

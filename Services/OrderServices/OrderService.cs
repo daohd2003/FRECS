@@ -790,36 +790,42 @@ namespace Services.OrderServices
                         }
 
                         // Calculate automatic discounts for rental items
-                        decimal rentalDaysDiscount = 0;
+                        decimal itemRentalCountDiscount = 0;
                         decimal loyaltyDiscount = 0;
-                        decimal rentalDaysDiscountPercent = 0;
+                        decimal itemRentalCountDiscountPercent = 0;
                         decimal loyaltyDiscountPercent = 0;
                         
                         var rentalItems = orderItems.Where(oi => oi.TransactionType == BusinessObject.Enums.TransactionType.rental).ToList();
                         if (rentalItems.Any())
                         {
-                            // Get rental subtotal (only rental items)
-                            var rentalSubtotal = rentalItems.Sum(oi => oi.DailyRate * (oi.RentalDays ?? 1) * oi.Quantity);
+                            // Get product IDs for item rental count discount calculation
+                            var productIds = rentalItems.Select(oi => oi.ProductId).ToList();
                             
-                            // Get max rental days and total item count
-                            var maxRentalDays = rentalItems.Max(oi => oi.RentalDays ?? 1);
-                            var rentalItemCount = rentalItems.Sum(oi => oi.Quantity);
+                            // Calculate base daily total (giá/ngày × số lượng) for Item Rental Discount
+                            // This is FIXED regardless of rental days - only increases with quantity
+                            var baseDailyTotal = rentalItems.Sum(oi => oi.DailyRate * oi.Quantity);
+                            
+                            // Calculate base amount for Loyalty Discount (fixed, use average daily rate as base)
+                            // This is FIXED - does not change with quantity or days
+                            var baseAmountForLoyalty = rentalItems.Average(oi => oi.DailyRate);
 
-                            // Calculate auto discounts (3% per day × items, max 25% + 2% per previous rental × items, max 15%)
-                            var autoDiscount = await _discountCalculationService.CalculateAutoDiscountsAsync(
+                            // Calculate auto discounts
+                            // - Item Rental Discount: applied to baseDailyTotal (fixed, increases with quantity only)
+                            // - Loyalty Discount: applied to baseAmountForLoyalty (fixed, does not change with quantity or days)
+                            var autoDiscount = await _discountCalculationService.CalculateAutoDiscountsWithItemsAsync(
                                 customerId, 
-                                maxRentalDays, 
-                                rentalItemCount, 
-                                rentalSubtotal);
+                                productIds, 
+                                baseDailyTotal,
+                                baseAmountForLoyalty);
 
-                            rentalDaysDiscount = autoDiscount.RentalDaysDiscountAmount;
+                            itemRentalCountDiscount = autoDiscount.ItemRentalCountDiscountAmount;
                             loyaltyDiscount = autoDiscount.LoyaltyDiscountAmount;
-                            rentalDaysDiscountPercent = autoDiscount.RentalDaysDiscountPercent;
+                            itemRentalCountDiscountPercent = autoDiscount.ItemRentalCountDiscountPercent;
                             loyaltyDiscountPercent = autoDiscount.LoyaltyDiscountPercent;
                         }
 
                         // Total discount = discount code + auto discounts
-                        var totalDiscount = discountAmount + rentalDaysDiscount + loyaltyDiscount;
+                        var totalDiscount = discountAmount + itemRentalCountDiscount + loyaltyDiscount;
 
                         var newOrder = new Order
                         {
@@ -831,9 +837,9 @@ namespace Services.OrderServices
                             TotalDeposit = depositAmount, // Chỉ tiền cọc
                             DiscountCodeId = discountCodeIdToStore,
                             DiscountAmount = discountAmount, // Chỉ discount từ code
-                            RentalDaysDiscount = rentalDaysDiscount,
+                            ItemRentalCountDiscount = itemRentalCountDiscount,
                             LoyaltyDiscount = loyaltyDiscount,
-                            RentalDaysDiscountPercent = rentalDaysDiscountPercent,
+                            ItemRentalCountDiscountPercent = itemRentalCountDiscountPercent,
                             LoyaltyDiscountPercent = loyaltyDiscountPercent,
                             TotalAmount = subtotalAmount + depositAmount - totalDiscount, // Tổng = subtotal + deposit - all discounts
                             RentalStart = rentalStart,

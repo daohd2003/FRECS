@@ -286,7 +286,7 @@ namespace ShareItAPI.Controllers
 
         /// <summary>
         /// Preview automatic discounts for rental items in cart
-        /// - Rental days discount: 3% per day × item count, max 25%
+        /// - Item rental count discount: 2% per previous rental of specific item, max 20%
         /// - Loyalty discount: 2% per previous rental × item count, max 15%
         /// </summary>
         [HttpGet("preview-discount")]
@@ -311,19 +311,23 @@ namespace ShareItAPI.Controllers
                     return Ok(new ApiResponse<AutoDiscountResultDto>("No rental items in cart. Auto discount only applies to rentals.", new AutoDiscountResultDto()));
                 }
 
-                // Calculate rental subtotal
-                var rentalSubtotal = rentalItems.Sum(i => i.PricePerUnit * (i.RentalDays ?? 1) * i.Quantity);
+                // Calculate base daily total (giá/ngày × số lượng) for Item Rental Discount
+                // This is FIXED regardless of rental days - only increases with quantity
+                var baseDailyTotal = rentalItems.Sum(i => i.PricePerUnit * i.Quantity);
                 
-                // Get max rental days and total item count
-                var maxRentalDays = rentalItems.Max(i => i.RentalDays ?? 1);
-                var rentalItemCount = rentalItems.Sum(i => i.Quantity);
+                // Calculate base amount for Loyalty Discount (fixed, use average daily rate as base)
+                // This is FIXED - does not change with quantity or days
+                var baseAmountForLoyalty = rentalItems.Average(i => i.PricePerUnit);
+                
+                // Get product IDs for item rental count discount calculation
+                var productIds = rentalItems.Select(i => i.ProductId).ToList();
 
-                // Calculate auto discounts
-                var autoDiscount = await _discountCalculationService.CalculateAutoDiscountsAsync(
+                // Calculate auto discounts with specific product IDs
+                var autoDiscount = await _discountCalculationService.CalculateAutoDiscountsWithItemsAsync(
                     customerId, 
-                    maxRentalDays, 
-                    rentalItemCount, 
-                    rentalSubtotal);
+                    productIds, 
+                    baseDailyTotal,
+                    baseAmountForLoyalty);
 
                 return Ok(new ApiResponse<AutoDiscountResultDto>("Discount preview calculated successfully.", autoDiscount));
             }

@@ -29,9 +29,9 @@ namespace BusinessObject.DTOs.OrdersDto
         public string? DiscountCodeName { get; set; } // Tên mã giảm giá (nếu có)
         
         // Auto discount fields
-        public decimal RentalDaysDiscount { get; set; } = 0m; // Giảm giá theo số ngày thuê
+        public decimal ItemRentalCountDiscount { get; set; } = 0m; // Giảm giá theo số lần thuê sản phẩm cụ thể
         public decimal LoyaltyDiscount { get; set; } = 0m; // Giảm giá khách hàng thân thiết
-        public decimal RentalDaysDiscountPercent { get; set; } = 0m; // % giảm giá theo ngày thuê
+        public decimal ItemRentalCountDiscountPercent { get; set; } = 0m; // % giảm giá theo số lần thuê sản phẩm
         public decimal LoyaltyDiscountPercent { get; set; } = 0m; // % giảm giá khách hàng thân thiết
         public decimal TotalAmount { get; set; }
         public ShippingAddressDto ShippingAddress { get; set; }

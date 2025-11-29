@@ -65,6 +65,29 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
+        /// Get active policy by exact name (Public access)
+        /// </summary>
+        [HttpGet("by-name/{policyName}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetActivePolicyByName(string policyName)
+        {
+            try
+            {
+                var decodedName = Uri.UnescapeDataString(policyName);
+                var response = await _policyConfigService.GetActivePolicyByNameAsync(decodedName);
+                if (response.Data == null)
+                {
+                    return NotFound(response);
+                }
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"An error occurred: {ex.Message}", null!));
+            }
+        }
+
+        /// <summary>
         /// Get policy by ID
         /// </summary>
         [HttpGet("{id}")]
