@@ -362,6 +362,141 @@ namespace Services.FeedbackServices
             await _feedbackRepo.UpdateAsync(feedback);
         }
 
+        /// <summary>
+        /// Update provider response to existing feedback
+        /// Only the provider who owns the product/order or admin can update
+        /// </summary>
+        public async Task UpdateProviderResponseAsync(Guid feedbackId, UpdateProviderResponseDto dto, Guid providerOrAdminId)
+        {
+            var feedback = await _feedbackRepo.GetByIdAsync(feedbackId);
+            if (feedback == null)
+            {
+                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found.");
+            }
+
+            // Check if feedback has provider response
+            if (string.IsNullOrEmpty(feedback.ProviderResponse))
+            {
+                throw new InvalidOperationException("This feedback does not have a provider response yet. Use submit response instead.");
+            }
+
+            // Check user permissions
+            var responder = await _userRepo.GetByIdAsync(providerOrAdminId);
+            if (responder == null || (responder.Role != UserRole.provider && responder.Role != UserRole.admin))
+            {
+                throw new UnauthorizedAccessException("Only providers or administrators can update feedback responses.");
+            }
+
+            // Provider can only update their own response
+            if (responder.Role == UserRole.provider)
+            {
+                bool authorizedProvider = false;
+                if (feedback.TargetType == FeedbackTargetType.Product && feedback.Product != null && feedback.Product.ProviderId == providerOrAdminId)
+                {
+                    authorizedProvider = true;
+                }
+                else if (feedback.TargetType == FeedbackTargetType.Order && feedback.Order != null && feedback.Order.ProviderId == providerOrAdminId)
+                {
+                    authorizedProvider = true;
+                }
+
+                if (!authorizedProvider)
+                {
+                    throw new UnauthorizedAccessException("You can only update responses for your own products or orders.");
+                }
+            }
+
+            // Check content moderation before updating
+            var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(dto.ResponseContent);
+            
+            if (!moderationResult.IsAppropriate)
+            {
+                throw new InvalidOperationException($"Response content violates community guidelines: {moderationResult.Reason}");
+            }
+
+            // Update response
+            feedback.ProviderResponse = dto.ResponseContent;
+            feedback.ProviderResponseAt = DateTime.UtcNow; // Update timestamp
+            feedback.ProviderResponseById = providerOrAdminId; // Update responder ID
+
+            await _feedbackRepo.UpdateAsync(feedback);
+        }
+
+        /// <summary>
+        /// Update customer feedback (rating and comment only)
+        /// Only the customer who created the feedback or admin can update
+        /// </summary>
+        public async Task UpdateCustomerFeedbackAsync(Guid feedbackId, UpdateFeedbackDto dto, Guid customerId)
+        {
+            var feedback = await _feedbackRepo.GetByIdAsync(feedbackId);
+            if (feedback == null)
+            {
+                throw new KeyNotFoundException($"Feedback with ID {feedbackId} not found.");
+            }
+
+            // Check if user is the owner or admin
+            var isAdmin = await IsUserAdminAsync(customerId);
+            if (feedback.CustomerId != customerId && !isAdmin)
+            {
+                throw new UnauthorizedAccessException("You are not authorized to update this feedback.");
+            }
+
+            var oldRating = feedback.Rating;
+            var wasBlocked = feedback.IsBlocked;
+            var wasInvisible = !feedback.IsVisible;
+
+            // Check content moderation - always check if comment exists (even if not changed)
+            var commentToCheck = !string.IsNullOrWhiteSpace(dto.Comment) ? dto.Comment : feedback.Comment;
+            
+            if (!string.IsNullOrWhiteSpace(commentToCheck))
+            {
+                var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(commentToCheck);
+                
+                if (!moderationResult.IsAppropriate)
+                {
+                    // Content violates guidelines - keep/set as blocked
+                    feedback.IsBlocked = true;
+                    feedback.IsFlagged = true;
+                    feedback.IsVisible = false; // Hide from public
+                    feedback.ViolationReason = moderationResult.Reason;
+                    
+                    if (!wasBlocked)
+                    {
+                        feedback.BlockedAt = DateTime.UtcNow;
+                        feedback.BlockedById = null; // Auto-blocked by system
+                    }
+                    
+                    throw new InvalidOperationException($"Feedback content violates community guidelines: {moderationResult.Reason}");
+                }
+                else
+                {
+                    // Content is appropriate - unblock and make visible
+                    if (wasBlocked || wasInvisible)
+                    {
+                        feedback.IsBlocked = false;
+                        feedback.IsFlagged = false;
+                        feedback.IsVisible = true; // Make feedback visible to everyone
+                        feedback.ViolationReason = null;
+                        feedback.BlockedAt = null;
+                        feedback.BlockedById = null;
+                    }
+                }
+            }
+
+            // Update feedback
+            feedback.Rating = dto.Rating;
+            feedback.Comment = dto.Comment;
+            feedback.UpdatedAt = DateTime.UtcNow;
+
+            await _feedbackRepo.UpdateAsync(feedback);
+
+            // Recalculate product rating if rating changed and feedback is for a product
+            if (oldRating != dto.Rating && feedback.TargetType == FeedbackTargetType.Product && feedback.ProductId.HasValue)
+            {
+                await RecalculateProductRatingAsync(feedback.ProductId.Value);
+            }
+        }
+
         // --- INTERNAL HELPER FUNCTIONS ---
         public async Task RecalculateProductRatingAsync(Guid productId)
         {
@@ -433,13 +568,27 @@ namespace Services.FeedbackServices
 
             var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize);
 
+            // Check if current user is the provider of this product
+            bool isProvider = false;
+            if (currentUserId.HasValue && paginatedFeedbacks.Items.Any())
+            {
+                var firstFeedback = paginatedFeedbacks.Items.First();
+                if (firstFeedback.Product?.ProviderId == currentUserId.Value)
+                {
+                    isProvider = true;
+                }
+            }
+
             // Filter feedbacks based on visibility rules
             var filteredFeedbacks = paginatedFeedbacks.Items.Where(f =>
             {
                 // Always show visible feedbacks
                 if (f.IsVisible) return true;
                 
-                // Show flagged/hidden feedbacks only to the author
+                // Provider sees ALL feedbacks (including blocked)
+                if (isProvider) return true;
+                
+                // Show blocked feedbacks only to the author
                 if (!f.IsVisible && currentUserId.HasValue && f.CustomerId == currentUserId.Value)
                 {
                     return true;
@@ -688,6 +837,6 @@ namespace Services.FeedbackServices
             if (feedback.IsBlocked) return "Blocked";
             if (feedback.ProviderResponse != null) return "Responded";
             return "Active";
-        }       
+        }
     }
 }

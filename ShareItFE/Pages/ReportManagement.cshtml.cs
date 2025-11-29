@@ -115,7 +115,7 @@ namespace ShareItFE.Pages
 
                 // Logic chính để lấy dữ liệu cho tab hiện tại (để ở cuối)
                 var endpoint = Tab == "mytasks" ? "odata/mytasks" : "odata/unassigned";
-                var requestUrl = $"{endpoint}?$skip={(CurrentPage - 1) * PageSize}&$top={PageSize}&$count=true";
+                var requestUrl = $"{endpoint}?$skip={(CurrentPage - 1) * PageSize}&$top={PageSize}&$count=true&$orderby=DateCreated desc";
                 if (!string.IsNullOrEmpty(SearchQuery))
                 {
                     requestUrl += $"&$filter={System.Web.HttpUtility.UrlEncode(SearchQuery)}";

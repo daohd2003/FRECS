@@ -16,6 +16,8 @@ namespace BusinessObject.DTOs.OrdersDto
         public DateTime? RentalEndDate { get; set; }
         public OrderStatus Status { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal DiscountAmount { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

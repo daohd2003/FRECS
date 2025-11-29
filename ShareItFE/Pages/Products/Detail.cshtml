@@ -331,12 +331,21 @@
                     <div class="space-y-6">
                         @foreach (var feedback in Model.Feedbacks)
                         {
-                            <div class="bg-gray-50 rounded-lg p-6">
+                            <div class="bg-gray-50 rounded-lg p-6 @(feedback.IsBlocked ? "border-2 border-red-300" : "")" data-feedback-id="@feedback.FeedbackId">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="flex items-center space-x-3">
                                         <img src="@feedback.ProfilePictureUrl" alt="@feedback.CustomerName's avatar" class="w-10 h-10 rounded-full object-cover" />
                                         <div>
-                                            <div class="flex items-center space-x-2"><span class="font-semibold text-gray-900">@feedback.CustomerName</span></div>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="font-semibold text-gray-900">@feedback.CustomerName</span>
+                                                @if (feedback.IsBlocked && Model.IsOwnProduct)
+                                                {
+                                                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">
+                                                        <i data-lucide="shield-off" class="h-3 w-3 mr-1"></i>
+                                                        Blocked
+                                                    </span>
+                                                }
+                                            </div>
                                             <div class="flex items-center space-x-2">
                                                 <div class="flex">
                                                     @for (int i = 1; i <= 5; i++)
@@ -348,8 +357,44 @@
                                             </div>
                                         </div>
                                     </div>
+                                    @* Edit button for customer's own feedback *@
+                                    @if (Model.CurrentUserId != null && feedback.CustomerId.ToString() == Model.CurrentUserId.ToString())
+                                    {
+                                        <button type="button" 
+                                                class="edit-feedback-btn flex items-center space-x-1 px-3 py-1.5 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+                                                data-feedback-id="@feedback.FeedbackId"
+                                                data-rating="@feedback.Rating"
+                                                data-comment="@feedback.Comment">
+                                            <i data-lucide="edit-2" class="h-4 w-4"></i>
+                                            <span>Edit</span>
+                                        </button>
+                                    }
                                 </div>
-                                @if (!string.IsNullOrEmpty(feedback.ViolationReason))
+                                @if (feedback.IsBlocked && Model.IsOwnProduct)
+                                {
+                                    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                                        <div class="flex items-center mb-2">
+                                            <i data-lucide="shield-off" class="h-5 w-5 text-red-600 mr-2"></i>
+                                            <strong class="text-red-800">⚠️ This feedback is blocked and hidden from customers</strong>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(feedback.ViolationReason))
+                                        {
+                                            <p class="text-red-700 text-sm mb-2">
+                                                <strong>Reason:</strong> @feedback.ViolationReason
+                                            </p>
+                                        }
+                                        <p class="text-gray-600 text-sm mb-2">
+                                            <strong>Original comment:</strong>
+                                        </p>
+                                        <p class="p-3 bg-gray-100 rounded text-gray-700 text-sm">
+                                            @feedback.Comment
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-2">
+                                            💡 Only you (as the provider) can see this blocked feedback.
+                                        </p>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(feedback.ViolationReason))
                                 {
                                     <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-4">
                                         <div class="flex items-center mb-2">
@@ -1200,6 +1245,204 @@
                             commentError.classList.add('hidden');
                         }
                     }
+                });
+            }
+
+            // --- EDIT FEEDBACK FUNCTIONALITY ---
+            let isEditMode = false;
+            let editingFeedbackId = null;
+
+            // Helper function to get token from multiple sources
+            function getAccessToken() {
+                // Try Model first
+                let token = '@Model.AccessToken';
+                if (token && token !== '') {
+                    console.log('[Token] Found in Model.AccessToken');
+                    return token;
+                }
+                
+                // Try Cookie via Razor
+                token = '@(Request.Cookies["AccessToken"])';
+                if (token && token !== '') {
+                    console.log('[Token] Found in Request.Cookies');
+                    return token;
+                }
+                
+                // Try localStorage
+                token = localStorage.getItem('AccessToken');
+                if (token && token !== '') {
+                    console.log('[Token] Found in localStorage (AccessToken)');
+                    return token;
+                }
+                
+                token = localStorage.getItem('accessToken');
+                if (token && token !== '') {
+                    console.log('[Token] Found in localStorage (accessToken)');
+                    return token;
+                }
+                
+                // Try to get from cookie via JavaScript
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=');
+                    if (name === 'AccessToken' && value) {
+                        console.log('[Token] Found in document.cookie');
+                        return value;
+                    }
+                }
+                
+                console.log('[Token] Not found in any source');
+                return null;
+            }
+
+            // Handle edit feedback button clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.edit-feedback-btn')) {
+                    const btn = e.target.closest('.edit-feedback-btn');
+                    const feedbackId = btn.dataset.feedbackId;
+                    const rating = parseInt(btn.dataset.rating);
+                    const comment = btn.dataset.comment;
+
+                    // Set edit mode
+                    isEditMode = true;
+                    editingFeedbackId = feedbackId;
+
+                    // Populate modal with existing data
+                    feedbackRatingInput.value = rating;
+                    feedbackCommentInput.value = comment;
+                    updateStarRating(rating);
+
+                    // Change modal title and button text
+                    const modalTitle = feedbackModal.querySelector('h2');
+                    if (modalTitle) modalTitle.textContent = 'Edit Your Feedback';
+                    
+                    const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.textContent = 'Update Feedback';
+
+                    // Show modal
+                    feedbackModal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                }
+            });
+
+            // Handle feedback form submission (both create and edit)
+            if (feedbackForm) {
+                const originalSubmitHandler = feedbackForm.onsubmit;
+                feedbackForm.onsubmit = async function(e) {
+                    e.preventDefault();
+
+                    const rating = parseInt(feedbackRatingInput.value);
+                    const comment = feedbackCommentInput.value;
+
+                    // Validation
+                    let hasError = false;
+                    if (!rating || rating < 1 || rating > 5) {
+                        hasError = true;
+                        if (ratingError) ratingError.classList.remove('hidden');
+                    } else {
+                        if (ratingError) ratingError.classList.add('hidden');
+                    }
+
+                    if (comment && comment.length > 1000) {
+                        hasError = true;
+                        if (commentError) commentError.classList.remove('hidden');
+                    } else {
+                        if (commentError) commentError.classList.add('hidden');
+                    }
+
+                    if (hasError) return false;
+
+                    // If edit mode, call API to update
+                    if (isEditMode && editingFeedbackId) {
+                        try {
+                            // Get token using helper function
+                            const token = getAccessToken();
+                            
+                            if (!token) {
+                                showToast('Please log in to edit feedback', 'error');
+                                return false;
+                            }
+
+                            console.log('[Edit Feedback] Sending update request for feedback:', editingFeedbackId);
+                            console.log('[Edit Feedback] API URL:', `@Model.ApiBaseUrl/feedbacks/${editingFeedbackId}/update`);
+                            console.log('[Edit Feedback] Payload:', { rating, comment });
+                            
+                            const response = await fetch(`@Model.ApiBaseUrl/feedbacks/${editingFeedbackId}/update`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({
+                                    rating: rating,
+                                    comment: comment
+                                })
+                            });
+
+                            console.log('[Edit Feedback] Response status:', response.status);
+                            
+                            if (response.ok) {
+                                showToast('Feedback updated successfully!', 'success');
+                                
+                                // Close modal
+                                feedbackModal.classList.add('hidden');
+                                document.body.classList.remove('overflow-hidden');
+                                
+                                // Reset edit mode
+                                isEditMode = false;
+                                editingFeedbackId = null;
+                                
+                                // Reload page to show updated feedback
+                                setTimeout(() => window.location.reload(), 1000);
+                            } else {
+                                let errorMessage = 'Failed to update feedback';
+                                try {
+                                    const error = await response.json();
+                                    errorMessage = error.message || error.title || errorMessage;
+                                    console.error('[Edit Feedback] Error response:', error);
+                                } catch (e) {
+                                    const errorText = await response.text();
+                                    console.error('[Edit Feedback] Error text:', errorText);
+                                    if (response.status === 401) {
+                                        errorMessage = 'Please log in to edit feedback';
+                                    } else if (response.status === 403) {
+                                        errorMessage = 'You are not authorized to edit this feedback';
+                                    }
+                                }
+                                showToast(errorMessage, 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error updating feedback:', error);
+                            showToast('An error occurred while updating feedback', 'error');
+                        }
+                        return false;
+                    }
+
+                    // Otherwise, use default form submission for create
+                    return true;
+                };
+            }
+
+            // Reset edit mode when closing modal
+            if (closeFeedbackBtn) {
+                closeFeedbackBtn.addEventListener('click', () => {
+                    isEditMode = false;
+                    editingFeedbackId = null;
+                    const modalTitle = feedbackModal.querySelector('h2');
+                    if (modalTitle) modalTitle.textContent = 'Leave Your Feedback';
+                    const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.textContent = 'Submit Feedback';
+                });
+            }
+
+            if (cancelFeedbackBtn) {
+                cancelFeedbackBtn.addEventListener('click', () => {
+                    isEditMode = false;
+                    editingFeedbackId = null;
+                    const modalTitle = feedbackModal.querySelector('h2');
+                    if (modalTitle) modalTitle.textContent = 'Leave Your Feedback';
+                    const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+                    if (submitBtn) submitBtn.textContent = 'Submit Feedback';
                 });
             }
 

@@ -1,7 +1,6 @@
 using AutoMapper;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
-using BusinessObject.Models;
 using Moq;
 using Repositories.ProductRepositories;
 using Services.ProductServices;
@@ -10,6 +9,9 @@ using Services.EmailServices;
 using Services.ConversationServices;
 using Services.CloudServices;
 using Services.NotificationServices;
+using Product = BusinessObject.Models.Product;
+using User = BusinessObject.Models.User;
+using ProductImage = BusinessObject.Models.ProductImage;
 
 namespace Services.Tests.Product
 {
@@ -331,6 +333,584 @@ namespace Services.Tests.Product
 
             _mockProductRepository.Verify(x => x.GetProductWithImagesByIdAsync(emptyGuid), Times.Once);
         }
+
+        #region Content Violation Notification Tests
+
+        /// <summary>
+        /// UTCID03: Create product with content violation
+        /// Expected: Product created, notification sent to provider about violation
+        /// Notification message should include: product name, violation reason, violated terms
+        /// </summary>
+        [Fact]
+        public async Task UTCID03_CreateProduct_WithContentViolation_ShouldSendNotificationToProvider()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+
+            var createDto = new ProductRequestDTO
+            {
+                Name = "Inappropriate Product Name",
+                Description = "This contains bad words",
+                CategoryId = categoryId,
+                PricePerDay = 100000,
+                RentalQuantity = 5,
+                Gender = "Unisex",
+                SecurityDeposit = 200000
+            };
+
+            var newProduct = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                CategoryId = categoryId,
+                PricePerDay = createDto.PricePerDay,
+                AvailabilityStatus = AvailabilityStatus.pending, // Set to pending due to violation
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var productWithProvider = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                Provider = new User
+                {
+                    Id = providerId,
+                    Email = "provider@example.com",
+                    Role = UserRole.provider
+                }
+            };
+
+            var moderationResult = new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
+            {
+                IsAppropriate = false,
+                Reason = "content policy violation",
+                ViolatedTerms = new List<string> { "bad words", "inappropriate content" }
+            };
+
+            var productDto = new ProductDTO
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description
+            };
+
+            _mockProductRepository.Setup(x => x.AddProductWithImagesAsync(It.IsAny<ProductRequestDTO>()))
+                .ReturnsAsync(newProduct);
+
+            _mockProductRepository.Setup(x => x.GetProductWithProviderByIdAsync(productId))
+                .ReturnsAsync(productWithProvider);
+
+            _mockContentModerationService.Setup(x => x.CheckProductContentAsync(
+                createDto.Name,
+                createDto.Description))
+                .ReturnsAsync(moderationResult);
+
+            _mockProductRepository.Setup(x => x.UpdateProductAvailabilityStatusAsync(It.IsAny<Guid>(), It.IsAny<AvailabilityStatus>())).ReturnsAsync(true);
+
+            _mockMapper.Setup(x => x.Map<ProductDTO>(newProduct))
+                .Returns(productDto);
+
+            // Act
+            var result = await _productService.AddAsync(createDto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(productId, result.Id);
+
+            // Verify notification was sent with correct parameters
+            _mockNotificationService.Verify(x => x.SendNotification(
+                providerId,
+                It.Is<string>(msg => 
+                    msg.Contains(createDto.Name) &&
+                    msg.Contains("flagged for review") &&
+                    msg.Contains("bad words, inappropriate content") &&
+                    msg.Contains("content policy violation")),
+                NotificationType.content_violation,
+                null
+            ), Times.Once);
+
+            // Verify product status was set to pending
+            _mockProductRepository.Verify(x => x.UpdateProductAvailabilityStatusAsync(
+                productId,
+                AvailabilityStatus.pending), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID04: Create product without content violation
+        /// Expected: Product created, NO notification sent
+        /// </summary>
+        [Fact]
+        public async Task UTCID04_CreateProduct_WithoutContentViolation_ShouldNotSendNotification()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+
+            var createDto = new ProductRequestDTO
+            {
+                Name = "Clean Product Name",
+                Description = "This is appropriate content",
+                CategoryId = categoryId,
+                PricePerDay = 100000,
+                RentalQuantity = 5,
+                Gender = "Unisex",
+                SecurityDeposit = 200000
+            };
+
+            var newProduct = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                CategoryId = categoryId,
+                PricePerDay = createDto.PricePerDay,
+                AvailabilityStatus = AvailabilityStatus.available,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var productWithProvider = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                Provider = new User
+                {
+                    Id = providerId,
+                    Email = "provider@example.com",
+                    Role = UserRole.provider
+                }
+            };
+
+            var moderationResult = new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
+            {
+                IsAppropriate = true,
+                Reason = null,
+                ViolatedTerms = new List<string>()
+            };
+
+            var productDto = new ProductDTO
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description
+            };
+
+            _mockProductRepository.Setup(x => x.AddProductWithImagesAsync(It.IsAny<ProductRequestDTO>()))
+                .ReturnsAsync(newProduct);
+
+            _mockProductRepository.Setup(x => x.GetProductWithProviderByIdAsync(productId))
+                .ReturnsAsync(productWithProvider);
+
+            _mockContentModerationService.Setup(x => x.CheckProductContentAsync(
+                createDto.Name,
+                createDto.Description))
+                .ReturnsAsync(moderationResult);
+
+            _mockMapper.Setup(x => x.Map<ProductDTO>(newProduct))
+                .Returns(productDto);
+
+            // Act
+            var result = await _productService.AddAsync(createDto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(productId, result.Id);
+
+            // Verify NO notification was sent
+            _mockNotificationService.Verify(x => x.SendNotification(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<NotificationType>(),
+                It.IsAny<Guid?>()
+            ), Times.Never);
+
+            // Verify product status was NOT changed to pending
+            _mockProductRepository.Verify(x => x.UpdateProductAvailabilityStatusAsync(
+                It.IsAny<Guid>(),
+                AvailabilityStatus.pending), Times.Never);
+        }
+
+        /// <summary>
+        /// UTCID05: Update product with content violation
+        /// Expected: Product updated to pending status, notification sent to provider
+        /// </summary>
+        [Fact]
+        public async Task UTCID05_UpdateProduct_WithContentViolation_ShouldSendNotificationToProvider()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+
+            var updateDto = new ProductDTO
+            {
+                Id = productId,
+                Name = "Updated Product with Bad Content",
+                Description = "This contains inappropriate words",
+                CategoryId = categoryId,
+                PricePerDay = 150000,
+                Images = new List<ProductImageDTO>()
+            };
+
+            var existingProduct = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = "Original Product Name",
+                Description = "Original description",
+                CategoryId = categoryId,
+                PricePerDay = 100000,
+                AvailabilityStatus = AvailabilityStatus.available,
+                Images = new List<ProductImage>()
+            };
+
+            var moderationResult = new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
+            {
+                IsAppropriate = false,
+                Reason = "inappropriate language detected",
+                ViolatedTerms = new List<string> { "inappropriate words", "offensive content" }
+            };
+
+            _mockProductRepository.Setup(x => x.GetProductWithImagesAndProviderAsync(productId))
+                .ReturnsAsync(existingProduct);
+
+            _mockProductRepository.Setup(x => x.UpdateProductWithImagesAsync(updateDto))
+                .ReturnsAsync(true);
+
+            _mockContentModerationService.Setup(x => x.CheckProductContentAsync(
+                updateDto.Name,
+                updateDto.Description))
+                .ReturnsAsync(moderationResult);
+
+            _mockProductRepository.Setup(x => x.UpdateProductAvailabilityStatusAsync(It.IsAny<Guid>(), It.IsAny<AvailabilityStatus>())).ReturnsAsync(true);
+
+            _mockProductRepository.Setup(x => x.UpdateAsync(It.IsAny<BusinessObject.Models.Product>()))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _productService.UpdateAsync(updateDto);
+
+            // Assert
+            Assert.True(result);
+
+            // Verify notification was sent with correct parameters
+            _mockNotificationService.Verify(x => x.SendNotification(
+                providerId,
+                It.Is<string>(msg => 
+                    msg.Contains(updateDto.Name) &&
+                    msg.Contains("flagged for review") &&
+                    msg.Contains("inappropriate words, offensive content") &&
+                    msg.Contains("inappropriate language detected")),
+                NotificationType.content_violation,
+                null
+            ), Times.Once);
+
+            // Verify product status was set to pending
+            _mockProductRepository.Verify(x => x.UpdateProductAvailabilityStatusAsync(
+                productId,
+                AvailabilityStatus.pending), Times.Once);
+
+            // Verify violation reason was saved
+            _mockProductRepository.Verify(x => x.UpdateAsync(
+                It.Is<BusinessObject.Models.Product>(p => 
+                    p.Id == productId && 
+                    p.ViolationReason == "inappropriate language detected")), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID06: Update product without content violation (previously pending)
+        /// Expected: Product status changed back to available, NO violation notification sent
+        /// </summary>
+        [Fact]
+        public async Task UTCID06_UpdateProduct_WithoutViolation_PendingToAvailable_ShouldNotSendNotification()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+
+            var updateDto = new ProductDTO
+            {
+                Id = productId,
+                Name = "Clean Updated Product",
+                Description = "This is now appropriate content",
+                CategoryId = categoryId,
+                PricePerDay = 150000,
+                Images = new List<ProductImageDTO>()
+            };
+
+            var existingProduct = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = "Product with Bad Content",
+                Description = "Bad description",
+                CategoryId = categoryId,
+                PricePerDay = 100000,
+                AvailabilityStatus = AvailabilityStatus.pending, // Was pending due to violation
+                ViolationReason = "Previous violation",
+                Images = new List<ProductImage>()
+            };
+
+            var moderationResult = new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
+            {
+                IsAppropriate = true,
+                Reason = null,
+                ViolatedTerms = new List<string>()
+            };
+
+            _mockProductRepository.Setup(x => x.GetProductWithImagesAndProviderAsync(productId))
+                .ReturnsAsync(existingProduct);
+
+            _mockProductRepository.Setup(x => x.UpdateProductWithImagesAsync(updateDto))
+                .ReturnsAsync(true);
+
+            _mockContentModerationService.Setup(x => x.CheckProductContentAsync(
+                updateDto.Name,
+                updateDto.Description))
+                .ReturnsAsync(moderationResult);
+
+            _mockProductRepository.Setup(x => x.UpdateProductAvailabilityStatusAsync(It.IsAny<Guid>(), It.IsAny<AvailabilityStatus>())).ReturnsAsync(true);
+
+            _mockProductRepository.Setup(x => x.UpdateAsync(It.IsAny<BusinessObject.Models.Product>()))
+                .ReturnsAsync(true);
+
+            // Act
+            var result = await _productService.UpdateAsync(updateDto);
+
+            // Assert
+            Assert.True(result);
+
+            // Verify NO violation notification was sent
+            _mockNotificationService.Verify(x => x.SendNotification(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                NotificationType.content_violation,
+                It.IsAny<Guid?>()
+            ), Times.Never);
+
+            // Verify product status was changed back to available
+            _mockProductRepository.Verify(x => x.UpdateProductAvailabilityStatusAsync(
+                productId,
+                AvailabilityStatus.available), Times.Once);
+
+            // Verify violation reason was cleared
+            _mockProductRepository.Verify(x => x.UpdateAsync(
+                It.Is<BusinessObject.Models.Product>(p => 
+                    p.Id == productId && 
+                    p.ViolationReason == null)), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID07: Create product with violation but notification fails
+        /// Expected: Product still created with pending status, error logged but not thrown
+        /// </summary>
+        [Fact]
+        public async Task UTCID07_CreateProduct_NotificationFails_ShouldStillCreateProduct()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+
+            var createDto = new ProductRequestDTO
+            {
+                Name = "Product with Violation",
+                Description = "Bad content",
+                CategoryId = categoryId,
+                PricePerDay = 100000,
+                RentalQuantity = 5,
+                Gender = "Unisex",
+                SecurityDeposit = 200000
+            };
+
+            var newProduct = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                CategoryId = categoryId,
+                PricePerDay = createDto.PricePerDay,
+                AvailabilityStatus = AvailabilityStatus.pending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var productWithProvider = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                Provider = new User
+                {
+                    Id = providerId,
+                    Email = "provider@example.com",
+                    Role = UserRole.provider
+                }
+            };
+
+            var moderationResult = new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
+            {
+                IsAppropriate = false,
+                Reason = "violation detected",
+                ViolatedTerms = new List<string> { "bad content" }
+            };
+
+            var productDto = new ProductDTO
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description
+            };
+
+            _mockProductRepository.Setup(x => x.AddProductWithImagesAsync(It.IsAny<ProductRequestDTO>()))
+                .ReturnsAsync(newProduct);
+
+            _mockProductRepository.Setup(x => x.GetProductWithProviderByIdAsync(productId))
+                .ReturnsAsync(productWithProvider);
+
+            _mockContentModerationService.Setup(x => x.CheckProductContentAsync(
+                createDto.Name,
+                createDto.Description))
+                .ReturnsAsync(moderationResult);
+
+            _mockProductRepository.Setup(x => x.UpdateProductAvailabilityStatusAsync(It.IsAny<Guid>(), It.IsAny<AvailabilityStatus>())).ReturnsAsync(true);
+
+            // Notification service throws exception
+            _mockNotificationService.Setup(x => x.SendNotification(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<NotificationType>(),
+                It.IsAny<Guid?>()))
+                .ThrowsAsync(new Exception("Notification service unavailable"));
+
+            _mockMapper.Setup(x => x.Map<ProductDTO>(newProduct))
+                .Returns(productDto);
+
+            // Act
+            var result = await _productService.AddAsync(createDto);
+
+            // Assert - Product should still be created despite notification failure
+            Assert.NotNull(result);
+            Assert.Equal(productId, result.Id);
+
+            // Verify notification was attempted
+            _mockNotificationService.Verify(x => x.SendNotification(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                NotificationType.content_violation,
+                null
+            ), Times.Once);
+
+            // Verify product status was still set to pending
+            _mockProductRepository.Verify(x => x.UpdateProductAvailabilityStatusAsync(
+                productId,
+                AvailabilityStatus.pending), Times.Once);
+        }
+
+        /// <summary>
+        /// UTCID08: Verify notification message format for content violation
+        /// Expected: Message contains product name, reason, and violated terms
+        /// </summary>
+        [Fact]
+        public async Task UTCID08_ContentViolationNotification_ShouldHaveCorrectMessageFormat()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var productId = Guid.NewGuid();
+            var categoryId = Guid.NewGuid();
+            var productName = "Test Product";
+
+            var createDto = new ProductRequestDTO
+            {
+                Name = productName,
+                Description = "Violation content",
+                CategoryId = categoryId,
+                PricePerDay = 100000,
+                RentalQuantity = 5,
+                Gender = "Unisex",
+                SecurityDeposit = 200000
+            };
+
+            var newProduct = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Description = createDto.Description,
+                CategoryId = categoryId,
+                AvailabilityStatus = AvailabilityStatus.pending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var productWithProvider = new BusinessObject.Models.Product
+            {
+                Id = productId,
+                ProviderId = providerId,
+                Name = createDto.Name,
+                Provider = new User { Id = providerId, Email = "provider@example.com" }
+            };
+
+            var moderationResult = new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
+            {
+                IsAppropriate = false,
+                Reason = "offensive language",
+                ViolatedTerms = new List<string> { "term1", "term2", "term3" }
+            };
+
+            var productDto = new ProductDTO { Id = productId, Name = productName };
+
+            _mockProductRepository.Setup(x => x.AddProductWithImagesAsync(It.IsAny<ProductRequestDTO>()))
+                .ReturnsAsync(newProduct);
+            _mockProductRepository.Setup(x => x.GetProductWithProviderByIdAsync(productId))
+                .ReturnsAsync(productWithProvider);
+            _mockContentModerationService.Setup(x => x.CheckProductContentAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(moderationResult);
+            _mockProductRepository.Setup(x => x.UpdateProductAvailabilityStatusAsync(It.IsAny<Guid>(), It.IsAny<AvailabilityStatus>()))
+                .ReturnsAsync(true);
+            _mockMapper.Setup(x => x.Map<ProductDTO>(It.IsAny<BusinessObject.Models.Product>()))
+                .Returns(productDto);
+
+            string capturedMessage = string.Empty;
+            _mockNotificationService.Setup(x => x.SendNotification(
+                It.IsAny<Guid>(),
+                It.IsAny<string>(),
+                It.IsAny<NotificationType>(),
+                It.IsAny<Guid?>()))
+                .Callback<Guid, string, NotificationType, Guid?>((userId, message, type, orderId) =>
+                {
+                    capturedMessage = message;
+                })
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await _productService.AddAsync(createDto);
+
+            // Assert - Verify message format
+            Assert.Contains(productName, capturedMessage);
+            Assert.Contains("flagged for review", capturedMessage);
+            Assert.Contains("offensive language", capturedMessage);
+            Assert.Contains("term1, term2, term3", capturedMessage);
+            Assert.Contains("Please update your product to comply with our guidelines", capturedMessage);
+        }
+
+        #endregion
     }
 }
+
+
+
 

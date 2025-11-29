@@ -126,6 +126,70 @@ namespace ShareItAPI.Controllers
             await _feedbackService.SubmitProviderResponseAsync(feedbackId, dto, currentUserId);
             return Ok(new ApiResponse<string>("Provider response submitted successfully.", null));
         }
+
+        /// <summary>
+        /// Update provider response to existing feedback
+        /// PUT: api/feedback/{feedbackId}/response/update
+        /// </summary>
+        [HttpPut("{feedbackId:guid}/response/update")]
+        [Authorize(Roles = "provider,admin")]
+        public async Task<IActionResult> UpdateProviderResponse(Guid feedbackId, [FromBody] UpdateProviderResponseDto dto)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                await _feedbackService.UpdateProviderResponseAsync(feedbackId, dto, currentUserId);
+                return Ok(new ApiResponse<string>("Provider response updated successfully.", null));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"An error occurred: {ex.Message}", null));
+            }
+        }
+
+        /// <summary>
+        /// Update customer feedback (rating and comment)
+        /// PUT: api/feedback/{feedbackId}/update
+        /// </summary>
+        [HttpPut("{feedbackId:guid}/update")]
+        [Authorize(Roles = "customer,admin")]
+        public async Task<IActionResult> UpdateCustomerFeedback(Guid feedbackId, [FromBody] UpdateFeedbackDto dto)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                await _feedbackService.UpdateCustomerFeedbackAsync(feedbackId, dto, currentUserId);
+                return Ok(new ApiResponse<string>("Feedback updated successfully.", null));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<string>(ex.Message, null));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<string>($"An error occurred: {ex.Message}", null));
+            }
+        }
         [HttpGet("product/{productId}")]
         public async Task<IActionResult> GetFeedbacksByProduct(Guid productId, [FromQuery] int page = 1, [FromQuery] int pageSize = 5)
         {
