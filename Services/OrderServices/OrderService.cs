@@ -423,6 +423,16 @@ namespace Services.OrderServices
                 return;
             }
 
+            // Check if deposit refund already exists for this order (avoid duplicate)
+            var existingRefund = await _context.DepositRefunds
+                .FirstOrDefaultAsync(dr => dr.OrderId == order.Id);
+
+            if (existingRefund != null)
+            {
+                // Refund already exists, skip creation
+                return;
+            }
+
             // Calculate total penalties from rental violations
             var totalPenalties = await _context.RentalViolations
                 .Where(v => order.Items.Select(i => i.Id).Contains(v.OrderItemId))
