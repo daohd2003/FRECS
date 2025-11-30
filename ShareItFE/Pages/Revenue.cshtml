@@ -469,18 +469,15 @@
                                            asp-for="NewBankAccount.BankName" 
                                            list="vietnamBanksList"
                                            required 
-                                           class="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                                           class="w-full px-3 py-2 pr-28 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                                            placeholder="Type to search Vietnamese banks..." 
                                            autocomplete="off" />
                                     <button type="button" 
                                             id="changeBankBtn" 
-                                            class="hidden absolute right-2 top-1/2 transform -translate-y-1/2 px-2 py-1 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+                                            class="hidden absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 text-xs font-semibold text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors z-10 bg-white shadow-sm"
                                             onclick="unlockBankName()">
                                         Change
                                     </button>
-                                    <div id="bankNameLocked" class="hidden absolute right-2 top-1/2 transform -translate-y-1/2">
-                                        <i data-lucide="lock" class="h-4 w-4 text-green-600" title="Bank name locked after selection"></i>
-                                    </div>
                                 </div>
                                 <div id="bankNameWarning" class="hidden mt-1 text-xs text-amber-600 flex items-center">
                                     <i data-lucide="alert-triangle" class="h-3 w-3 mr-1"></i>
@@ -1141,7 +1138,6 @@
         function lockBankName(value) {
             const bankNameInput = document.getElementById('bankNameField');
             const changeBtn = document.getElementById('changeBankBtn');
-            const lockedIcon = document.getElementById('bankNameLocked');
             
             bankNameLocked = true;
             lastLockedValue = value;
@@ -1152,8 +1148,7 @@
             bankNameInput.style.cursor = 'not-allowed';
             bankNameInput.style.borderColor = '#10b981';
             
-            // Show lock icon and change button
-            lockedIcon.classList.remove('hidden');
+            // Show change button only (lock icon removed)
             changeBtn.classList.remove('hidden');
             
             // Hide warning
@@ -1166,7 +1161,6 @@
         function unlockBankName() {
             const bankNameInput = document.getElementById('bankNameField');
             const changeBtn = document.getElementById('changeBankBtn');
-            const lockedIcon = document.getElementById('bankNameLocked');
             
             bankNameLocked = false;
             lastLockedValue = '';
@@ -1177,8 +1171,7 @@
             bankNameInput.style.cursor = 'text';
             bankNameInput.style.borderColor = '#d1d5db';
             
-            // Hide lock icon and change button
-            lockedIcon.classList.add('hidden');
+            // Hide change button
             changeBtn.classList.add('hidden');
             
             // Focus on input for easy editing
@@ -1489,14 +1482,14 @@
         function formatNumber(num) {
             // Convert to integer to remove any decimals
             const intNum = Math.floor(Number(num));
-            // Format with dot as thousand separator for Vietnamese
-            return intNum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            // Format with comma as thousand separator
+            return intNum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
 
-        // Parse formatted number (Vietnamese uses dot separator)
+        // Parse formatted number (uses comma separator)
         function parseFormattedNumber(str) {
-            // Remove dots (Vietnamese thousand separator) and parse
-            return parseInt(str.replace(/\./g, '').replace(/,/g, '')) || 0;
+            // Remove commas (thousand separator) and parse
+            return parseInt(str.replace(/,/g, '').replace(/\./g, '')) || 0;
         }
 
         // Format and validate amount input
@@ -1691,7 +1684,7 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return '$' + value.toLocaleString();
+                                    return value.toLocaleString('vi-VN') + '₫';
                                 }
                             }
                         }

@@ -124,6 +124,84 @@ namespace ShareItFE.Pages.Provider
                 return RedirectToPage("/Provider/OrderManagement");
             }
         }
+
+        public async Task<IActionResult> OnPostShipOrderAsync(Guid id)
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return RedirectToPage("/Auth");
+            }
+
+            // Verify user has provider role
+            if (!User.IsInRole("provider") && !User.IsInRole("staff") && !User.IsInRole("admin"))
+            {
+                TempData["ErrorMessage"] = "Access Denied.";
+                return RedirectToPage("/Index");
+            }
+
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                
+                // Use the existing endpoint to mark as shipping
+                var response = await client.PutAsync($"api/orders/{id}/mark-shipping", null);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["SuccessMessage"] = "Order shipped successfully!";
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    TempData["ErrorMessage"] = $"Error shipping order: {errorContent}";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error shipping order: {ex.Message}";
+            }
+
+            return RedirectToPage(new { id });
+        }
+
+        public async Task<IActionResult> OnPostConfirmReturnAsync(Guid id)
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return RedirectToPage("/Auth");
+            }
+
+            // Verify user has provider role
+            if (!User.IsInRole("provider") && !User.IsInRole("staff") && !User.IsInRole("admin"))
+            {
+                TempData["ErrorMessage"] = "Access Denied.";
+                return RedirectToPage("/Index");
+            }
+
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                
+                // Use the existing endpoint to mark as returned
+                var response = await client.PutAsync($"api/orders/{id}/mark-returned", null);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    TempData["SuccessMessage"] = "Order marked as returned successfully!";
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    TempData["ErrorMessage"] = $"Error confirming return: {errorContent}";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error confirming return: {ex.Message}";
+            }
+
+            return RedirectToPage(new { id });
+        }
     }
 }
 
