@@ -71,10 +71,10 @@ namespace BusinessObject.Models
         public decimal DiscountAmount { get; set; } = 0m;
 
         /// <summary>
-        /// Rental days discount amount (3% per day × items, max 25%)
+        /// Item rental count discount amount (2% per previous rental of specific item, max 20%)
         /// </summary>
         [Column(TypeName = "decimal(10,2)")]
-        public decimal RentalDaysDiscount { get; set; } = 0m;
+        public decimal ItemRentalCountDiscount { get; set; } = 0m;
 
         /// <summary>
         /// Loyalty discount amount (2% per previous rental × items, max 15%)
@@ -83,10 +83,10 @@ namespace BusinessObject.Models
         public decimal LoyaltyDiscount { get; set; } = 0m;
 
         /// <summary>
-        /// Rental days discount percentage applied
+        /// Item rental count discount percentage applied
         /// </summary>
         [Column(TypeName = "decimal(5,2)")]
-        public decimal RentalDaysDiscountPercent { get; set; } = 0m;
+        public decimal ItemRentalCountDiscountPercent { get; set; } = 0m;
 
         /// <summary>
         /// Loyalty discount percentage applied

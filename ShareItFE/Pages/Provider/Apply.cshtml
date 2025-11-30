@@ -1238,37 +1238,32 @@
             try {
                 const apiRoot = document.getElementById('applyForm')?.dataset?.apiRoot || '';
                 const apiUrl = apiRoot + '/api';
-                const response = await fetch(`${apiUrl}/policy-configs/active`, {
+                const policyName = encodeURIComponent('Privacy Policy');
+                const response = await fetch(`${apiUrl}/policy-configs/by-name/${policyName}`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (response.ok) {
                     const result = await response.json();
-                    const policies = result.data || result;
+                    const policy = result.data;
                     
-                    if (policies && policies.length > 0) {
-                        let html = '<div style="display: flex; flex-direction: column; gap: 2rem;">';
-                        policies.forEach(policy => {
-                            html += `
-                                <div>
-                                    <h4 style="font-size: 1.125rem; font-weight: 700; color: #111827; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">${policy.policyName}</h4>
-                                    <div style="color: #374151; line-height: 1.6;">${policy.content}</div>
-                                </div>
-                            `;
-                        });
-                        html += '</div>';
-                        contentDiv.innerHTML = html;
+                    if (policy && policy.content) {
+                        contentDiv.innerHTML = `
+                            <div style="color: #374151; line-height: 1.6;">
+                                ${policy.content}
+                            </div>
+                        `;
                         policyLoaded = true;
                     } else {
-                        contentDiv.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">No policies available at the moment.</p>';
+                        contentDiv.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">Privacy Policy is not available at the moment.</p>';
                     }
                 } else {
-                    contentDiv.innerHTML = '<p style="color: #dc2626; text-align: center; padding: 2rem;">Failed to load policies. Please try again.</p>';
+                    contentDiv.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">Privacy Policy is not available at the moment.</p>';
                 }
             } catch (error) {
-                console.error('Error loading policies:', error);
-                contentDiv.innerHTML = '<p style="color: #dc2626; text-align: center; padding: 2rem;">Failed to load policies. Please try again.</p>';
+                console.error('Error loading policy:', error);
+                contentDiv.innerHTML = '<p style="color: #dc2626; text-align: center; padding: 2rem;">Failed to load policy. Please try again.</p>';
             }
         }
 

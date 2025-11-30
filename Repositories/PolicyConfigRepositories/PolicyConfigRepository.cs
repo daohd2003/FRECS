@@ -44,6 +44,12 @@ namespace Repositories.PolicyConfigRepositories
                 .FirstOrDefaultAsync(p => p.PolicyName == policyName);
         }
 
+        public async Task<PolicyConfig?> GetActivePolicyByNameAsync(string policyName)
+        {
+            return await _context.PolicyConfigs
+                .FirstOrDefaultAsync(p => p.PolicyName == policyName && p.IsActive);
+        }
+
         public async Task<PolicyConfig> CreatePolicyAsync(PolicyConfig policy)
         {
             _context.PolicyConfigs.Add(policy);

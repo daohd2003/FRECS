@@ -60,6 +60,24 @@ namespace Services.PolicyConfigServices
             }
         }
 
+        public async Task<ApiResponse<PolicyConfigDto>> GetActivePolicyByNameAsync(string policyName)
+        {
+            try
+            {
+                var policy = await _policyRepository.GetActivePolicyByNameAsync(policyName);
+                if (policy == null)
+                {
+                    return new ApiResponse<PolicyConfigDto>("Policy not found or inactive", null!);
+                }
+
+                return new ApiResponse<PolicyConfigDto>("Policy retrieved successfully", MapToDto(policy));
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<PolicyConfigDto>($"Error retrieving policy: {ex.Message}", null!);
+            }
+        }
+
         public async Task<ApiResponse<PolicyConfigDto>> CreatePolicyAsync(CreatePolicyConfigDto dto, Guid adminId)
         {
             try

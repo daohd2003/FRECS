@@ -388,11 +388,11 @@
                                 <span class="text-gray-900">@(Model.Order.DiscountAmount > 0 ? "-₫" + Model.Order.DiscountAmount.ToString("N0") : "₫0")</span>
                             </div>
                             
-                            @if (Model.Order.RentalDaysDiscount > 0)
+                            @if (Model.Order.ItemRentalCountDiscount > 0)
                             {
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Rental Days Discount <span class="text-xs text-gray-400">(@Model.Order.RentalDaysDiscountPercent.ToString("0.##")%)</span></span>
-                                    <span class="text-green-600">-₫@Model.Order.RentalDaysDiscount.ToString("N0")</span>
+                                    <span class="text-gray-600">Item Rental Discount <span class="text-xs text-gray-400">(@Model.Order.ItemRentalCountDiscountPercent.ToString("0.##")%)</span></span>
+                                    <span class="text-green-600">-₫@Model.Order.ItemRentalCountDiscount.ToString("N0")</span>
                                 </div>
                             }
                             

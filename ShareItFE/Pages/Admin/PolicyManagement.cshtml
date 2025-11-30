@@ -15,9 +15,6 @@
         .page-header { margin-bottom: 2rem; }
         .page-title { font-size: 2rem; font-weight: 700; color: #1a202c; margin-bottom: 0.5rem; }
         .page-subtitle { color: #718096; font-size: 1rem; }
-        .alert { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; }
-        .alert-success { background-color: #c6f6d5; border: 1px solid #9ae6b4; color: #22543d; }
-        .alert-error { background-color: #fed7d7; border: 1px solid #fc8181; color: #742a2a; }
         .policy-card { background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); padding: 2rem; }
         .form-group { margin-bottom: 1.5rem; }
         .form-label { display: block; font-size: 1rem; font-weight: 600; color: #2d3748; margin-bottom: 0.5rem; }
@@ -38,6 +35,8 @@
         .btn-danger:disabled { background: #fca5a5; cursor: not-allowed; opacity: 0.6; }
         .form-actions { display: flex; gap: 1rem; margin-top: 2rem; }
         .tox-tinymce { border: 1px solid #e2e8f0 !important; border-radius: 0.5rem !important; }
+        
+
     </style>
 }
 
@@ -46,9 +45,6 @@
         <h1 class="page-title">Policy Rule Management</h1>
         <p class="page-subtitle">Edit and update platform policies and legal documents</p>
     </div>
-
-    <!-- Alert Container for AJAX messages -->
-    <div id="alertContainer"></div>
 
     <div class="policy-card">
         <form method="post" asp-page-handler="Save" id="policyForm" onsubmit="return handleFormSubmit(event)">
@@ -59,8 +55,8 @@
                     @foreach (var policy in Model.Policies)
                     {
                         <option value="@policy.Id" 
-                                data-name="@policy.PolicyName" 
-                                data-content="@System.Web.HttpUtility.HtmlEncode(policy.Content)" 
+                                data-name="@System.Web.HttpUtility.HtmlAttributeEncode(policy.PolicyName)" 
+                                data-content="@Uri.EscapeDataString(policy.Content ?? "")" 
                                 data-active="@policy.IsActive.ToString().ToLower()">
                             @policy.PolicyName @(policy.IsActive ? "" : "(Inactive)")
                         </option>
@@ -294,15 +290,24 @@
         function handleFormSubmit(event) {
             event.preventDefault(); // Prevent default form submission
             
+            // Validate Policy Name
+            const policyName = document.getElementById('policyName').value;
+            if (!policyName || policyName.trim() === '') {
+                showToast('Policy name is required', 'error');
+                document.getElementById('policyName').focus();
+                return false;
+            }
+            
             // Sync TinyMCE content to textarea
             const editor = tinymce.get('policyContent');
+            let content = '';
             if (editor) {
-                const content = editor.getContent();
+                content = editor.getContent();
                 document.getElementById('policyContent').value = content;
                 
                 // Validate content is not empty
                 if (!content || content.trim() === '' || content === '<p></p>' || content === '<p><br></p>') {
-                    showAlert('Please enter policy content', 'error');
+                    showToast('Please enter policy content', 'error');
                     return false;
                 }
             }
@@ -317,6 +322,11 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span>Saving...</span>';
             
+            // Store current content for updating dropdown later
+            const currentContent = content;
+            const currentPolicyName = policyName.trim();
+            const currentIsActive = document.getElementById('isActive').checked;
+            
             // Submit via AJAX
             fetch(form.action, {
                 method: 'POST',
@@ -328,19 +338,26 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showAlert(data.message || 'Policy saved successfully!', 'success');
+                    showToast(data.message || 'Policy saved successfully!', 'success');
                     
-                    // Reload policies dropdown without page refresh
+                    // Reload policies dropdown and preserve content
                     if (data.policyId) {
-                        reloadPoliciesDropdown(data.policyId);
+                        reloadPoliciesDropdown(data.policyId, currentContent, currentPolicyName, currentIsActive);
                     }
                 } else {
-                    showAlert(data.message || 'Failed to save policy', 'error');
+                    // Parse error message for validation errors
+                    let errorMsg = data.message || 'Failed to save policy';
+                    if (errorMsg.includes('"PolicyName"')) {
+                        errorMsg = 'Policy name is required';
+                    } else if (errorMsg.includes('"Content"')) {
+                        errorMsg = 'Policy content is required';
+                    }
+                    showToast(errorMsg, 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showAlert('An error occurred while saving the policy', 'error');
+                showToast('An error occurred while saving the policy', 'error');
             })
             .finally(() => {
                 // Re-enable submit button
@@ -351,38 +368,36 @@
             return false;
         }
         
-        function showAlert(message, type) {
-            const alertContainer = document.getElementById('alertContainer');
-            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-            
-            alertContainer.innerHTML = `
-                <div class="alert ${alertClass}">
-                    ${message}
-                </div>
-            `;
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                alertContainer.innerHTML = '';
-            }, 5000);
+        // Use global toast manager from _AdminLayout.cshtml
+        function showToast(message, type = 'success') {
+            if (window.toastManager) {
+                window.toastManager.show(message, type, 5000);
+            } else {
+                // Fallback if toast manager not loaded
+                console.warn('Toast manager not available, using alert');
+                alert(message);
+            }
         }
         
-        async function reloadPoliciesDropdown(selectedId) {
+        async function reloadPoliciesDropdown(selectedId, currentContent, currentPolicyName, currentIsActive) {
+            console.log('Reloading policies dropdown...', { selectedId, currentPolicyName });
             try {
                 // Fetch updated policies list from API
                 const response = await fetch('/Admin/PolicyManagement?handler=GetPolicies', {
                     method: 'GET',
                     headers: {
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
                     }
                 });
                 
+                console.log('API response status:', response.status);
+                
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('API data:', data);
                     
                     // Update dropdown options
                     const selector = document.getElementById('policySelector');
-                    const currentOptions = selector.innerHTML;
                     
                     // Keep "Create New Policy" option
                     let newOptions = '<option value="new">-- Create New Policy --</option>';
@@ -390,37 +405,51 @@
                     // Add all policies
                     if (data.policies && data.policies.length > 0) {
                         data.policies.forEach(policy => {
-                            const isActive = policy.isActive ? '' : '(Inactive)';
+                            const isActiveText = policy.isActive ? '' : '(Inactive)';
                             const selected = policy.id === selectedId ? 'selected' : '';
+                            // Properly encode content for data attribute
+                            const encodedContent = encodeURIComponent(policy.content || '');
                             newOptions += `<option value="${policy.id}" 
-                                                  data-name="${escapeHtml(policy.policyName)}" 
-                                                  data-content="${escapeHtml(policy.content)}" 
+                                                  data-name="${escapeHtml(policy.policyName || '')}" 
+                                                  data-content="${encodedContent}" 
                                                   data-active="${policy.isActive}" 
                                                   ${selected}>
-                                              ${escapeHtml(policy.policyName)} ${isActive}
+                                              ${escapeHtml(policy.policyName || '')} ${isActiveText}
                                           </option>`;
                         });
                     }
                     
                     selector.innerHTML = newOptions;
                     
-                    // Select the saved policy
+                    // Select the saved policy and restore content
                     if (selectedId) {
                         selector.value = selectedId;
-                        loadPolicyData();
+                        
+                        // Restore the form values
+                        document.getElementById('policyName').value = currentPolicyName || '';
+                        document.getElementById('isActive').checked = currentIsActive;
+                        
+                        // Restore editor content
+                        const editor = editorInstance || tinymce.get('policyContent');
+                        if (editor && currentContent) {
+                            console.log('Restoring editor content...');
+                            editor.setContent(currentContent);
+                        }
+                        
+                        // Enable delete button
+                        document.getElementById('deleteBtn').disabled = false;
                     }
                 } else {
+                    console.error('API call failed, reloading page...');
                     // Fallback to page reload if API call fails
-                    const scrollPosition = window.scrollY;
-                    sessionStorage.setItem('scrollPosition', scrollPosition);
+                    sessionStorage.setItem('scrollPosition', window.scrollY.toString());
                     sessionStorage.setItem('selectedPolicyId', selectedId);
                     window.location.reload();
                 }
             } catch (error) {
                 console.error('Error reloading policies:', error);
                 // Fallback to page reload
-                const scrollPosition = window.scrollY;
-                sessionStorage.setItem('scrollPosition', scrollPosition);
+                sessionStorage.setItem('scrollPosition', window.scrollY.toString());
                 sessionStorage.setItem('selectedPolicyId', selectedId);
                 window.location.reload();
             }
@@ -437,6 +466,8 @@
             const selectedOption = selector.options[selector.selectedIndex];
             const deleteBtn = document.getElementById('deleteBtn');
             
+            console.log('Loading policy data for:', selectedOption.value);
+            
             // Get editor instance
             const editor = editorInstance || tinymce.get('policyContent');
             
@@ -446,54 +477,55 @@
                 deleteBtn.disabled = true;
                 
                 // Clear editor content
-                if (editor) {
-                    editor.setContent('');
-                } else {
-                    // Fallback if editor not ready
-                    setTimeout(() => {
-                        const ed = editorInstance || tinymce.get('policyContent');
-                        if (ed) ed.setContent('');
-                    }, 100);
-                }
+                setEditorContent(editor, '');
             } else {
-                document.getElementById('policyName').value = selectedOption.dataset.name || '';
-                const content = selectedOption.dataset.content || '';
-                const decodedContent = decodeHtmlEntities(content);
+                // Decode name (HTML attribute encoded)
+                const nameElement = document.createElement('div');
+                nameElement.innerHTML = selectedOption.dataset.name || '';
+                document.getElementById('policyName').value = nameElement.textContent || '';
+                
+                // Get content - URL encoded
+                let content = selectedOption.dataset.content || '';
+                let decodedContent = '';
+                try {
+                    decodedContent = decodeURIComponent(content);
+                } catch (e) {
+                    console.error('Error decoding content:', e);
+                    decodedContent = content;
+                }
+                
+                console.log('Decoded content length:', decodedContent.length);
+                
                 document.getElementById('isActive').checked = selectedOption.dataset.active === 'true';
                 deleteBtn.disabled = false;
                 
                 // Set editor content
-                if (editor) {
-                    // Sanitize content to prevent normalize errors
-                    try {
-                        editor.setContent(decodedContent || '');
-                    } catch (e) {
-                        console.error('Error setting content:', e);
-                        // Fallback: set as plain text
-                        editor.setContent('<p>' + decodedContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>');
-                    }
-                } else {
-                    // Fallback if editor not ready
-                    setTimeout(() => {
-                        const ed = editorInstance || tinymce.get('policyContent');
-                        if (ed) {
-                            try {
-                                ed.setContent(decodedContent || '');
-                            } catch (e) {
-                                console.error('Error setting content:', e);
-                                ed.setContent('<p>' + decodedContent.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>');
-                            }
-                        }
-                    }, 100);
-                }
+                setEditorContent(editor, decodedContent);
             }
         }
-
-        function decodeHtmlEntities(text) {
-            if (!text) return '';
-            const textarea = document.createElement('textarea');
-            textarea.innerHTML = text;
-            return textarea.value;
+        
+        function setEditorContent(editor, content) {
+            if (editor) {
+                try {
+                    editor.setContent(content || '');
+                    console.log('Editor content set successfully');
+                } catch (e) {
+                    console.error('Error setting content:', e);
+                }
+            } else {
+                // Fallback if editor not ready
+                console.log('Editor not ready, waiting...');
+                setTimeout(() => {
+                    const ed = editorInstance || tinymce.get('policyContent');
+                    if (ed) {
+                        try {
+                            ed.setContent(content || '');
+                        } catch (e) {
+                            console.error('Error setting content:', e);
+                        }
+                    }
+                }, 300);
+            }
         }
         
         function resetForm() {
@@ -506,7 +538,7 @@
             const selectedPolicyId = selector.value;
             
             if (selectedPolicyId === 'new') {
-                showAlert('Please select a policy to delete', 'error');
+                showToast('Please select a policy to delete', 'error');
                 return;
             }
             
@@ -535,7 +567,7 @@
                     const data = await response.json();
                     
                     if (data.success) {
-                        showAlert(data.message || 'Policy deleted successfully!', 'success');
+                        showToast(data.message || 'Policy deleted successfully!', 'success');
                         
                         // Remove the deleted option from dropdown
                         selectedOption.remove();
@@ -544,18 +576,18 @@
                         selector.value = 'new';
                         loadPolicyData();
                     } else {
-                        showAlert(data.message || 'Failed to delete policy', 'error');
+                        showToast(data.message || 'Failed to delete policy', 'error');
                         deleteBtn.disabled = false;
                         deleteBtn.innerHTML = originalBtnText;
                     }
                 } else {
-                    showAlert('Failed to delete policy', 'error');
+                    showToast('Failed to delete policy', 'error');
                     deleteBtn.disabled = false;
                     deleteBtn.innerHTML = originalBtnText;
                 }
             } catch (error) {
                 console.error('Error deleting policy:', error);
-                showAlert('An error occurred while deleting the policy', 'error');
+                showToast('An error occurred while deleting the policy', 'error');
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = originalBtnText;
             }

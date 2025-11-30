@@ -208,11 +208,11 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 Verdict Notes <span class="text-red-600">*</span>
                             </label>
-                            <textarea id="admin-notes" rows="8" 
+                            <textarea id="admin-notes" rows="8" maxlength="900"
                                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                                       placeholder="Please provide a clear and objective explanation for your decision. These notes will be sent to both parties."></textarea>
                             <p class="text-xs text-gray-600 mt-1">
-                                <span id="notes-length">0</span> characters
+                                <span id="notes-length">0</span>/900 characters
                             </p>
                         </div>
 
@@ -349,6 +349,14 @@
             // Update header
             $('#case-status').text(disputeData.status.replace(/_/g, ' '));
             $('#case-date').text(`Filed: ${formatDate(disputeData.createdAt)}`);
+
+            // Check if dispute is already resolved - disable form
+            const isResolved = disputeData.status === 'RESOLVED_BY_ADMIN' || 
+                               disputeData.status === 'CUSTOMER_ACCEPTED' ||
+                               disputeData.status === 'RESOLVED';
+            if (isResolved) {
+                disableDecisionForm();
+            }
 
             // Product Information
             renderProductInfo();
@@ -584,6 +592,30 @@
             $('#communication-history').html(html);
         }
 
+        function disableDecisionForm() {
+            // Disable all form inputs
+            $('#decision-form input, #decision-form textarea, #decision-form button').prop('disabled', true);
+            
+            // Update status badge color to green (resolved)
+            $('#case-status').removeClass('bg-yellow-100 text-yellow-800')
+                             .addClass('bg-green-100 text-green-800');
+            
+            // Show resolved message
+            const resolvedMessage = `
+                <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-6">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
+                        <div>
+                            <h3 class="font-bold text-green-800">Case Already Resolved</h3>
+                            <p class="text-sm text-green-700">This dispute has already been resolved. No further action is required.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#decision-form').prepend(resolvedMessage);
+            lucide.createIcons();
+        }
+
         function handleResolutionTypeChange(resolutionType) {
             const penaltyInput = $('#penalty-amount');
             const compromiseRequired = $('#compromise-required');
@@ -620,7 +652,6 @@
             const summaryHtml = `
                 <li>• Resolution: <span class="font-semibold">${resolutionType.replace(/_/g, ' ')}</span></li>
                 <li>• Penalty: <span class="font-semibold">₫${finalAmount.toLocaleString('vi-VN')}</span></li>
-                <li>• Both parties will be notified via email</li>
                 ${adminNotes ? '<li>• Verdict notes provided</li>' : ''}
             `;
 
@@ -646,6 +677,11 @@
 
             if (adminNotes.length < 10) {
                 alert('Verdict notes must be at least 10 characters long');
+                return;
+            }
+
+            if (adminNotes.length > 900) {
+                alert('Verdict notes cannot exceed 900 characters. Current length: ' + adminNotes.length);
                 return;
             }
 
@@ -711,7 +747,10 @@
                     throw new Error(error.message || 'Failed to submit decision');
                 }
 
-                alert('Decision submitted successfully! Both parties will be notified.');
+                // Send notifications to customer and provider
+                await sendDisputeResolutionNotifications(resolutionType, customerFineAmount);
+
+                alert('Decision submitted successfully! Notifications have been sent to both parties.');
                 window.location.href = '/Admin/Compensation';
             } catch (error) {
                 console.error('Error submitting decision:', error);
@@ -765,6 +804,78 @@
                 "'": '&#039;'
             };
             return text.toString().replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Send notifications to customer and provider about dispute resolution
+        async function sendDisputeResolutionNotifications(resolutionType, penaltyAmount) {
+            try {
+                const apiBaseUrl = window.apiSettings?.baseUrl || 'https://localhost:7256/api';
+                let accessToken = window.adminChatConfig?.accessToken || getCookie('AccessToken');
+                const headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                };
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                }
+
+                const customerId = disputeData.customer?.id;
+                const providerId = disputeData.provider?.id;
+                const orderCode = disputeData.orderItem?.orderId?.toString().substring(0, 8).toUpperCase() || 'N/A';
+
+                // Determine resolution message
+                let customerMessage = '';
+                let providerMessage = '';
+
+                if (resolutionType === 'UPHOLD_CLAIM') {
+                    customerMessage = `Your dispute case for order ${orderCode} has been resolved. The claim was upheld and a penalty of ₫${penaltyAmount.toLocaleString('vi-VN')} has been applied to your deposit. Please check your Deposit Management page for details.`;
+                    providerMessage = `The dispute case for order ${orderCode} has been resolved in your favor. You will receive compensation of ₫${penaltyAmount.toLocaleString('vi-VN')}.`;
+                } else if (resolutionType === 'REJECT_CLAIM') {
+                    customerMessage = `Your dispute case for order ${orderCode} has been resolved. The provider's claim was rejected and your full deposit will be refunded. Please check your Deposit Management page for details.`;
+                    providerMessage = `The dispute case for order ${orderCode} has been resolved. Your claim was rejected and the customer's deposit will be fully refunded.`;
+                } else if (resolutionType === 'COMPROMISE') {
+                    customerMessage = `Your dispute case for order ${orderCode} has been resolved with a compromise. A partial penalty of ₫${penaltyAmount.toLocaleString('vi-VN')} has been applied. Please check your Deposit Management page for details.`;
+                    providerMessage = `The dispute case for order ${orderCode} has been resolved with a compromise. You will receive partial compensation of ₫${penaltyAmount.toLocaleString('vi-VN')}.`;
+                }
+
+                // NotificationType enum: order=0, message=1, system=2, content_violation=3
+                const notificationType = 2; // system
+
+                // Send notification to customer using manual endpoint (admin only)
+                if (customerId) {
+                    const customerResponse = await fetch(`${apiBaseUrl}/Notification/manual`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: headers,
+                        body: JSON.stringify({
+                            userId: customerId,
+                            message: customerMessage,
+                            type: notificationType
+                        })
+                    });
+                    console.log('Customer notification response:', customerResponse.status);
+                }
+
+                // Send notification to provider using manual endpoint (admin only)
+                if (providerId) {
+                    const providerResponse = await fetch(`${apiBaseUrl}/Notification/manual`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: headers,
+                        body: JSON.stringify({
+                            userId: providerId,
+                            message: providerMessage,
+                            type: notificationType
+                        })
+                    });
+                    console.log('Provider notification response:', providerResponse.status);
+                }
+
+                console.log('Notifications sent to both parties');
+            } catch (error) {
+                console.error('Error sending notifications:', error);
+                // Don't throw - notifications are not critical
+            }
         }
     </script>
 }

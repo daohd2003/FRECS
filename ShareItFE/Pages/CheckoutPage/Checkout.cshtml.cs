@@ -65,9 +65,9 @@ namespace ShareItFE.Pages.CheckoutPage
         public decimal DiscountAmount { get; set; }
 
         /// <summary>
-        /// Auto discount for rental days (3% per day × items, max 25%)
+        /// Auto discount for item rental count (2% per previous rental of specific item, max 20%)
         /// </summary>
-        public decimal RentalDaysDiscount { get; set; }
+        public decimal ItemRentalCountDiscount { get; set; }
 
         /// <summary>
         /// Auto discount for loyalty (2% per previous rental × items, max 15%)
@@ -75,14 +75,19 @@ namespace ShareItFE.Pages.CheckoutPage
         public decimal LoyaltyDiscount { get; set; }
 
         /// <summary>
-        /// Rental days discount percentage
+        /// Item rental count discount percentage
         /// </summary>
-        public decimal RentalDaysDiscountPercent { get; set; }
+        public decimal ItemRentalCountDiscountPercent { get; set; }
 
         /// <summary>
         /// Loyalty discount percentage
         /// </summary>
         public decimal LoyaltyDiscountPercent { get; set; }
+
+        /// <summary>
+        /// Total previous rental count for specific items
+        /// </summary>
+        public int TotalItemRentalCount { get; set; }
 
         /// <summary>
         /// Selected discount code from session
@@ -306,7 +311,7 @@ namespace ShareItFE.Pages.CheckoutPage
                             await FetchAutoDiscountAsync(client);
                             
                             // Calculate total with all discounts
-                            var totalDiscount = DiscountAmount + RentalDaysDiscount + LoyaltyDiscount;
+                            var totalDiscount = DiscountAmount + ItemRentalCountDiscount + LoyaltyDiscount;
                             Total = Subtotal + TotalDeposit - totalDiscount;
                         }
                     }
@@ -933,7 +938,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
         /// <summary>
         /// Fetch auto discount preview from API
-        /// - Rental days discount: 3% per day × items, max 25%
+        /// - Item rental count discount: 2% per previous rental of specific item, max 20%
         /// - Loyalty discount: 2% per previous rental × items, max 15%
         /// </summary>
         private async Task FetchAutoDiscountAsync(HttpClient client)
@@ -949,17 +954,18 @@ namespace ShareItFE.Pages.CheckoutPage
                     
                     if (apiResponse?.Data != null)
                     {
-                        RentalDaysDiscount = apiResponse.Data.RentalDaysDiscountAmount;
+                        ItemRentalCountDiscount = apiResponse.Data.ItemRentalCountDiscountAmount;
                         LoyaltyDiscount = apiResponse.Data.LoyaltyDiscountAmount;
-                        RentalDaysDiscountPercent = apiResponse.Data.RentalDaysDiscountPercent;
+                        ItemRentalCountDiscountPercent = apiResponse.Data.ItemRentalCountDiscountPercent;
                         LoyaltyDiscountPercent = apiResponse.Data.LoyaltyDiscountPercent;
+                        TotalItemRentalCount = apiResponse.Data.TotalItemRentalCount;
                     }
                 }
             }
             catch (Exception)
             {
                 // Continue without auto discount if fetch fails
-                RentalDaysDiscount = 0;
+                ItemRentalCountDiscount = 0;
                 LoyaltyDiscount = 0;
             }
         }
@@ -970,12 +976,13 @@ namespace ShareItFE.Pages.CheckoutPage
     /// </summary>
     public class AutoDiscountPreviewDto
     {
-        public decimal RentalDaysDiscountPercent { get; set; }
-        public decimal RentalDaysDiscountAmount { get; set; }
+        public decimal ItemRentalCountDiscountPercent { get; set; }
+        public decimal ItemRentalCountDiscountAmount { get; set; }
         public decimal LoyaltyDiscountPercent { get; set; }
         public decimal LoyaltyDiscountAmount { get; set; }
         public decimal TotalAutoDiscount { get; set; }
         public int PreviousRentalCount { get; set; }
+        public int TotalItemRentalCount { get; set; }
     }
 
     public class CheckoutInputModel

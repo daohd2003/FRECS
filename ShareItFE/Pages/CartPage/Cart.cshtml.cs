@@ -63,9 +63,9 @@ namespace ShareItFE.Pages.CartPage
         public DiscountCodeSessionDto? SelectedDiscountCode { get; set; }
 
         /// <summary>
-        /// Auto discount for rental days (3% per day × items, max 25%)
+        /// Auto discount for item rental count (2% per previous rental of specific item, max 20%)
         /// </summary>
-        public decimal RentalDaysDiscount { get; set; }
+        public decimal ItemRentalCountDiscount { get; set; }
 
         /// <summary>
         /// Auto discount for loyalty (2% per previous rental × items, max 15%)
@@ -73,9 +73,9 @@ namespace ShareItFE.Pages.CartPage
         public decimal LoyaltyDiscount { get; set; }
 
         /// <summary>
-        /// Rental days discount percentage
+        /// Item rental count discount percentage
         /// </summary>
-        public decimal RentalDaysDiscountPercent { get; set; }
+        public decimal ItemRentalCountDiscountPercent { get; set; }
 
         /// <summary>
         /// Loyalty discount percentage
@@ -86,6 +86,11 @@ namespace ShareItFE.Pages.CartPage
         /// Number of previous completed rentals
         /// </summary>
         public int PreviousRentalCount { get; set; }
+
+        /// <summary>
+        /// Total previous rental count for specific items in cart
+        /// </summary>
+        public int TotalItemRentalCount { get; set; }
 
         [TempData]
         public string SuccessMessage { get; set; }
@@ -149,7 +154,7 @@ namespace ShareItFE.Pages.CartPage
                         await FetchAutoDiscountAsync(client);
                         
                         // Calculate total with auto discount
-                        var totalAutoDiscount = RentalDaysDiscount + LoyaltyDiscount;
+                        var totalAutoDiscount = ItemRentalCountDiscount + LoyaltyDiscount;
                         Total = Subtotal + TotalDeposit - totalAutoDiscount;
                     }
                     else
@@ -460,6 +465,33 @@ namespace ShareItFE.Pages.CartPage
         }
 
         /// <summary>
+        /// Get auto discount preview (item rental count + loyalty discount)
+        /// Called via AJAX when cart quantity changes
+        /// </summary>
+        public async Task<IActionResult> OnGetPreviewAutoDiscountAsync()
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.GetAsync("api/cart/preview-discount");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    return Content(content, "application/json");
+                }
+                else
+                {
+                    return StatusCode((int)response.StatusCode, new { message = "Failed to load auto discount" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Save selected discount code to session
         /// </summary>
         public IActionResult OnPostSaveDiscountCodeAsync([FromBody] DiscountCodeSessionDto discountCode)
@@ -573,18 +605,19 @@ namespace ShareItFE.Pages.CartPage
                     
                     if (apiResponse?.Data != null)
                     {
-                        RentalDaysDiscount = apiResponse.Data.RentalDaysDiscountAmount;
+                        ItemRentalCountDiscount = apiResponse.Data.ItemRentalCountDiscountAmount;
                         LoyaltyDiscount = apiResponse.Data.LoyaltyDiscountAmount;
-                        RentalDaysDiscountPercent = apiResponse.Data.RentalDaysDiscountPercent;
+                        ItemRentalCountDiscountPercent = apiResponse.Data.ItemRentalCountDiscountPercent;
                         LoyaltyDiscountPercent = apiResponse.Data.LoyaltyDiscountPercent;
                         PreviousRentalCount = apiResponse.Data.PreviousRentalCount;
+                        TotalItemRentalCount = apiResponse.Data.TotalItemRentalCount;
                     }
                 }
             }
             catch (Exception)
             {
                 // Continue without auto discount if fetch fails
-                RentalDaysDiscount = 0;
+                ItemRentalCountDiscount = 0;
                 LoyaltyDiscount = 0;
             }
         }
@@ -595,12 +628,13 @@ namespace ShareItFE.Pages.CartPage
     /// </summary>
     public class AutoDiscountPreviewDto
     {
-        public decimal RentalDaysDiscountPercent { get; set; }
-        public decimal RentalDaysDiscountAmount { get; set; }
+        public decimal ItemRentalCountDiscountPercent { get; set; }
+        public decimal ItemRentalCountDiscountAmount { get; set; }
         public decimal LoyaltyDiscountPercent { get; set; }
         public decimal LoyaltyDiscountAmount { get; set; }
         public decimal TotalAutoDiscount { get; set; }
         public int PreviousRentalCount { get; set; }
+        public int TotalItemRentalCount { get; set; }
     }
 
     /// <summary>
