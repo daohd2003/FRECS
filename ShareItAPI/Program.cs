@@ -417,6 +417,9 @@ namespace ShareItAPI
             builder.Services.AddScoped<ITryOnImageService, TryOnImageService>();
             builder.Services.AddHostedService<TryOnImageCleanupService>();
 
+            // Order Status Auto Update Service (tự động chuyển in_transit -> in_use)
+            builder.Services.AddHostedService<OrderStatusAutoUpdateService>();
+
             builder.WebHost.UseUrls($"http://*:80");
 
             var app = builder.Build();

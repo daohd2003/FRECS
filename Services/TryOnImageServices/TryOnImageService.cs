@@ -26,6 +26,10 @@ namespace Services.TryOnImageServices
 
         public async Task<TryOnImageDto> SaveTryOnImageAsync(Guid customerId, SaveTryOnImageRequest request)
         {
+            // Chuyển đổi sang giờ Việt Nam (UTC+7)
+            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+            
             var tryOnImage = new TryOnImage
             {
                 Id = Guid.NewGuid(),
@@ -38,8 +42,8 @@ namespace Services.TryOnImageServices
                 GarmentImageUrl = request.GarmentImageUrl,
                 GarmentPublicId = request.GarmentPublicId,
                 ClothingType = request.ClothingType,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(DefaultExpirationDays),
+                CreatedAt = vietnamNow,
+                ExpiresAt = vietnamNow.AddDays(DefaultExpirationDays),
                 IsDeleted = false
             };
 
