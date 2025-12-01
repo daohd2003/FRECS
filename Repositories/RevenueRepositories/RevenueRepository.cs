@@ -1,3 +1,4 @@
+using BusinessObject.DTOs.RevenueDtos;
 using BusinessObject.Enums;
 using BusinessObject.Models;
 using DataAccess;
@@ -118,6 +119,77 @@ namespace Repositories.RevenueRepositories
                 .SumAsync(rv => rv.PenaltyAmount);
 
             return penaltyRevenue;
+        }
+
+        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid providerId, DateTime start, DateTime end, int limit = 5)
+        {
+            var topProducts = await _context.OrderItems
+                .AsNoTracking()
+                .Include(oi => oi.Order)
+                .Include(oi => oi.Product)
+                    .ThenInclude(p => p.Images)
+                .Where(oi => oi.Order.ProviderId == providerId
+                    && oi.Order.Status == OrderStatus.returned
+                    && oi.Order.CreatedAt >= start
+                    && oi.Order.CreatedAt < end)
+                .GroupBy(oi => new { oi.ProductId, oi.TransactionType })
+                .Select(g => new
+                {
+                    ProductId = g.Key.ProductId,
+                    TransactionType = g.Key.TransactionType,
+                    Revenue = g.Sum(oi => oi.TransactionType == TransactionType.rental 
+                        ? oi.DailyRate * (oi.RentalDays ?? 1) * oi.Quantity
+                        : oi.DailyRate * oi.Quantity),
+                    OrderCount = g.Select(oi => oi.OrderId).Distinct().Count(),
+                    Product = g.First().Product
+                })
+                .OrderByDescending(x => x.Revenue)
+                .Take(limit)
+                .ToListAsync();
+
+            return topProducts.Select(x => new TopRevenueItemDto
+            {
+                ProductId = x.ProductId,
+                ProductName = x.Product?.Name ?? "Unknown",
+                ProductImageUrl = x.Product?.Images?.FirstOrDefault(img => img.IsPrimary)?.ImageUrl ?? 
+                                 x.Product?.Images?.FirstOrDefault()?.ImageUrl ?? string.Empty,
+                Revenue = x.Revenue,
+                OrderCount = x.OrderCount,
+                TransactionType = x.TransactionType == TransactionType.rental ? "rental" : "purchase"
+            }).ToList();
+        }
+
+        public async Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid providerId, DateTime start, DateTime end, int limit = 5)
+        {
+            var topCustomers = await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Customer)
+                    .ThenInclude(c => c.Profile)
+                .Where(o => o.ProviderId == providerId
+                    && o.Status == OrderStatus.returned
+                    && o.CreatedAt >= start
+                    && o.CreatedAt < end)
+                .GroupBy(o => o.CustomerId)
+                .Select(g => new
+                {
+                    CustomerId = g.Key,
+                    TotalSpent = g.Sum(o => o.Subtotal),
+                    OrderCount = g.Count(),
+                    Customer = g.First().Customer
+                })
+                .OrderByDescending(x => x.TotalSpent)
+                .Take(limit)
+                .ToListAsync();
+
+            return topCustomers.Select(x => new TopCustomerDto
+            {
+                CustomerId = x.CustomerId,
+                CustomerName = x.Customer?.Profile?.FullName ?? x.Customer?.Email ?? "Unknown",
+                CustomerEmail = x.Customer?.Email ?? string.Empty,
+                CustomerAvatarUrl = x.Customer?.Profile?.ProfilePictureUrl,
+                TotalSpent = x.TotalSpent,
+                OrderCount = x.OrderCount
+            }).ToList();
         }
     }
 }

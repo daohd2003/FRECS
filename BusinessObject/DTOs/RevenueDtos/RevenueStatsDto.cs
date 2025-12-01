@@ -136,4 +136,24 @@ namespace BusinessObject.DTOs.RevenueDtos
             return new ValidationResult(ErrorMessage ?? "Field cannot contain only whitespace.");
         }
     }
+
+    public class TopRevenueItemDto
+    {
+        public Guid ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string ProductImageUrl { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+        public int OrderCount { get; set; }
+        public string TransactionType { get; set; } = string.Empty; // "rental" or "purchase"
+    }
+
+    public class TopCustomerDto
+    {
+        public Guid CustomerId { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
+        public string? CustomerAvatarUrl { get; set; }
+        public decimal TotalSpent { get; set; }
+        public int OrderCount { get; set; }
+    }
 }
