@@ -201,8 +201,7 @@
         }
         
         .provider-card {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            border: none;
+            /* Same style as other info cards */
         }
         
         .card-header {
@@ -1541,7 +1540,7 @@
                 <input type="text" id="providerSearch" placeholder="Search providers..." class="search-input">
             </div>
             <div class="provider-list" id="providerList">
-                <div class="loading">Loading providers...</div>
+                <!-- Providers will be loaded by JavaScript -->
             </div>
         </div>
         <div class="filter-modal-footer">
@@ -1571,18 +1570,20 @@
                     <p class="order-code" id="modalOrderCode">Order Code: ORD-P-001</p>
                 </div>
             </div>
-            <button class="download-btn" onclick="downloadOrderPDF()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Download PDF
-            </button>
-            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                <button class="download-btn" onclick="downloadOrderPDF()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download PDF
+                </button>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
         </div>
         <div class="modal-body" id="modalBody">
-            <div class="loading">Loading...</div>
+            <!-- Content will be loaded by JavaScript -->
         </div>
     </div>
 </div>
@@ -2358,25 +2359,25 @@
                                                          title="Click to zoom" />
                                                     <div style="flex: 1;">
                                                         <div class="product-name">${item.productName}</div>
-                                                        <div class="product-color">Color: ${item.color}</div>
+                                                        <div class="product-color">Color: <strong>${item.color}</strong></div>
                                                         ${isRental ? `
-                                                            <div style="font-size: 0.8125rem; color: #6366f1; margin-top: 0.25rem;">
-                                                                <strong>Type:</strong> Rental
+                                                            <div style="font-size: 0.8125rem; color: #1d1d1f; margin-top: 0.25rem;">
+                                                                Type: <strong>Rental</strong>
                                                             </div>
-                                                            <div style="font-size: 0.8125rem; color: #86868b; margin-top: 0.125rem;">
-                                                                From ${formatDate(order.rentalStartDate)} to ${formatDate(order.rentalEndDate)}
+                                                            <div style="font-size: 0.8125rem; color: #1d1d1f; margin-top: 0.125rem;">
+                                                                From <strong>${formatDate(order.rentalStartDate)}</strong> to <strong>${formatDate(order.rentalEndDate)}</strong>
                                                             </div>
-                                                            <div style="font-size: 0.8125rem; color: #10b981; margin-top: 0.125rem; font-weight: 500;">
-                                                                Rental Duration: ${rentalDays} day${rentalDays !== 1 ? 's' : ''}
+                                                            <div style="font-size: 0.8125rem; color: #1d1d1f; margin-top: 0.125rem;">
+                                                                Rental Duration: <strong>${rentalDays} day${rentalDays !== 1 ? 's' : ''}</strong>
                                                             </div>
                                                         ` : `
-                                                            <div style="font-size: 0.8125rem; color: #8b5cf6; margin-top: 0.25rem;">
-                                                                <strong>Type:</strong> Purchase
+                                                            <div style="font-size: 0.8125rem; color: #1d1d1f; margin-top: 0.25rem;">
+                                                                Type: <strong>Purchase</strong>
                                                             </div>
                                                         `}
                                                         ${hasDeposit ? `
-                                                            <div style="font-size: 0.8125rem; color: #f59e0b; margin-top: 0.25rem; background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block;">
-                                                                <strong>Security Deposit:</strong> +${formatCurrency(item.totalDeposit)} đ
+                                                            <div style="font-size: 0.8125rem; color: #1d1d1f; margin-top: 0.25rem;">
+                                                                Security Deposit: <strong>+${formatCurrency(item.totalDeposit)} đ</strong>
                                                             </div>
                                                         ` : ''}
                                                     </div>
@@ -2417,52 +2418,52 @@
                             <div class="summary-body">
                                 <!-- Subtotal -->
                                 <div class="summary-item">
-                                    <span>Subtotal:</span>
-                                    <span style="font-weight: 600; white-space: nowrap;">${formatCurrency(calculatedSubtotal)} đ</span>
-                                </div>
-                                <div class="summary-item" style="font-size: 0.75rem; color: #86868b; margin-top: -0.5rem; margin-bottom: 0.75rem;">
-                                    <span style="font-style: italic;">Sum of all products</span>
-                                    <span style="font-family: monospace;">Σ(Product Totals)</span>
+                                    <span style="color: #86868b;">Subtotal</span>
+                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(calculatedSubtotal)} đ</span>
                                 </div>
                                 
                                 <!-- Shipping Fee -->
                                 <div class="summary-item">
-                                    <span>Shipping fee:</span>
+                                    <span style="color: #86868b;">Shipping fee</span>
                                     <span style="font-weight: 600; color: ${shippingFee === 0 ? '#10b981' : '#1d1d1f'}; white-space: nowrap;">${shippingFee === 0 ? 'FREE' : formatCurrency(shippingFee) + ' đ'}</span>
                                 </div>
                                 
-                                <!-- Discount -->
+                                <!-- Discount Code -->
+                                ${(order.discountCodeAmount > 0 || discountAmount > 0) ? `
                                 <div class="summary-item">
-                                    <span>Discount:</span>
-                                    <span style="font-weight: 600; color: ${discountAmount > 0 ? '#ef4444' : '#86868b'}; white-space: nowrap;">${discountAmount > 0 ? '-' : ''}${formatCurrency(discountAmount)} đ</span>
+                                    <span style="color: #86868b;">Discount Code</span>
+                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.discountCodeAmount || discountAmount)} đ</span>
                                 </div>
+                                ` : ''}
+                                
+                                <!-- Item Rental Discount -->
+                                ${order.itemRentalDiscount > 0 ? `
+                                <div class="summary-item">
+                                    <span style="color: #86868b;">Item Rental Discount (${order.itemRentalDiscountPercent || 0}%)</span>
+                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.itemRentalDiscount)} đ</span>
+                                </div>
+                                ` : ''}
+                                
+                                <!-- Loyalty Discount -->
+                                ${order.loyaltyDiscount > 0 ? `
+                                <div class="summary-item">
+                                    <span style="color: #86868b;">Loyalty Discount (${order.loyaltyDiscountPercent || 0}%)</span>
+                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.loyaltyDiscount)} đ</span>
+                                </div>
+                                ` : ''}
                                 
                                 <!-- Security Deposit (if rental) -->
                                 ${totalDeposit > 0 ? `
-                                    <div class="summary-item" style="background: #fef3c7; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
-                                        <span style="color: #92400e;">
-                                            <strong>Security Deposit</strong>
-                                            <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.125rem;">(refundable)</div>
-                                        </span>
-                                        <span style="font-weight: 700; color: #f59e0b; white-space: nowrap;">+${formatCurrency(totalDeposit)} đ</span>
-                                    </div>
+                                <div class="summary-item">
+                                    <span style="color: #86868b;">Security Deposit (refundable)</span>
+                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(totalDeposit)} đ</span>
+                                </div>
                                 ` : ''}
                                 
-                                <!-- Calculation Formula -->
-                                <div class="summary-item" style="font-size: 0.75rem; color: #86868b; margin: 0.75rem 0; padding: 0.5rem; background: #f9fafb; border-radius: 4px; border-left: 3px solid #8b5cf6;">
-                                    <span style="font-style: italic;">Formula:</span>
-                                    <span style="font-family: monospace; font-size: 0.7rem;">
-                                        ${calculatedSubtotal > 0 ? formatCurrency(calculatedSubtotal) : '0'} 
-                                        ${totalDeposit > 0 ? ' + ' + formatCurrency(totalDeposit) : ''} 
-                                        ${shippingFee > 0 ? ' + ' + formatCurrency(shippingFee) : ''} 
-                                        ${discountAmount > 0 ? ' - ' + formatCurrency(discountAmount) : ''}
-                                    </span>
-                                </div>
-                                
                                 <!-- Total -->
-                                <div class="summary-item total-item" style="margin-top: 0.5rem;">
-                                    <span><strong>Total ${totalDeposit > 0 ? '(incl. deposit)' : ''}</strong></span>
-                                    <span class="total-value">${formatCurrency(finalTotal)} đ</span>
+                                <div class="summary-item total-item" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e5e7;">
+                                    <span style="font-size: 1.125rem; font-weight: 700; color: #1d1d1f;">Total ${totalDeposit > 0 ? '(incl. deposit)' : ''}</span>
+                                    <span style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6; white-space: nowrap;">${formatCurrency(finalTotal)} đ</span>
                                 </div>
                             </div>
                         </div>
@@ -2492,9 +2493,9 @@
                                     <span style="font-family: monospace;">${totalProducts > 0 ? formatCurrency(calculatedSubtotal) + ' ÷ ' + totalProducts : 'N/A'}</span>
                                 </div>
                                 ${totalDeposit > 0 ? `
-                                    <div class="stat-item" style="border-top: 1px dashed #e5e5e7; padding-top: 0.75rem; margin-top: 0.75rem; background: #fef3c7; padding: 0.5rem; border-radius: 4px;">
-                                        <span style="color: #92400e;">Total Security Deposit:</span>
-                                        <span style="font-weight: 700; color: #f59e0b;">${formatCurrency(totalDeposit)} đ</span>
+                                    <div class="stat-item" style="border-top: 1px dashed #e5e5e7; padding-top: 0.75rem; margin-top: 0.75rem;">
+                                        <span style="color: #1d1d1f;">Total Security Deposit:</span>
+                                        <span style="font-weight: 700; color: #1d1d1f;">${formatCurrency(totalDeposit)} đ</span>
                                     </div>
                                 ` : ''}
                                 ${order.transactionType === 'rental' ? `

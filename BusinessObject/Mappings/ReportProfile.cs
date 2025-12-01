@@ -12,6 +12,7 @@ namespace BusinessObject.Mappings
             CreateMap<Report, ReportViewModel>()
                 .ForMember(dest => dest.ReporterId, opt => opt.MapFrom(src => src.ReporterId))
                 .ForMember(dest => dest.ReporteeId, opt => opt.MapFrom(src => src.ReporteeId))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.ReporterName, opt => opt.MapFrom(src => src.Reporter != null && src.Reporter.Profile != null ? src.Reporter.Profile.FullName : "Unknown"))
                 .ForMember(dest => dest.ReporterEmail, opt => opt.MapFrom(src => src.Reporter != null ? src.Reporter.Email : "Unknown"))
                 .ForMember(dest => dest.ReporteeName, opt => opt.MapFrom(src => src.Reportee != null && src.Reportee.Profile != null ? src.Reportee.Profile.FullName : "Unknown"))
