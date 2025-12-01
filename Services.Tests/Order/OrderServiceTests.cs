@@ -138,7 +138,7 @@ namespace Services.Tests.OrderTests
                 }
             };
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(orders);
 
             // Act
@@ -169,7 +169,7 @@ namespace Services.Tests.OrderTests
             Assert.Null(purchaseOrder.RentalStartDate);
             Assert.Null(purchaseOrder.RentalEndDate);
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace Services.Tests.OrderTests
             // Arrange
             var emptyOrders = new List<BusinessObject.Models.Order>();
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(emptyOrders);
 
             // Act
@@ -192,7 +192,7 @@ namespace Services.Tests.OrderTests
             Assert.NotNull(result);
             Assert.Empty(result);
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -216,7 +216,7 @@ namespace Services.Tests.OrderTests
                 CreateTestOrder(customerId, providerId, OrderStatus.cancelled)
             };
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(orders);
 
             // Act
@@ -235,7 +235,7 @@ namespace Services.Tests.OrderTests
             Assert.Contains(resultList, o => o.Status == OrderStatus.returned);
             Assert.Contains(resultList, o => o.Status == OrderStatus.cancelled);
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -270,7 +270,7 @@ namespace Services.Tests.OrderTests
                 }
             };
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(orders);
 
             // Act
@@ -283,7 +283,7 @@ namespace Services.Tests.OrderTests
             Assert.Equal("N/A", resultList[0].CustomerName);
             Assert.Equal("N/A", resultList[0].CustomerEmail);
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -318,7 +318,7 @@ namespace Services.Tests.OrderTests
                 }
             };
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(orders);
 
             // Act
@@ -331,7 +331,7 @@ namespace Services.Tests.OrderTests
             Assert.Equal("N/A", resultList[0].ProviderName);
             Assert.Equal("N/A", resultList[0].ProviderEmail);
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace Services.Tests.OrderTests
                 }
             };
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(orders);
 
             // Act
@@ -384,7 +384,7 @@ namespace Services.Tests.OrderTests
             Assert.Equal(150m, resultList[0].DiscountAmount);
             Assert.Equal(850m, resultList[0].TotalAmount); // 1000 - 150
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -396,7 +396,7 @@ namespace Services.Tests.OrderTests
         {
             // Arrange
             var exceptionMessage = "Database connection failed";
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ThrowsAsync(new System.Exception(exceptionMessage));
 
             // Act & Assert
@@ -405,7 +405,7 @@ namespace Services.Tests.OrderTests
             );
             
             Assert.Equal(exceptionMessage, exception.Message);
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         /// <summary>
@@ -444,7 +444,7 @@ namespace Services.Tests.OrderTests
                 }
             };
 
-            _mockOrderRepository.Setup(x => x.GetAllOrdersWithDetailsAsync())
+            _mockOrderRepository.Setup(x => x.GetAllOrdersBasicAsync())
                 .ReturnsAsync(orders);
 
             // Act
@@ -458,7 +458,7 @@ namespace Services.Tests.OrderTests
             Assert.Equal(0m, resultList[0].DiscountAmount);
             Assert.Equal(500m, resultList[0].TotalAmount);
 
-            _mockOrderRepository.Verify(x => x.GetAllOrdersWithDetailsAsync(), Times.Once);
+            _mockOrderRepository.Verify(x => x.GetAllOrdersBasicAsync(), Times.Once);
         }
 
         // Helper method to create test orders
@@ -491,3 +491,5 @@ namespace Services.Tests.OrderTests
         }
     }
 }
+
+

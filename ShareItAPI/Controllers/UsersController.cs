@@ -1,5 +1,6 @@
-﻿using BusinessObject.DTOs.ApiResponses;
+using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.ReportDto;
+using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -131,93 +132,31 @@ namespace ShareItAPI.Controllers
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAllWithOrderStats()
         {
-            var users = await _userService.GetAllWithOrdersAsync();
+            // OPTIMIZED: Only load basic user info without orders
+            var users = await _userService.GetAllAsync();
             
-            // Calculate order statistics for each user
-            var usersWithStats = users.Select(user => 
+            // Return minimal data - order stats will be loaded on-demand
+            var usersWithStats = users.Select(user => new
             {
-                // Get relevant orders based on role
-                var ordersAsCustomer = user.OrdersAsCustomer ?? new List<Order>();
-                var ordersAsProvider = user.OrdersAsProvider ?? new List<Order>();
-                
-                // For customers: count their orders as customer
-                // For providers: count their orders as provider
-                var relevantOrders = user.Role.ToString() == "provider" 
-                    ? ordersAsProvider 
-                    : ordersAsCustomer;
-
-                // Count orders by status
-                var ordersByStatus = new
+                user.Id,
+                user.Email,
+                user.Role,
+                user.IsActive,
+                user.CreatedAt,
+                user.LastLogin,
+                user.Profile,
+                TotalOrders = 0, // Will be loaded on-demand when viewing details
+                OrdersByStatus = new { },
+                ReturnedOrdersBreakdown = new
                 {
-                    Pending = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.pending),
-                    Approved = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.approved),
-                    InTransit = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.in_transit),
-                    InUse = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.in_use),
-                    Returning = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returning),
-                    Returned = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returned),
-                    Cancelled = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.cancelled),
-                    ReturnedWithIssue = relevantOrders.Count(o => o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
-                };
-
-                // Calculate earnings/spending for returned orders by PRODUCT TYPE (not order type)
-                var returnedOrders = relevantOrders
-                    .Where(o => o.Status == BusinessObject.Enums.OrderStatus.returned || 
-                                o.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
-                    .ToList();
-
-                // Get all items from returned orders
-                var allReturnedItems = returnedOrders
-                    .Where(o => o.Items != null)
-                    .SelectMany(o => o.Items)
-                    .ToList();
-
-                // Count rental and purchase products (not orders)
-                var rentalProducts = allReturnedItems
-                    .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental)
-                    .ToList();
-                
-                var purchaseProducts = allReturnedItems
-                    .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase)
-                    .ToList();
-
-                // Calculate rental earnings: Sum of (DailyRate * RentalDays * Quantity) for rental items
-                var rentalEarnings = rentalProducts.Sum(item => 
-                    item.DailyRate * (item.RentalDays ?? 0) * item.Quantity);
-
-                // Calculate purchase earnings: Sum of (DailyRate * Quantity) for purchase items
-                // Note: For purchase items, DailyRate is the purchase price per item
-                var purchaseEarnings = purchaseProducts.Sum(item => 
-                    item.DailyRate * item.Quantity);
-
-                return new
-                {
-                    user.Id,
-                    user.Email,
-                    user.Role,
-                    user.IsActive,
-                    user.CreatedAt,
-                    user.LastLogin,
-                    user.Profile,
-                    
-                    // Total count
-                    TotalOrders = relevantOrders.Count(),
-                    
-                    // Orders by status
-                    OrdersByStatus = ordersByStatus,
-                    
-                    // Returned orders breakdown by PRODUCT TYPE
-                    ReturnedOrdersBreakdown = new
-                    {
-                        RentalProductsCount = rentalProducts.Count,
-                        RentalTotalEarnings = rentalEarnings,
-                        PurchaseProductsCount = purchaseProducts.Count,
-                        PurchaseTotalEarnings = purchaseEarnings,
-                        TotalEarnings = rentalEarnings + purchaseEarnings,
-                        // Keep old names for backward compatibility
-                        RentalOrdersCount = rentalProducts.Count,
-                        PurchaseOrdersCount = purchaseProducts.Count
-                    }
-                };
+                    RentalProductsCount = 0,
+                    RentalTotalEarnings = 0m,
+                    PurchaseProductsCount = 0,
+                    PurchaseTotalEarnings = 0m,
+                    TotalEarnings = 0m,
+                    RentalOrdersCount = 0,
+                    PurchaseOrdersCount = 0
+                }
             }).ToList();
             
             // For staff, only return customers and providers
@@ -230,6 +169,20 @@ namespace ShareItAPI.Controllers
             }
             
             return Ok(new ApiResponse<object>("Success", usersWithStats));
+        }
+
+        [HttpGet("{userId}/order-stats")]
+        [Authorize(Roles = "admin,staff")]
+        public async Task<IActionResult> GetUserOrderStats(Guid userId)
+        {
+            var stats = await _userService.GetUserOrderStatsAsync(userId);
+            
+            if (stats == null)
+            {
+                return NotFound(new ApiResponse<object>("User not found", null));
+            }
+            
+            return Ok(new ApiResponse<UserOrderStatsDto>("Success", stats));
         }
 
         [HttpGet("statistics")]

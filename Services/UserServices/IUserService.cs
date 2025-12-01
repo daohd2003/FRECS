@@ -1,5 +1,6 @@
-﻿using BusinessObject.DTOs.Login;
+using BusinessObject.DTOs.Login;
 using BusinessObject.DTOs.ReportDto;
+using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Models;
 using System;
 using System.Collections.Generic;
@@ -24,5 +25,6 @@ namespace Services.UserServices
         Task<bool> BlockUserAsync(Guid id);
         Task<bool> UnblockUserAsync(Guid id);
         Task<IEnumerable<User>> GetCustomersAndProvidersAsync();
+        Task<UserOrderStatsDto?> GetUserOrderStatsAsync(Guid userId);
     }
 }

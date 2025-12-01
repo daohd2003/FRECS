@@ -12,5 +12,7 @@ namespace BusinessObject.DTOs.UsersDto
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public bool? IsActive { get; set; }
+        
+        public string? ProfilePictureUrl { get; set; }
     }
 }

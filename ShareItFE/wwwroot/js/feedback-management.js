@@ -287,12 +287,12 @@ async function toggleExpandRow(button, feedbackId) {
         return;
     }
     
-    // Show loading
+    // Show loading (simple text, no spinner)
     const loadingRow = document.createElement('tr');
     loadingRow.className = 'expanded-row';
     loadingRow.innerHTML = `
-        <td colspan="8" style="text-align: center; padding: 20px;">
-            <div class="loading-spinner">Loading product feedbacks...</div>
+        <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+            Loading product feedbacks...
         </td>
     `;
     row.after(loadingRow);

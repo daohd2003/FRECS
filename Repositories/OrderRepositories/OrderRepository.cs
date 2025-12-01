@@ -194,6 +194,22 @@ namespace Repositories.OrderRepositories
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Lấy tất cả orders với thông tin cơ bản (không load Items)
+        /// Dùng cho list view - tối ưu performance
+        /// </summary>
+        public async Task<IEnumerable<Order>> GetAllOrdersBasicAsync()
+        {
+            return await _context.Orders
+                .Include(o => o.Customer)
+                    .ThenInclude(c => c.Profile)
+                .Include(o => o.Provider)
+                    .ThenInclude(p => p.Profile)
+                .AsNoTracking()
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<Order> GetOrderWithFullDetailsAsync(Guid orderId)
         {
             return await _context.Orders

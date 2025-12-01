@@ -3,6 +3,7 @@ using BusinessObject.DTOs.ReportDto;
 using BusinessObject.Enums;
 using Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Repositories.EmailRepositories;
 using Repositories.ReportRepositories;
 using Repositories.UserRepositories;
@@ -149,18 +150,70 @@ namespace Services.ReportService
 
         public IQueryable<ReportViewModel> GetUnassignedReports()
         {
-            var query = _reportRepository.GetReportsAsQueryable()
-                .Where(r => r.AssignedAdminId == null && r.Status == ReportStatus.open);
-
-            return _mapper.ProjectTo<ReportViewModel>(query);
+            return _reportRepository.GetReportsAsQueryable()
+                .Where(r => r.AssignedAdminId == null && r.Status == ReportStatus.open)
+                .AsNoTracking()
+                .Select(r => new ReportViewModel
+                {
+                    Id = r.Id,
+                    ReporterId = r.ReporterId,
+                    ReporteeId = r.ReporteeId,
+                    Subject = r.Subject,
+                    Description = r.Description,
+                    Status = r.Status.ToString(),
+                    Priority = r.Priority,
+                    DateCreated = r.CreatedAt,
+                    ReporterName = r.Reporter != null && r.Reporter.Profile != null ? r.Reporter.Profile.FullName : "Unknown",
+                    ReporterEmail = r.Reporter != null ? r.Reporter.Email : "Unknown",
+                    ReporterAvatar = r.Reporter != null && r.Reporter.Profile != null ? r.Reporter.Profile.ProfilePictureUrl : null,
+                    ReporteeName = r.Reportee != null && r.Reportee.Profile != null ? r.Reportee.Profile.FullName : "Unknown",
+                    ReporteeEmail = r.Reportee != null ? r.Reportee.Email : "Unknown",
+                    ReporteeAvatar = r.Reportee != null && r.Reportee.Profile != null ? r.Reportee.Profile.ProfilePictureUrl : null,
+                    AssignedAdminId = r.AssignedAdminId,
+                    AssignedAdminName = r.AssignedAdmin != null && r.AssignedAdmin.Profile != null ? r.AssignedAdmin.Profile.FullName : null,
+                    AdminResponse = r.AdminResponse,
+                    OrderId = r.OrderId,
+                    OrderItemId = r.OrderItemId,
+                    ReportType = r.ReportType,
+                    OrderCode = r.Order != null ? "ORD-" + r.Order.Id.ToString().Substring(0, 8).ToUpper() : null,
+                    EvidenceImages = null,
+                    OrderProducts = null,
+                    ReportedProduct = null
+                });
         }
 
         public IQueryable<ReportViewModel> GetReportsByAdminId(Guid adminId)
         {
-            var query = _reportRepository.GetReportsAsQueryable()
-                .Where(r => r.AssignedAdminId == adminId);
-
-            return _mapper.ProjectTo<ReportViewModel>(query);
+            return _reportRepository.GetReportsAsQueryable()
+                .Where(r => r.AssignedAdminId == adminId)
+                .AsNoTracking()
+                .Select(r => new ReportViewModel
+                {
+                    Id = r.Id,
+                    ReporterId = r.ReporterId,
+                    ReporteeId = r.ReporteeId,
+                    Subject = r.Subject,
+                    Description = r.Description,
+                    Status = r.Status.ToString(),
+                    Priority = r.Priority,
+                    DateCreated = r.CreatedAt,
+                    ReporterName = r.Reporter != null && r.Reporter.Profile != null ? r.Reporter.Profile.FullName : "Unknown",
+                    ReporterEmail = r.Reporter != null ? r.Reporter.Email : "Unknown",
+                    ReporterAvatar = r.Reporter != null && r.Reporter.Profile != null ? r.Reporter.Profile.ProfilePictureUrl : null,
+                    ReporteeName = r.Reportee != null && r.Reportee.Profile != null ? r.Reportee.Profile.FullName : "Unknown",
+                    ReporteeEmail = r.Reportee != null ? r.Reportee.Email : "Unknown",
+                    ReporteeAvatar = r.Reportee != null && r.Reportee.Profile != null ? r.Reportee.Profile.ProfilePictureUrl : null,
+                    AssignedAdminId = r.AssignedAdminId,
+                    AssignedAdminName = r.AssignedAdmin != null && r.AssignedAdmin.Profile != null ? r.AssignedAdmin.Profile.FullName : null,
+                    AdminResponse = r.AdminResponse,
+                    OrderId = r.OrderId,
+                    OrderItemId = r.OrderItemId,
+                    ReportType = r.ReportType,
+                    OrderCode = r.Order != null ? "ORD-" + r.Order.Id.ToString().Substring(0, 8).ToUpper() : null,
+                    EvidenceImages = null,
+                    OrderProducts = null,
+                    ReportedProduct = null
+                });
         }
 
     }

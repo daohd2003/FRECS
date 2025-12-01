@@ -51,6 +51,24 @@ namespace Repositories.UserRepositories
         }
 
         /// <summary>
+        /// Lấy user theo ID với Orders và OrderItems
+        /// Dùng cho load order statistics của 1 user cụ thể
+        /// </summary>
+        /// <param name="userId">User ID</param>
+        /// <returns>User entity với orders hoặc null nếu không tồn tại</returns>
+        public async Task<User?> GetUserWithOrdersAsync(Guid userId)
+        {
+            return await _context.Users
+                .Include(u => u.Profile)
+                .Include(u => u.OrdersAsCustomer)
+                    .ThenInclude(o => o.Items)
+                .Include(u => u.OrdersAsProvider)
+                    .ThenInclude(o => o.Items)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+        }
+
+        /// <summary>
         /// Lấy user theo ID với Profile
         /// </summary>
         /// <param name="id">User ID</param>
