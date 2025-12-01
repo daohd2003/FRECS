@@ -287,12 +287,12 @@ async function toggleExpandRow(button, feedbackId) {
         return;
     }
     
-    // Show loading
+    // Show loading (simple text, no spinner)
     const loadingRow = document.createElement('tr');
     loadingRow.className = 'expanded-row';
     loadingRow.innerHTML = `
-        <td colspan="8" style="text-align: center; padding: 20px;">
-            <div class="loading-spinner">Loading product feedbacks...</div>
+        <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+            Loading product feedbacks...
         </td>
     `;
     row.after(loadingRow);
@@ -904,13 +904,117 @@ function formatCurrency(amount) {
 }
 
 function showNotification(message, type = 'info') {
-    // You can implement your own notification system here
-    // For now, using alert
-    if (type === 'error') {
-        alert('Error: ' + message);
-    } else {
-        alert(message);
+    // Create toast container if not exists
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        `;
+        document.body.appendChild(container);
     }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background: ${type === 'error' ? '#fee2e2' : type === 'success' ? '#d1fae5' : '#dbeafe'};
+        color: ${type === 'error' ? '#991b1b' : type === 'success' ? '#065f46' : '#1e40af'};
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-left: 4px solid ${type === 'error' ? '#dc2626' : type === 'success' ? '#10b981' : '#3b82f6'};
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        animation: slideIn 0.3s ease-out;
+        max-width: 100%;
+        word-wrap: break-word;
+        font-size: 14px;
+        line-height: 1.5;
+    `;
+
+    // Add icon
+    const icon = document.createElement('span');
+    icon.style.cssText = 'flex-shrink: 0; font-size: 20px;';
+    icon.innerHTML = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+
+    // Add message
+    const messageEl = document.createElement('div');
+    messageEl.style.cssText = 'flex: 1; word-break: break-word;';
+    messageEl.textContent = message;
+
+    // Add close button
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.6;
+        padding: 0;
+        margin-left: 8px;
+        flex-shrink: 0;
+    `;
+    closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
+    closeBtn.onmouseout = () => closeBtn.style.opacity = '0.6';
+    closeBtn.onclick = () => removeToast(toast);
+
+    toast.appendChild(icon);
+    toast.appendChild(messageEl);
+    toast.appendChild(closeBtn);
+    container.appendChild(toast);
+
+    // Auto remove after 6 seconds (increased from typical 3s)
+    setTimeout(() => removeToast(toast), 6000);
+}
+
+function removeToast(toast) {
+    toast.style.animation = 'slideOut 0.3s ease-in';
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.parentElement.removeChild(toast);
+        }
+    }, 300);
+}
+
+// Add CSS animations
+if (!document.getElementById('toast-animations')) {
+    const style = document.createElement('style');
+    style.id = 'toast-animations';
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 function getCookie(name) {

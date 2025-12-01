@@ -193,6 +193,315 @@ namespace Services.Tests.Revenue
         }
 
         #endregion
+
+        #region GetTopRevenueByProductAsync
+
+        [Fact]
+        public async Task UTCID05_GetTopRevenueByProductAsync_WithPeriod_ShouldReturnTopProducts()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+
+            var topProducts = new List<TopRevenueItemDto>
+            {
+                new TopRevenueItemDto
+                {
+                    ProductId = Guid.NewGuid(),
+                    ProductName = "Product A",
+                    ProductImageUrl = "https://example.com/image.jpg",
+                    Revenue = 5000,
+                    OrderCount = 5,
+                    TransactionType = "rental"
+                },
+                new TopRevenueItemDto
+                {
+                    ProductId = Guid.NewGuid(),
+                    ProductName = "Product B",
+                    ProductImageUrl = "https://example.com/image2.jpg",
+                    Revenue = 3000,
+                    OrderCount = 3,
+                    TransactionType = "purchase"
+                }
+            };
+
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(topProducts);
+
+            // Act
+            var result = await _service.GetTopRevenueByProductAsync(providerId, "month", null, null, 5);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Equal("Product A", result[0].ProductName);
+            Assert.Equal(5000, result[0].Revenue);
+            Assert.Equal(5, result[0].OrderCount);
+            Assert.Equal("rental", result[0].TransactionType);
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID06_GetTopRevenueByProductAsync_WithCustomDates_ShouldUseProvidedDates()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var startDate = new DateTime(2024, 2, 1);
+            var endDate = new DateTime(2024, 2, 28);
+
+            var topProducts = new List<TopRevenueItemDto>
+            {
+                new TopRevenueItemDto
+                {
+                    ProductId = Guid.NewGuid(),
+                    ProductName = "Product C",
+                    Revenue = 2000,
+                    OrderCount = 2,
+                    TransactionType = "rental"
+                }
+            };
+
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, startDate, endDate, 5))
+                .ReturnsAsync(topProducts);
+
+            // Act
+            var result = await _service.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5);
+
+            // Assert
+            Assert.Single(result);
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, startDate, endDate, 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID07_GetTopRevenueByProductAsync_WeekPeriod_ShouldCalculateWeekRange()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var topProducts = new List<TopRevenueItemDto>();
+
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(topProducts);
+
+            // Act
+            await _service.GetTopRevenueByProductAsync(providerId, "week", null, null, 5);
+
+            // Assert
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(
+                providerId,
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID08_GetTopRevenueByProductAsync_YearPeriod_ShouldCalculateYearRange()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var topProducts = new List<TopRevenueItemDto>();
+
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(topProducts);
+
+            // Act
+            await _service.GetTopRevenueByProductAsync(providerId, "year", null, null, 5);
+
+            // Assert
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(
+                providerId,
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID09_GetTopRevenueByProductAsync_EmptyResult_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(new List<TopRevenueItemDto>());
+
+            // Act
+            var result = await _service.GetTopRevenueByProductAsync(providerId, "month", null, null, 5);
+
+            // Assert
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task UTCID10_GetTopRevenueByProductAsync_CustomLimit_ShouldRespectLimit()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var limit = 10;
+
+            var topProducts = new List<TopRevenueItemDto>();
+
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit))
+                .ReturnsAsync(topProducts);
+
+            // Act
+            await _service.GetTopRevenueByProductAsync(providerId, "month", null, null, limit);
+
+            // Assert
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit), Times.Once);
+        }
+
+        #endregion
+
+        #region GetTopCustomersAsync
+
+        [Fact]
+        public async Task UTCID11_GetTopCustomersAsync_WithPeriod_ShouldReturnTopCustomers()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+
+            var topCustomers = new List<TopCustomerDto>
+            {
+                new TopCustomerDto
+                {
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "John Doe",
+                    CustomerEmail = "john@example.com",
+                    CustomerAvatarUrl = "https://example.com/avatar.jpg",
+                    TotalSpent = 10000,
+                    OrderCount = 8
+                },
+                new TopCustomerDto
+                {
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "Jane Smith",
+                    CustomerEmail = "jane@example.com",
+                    TotalSpent = 7500,
+                    OrderCount = 5
+                }
+            };
+
+            _revenueRepo.Setup(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            var result = await _service.GetTopCustomersAsync(providerId, "month", null, null, 5);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Equal("John Doe", result[0].CustomerName);
+            Assert.Equal(10000, result[0].TotalSpent);
+            Assert.Equal(8, result[0].OrderCount);
+            _revenueRepo.Verify(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID12_GetTopCustomersAsync_WithCustomDates_ShouldUseProvidedDates()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var startDate = new DateTime(2024, 2, 1);
+            var endDate = new DateTime(2024, 2, 28);
+
+            var topCustomers = new List<TopCustomerDto>
+            {
+                new TopCustomerDto
+                {
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "Customer A",
+                    CustomerEmail = "customer@example.com",
+                    TotalSpent = 5000,
+                    OrderCount = 3
+                }
+            };
+
+            _revenueRepo.Setup(r => r.GetTopCustomersAsync(providerId, startDate, endDate, 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            var result = await _service.GetTopCustomersAsync(providerId, "month", startDate, endDate, 5);
+
+            // Assert
+            Assert.Single(result);
+            _revenueRepo.Verify(r => r.GetTopCustomersAsync(providerId, startDate, endDate, 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID13_GetTopCustomersAsync_WeekPeriod_ShouldCalculateWeekRange()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var topCustomers = new List<TopCustomerDto>();
+
+            _revenueRepo.Setup(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            await _service.GetTopCustomersAsync(providerId, "week", null, null, 5);
+
+            // Assert
+            _revenueRepo.Verify(r => r.GetTopCustomersAsync(
+                providerId,
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID14_GetTopCustomersAsync_YearPeriod_ShouldCalculateYearRange()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var topCustomers = new List<TopCustomerDto>();
+
+            _revenueRepo.Setup(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            await _service.GetTopCustomersAsync(providerId, "year", null, null, 5);
+
+            // Assert
+            _revenueRepo.Verify(r => r.GetTopCustomersAsync(
+                providerId,
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID15_GetTopCustomersAsync_EmptyResult_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+
+            _revenueRepo.Setup(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+                .ReturnsAsync(new List<TopCustomerDto>());
+
+            // Act
+            var result = await _service.GetTopCustomersAsync(providerId, "month", null, null, 5);
+
+            // Assert
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task UTCID16_GetTopCustomersAsync_CustomLimit_ShouldRespectLimit()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            var limit = 10;
+
+            var topCustomers = new List<TopCustomerDto>();
+
+            _revenueRepo.Setup(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            await _service.GetTopCustomersAsync(providerId, "month", null, null, limit);
+
+            // Assert
+            _revenueRepo.Verify(r => r.GetTopCustomersAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit), Times.Once);
+        }
+
+        #endregion
+
     }
 }
 

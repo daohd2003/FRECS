@@ -17,6 +17,7 @@ namespace Repositories.OrderRepositories
         Task<string> GetOrderItemId(Guid customerId, Guid productId);
         
         Task<IEnumerable<Order>> GetAllOrdersWithDetailsAsync();
+        Task<IEnumerable<Order>> GetAllOrdersBasicAsync();
         Task<Order> GetOrderWithFullDetailsAsync(Guid orderId);
     }
 }

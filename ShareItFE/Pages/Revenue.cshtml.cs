@@ -28,6 +28,8 @@ namespace ShareItFE.Pages
         public List<BankAccountDto> BankAccounts { get; set; } = new List<BankAccountDto>();
         public List<WithdrawalHistoryDto> WithdrawalHistory { get; set; } = new List<WithdrawalHistoryDto>();
         public decimal AvailableBalance { get; set; } = 0;
+        public List<TopRevenueItemDto> TopRevenueItems { get; set; } = new List<TopRevenueItemDto>();
+        public List<TopCustomerDto> TopCustomers { get; set; } = new List<TopCustomerDto>();
 
         [BindProperty]
         public CreateBankAccountDto NewBankAccount { get; set; } = new CreateBankAccountDto();
@@ -90,9 +92,11 @@ namespace ShareItFE.Pages
                 var bankTask = client.GetAsync("api/revenue/bank-accounts");
                 var withdrawalHistoryTask = client.GetAsync("api/withdrawals/history");
                 var balanceTask = client.GetAsync("api/withdrawals/available-balance");
+                var topRevenueTask = client.GetAsync($"api/revenue/top-revenue?period={Period}&limit=5");
+                var topCustomersTask = client.GetAsync($"api/revenue/top-customers?period={Period}&limit=5");
 
                 // Wait for all requests to complete
-                await Task.WhenAll(revenueTask, payoutTask, bankTask, withdrawalHistoryTask, balanceTask);
+                await Task.WhenAll(revenueTask, payoutTask, bankTask, withdrawalHistoryTask, balanceTask, topRevenueTask, topCustomersTask);
 
                 // Process revenue statistics
                 var revenueResponse = await revenueTask;
@@ -176,6 +180,22 @@ namespace ShareItFE.Pages
                     var balanceJson = await balanceResponse.Content.ReadAsStringAsync();
                     var apiResponse = JsonSerializer.Deserialize<ApiResponse<decimal>>(balanceJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     AvailableBalance = apiResponse?.Data ?? 0;
+                }
+
+                // Process top revenue items
+                var topRevenueResponse = await topRevenueTask;
+                if (topRevenueResponse.IsSuccessStatusCode)
+                {
+                    var topRevenueJson = await topRevenueResponse.Content.ReadAsStringAsync();
+                    TopRevenueItems = JsonSerializer.Deserialize<List<TopRevenueItemDto>>(topRevenueJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<TopRevenueItemDto>();
+                }
+
+                // Process top customers
+                var topCustomersResponse = await topCustomersTask;
+                if (topCustomersResponse.IsSuccessStatusCode)
+                {
+                    var topCustomersJson = await topCustomersResponse.Content.ReadAsStringAsync();
+                    TopCustomers = JsonSerializer.Deserialize<List<TopCustomerDto>>(topCustomersJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<TopCustomerDto>();
                 }
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized ||

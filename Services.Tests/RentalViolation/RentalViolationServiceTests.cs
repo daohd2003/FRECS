@@ -2,6 +2,8 @@ using AutoMapper;
 using BusinessObject.DTOs.RentalViolationDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using DataAccess;
+using Microsoft.EntityFrameworkCore;
 using Repositories.OrderRepositories;
 using Repositories.ProductRepositories;
 using Repositories.RentalViolationRepositories;
@@ -21,6 +23,7 @@ namespace Services.Tests.RentalViolationTests
         private readonly Mock<ICloudinaryService> _cloudService;
         private readonly Mock<INotificationService> _notificationService;
         private readonly Mock<IMapper> _mapper;
+        private readonly ShareItDbContext _context;
         private readonly RentalViolationService _service;
 
         public RentalViolationServiceTests()
@@ -32,13 +35,20 @@ namespace Services.Tests.RentalViolationTests
             _notificationService = new Mock<INotificationService>();
             _mapper = new Mock<IMapper>();
 
+            // Create in-memory database for testing
+            var options = new DbContextOptionsBuilder<ShareItDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options;
+            _context = new ShareItDbContext(options);
+
             _service = new RentalViolationService(
                 _violationRepo.Object,
                 _orderRepo.Object,
                 _productRepo.Object,
                 _cloudService.Object,
                 _notificationService.Object,
-                _mapper.Object);
+                _mapper.Object,
+                _context);
         }
 
         #region CreateMultipleViolationsAsync

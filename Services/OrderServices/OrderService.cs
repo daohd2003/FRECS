@@ -1471,7 +1471,8 @@ namespace Services.OrderServices
 
         public async Task<IEnumerable<AdminOrderListDto>> GetAllOrdersForAdminAsync()
         {
-            var orders = await _orderRepo.GetAllOrdersWithDetailsAsync();
+            // OPTIMIZED: Only load basic order info without items
+            var orders = await _orderRepo.GetAllOrdersBasicAsync();
             
             // Show all orders for admin (no status filter)
             var validOrders = orders;
@@ -1501,8 +1502,10 @@ namespace Services.OrderServices
                         OrderCode = GenerateOrderCode(order) + "-R",
                         CustomerName = order.Customer?.Profile?.FullName ?? order.CustomerFullName ?? "N/A",
                         CustomerEmail = order.Customer?.Email ?? order.CustomerEmail ?? "N/A",
+                        CustomerAvatar = order.Customer?.Profile?.ProfilePictureUrl,
                         ProviderName = order.Provider?.Profile?.FullName ?? "N/A",
                         ProviderEmail = order.Provider?.Email ?? "N/A",
+                        ProviderAvatar = order.Provider?.Profile?.ProfilePictureUrl,
                         TransactionType = "rental",
                         RentalStartDate = order.RentalStart,
                         RentalEndDate = order.RentalEnd,
@@ -1526,8 +1529,10 @@ namespace Services.OrderServices
                         OrderCode = GenerateOrderCode(order) + "-P",
                         CustomerName = order.Customer?.Profile?.FullName ?? order.CustomerFullName ?? "N/A",
                         CustomerEmail = order.Customer?.Email ?? order.CustomerEmail ?? "N/A",
+                        CustomerAvatar = order.Customer?.Profile?.ProfilePictureUrl,
                         ProviderName = order.Provider?.Profile?.FullName ?? "N/A",
                         ProviderEmail = order.Provider?.Email ?? "N/A",
+                        ProviderAvatar = order.Provider?.Profile?.ProfilePictureUrl,
                         TransactionType = "purchase",
                         RentalStartDate = null,
                         RentalEndDate = null,

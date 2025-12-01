@@ -278,6 +278,66 @@ namespace ShareItAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Get top 5 products by revenue for the current provider
+        /// </summary>
+        [HttpGet("top-revenue")]
+        [Authorize(Roles = "provider")]
+        public async Task<ActionResult<List<TopRevenueItemDto>>> GetTopRevenue([FromQuery] string period = "month", [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null, [FromQuery] int limit = 5)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty)
+                {
+                    return Unauthorized("User not found");
+                }
+
+                var topRevenue = await _revenueService.GetTopRevenueByProductAsync(userId, period, startDate, endDate, limit);
+                return Ok(topRevenue);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid date range provided by user");
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting top revenue for user");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        /// <summary>
+        /// Get top 5 customers by spending for the current provider
+        /// </summary>
+        [HttpGet("top-customers")]
+        [Authorize(Roles = "provider")]
+        public async Task<ActionResult<List<TopCustomerDto>>> GetTopCustomers([FromQuery] string period = "month", [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null, [FromQuery] int limit = 5)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty)
+                {
+                    return Unauthorized("User not found");
+                }
+
+                var topCustomers = await _revenueService.GetTopCustomersAsync(userId, period, startDate, endDate, limit);
+                return Ok(topCustomers);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid date range provided by user");
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting top customers for user");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
         private Guid GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

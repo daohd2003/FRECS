@@ -274,6 +274,360 @@ namespace Services.Tests.Controllers
         }
 
         #endregion
+
+        #region GetTopRevenue
+
+        [Fact]
+        public async Task UTCID16_GetTopRevenue_Provider_ShouldReturnOk()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+
+            var topRevenue = new List<TopRevenueItemDto>
+            {
+                new TopRevenueItemDto
+                {
+                    ProductId = Guid.NewGuid(),
+                    ProductName = "Product A",
+                    ProductImageUrl = "https://example.com/image.jpg",
+                    Revenue = 5000,
+                    OrderCount = 5,
+                    TransactionType = "rental"
+                }
+            };
+
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5))
+                .ReturnsAsync(topRevenue);
+
+            // Act
+            var result = await _controller.GetTopRevenue("month", null, null, 5);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var payload = Assert.IsType<List<TopRevenueItemDto>>(okResult.Value);
+            Assert.Single(payload);
+            Assert.Equal("Product A", payload[0].ProductName);
+            Assert.Equal(5000, payload[0].Revenue);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID17_GetTopRevenue_MissingUser_ShouldReturnUnauthorized()
+        {
+            // Arrange
+            SetupProvider(null);
+
+            // Act
+            var result = await _controller.GetTopRevenue("month", null, null, 5);
+
+            // Assert
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+            Assert.Equal("User not found", unauthorized.Value);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UTCID18_GetTopRevenue_ArgumentException_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5))
+                .ThrowsAsync(new ArgumentException("Invalid date range"));
+
+            // Act
+            var result = await _controller.GetTopRevenue("month", null, null, 5);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.Equal("Invalid date range", badRequest.Value);
+        }
+
+        [Fact]
+        public async Task UTCID19_GetTopRevenue_ServiceError_ShouldReturn500()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5))
+                .ThrowsAsync(new Exception("Database error"));
+
+            // Act
+            var result = await _controller.GetTopRevenue("month", null, null, 5);
+
+            // Assert
+            var serverError = Assert.IsType<ObjectResult>(result.Result);
+            Assert.Equal(500, serverError.StatusCode);
+            Assert.Equal("Internal server error", serverError.Value);
+            _loggerMock.VerifyLog(LogLevel.Error);
+        }
+
+        [Fact]
+        public async Task UTCID20_GetTopRevenue_WithCustomDates_ShouldPassDatesToService()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            var startDate = new DateTime(2024, 2, 1);
+            var endDate = new DateTime(2024, 2, 28);
+
+            var topRevenue = new List<TopRevenueItemDto>();
+
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5))
+                .ReturnsAsync(topRevenue);
+
+            // Act
+            var result = await _controller.GetTopRevenue("month", startDate, endDate, 5);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID21_GetTopRevenue_WithCustomLimit_ShouldPassLimitToService()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            var limit = 10;
+
+            var topRevenue = new List<TopRevenueItemDto>();
+
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, limit))
+                .ReturnsAsync(topRevenue);
+
+            // Act
+            var result = await _controller.GetTopRevenue("month", null, null, limit);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, limit), Times.Once);
+        }
+
+        #endregion
+
+        #region GetTopCustomers
+
+        [Fact]
+        public async Task UTCID22_GetTopCustomers_Provider_ShouldReturnOk()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+
+            var topCustomers = new List<TopCustomerDto>
+            {
+                new TopCustomerDto
+                {
+                    CustomerId = Guid.NewGuid(),
+                    CustomerName = "John Doe",
+                    CustomerEmail = "john@example.com",
+                    CustomerAvatarUrl = "https://example.com/avatar.jpg",
+                    TotalSpent = 10000,
+                    OrderCount = 8
+                }
+            };
+
+            _serviceMock.Setup(s => s.GetTopCustomersAsync(providerId, "month", null, null, 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", null, null, 5);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var payload = Assert.IsType<List<TopCustomerDto>>(okResult.Value);
+            Assert.Single(payload);
+            Assert.Equal("John Doe", payload[0].CustomerName);
+            Assert.Equal(10000, payload[0].TotalSpent);
+            Assert.Equal(8, payload[0].OrderCount);
+            _serviceMock.Verify(s => s.GetTopCustomersAsync(providerId, "month", null, null, 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID23_GetTopCustomers_MissingUser_ShouldReturnUnauthorized()
+        {
+            // Arrange
+            SetupProvider(null);
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", null, null, 5);
+
+            // Assert
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+            Assert.Equal("User not found", unauthorized.Value);
+            _serviceMock.Verify(s => s.GetTopCustomersAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UTCID24_GetTopCustomers_ArgumentException_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            _serviceMock.Setup(s => s.GetTopCustomersAsync(providerId, "month", null, null, 5))
+                .ThrowsAsync(new ArgumentException("Invalid date range"));
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", null, null, 5);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.Equal("Invalid date range", badRequest.Value);
+        }
+
+        [Fact]
+        public async Task UTCID25_GetTopCustomers_ServiceError_ShouldReturn500()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            _serviceMock.Setup(s => s.GetTopCustomersAsync(providerId, "month", null, null, 5))
+                .ThrowsAsync(new Exception("Database error"));
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", null, null, 5);
+
+            // Assert
+            var serverError = Assert.IsType<ObjectResult>(result.Result);
+            Assert.Equal(500, serverError.StatusCode);
+            Assert.Equal("Internal server error", serverError.Value);
+            _loggerMock.VerifyLog(LogLevel.Error);
+        }
+
+        [Fact]
+        public async Task UTCID26_GetTopCustomers_WithCustomDates_ShouldPassDatesToService()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            var startDate = new DateTime(2024, 2, 1);
+            var endDate = new DateTime(2024, 2, 28);
+
+            var topCustomers = new List<TopCustomerDto>();
+
+            _serviceMock.Setup(s => s.GetTopCustomersAsync(providerId, "month", startDate, endDate, 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", startDate, endDate, 5);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            _serviceMock.Verify(s => s.GetTopCustomersAsync(providerId, "month", startDate, endDate, 5), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID27_GetTopCustomers_WithCustomLimit_ShouldPassLimitToService()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+            var limit = 10;
+
+            var topCustomers = new List<TopCustomerDto>();
+
+            _serviceMock.Setup(s => s.GetTopCustomersAsync(providerId, "month", null, null, limit))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", null, null, limit);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            _serviceMock.Verify(s => s.GetTopCustomersAsync(providerId, "month", null, null, limit), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID28_GetTopCustomers_EmptyResult_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var providerId = Guid.NewGuid();
+            SetupProvider(providerId);
+
+            var topCustomers = new List<TopCustomerDto>();
+
+            _serviceMock.Setup(s => s.GetTopCustomersAsync(providerId, "month", null, null, 5))
+                .ReturnsAsync(topCustomers);
+
+            // Act
+            var result = await _controller.GetTopCustomers("month", null, null, 5);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var payload = Assert.IsType<List<TopCustomerDto>>(okResult.Value);
+            Assert.Empty(payload);
+        }
+
+        #endregion
+
+        #region GetProviderRevenueStats (Admin)
+
+        [Fact]
+        public async Task UTCID48_GetProviderRevenueStats_Admin_ShouldReturnOk()
+        {
+            // Arrange
+            var adminId = Guid.NewGuid();
+            var providerId = Guid.NewGuid();
+            SetupProvider(adminId, "admin");
+
+            var stats = new RevenueStatsDto { CurrentPeriodRevenue = 1000 };
+            _serviceMock.Setup(s => s.GetRevenueStatsAsync(providerId, "month", null, null))
+                .ReturnsAsync(stats);
+
+            // Act
+            var result = await _controller.GetProviderRevenueStats(providerId, "month", null, null);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var payload = Assert.IsType<RevenueStatsDto>(okResult.Value);
+            Assert.Equal(1000, payload.CurrentPeriodRevenue);
+            _serviceMock.Verify(s => s.GetRevenueStatsAsync(providerId, "month", null, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task UTCID49_GetProviderRevenueStats_ArgumentException_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var adminId = Guid.NewGuid();
+            var providerId = Guid.NewGuid();
+            SetupProvider(adminId, "admin");
+
+            _serviceMock.Setup(s => s.GetRevenueStatsAsync(providerId, "month", null, null))
+                .ThrowsAsync(new ArgumentException("Invalid date range"));
+
+            // Act
+            var result = await _controller.GetProviderRevenueStats(providerId, "month", null, null);
+
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.Equal("Invalid date range", badRequest.Value);
+        }
+
+        [Fact]
+        public async Task UTCID50_GetProviderRevenueStats_ServiceError_ShouldReturn500()
+        {
+            // Arrange
+            var adminId = Guid.NewGuid();
+            var providerId = Guid.NewGuid();
+            SetupProvider(adminId, "admin");
+
+            _serviceMock.Setup(s => s.GetRevenueStatsAsync(providerId, "month", null, null))
+                .ThrowsAsync(new Exception("Database error"));
+
+            // Act
+            var result = await _controller.GetProviderRevenueStats(providerId, "month", null, null);
+
+            // Assert
+            var serverError = Assert.IsType<ObjectResult>(result.Result);
+            Assert.Equal(500, serverError.StatusCode);
+            Assert.Equal("Internal server error", serverError.Value);
+            _loggerMock.VerifyLog(LogLevel.Error);
+        }
+
+        #endregion
     }
 
     internal static class LoggerMockExtensions

@@ -418,6 +418,72 @@ namespace Services.RevenueServices
                 TotalFee = rentalFee + purchaseFee
             };
         }
+
+        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5)
+        {
+            var now = DateTime.UtcNow;
+            DateTime start, end;
+
+            // Determine period ranges (same logic as GetRevenueStatsAsync)
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                start = startDate.Value;
+                end = endDate.Value;
+            }
+            else
+            {
+                switch (period.ToLower())
+                {
+                    case "week":
+                        start = now.Date.AddDays(-(int)now.DayOfWeek);
+                        end = start.AddDays(7);
+                        break;
+                    case "year":
+                        start = new DateTime(now.Year, 1, 1);
+                        end = new DateTime(now.Year + 1, 1, 1);
+                        break;
+                    default: // month
+                        start = new DateTime(now.Year, now.Month, 1);
+                        end = start.AddMonths(1);
+                        break;
+                }
+            }
+
+            return await _revenueRepository.GetTopRevenueByProductAsync(userId, start, end, limit);
+        }
+
+        public async Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5)
+        {
+            var now = DateTime.UtcNow;
+            DateTime start, end;
+
+            // Determine period ranges (same logic as GetRevenueStatsAsync)
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                start = startDate.Value;
+                end = endDate.Value;
+            }
+            else
+            {
+                switch (period.ToLower())
+                {
+                    case "week":
+                        start = now.Date.AddDays(-(int)now.DayOfWeek);
+                        end = start.AddDays(7);
+                        break;
+                    case "year":
+                        start = new DateTime(now.Year, 1, 1);
+                        end = new DateTime(now.Year + 1, 1, 1);
+                        break;
+                    default: // month
+                        start = new DateTime(now.Year, now.Month, 1);
+                        end = start.AddMonths(1);
+                        break;
+                }
+            }
+
+            return await _revenueRepository.GetTopCustomersAsync(userId, start, end, limit);
+        }
     }
 
     /// <summary>

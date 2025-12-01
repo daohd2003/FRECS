@@ -190,6 +190,10 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                                 <span>Dashboard</span>
                             </a>
+                            <a asp-page="/Customer/TryOnGallery">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                <span>AI Try-On Gallery</span>
+                            </a>
                             <a asp-page="/Provider/Products">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                                 <span>My Products</span>
@@ -280,13 +284,21 @@
                         }
 
                         <hr style="margin: 0.5rem 0;" />
-                        <form asp-page="/Auth" asp-page-handler="Logout" method="post">
+                        <form asp-page="/Auth" asp-page-handler="Logout" method="post" onsubmit="clearAILocalStorage()">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="logout-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                                 <span>Sign Out</span>
                             </button>
                         </form>
+                        <script>
+                            function clearAILocalStorage() {
+                                localStorage.removeItem('personImageUrl');
+                                localStorage.removeItem('garmentImageUrl');
+                                localStorage.removeItem('generatedImageUrl');
+                                localStorage.removeItem('lastTryOnResultId');
+                            }
+                        </script>
                     </div>
                 </div>
             }

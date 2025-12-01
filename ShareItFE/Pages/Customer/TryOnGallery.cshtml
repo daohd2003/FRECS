@@ -572,7 +572,7 @@
                                     }
                                     <span class="input-label">Garment</span>
                                 </div>
-                                <span class="flow-icon">→</span>
+                                <span class="flow-icon">+</span>
                                 <span class="type-badge">${img.clothingType || 'Upper'}</span>
                             </div>
                             
@@ -668,8 +668,14 @@
         } catch (error) { showToast('An error occurred', 'error'); }
     });
 
-    function formatDate(dateString) { return new Date(dateString).toLocaleDateString('en-US'); }
-    function formatDateTime(dateString) { return new Date(dateString).toLocaleString('en-US'); }
+    function formatDate(dateString) { 
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }); 
+    }
+    function formatDateTime(dateString) { 
+        const date = new Date(dateString);
+        return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }); 
+    }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 }
