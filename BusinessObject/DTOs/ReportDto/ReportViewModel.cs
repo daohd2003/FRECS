@@ -16,8 +16,10 @@ namespace BusinessObject.DTOs.ReportDto
         public string Description { get; set; }
         public string ReporterName { get; set; }
         public string ReporterEmail { get; set; }
+        public string? ReporterAvatar { get; set; }
         public string ReporteeName { get; set; }
         public string ReporteeEmail { get; set; }
+        public string? ReporteeAvatar { get; set; }
         public DateTime DateCreated { get; set; }
         public string Status { get; set; }
         public ReportPriority Priority { get; set; }

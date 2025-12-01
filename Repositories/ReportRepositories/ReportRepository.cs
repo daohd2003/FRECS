@@ -111,7 +111,9 @@ namespace Repositories.ReportRepositories
                 .Include(r => r.Reporter).ThenInclude(u => u.Profile)
                 .Include(r => r.Reportee).ThenInclude(u => u.Profile)
                 .Include(r => r.AssignedAdmin).ThenInclude(u => u.Profile)
-                .Include(r => r.Order).ThenInclude(o => o.Items).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images) // Lấy thông tin order, products và images
+                .Include(r => r.Order).ThenInclude(o => o.Items).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images)
+                .Include(r => r.OrderItem).ThenInclude(oi => oi.Product).ThenInclude(p => p.Images)
+                .AsSplitQuery()
                 .AsQueryable();
         }
     }

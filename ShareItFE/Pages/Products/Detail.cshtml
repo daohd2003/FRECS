@@ -731,11 +731,16 @@
         window.addEventListener('hashchange', scrollToReviews);
 
         // Toast notification function
-        function showToast(message, type = 'success') {
+        function showToast(message, type = 'success', duration = null) {
             // Remove existing toast if any
             const existingToast = document.querySelector('.toast-notification');
             if (existingToast) {
                 existingToast.remove();
+            }
+
+            // Default duration: 3s for success, 5s for error (to give time to read violation messages)
+            if (duration === null) {
+                duration = type === 'error' ? 5000 : 3000;
             }
 
             // Create toast element
@@ -753,7 +758,7 @@
                 toast.classList.remove('translate-x-full');
             }, 10);
 
-            // Auto remove after 3 seconds
+            // Auto remove after specified duration
             setTimeout(() => {
                 toast.classList.add('translate-x-full');
                 setTimeout(() => {
@@ -761,7 +766,7 @@
                         toast.parentNode.removeChild(toast);
                     }
                 }, 300);
-            }, 3000);
+            }, duration);
         }
 
         // Image Modal Functions with Pan and Zoom
@@ -1329,8 +1334,6 @@
             if (feedbackForm) {
                 const originalSubmitHandler = feedbackForm.onsubmit;
                 feedbackForm.onsubmit = async function(e) {
-                    e.preventDefault();
-
                     const rating = parseInt(feedbackRatingInput.value);
                     const comment = feedbackCommentInput.value;
 
@@ -1350,10 +1353,14 @@
                         if (commentError) commentError.classList.add('hidden');
                     }
 
-                    if (hasError) return false;
+                    if (hasError) {
+                        e.preventDefault();
+                        return false;
+                    }
 
                     // If edit mode, call API to update
                     if (isEditMode && editingFeedbackId) {
+                        e.preventDefault(); // Prevent form submission for edit mode
                         try {
                             // Get token using helper function
                             const token = getAccessToken();
@@ -1384,6 +1391,38 @@
                             if (response.ok) {
                                 showToast('Feedback updated successfully!', 'success');
                                 
+                                // Update feedback in DOM without reloading
+                                const feedbackCard = document.querySelector(`.bg-gray-50[data-feedback-id="${editingFeedbackId}"]`);
+                                if (feedbackCard) {
+                                    // Update rating stars (Lucide icons)
+                                    const starsContainer = feedbackCard.querySelector('.flex.items-center.space-x-2 .flex');
+                                    if (starsContainer) {
+                                        const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
+                                        stars.forEach((star, index) => {
+                                            if (index < rating) {
+                                                star.classList.add('fill-yellow-400', 'text-yellow-400');
+                                                star.classList.remove('text-gray-300');
+                                            } else {
+                                                star.classList.remove('fill-yellow-400', 'text-yellow-400');
+                                                star.classList.add('text-gray-300');
+                                            }
+                                        });
+                                    }
+                                    
+                                    // Update comment text
+                                    const commentElement = feedbackCard.querySelector('.text-gray-700');
+                                    if (commentElement) {
+                                        commentElement.textContent = comment || 'No comment provided';
+                                    }
+                                    
+                                    // Update edit button data attributes
+                                    const editBtn = feedbackCard.querySelector('.edit-feedback-btn');
+                                    if (editBtn) {
+                                        editBtn.setAttribute('data-rating', rating);
+                                        editBtn.setAttribute('data-comment', comment);
+                                    }
+                                }
+                                
                                 // Close modal
                                 feedbackModal.classList.add('hidden');
                                 document.body.classList.remove('overflow-hidden');
@@ -1391,9 +1430,6 @@
                                 // Reset edit mode
                                 isEditMode = false;
                                 editingFeedbackId = null;
-                                
-                                // Reload page to show updated feedback
-                                setTimeout(() => window.location.reload(), 1000);
                             } else {
                                 let errorMessage = 'Failed to update feedback';
                                 try {
@@ -1418,8 +1454,8 @@
                         return false;
                     }
 
-                    // Otherwise, use default form submission for create
-                    return true;
+                    // Otherwise, allow default form submission for create (don't prevent default)
+                    // Form will submit normally to asp-page-handler="AddFeedback"
                 };
             }
 
