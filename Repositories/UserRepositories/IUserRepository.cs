@@ -1,4 +1,4 @@
-﻿using BusinessObject.DTOs.Login;
+using BusinessObject.DTOs.Login;
 using BusinessObject.Models;
 using Repositories.RepositoryBase;
 using System;
@@ -16,5 +16,6 @@ namespace Repositories.UserRepositories
         Task<User> GetOrCreateUserAsync(FacebookPayload payload);
         Task<User?> GetByRefreshTokenAsync(string refreshToken);
         Task<IEnumerable<User>> GetAllWithOrdersAsync();
+        Task<User?> GetUserWithOrdersAsync(Guid userId);
     }
 }

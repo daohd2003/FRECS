@@ -431,7 +431,20 @@
                                 </td>
                                 <td>
                                     <div class="reporter-info">
-                                        <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #9ca3af;"></i>
+                                        @if (!string.IsNullOrEmpty(report.ReporterAvatar))
+                                        {
+                                            <img src="@(string.IsNullOrEmpty(report.ReporterAvatar) ? "/images/placeholder.jpg" : report.ReporterAvatar)" 
+                                                 alt="@report.ReporterName" 
+                                                 class="profile-avatar"
+                                                 style="width: 2.5rem; height: 2.5rem; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid #e5e7eb;" 
+                                                 onerror="this.onerror=null; this.src='/images/placeholder.jpg';" />
+                                        }
+                                        else
+                                        {
+                                            <div class="reporter-avatar" style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem; flex-shrink: 0; border: 2px solid #e5e7eb;">
+                                                @(report.ReporterName?.Substring(0, 1).ToUpper() ?? "?")
+                                            </div>
+                                        }
                                         <div>
                                             <div class="reporter-name">@report.ReporterName</div>
                                             <div class="reporter-email">@report.ReporterEmail</div>
@@ -813,7 +826,22 @@
                     </td>
                     <td>
                         <div class="reporter-info">
-                            <i class="bi bi-person-circle" style="font-size: 1.5rem; color: #9ca3af;"></i>
+                            ${(() => {
+                                const avatarUrl = report.reporterAvatar || report.ReporterAvatar;
+                                console.log('Reporter Avatar URL:', avatarUrl, 'for', reporterName);
+                                
+                                if (avatarUrl && avatarUrl.trim() !== '') {
+                                    return `<img src="${avatarUrl}" 
+                                                 alt="${reporterName}" 
+                                                 class="profile-avatar" 
+                                                 style="width: 2.5rem; height: 2.5rem; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid #e5e7eb;" 
+                                                 onerror="this.onerror=null; this.src='/images/placeholder.jpg';" />`;
+                                } else {
+                                    return `<div class="reporter-avatar" style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem; flex-shrink: 0; border: 2px solid #e5e7eb;">
+                                                ${reporterName ? reporterName.substring(0, 1).toUpperCase() : '?'}
+                                            </div>`;
+                                }
+                            })()}
                             <div>
                                 <div class="reporter-name">${escapeHtml(reporterName)}</div>
                                 <div class="reporter-email">${escapeHtml(reporterEmail)}</div>

@@ -34,7 +34,8 @@ namespace ShareItAPI.Controllers.OData
                 Email = u.Email,
                 Role = u.Role, // Đảm bảo thuộc tính Role trong User cũng là UserRole hoặc có thể ánh xạ được
                 CreatedAt = u.CreatedAt,
-                IsActive = u.IsActive
+                IsActive = u.IsActive,
+                ProfilePictureUrl = u.Profile != null ? u.Profile.ProfilePictureUrl : null
             }).AsQueryable());
         }
     }

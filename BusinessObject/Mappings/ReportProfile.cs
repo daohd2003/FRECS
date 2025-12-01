@@ -15,8 +15,10 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.ReporterName, opt => opt.MapFrom(src => src.Reporter != null && src.Reporter.Profile != null ? src.Reporter.Profile.FullName : "Unknown"))
                 .ForMember(dest => dest.ReporterEmail, opt => opt.MapFrom(src => src.Reporter != null ? src.Reporter.Email : "Unknown"))
+                .ForMember(dest => dest.ReporterAvatar, opt => opt.MapFrom(src => src.Reporter != null && src.Reporter.Profile != null ? src.Reporter.Profile.ProfilePictureUrl : null))
                 .ForMember(dest => dest.ReporteeName, opt => opt.MapFrom(src => src.Reportee != null && src.Reportee.Profile != null ? src.Reportee.Profile.FullName : "Unknown"))
                 .ForMember(dest => dest.ReporteeEmail, opt => opt.MapFrom(src => src.Reportee != null ? src.Reportee.Email : "Unknown"))
+                .ForMember(dest => dest.ReporteeAvatar, opt => opt.MapFrom(src => src.Reportee != null && src.Reportee.Profile != null ? src.Reportee.Profile.ProfilePictureUrl : null))
                 .ForMember(dest => dest.AssignedAdminName, opt => opt.MapFrom(src => src.AssignedAdmin != null && src.AssignedAdmin.Profile != null ? src.AssignedAdmin.Profile.FullName : null))
                 .ForMember(dest => dest.DateCreated, opt => opt.MapFrom(src => DateTimeHelper.ToVietnamTime(DateTime.SpecifyKind(src.CreatedAt, DateTimeKind.Utc))))
                 // Order-related mappings

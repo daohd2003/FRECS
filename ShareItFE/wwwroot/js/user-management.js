@@ -624,7 +624,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
 
     renderUserRow(user) {
         const profile = user.profile || {};
-        const avatarUrl = profile.avatarUrl || this.getDefaultAvatar(user.email);
+        const avatarUrl = profile.profilePictureUrl || profile.avatarUrl || this.getDefaultAvatar(user.email);
         const fullName = profile.fullName || 'Unknown User';
         const phone = profile.phone || 'N/A';
         
@@ -814,7 +814,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         }
     }
 
-    showUserDetail(userId) {
+    async showUserDetail(userId) {
         const user = this.users.find(u => u.id === userId);
         if (!user) {
             console.error('User not found:', userId);
@@ -825,17 +825,74 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         this.selectedUser = user;
         
         try {
-        this.populateUserDetailModal(user);
-        this.showUserDetailModal();
+            // Show modal with basic info first
+            this.populateUserDetailModal(user);
+            this.showUserDetailModal();
+            
+            // Load order stats on-demand
+            await this.loadUserOrderStats(userId);
         } catch (error) {
             console.error('Error populating user detail modal:', error);
             this.showError('Failed to load user details. Please try again.');
         }
     }
+    
+    async loadUserOrderStats(userId) {
+        try {
+            // Show loading state in modal
+            const modalBody = document.querySelector('#userDetailModal .modal-body');
+            if (modalBody) {
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = 'orderStatsLoading';
+                loadingDiv.style.textAlign = 'center';
+                loadingDiv.style.padding = '2rem';
+                loadingDiv.innerHTML = '<p>Loading order statistics...</p>';
+                modalBody.appendChild(loadingDiv);
+            }
+            
+            const response = await fetch(`${this.config.apiBaseUrl}/users/${userId}/order-stats`, {
+                headers: {
+                    'Authorization': `Bearer ${this.config.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load order statistics');
+            }
+            
+            const result = await response.json();
+            const stats = result.data;
+            
+            // Update user object with loaded stats
+            const user = this.users.find(u => u.id === userId);
+            if (user) {
+                user.totalOrders = stats.totalOrders;
+                user.ordersByStatus = stats.ordersByStatus;
+                user.returnedOrdersBreakdown = stats.returnedOrdersBreakdown;
+            }
+            
+            // Remove loading state
+            const loadingDiv = document.getElementById('orderStatsLoading');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+            
+            // Re-populate modal with stats
+            this.populateUserDetailModal(user);
+            
+        } catch (error) {
+            console.error('Error loading order stats:', error);
+            const loadingDiv = document.getElementById('orderStatsLoading');
+            if (loadingDiv) {
+                loadingDiv.innerHTML = '<p style="color: #dc2626;">Failed to load order statistics</p>';
+            }
+        }
+    }
 
     populateUserDetailModal(user) {
         const profile = user.profile || {};
-        const avatarUrl = profile.avatarUrl || this.getDefaultAvatar(user.email);
+        const avatarUrl = profile.profilePictureUrl || profile.avatarUrl || this.getDefaultAvatar(user.email);
         
         // Basic info
         document.getElementById('userDetailAvatar').src = avatarUrl;
