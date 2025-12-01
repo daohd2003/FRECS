@@ -43,6 +43,7 @@ namespace Services.ContentModeration
         /// <summary>
         /// Check feedback content (comment + provider response)
         /// Can check either comment only, response only, or both
+        /// Uses RELAXED moderation standards for feedback
         /// </summary>
         public async Task<ContentModerationResultDTO> CheckFeedbackContentAsync(string? comment, string? providerResponse = null)
         {
@@ -64,7 +65,128 @@ namespace Services.ContentModeration
                 };
             
             var fullContent = string.Join(" | ", combinedContent);
-            return await CheckContentAsync(fullContent);
+            
+            // Use relaxed moderation for feedback
+            return await CheckFeedbackWithRelaxedStandardsAsync(fullContent);
+        }
+        
+        private async Task<ContentModerationResultDTO> CheckFeedbackWithRelaxedStandardsAsync(string content)
+        {
+            try
+            {
+                // Skip pre-validation for feedback (allow shorter content, etc.)
+                
+                // Check cache
+                var cacheKey = $"feedback:{GenerateCacheKey(content, null)}";
+                if (_cache.TryGetValue(cacheKey, out ContentModerationResultDTO? cachedResult))
+                {
+                    Console.WriteLine($"[FEEDBACK MODERATION CACHE] ✓ Cache HIT");
+                    return cachedResult!;
+                }
+
+                var prompt = BuildRelaxedFeedbackPrompt(content);
+                var geminiResponse = await SendRequestToGeminiAsync(prompt);
+
+                if (string.IsNullOrEmpty(geminiResponse))
+                {
+                    return new ContentModerationResultDTO
+                    {
+                        IsAppropriate = true, // Default to allow for feedback
+                        Reason = null,
+                        ViolatedTerms = new List<string>()
+                    };
+                }
+
+                var result = ParseModerationResponse(geminiResponse);
+
+                // Cache for 24 hours
+                var cacheOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromHours(24))
+                    .SetPriority(CacheItemPriority.Normal);
+
+                _cache.Set(cacheKey, result, cacheOptions);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking feedback content");
+                // Default to allowing feedback if error occurs
+                return new ContentModerationResultDTO
+                {
+                    IsAppropriate = true,
+                    Reason = null,
+                    ViolatedTerms = new List<string>()
+                };
+            }
+        }
+        
+        private string BuildRelaxedFeedbackPrompt(string content)
+        {
+            return $@"You are a content moderation system for customer feedback on an e-commerce platform.
+
+CORE PRINCIPLE: Customers have the RIGHT to express opinions and complaints. Only block PROFANITY and THREATS.
+
+REJECT ONLY if content contains:
+
+1. **Severe Profanity** - REJECT if contains:
+   - English: fuck, fucking, shit, bitch, ass, dick, cock, pussy, cunt, bastard, asshole, motherfucker
+   - Vietnamese: địt, lồn, đụ, cặc, buồi, đéo, đệch, vãi lồn, đm, dm, cứt, cc, loz, lol (Vietnamese slang), vcl, clm, dcm, dcmm, vl
+   - Personal insults/disrespectful pronouns: má mày, mày, tao (when used as insult)
+   - Direct insults with profanity: ""Fuck you"", ""Đụ má mày"", ""Má mày"", ""Mày"", ""Như cứt"", ""Như cc""
+   
+2. **Threats or Violence** - REJECT if contains:
+   - Death threats: ""I will kill you"", ""Tao giết mày""
+   - Violence: ""I will hurt you"", ""Đánh chết mày""
+   
+3. **Complete Gibberish** - REJECT if:
+   - Random keyboard spam: ""asdfghjkl"", ""qwertyuiop""
+   - No meaningful content at all
+
+ACCEPT ALL OPINIONS AND COMPLAINTS including:
+- ✅ ""Đồ lừa đảo"" (scam accusation - valid complaint)
+- ✅ ""Hàng giả"" (fake product - valid complaint)
+- ✅ ""Chất lượng tệ"" (bad quality - valid opinion)
+- ✅ ""Seller lừa đảo"" (seller scam - valid complaint)
+- ✅ ""Không đúng mô tả"" (not as described - valid complaint)
+- ✅ ""Dịch vụ tệ"" (bad service - valid opinion)
+- ✅ ""Không đáng tiền"" (not worth it - valid opinion)
+- ✅ ""Thất vọng"" (disappointed - valid emotion)
+- ✅ ""Tệ"", ""Kém"", ""Không tốt"" (negative opinions - valid)
+- ✅ Short comments: ""Good"", ""Bad"", ""Ok"", ""Tốt"", ""Tệ""
+
+Feedback Content: {content}
+
+EXAMPLES TO ACCEPT:
+- ""Đồ lừa đảo, hàng giả"" → ACCEPT (complaint about scam/fake)
+- ""Chất lượng tệ, không đáng tiền"" → ACCEPT (quality complaint)
+- ""Seller lừa đảo khách hàng"" → ACCEPT (service complaint)
+- ""Hàng không đúng mô tả"" → ACCEPT (valid complaint)
+- ""Thất vọng về sản phẩm"" → ACCEPT (expressing disappointment)
+- ""Tệ"" → ACCEPT (short negative opinion)
+- ""Not good"" → ACCEPT (short opinion)
+
+EXAMPLES TO REJECT:
+- ""Địt mẹ seller"" → REJECT (profanity)
+- ""Fuck you"" → REJECT (profanity + personal attack)
+- ""Má mày"" → REJECT (personal insult)
+- ""Mày ngu"" → REJECT (personal insult with disrespectful pronoun)
+- ""Tao giết mày"" → REJECT (death threat)
+- ""Chất lượng vcl"" → REJECT (profanity abbreviation)
+- ""Shop như cc"" → REJECT (profanity)
+- ""Hàng cc"" → REJECT (profanity)
+- ""asdfghjkl"" → REJECT (gibberish)
+
+TASK: Check if feedback contains PROFANITY or THREATS. If NO → ACCEPT. If YES → REJECT.
+
+Respond in JSON format:
+{{
+    ""isAppropriate"": true/false,
+    ""reason"": ""Brief explanation if inappropriate"",
+    ""violatedTerms"": [""specific"", ""profanity"", ""words""]
+}}
+
+Remember: ONLY block profanity and threats. ALL opinions and complaints are allowed.";
         }
 
         public async Task<ContentModerationResultDTO> CheckProductContentAsync(string name, string? description)
