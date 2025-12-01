@@ -127,35 +127,6 @@
 
             <!-- Key Metrics -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Revenue Card -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Revenue</p>
-                            <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.CurrentPeriodRevenue.ToString("N0")₫</p>
-                        </div>
-                        <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                            <span class="text-2xl font-bold text-green-600">₫</span>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex items-center">
-                        @if (Model.RevenueStats.RevenueGrowthPercentage >= 0)
-                        {
-                            <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
-                            <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
-                        }
-                        else
-                        {
-                            <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
-                            <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
-                        }
-                        <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
-                    </div>
-                    <div class="mt-3 pt-3 border-t border-gray-100">
-                        <span class="text-xs text-gray-500">From completed orders</span>
-                    </div>
-                </div>
-
                 <!-- Orders Card -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div class="flex items-center justify-between">
@@ -185,45 +156,37 @@
                     </div>
                 </div>
 
-                @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
-                {
-                    <!-- Net Revenue (Provider) -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-gray-600">Net Revenue</p>
-                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.NetRevenue.ToString("N0")₫</p>
-                            </div>
-                            <div class="h-12 w-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                <i data-lucide="wallet" class="h-6 w-6 text-emerald-600"></i>
-                            </div>
+                <!-- Revenue Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Revenue</p>
+                            <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.CurrentPeriodRevenue.ToString("N0")₫</p>
                         </div>
-                        <div class="mt-4 flex items-center">
-                            @if (Model.RevenueStats.NetRevenueGrowthPercentage >= 0)
-                            {
-                                <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
-                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
-                            }
-                            else
-                            {
-                                <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
-                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
-                            }
-                            <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
-                        </div>
-                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
-                            <span class="text-xs text-gray-500 block mb-2">After platform fees</span>
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-500">From orders:</span>
-                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromOrders.ToString("N0")₫</span>
-                            </div>
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-500">From penalties:</span>
-                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromPenalties.ToString("N0")₫</span>
-                            </div>
+                        <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <span class="text-2xl font-bold text-green-600">₫</span>
                         </div>
                     </div>
+                    <div class="mt-4 flex items-center">
+                        @if (Model.RevenueStats.RevenueGrowthPercentage >= 0)
+                        {
+                            <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                            <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
+                        }
+                        else
+                        {
+                            <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                            <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.RevenueGrowthPercentage.ToString("F1")%</span>
+                        }
+                        <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <span class="text-xs text-gray-500">From completed orders</span>
+                    </div>
+                </div>
 
+                @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+                {
                     <!-- Platform Fee (Provider) -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center justify-between">
@@ -257,6 +220,43 @@
                             <div class="flex justify-between items-center text-xs">
                                 <span class="text-gray-500">Sales fee (10%):</span>
                                 <span class="text-gray-700 font-medium">@Model.RevenueStats.PurchaseFee.ToString("N0")₫</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Net Revenue (Provider) -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Net Revenue</p>
+                                <p class="text-2xl font-bold text-gray-900">@Model.RevenueStats.NetRevenue.ToString("N0")₫</p>
+                            </div>
+                            <div class="h-12 w-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="wallet" class="h-6 w-6 text-emerald-600"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            @if (Model.RevenueStats.NetRevenueGrowthPercentage >= 0)
+                            {
+                                <i data-lucide="trending-up" class="h-4 w-4 text-green-500 mr-1"></i>
+                                <span class="text-sm text-green-600 font-medium">+@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
+                            }
+                            else
+                            {
+                                <i data-lucide="trending-down" class="h-4 w-4 text-red-500 mr-1"></i>
+                                <span class="text-sm text-red-600 font-medium">@Model.RevenueStats.NetRevenueGrowthPercentage.ToString("F1")%</span>
+                            }
+                            <span class="text-sm text-gray-500 ml-2">vs last @Model.Period.ToLower()</span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                            <span class="text-xs text-gray-500 block mb-2">After platform fees</span>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">From orders:</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromOrders.ToString("N0")₫</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500">From penalties:</span>
+                                <span class="text-gray-700 font-medium">@Model.RevenueStats.NetRevenueFromPenalties.ToString("N0")₫</span>
                             </div>
                         </div>
                     </div>
@@ -325,6 +325,100 @@
                     </div>
                 </div>
             </div>
+
+            @if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                <!-- Top Revenue and Top Customers Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <!-- Top 5 Revenue by Product -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top 5 Product Revenue</h3>
+                        @if (Model.TopRevenueItems != null && Model.TopRevenueItems.Any())
+                        {
+                            <div class="space-y-4">
+                                @foreach (var item in Model.TopRevenueItems)
+                                {
+                                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                        <div class="flex items-center space-x-4 flex-1">
+                                            @if (!string.IsNullOrEmpty(item.ProductImageUrl))
+                                            {
+                                                <img src="@item.ProductImageUrl" alt="@item.ProductName" class="w-16 h-16 object-cover rounded-lg" />
+                                            }
+                                            else
+                                            {
+                                                <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                    <i data-lucide="image" class="h-8 w-8 text-gray-400"></i>
+                                                </div>
+                                            }
+                                            <div class="flex-1 min-w-0">
+                                                <h4 class="text-sm font-semibold text-gray-900 truncate">@item.ProductName</h4>
+                                                <div class="flex items-center space-x-2 mt-1">
+                                                    <span class="text-xs px-2 py-1 rounded-full @(item.TransactionType == "rental" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700")">
+                                                        @(item.TransactionType == "rental" ? "Rental" : "Purchase")
+                                                    </span>
+                                                    <span class="text-xs text-gray-500">@item.OrderCount orders</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right ml-4">
+                                            <p class="text-sm font-bold text-gray-900">@item.Revenue.ToString("N0")₫</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-8 text-gray-500">
+                                <i data-lucide="package" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
+                                <p>No product revenue data available</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Top 5 Customers -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top 5 Customers</h3>
+                        @if (Model.TopCustomers != null && Model.TopCustomers.Any())
+                        {
+                            <div class="space-y-4">
+                                @foreach (var customer in Model.TopCustomers)
+                                {
+                                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                        <div class="flex items-center space-x-4 flex-1">
+                                            @if (!string.IsNullOrEmpty(customer.CustomerAvatarUrl))
+                                            {
+                                                <img src="@customer.CustomerAvatarUrl" alt="@customer.CustomerName" class="w-12 h-12 rounded-full object-cover" />
+                                            }
+                                            else
+                                            {
+                                                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                                    <span class="text-purple-600 font-semibold text-sm">@(customer.CustomerName.Length > 0 ? customer.CustomerName[0].ToString().ToUpper() : "?")</span>
+                                                </div>
+                                            }
+                                            <div class="flex-1 min-w-0">
+                                                <h4 class="text-sm font-semibold text-gray-900 truncate">@customer.CustomerName</h4>
+                                                <p class="text-xs text-gray-500 truncate">@customer.CustomerEmail</p>
+                                                <p class="text-xs text-gray-500 mt-1">@customer.OrderCount orders</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right ml-4">
+                                            <p class="text-sm font-bold text-gray-900">@customer.TotalSpent.ToString("N0")₫</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-8 text-gray-500">
+                                <i data-lucide="users" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
+                                <p>No customer data available</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
         }
         else if (string.Equals(Model.UserRole, "provider", StringComparison.OrdinalIgnoreCase))
         {
