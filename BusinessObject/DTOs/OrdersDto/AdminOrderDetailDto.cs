@@ -37,6 +37,11 @@ namespace BusinessObject.DTOs.OrdersDto
         public decimal Subtotal { get; set; }
         public decimal ShippingFee { get; set; }
         public decimal? DiscountAmount { get; set; }
+        public decimal ItemRentalCountDiscount { get; set; }
+        public decimal LoyaltyDiscount { get; set; }
+        public decimal ItemRentalCountDiscountPercent { get; set; }
+        public decimal LoyaltyDiscountPercent { get; set; }
+        public decimal TotalCommission { get; set; }
         public decimal TotalAmount { get; set; }
         
         // Payment Information

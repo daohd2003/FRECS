@@ -2,7 +2,7 @@
 @model ShareItFE.Pages.Staff.OrderAdministratorModel
 @{
     ViewData["Title"] = "Order Administrator";
-    Layout = "/Pages/Shared/_Layout.cshtml";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/user-management.css" asp-append-version="true" />
@@ -358,7 +358,7 @@
         
         .summary-statistics-row {
             display: grid;
-            grid-template-columns: 1fr 1.5fr;
+            grid-template-columns: 1.5fr 1fr;
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
@@ -367,6 +367,18 @@
             background: white;
             border-radius: 12px;
             padding: 1.5rem;
+        }
+        
+        .order-summary-card {
+            min-width: 380px;
+        }
+        
+        .order-summary-card .summary-item {
+            flex-wrap: nowrap;
+        }
+        
+        .order-summary-card .summary-item > span:first-child {
+            white-space: nowrap;
         }
         
         .summary-header, .stats-header {
@@ -2463,26 +2475,26 @@
                                 </div>
                                 
                                 <!-- Discount Code -->
-                                ${(order.discountCodeAmount > 0 || discountAmount > 0) ? `
+                                ${discountAmount > 0 ? `
                                 <div class="summary-item">
-                                    <span style="color: #86868b;">Discount Code</span>
-                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.discountCodeAmount || discountAmount)} đ</span>
+                                    <span>Discount Code:</span>
+                                    <span style="font-weight: 600; color: #ef4444; white-space: nowrap;">-${formatCurrency(discountAmount)} đ</span>
                                 </div>
                                 ` : ''}
                                 
                                 <!-- Item Rental Discount -->
-                                ${order.itemRentalDiscount > 0 ? `
+                                ${order.itemRentalCountDiscount > 0 ? `
                                 <div class="summary-item">
-                                    <span style="color: #86868b;">Item Rental Discount (${order.itemRentalDiscountPercent || 0}%)</span>
-                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.itemRentalDiscount)} đ</span>
+                                    <span>Item Rental Discount <span style="font-size: 0.75rem; color: #86868b;">(${order.itemRentalCountDiscountPercent || 0}%)</span>:</span>
+                                    <span style="font-weight: 600; color: #ef4444; white-space: nowrap;">-${formatCurrency(order.itemRentalCountDiscount)} đ</span>
                                 </div>
                                 ` : ''}
                                 
                                 <!-- Loyalty Discount -->
                                 ${order.loyaltyDiscount > 0 ? `
                                 <div class="summary-item">
-                                    <span style="color: #86868b;">Loyalty Discount (${order.loyaltyDiscountPercent || 0}%)</span>
-                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.loyaltyDiscount)} đ</span>
+                                    <span>Loyalty Discount <span style="font-size: 0.75rem; color: #86868b;">(${order.loyaltyDiscountPercent || 0}%)</span>:</span>
+                                    <span style="font-weight: 600; color: #ef4444; white-space: nowrap;">-${formatCurrency(order.loyaltyDiscount)} đ</span>
                                 </div>
                                 ` : ''}
                                 
@@ -2494,10 +2506,21 @@
                                 </div>
                                 ` : ''}
                                 
+                                <!-- Platform Commission -->
+                                ${order.totalCommission > 0 ? `
+                                    <div class="summary-item" style="background: #e0e7ff; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                        <span style="color: #4338ca;">
+                                            <strong>Platform Commission</strong>
+                                            <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.125rem;">(included in total)</div>
+                                        </span>
+                                        <span style="font-weight: 700; color: #6366f1; white-space: nowrap;">+${formatCurrency(order.totalCommission)} đ</span>
+                                    </div>
+                                ` : ''}
+                                
                                 <!-- Total -->
-                                <div class="summary-item total-item" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e5e7;">
-                                    <span style="font-size: 1.125rem; font-weight: 700; color: #1d1d1f;">Total ${totalDeposit > 0 ? '(incl. deposit)' : ''}</span>
-                                    <span style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6; white-space: nowrap;">${formatCurrency(finalTotal)} đ</span>
+                                <div class="summary-item total-item" style="margin-top: 0.5rem;">
+                                    <span style="font-size: 0.9rem;"><strong>Total</strong>${(totalDeposit > 0 || order.totalCommission > 0) ? '<span style="font-size: 0.7rem; font-weight: normal; color: #86868b;"> (incl. deposit & commission)</span>' : ''}</span>
+                                    <span class="total-value" style="font-size: 1.1rem;">${formatCurrency(order.totalAmount)} đ</span>
                                 </div>
                             </div>
                         </div>
@@ -2521,10 +2544,6 @@
                                 <div class="stat-item" style="border-top: 1px dashed #e5e5e7; padding-top: 0.75rem; margin-top: 0.5rem;">
                                     <span>Average value per product:</span>
                                     <span><strong>${formatCurrency(averageValue)} đ</strong></span>
-                                </div>
-                                <div class="stat-item" style="font-size: 0.75rem; color: #86868b; margin-top: -0.5rem;">
-                                    <span style="font-style: italic;">Subtotal ÷ Products</span>
-                                    <span style="font-family: monospace;">${totalProducts > 0 ? formatCurrency(calculatedSubtotal) + ' ÷ ' + totalProducts : 'N/A'}</span>
                                 </div>
                                 ${totalDeposit > 0 ? `
                                     <div class="stat-item" style="border-top: 1px dashed #e5e5e7; padding-top: 0.75rem; margin-top: 0.75rem;">

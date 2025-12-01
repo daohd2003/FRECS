@@ -2405,11 +2405,16 @@
                         const result = await response.json();
                         console.log('Conversation result:', result);
                         
-                        // Use floating chat manager to open chat
+                        // Get provider info from conversation result (includes role)
+                        const otherParticipant = result.otherParticipant;
+                        const finalProviderName = otherParticipant?.fullName || providerName;
+                        const providerRole = otherParticipant?.role || 'provider';
+                        
+                        // Use floating chat manager to open chat with role
                         if (window.floatingChatManager) {
-                            window.floatingChatManager.openChat(providerId, providerName, providerAvatar);
+                            window.floatingChatManager.openChat(providerId, finalProviderName, providerAvatar, false, providerRole);
                         } else if (window.openFloatingChat) {
-                            window.openFloatingChat(providerId, providerName, providerAvatar);
+                            window.openFloatingChat(providerId, finalProviderName, providerAvatar, providerRole);
                         } else {
                             // Fallback: redirect to messages page
                             window.open('/customer/messages', '_blank');

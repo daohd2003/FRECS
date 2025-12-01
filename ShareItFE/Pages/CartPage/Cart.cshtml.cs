@@ -63,7 +63,7 @@ namespace ShareItFE.Pages.CartPage
         public DiscountCodeSessionDto? SelectedDiscountCode { get; set; }
 
         /// <summary>
-        /// Auto discount for item rental count (2% per previous rental of specific item, max 20%)
+        /// Auto discount for item rental count (1% per 3 times product has been rented, max 30%)
         /// </summary>
         public decimal ItemRentalCountDiscount { get; set; }
 
@@ -589,7 +589,7 @@ namespace ShareItFE.Pages.CartPage
 
         /// <summary>
         /// Fetch auto discount preview from API
-        /// - Rental days discount: 3% per day × items, max 25%
+        /// - Item rental discount: 1% per 3 times product has been rented, max 30%
         /// - Loyalty discount: 2% per previous rental × items, max 15%
         /// </summary>
         private async Task FetchAutoDiscountAsync(HttpClient client)

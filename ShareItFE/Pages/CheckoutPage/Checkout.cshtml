@@ -9,6 +9,27 @@
     <link rel="stylesheet" href="~/css/discount-code-modal.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="~/css/checkout-modal.css" asp-append-version="true" />
+    <style>
+        .help-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #64b5f6;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 11px;
+            cursor: help;
+            margin-left: 4px;
+            transition: all 0.2s ease;
+        }
+        .help-icon:hover {
+            background: #42a5f5;
+            transform: scale(1.15);
+        }
+    </style>
 }
 
 @if (!string.IsNullOrEmpty(Model.QrCodeUrl))
@@ -270,7 +291,7 @@
                                 <span class="text-gray-600 flex items-center gap-1">
                                     Item Rental Discount
                                     <span class="text-xs text-gray-500">(@Model.ItemRentalCountDiscountPercent%)</span>
-                                    <span class="text-xs text-gray-400 cursor-help" title="2% discount per previous rental of this specific item, max 20%. You have rented these items @Model.TotalItemRentalCount time(s) before.">ⓘ</span>
+                                    <span class="help-icon" data-bs-toggle="tooltip" title="1% discount per 3 times product has been rented, max 30%. These products have been rented @Model.TotalItemRentalCount time(s) total.">?</span>
                                 </span>
                                 <span class="font-semibold text-green-600">
                                     @if (Model.ItemRentalCountDiscount > 0)
@@ -287,7 +308,7 @@
                                 <span class="text-gray-600 flex items-center gap-1">
                                     Loyalty Discount
                                     <span class="text-xs text-gray-500">(@Model.LoyaltyDiscountPercent%)</span>
-                                    <span class="text-xs text-gray-400 cursor-help" title="2% discount per previous completed rental × number of items, max 15%">ⓘ</span>
+                                    <span class="help-icon" data-bs-toggle="tooltip" title="2% discount per previous completed rental × number of items, max 15%">?</span>
                                 </span>
                                 <span class="font-semibold text-green-600">
                                     @if (Model.LoyaltyDiscount > 0)
@@ -435,6 +456,10 @@
         }
         
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Bootstrap tooltips for help icons
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+
             // --- 1. Logic cho Toast Messages ---
             const toastSuccess = document.getElementById('toast-success');
             if (toastSuccess) {

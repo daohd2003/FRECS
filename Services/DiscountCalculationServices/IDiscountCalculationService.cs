@@ -12,7 +12,7 @@ namespace Services.DiscountCalculationServices
 
         /// <summary>
         /// Calculate automatic discounts with specific product IDs
-        /// - Item Rental Discount: Based on previous rentals of specific product, applied to daily rate × quantity (fixed, not affected by rental days)
+        /// - Item Rental Discount: Based on product's total RentCount (1% per 3 times rented, max 30%)
         /// - Loyalty Discount: Based on total completed rentals on platform, fixed amount (not affected by quantity or days)
         /// </summary>
         /// <param name="customerId">Customer ID</param>

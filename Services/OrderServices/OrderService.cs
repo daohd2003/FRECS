@@ -1631,6 +1631,11 @@ namespace Services.OrderServices
                 Subtotal = order.Subtotal,
                 ShippingFee = 0,
                 DiscountAmount = order.DiscountAmount,
+                ItemRentalCountDiscount = order.ItemRentalCountDiscount,
+                LoyaltyDiscount = order.LoyaltyDiscount,
+                ItemRentalCountDiscountPercent = order.ItemRentalCountDiscountPercent,
+                LoyaltyDiscountPercent = order.LoyaltyDiscountPercent,
+                TotalCommission = order.Items?.Sum(i => i.CommissionAmount) ?? 0,
                 TotalAmount = order.TotalAmount,
                 
                 // Payment Information
