@@ -3,7 +3,7 @@ namespace BusinessObject.DTOs.Discount
     public class AutoDiscountResultDto
     {
         /// <summary>
-        /// Item rental count discount percentage (2% per previous rental of specific item, max 20%)
+        /// Item rental count discount percentage (1% per 3 times product has been rented, max 30%)
         /// </summary>
         public decimal ItemRentalCountDiscountPercent { get; set; }
 
@@ -33,7 +33,7 @@ namespace BusinessObject.DTOs.Discount
         public int PreviousRentalCount { get; set; }
 
         /// <summary>
-        /// Total previous rental count for specific items in cart
+        /// Total RentCount of products in cart (how many times products have been rented)
         /// </summary>
         public int TotalItemRentalCount { get; set; }
     }

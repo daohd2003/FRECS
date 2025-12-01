@@ -10,8 +10,8 @@ namespace Services.DiscountCalculationServices
         private readonly ShareItDbContext _context;
 
         // Discount constants
-        private const decimal ITEM_RENTAL_COUNT_DISCOUNT_PERCENT_PER_RENTAL = 2m; // 2% per previous rental of specific item
-        private const decimal MAX_ITEM_RENTAL_COUNT_DISCOUNT_PERCENT = 20m;       // Max 20%
+        private const decimal ITEM_RENTAL_COUNT_DISCOUNT_PERCENT_PER_3_RENTALS = 1m; // 1% per 3 times product has been rented
+        private const decimal MAX_ITEM_RENTAL_COUNT_DISCOUNT_PERCENT = 30m;          // Max 30%
         private const decimal LOYALTY_DISCOUNT_PERCENT_PER_RENTAL = 2m;           // 2% per previous rental per item
         private const decimal MAX_LOYALTY_DISCOUNT_PERCENT = 15m;                 // Max 15%
 
@@ -59,7 +59,7 @@ namespace Services.DiscountCalculationServices
 
         /// <summary>
         /// Calculate auto discounts with specific product IDs
-        /// - Item Rental Discount: Based on previous rentals of specific product, applied to daily rate × quantity (fixed, not affected by rental days)
+        /// - Item Rental Discount: Based on product's total RentCount (1% per 3 times rented, max 30%)
         /// - Loyalty Discount: Based on total completed rentals on platform, fixed amount (not affected by quantity or days)
         /// </summary>
         /// <param name="customerId">Customer ID</param>
@@ -74,24 +74,27 @@ namespace Services.DiscountCalculationServices
         {
             var result = new AutoDiscountResultDto();
 
-            // 1. Calculate item rental count discount: 2% per previous rental of specific product, max 20%
-            // Count how many times customer has rented each specific product
+            // 1. Calculate item rental count discount: 1% per 3 times product has been rented (RentCount), max 30%
+            // Get total RentCount from all products in cart
             // Discount is applied to baseDailyTotal (giá/ngày × số lượng) - FIXED regardless of rental days
-            int totalItemRentalCount = 0;
+            int totalProductRentCount = 0;
             foreach (var productId in productIds)
             {
-                var itemRentalCount = await _context.OrderItems
-                    .Where(oi => oi.Order.CustomerId == customerId
-                              && oi.Order.Status == OrderStatus.returned
-                              && oi.ProductId == productId
-                              && oi.TransactionType == TransactionType.rental)
-                    .CountAsync();
-                totalItemRentalCount += itemRentalCount;
+                var product = await _context.Products
+                    .Where(p => p.Id == productId)
+                    .Select(p => new { p.RentCount })
+                    .FirstOrDefaultAsync();
+                
+                if (product != null)
+                {
+                    totalProductRentCount += product.RentCount;
+                }
             }
 
-            result.TotalItemRentalCount = totalItemRentalCount;
+            result.TotalItemRentalCount = totalProductRentCount;
 
-            decimal itemRentalCountDiscountPercent = totalItemRentalCount * ITEM_RENTAL_COUNT_DISCOUNT_PERCENT_PER_RENTAL;
+            // 1% discount per 3 rented times, max 30%
+            decimal itemRentalCountDiscountPercent = Math.Floor(totalProductRentCount / 3m) * ITEM_RENTAL_COUNT_DISCOUNT_PERCENT_PER_3_RENTALS;
             itemRentalCountDiscountPercent = Math.Min(itemRentalCountDiscountPercent, MAX_ITEM_RENTAL_COUNT_DISCOUNT_PERCENT);
 
             result.ItemRentalCountDiscountPercent = itemRentalCountDiscountPercent;

@@ -286,7 +286,7 @@ namespace ShareItAPI.Controllers
 
         /// <summary>
         /// Preview automatic discounts for rental items in cart
-        /// - Item rental count discount: 2% per previous rental of specific item, max 20%
+        /// - Item rental discount: 1% per 3 times product has been rented, max 30%
         /// - Loyalty discount: 2% per previous rental × item count, max 15%
         /// </summary>
         [HttpGet("preview-discount")]

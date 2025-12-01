@@ -71,7 +71,7 @@ namespace BusinessObject.Models
         public decimal DiscountAmount { get; set; } = 0m;
 
         /// <summary>
-        /// Item rental count discount amount (2% per previous rental of specific item, max 20%)
+        /// Item rental count discount amount (1% per 3 times product has been rented, max 30%)
         /// </summary>
         [Column(TypeName = "decimal(10,2)")]
         public decimal ItemRentalCountDiscount { get; set; } = 0m;

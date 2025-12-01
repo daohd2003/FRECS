@@ -532,3 +532,148 @@
     text-decoration: underline;
 }
 
+
+/* Product Banner in Chat Window */
+.chat-product-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f3e8ff 100%);
+    border-bottom: 1px solid #e9d5ff;
+}
+
+.chat-product-banner.hidden {
+    display: none;
+}
+
+.chat-product-banner .chat-product-thumb {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.chat-product-banner .chat-product-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-product-label {
+    font-size: 11px;
+    color: #7c3aed;
+    font-weight: 500;
+}
+
+.chat-product-banner .chat-product-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-product-view-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: white;
+    color: #7c3aed;
+    text-decoration: none;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    border: 1px solid #e9d5ff;
+}
+
+.chat-product-view-link:hover {
+    background: #7c3aed;
+    color: white;
+}
+
+/* Product Context in Messages */
+.product-context-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s;
+}
+
+.product-context-link:hover {
+    background: #e5e7eb !important;
+    border-color: #9333ea !important;
+}
+
+.product-context-link:hover .product-context-icon {
+    color: #9333ea !important;
+}
+
+.product-context-img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.product-context-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.product-context-label {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.product-context-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.product-context-icon {
+    width: 16px;
+    height: 16px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+/* Fix product context in "me" messages */
+.floating-chat-window .chat-message.me .product-context-link {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.floating-chat-window .chat-message.me .product-context-label,
+.floating-chat-window .chat-message.me .product-context-name {
+    color: white;
+}
+
+.floating-chat-window .chat-message.me .product-context-icon {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.floating-chat-window .chat-message.me .product-context-link:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.floating-chat-window .chat-message.me .product-context-link:hover .product-context-icon {
+    color: white !important;
+}

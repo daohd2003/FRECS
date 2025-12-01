@@ -107,7 +107,7 @@ class FloatingChatManager {
 
             const chatStates = JSON.parse(saved);
             chatStates.forEach(state => {
-                this.openChat(state.userId, state.userName, state.avatar, state.minimized);
+                this.openChat(state.userId, state.userName, state.avatar, state.minimized, state.role);
             });
         } catch (e) {
             console.error('Error loading saved chats:', e);
@@ -122,7 +122,8 @@ class FloatingChatManager {
                     userId: chat.userId,
                     userName: chat.userName,
                     avatar: chat.avatar,
-                    minimized: chat.isMinimized
+                    minimized: chat.isMinimized,
+                    role: chat.role
                 });
             });
             localStorage.setItem('floatingChats', JSON.stringify(states));
@@ -201,10 +202,12 @@ class FloatingChatManager {
             if (response.ok) {
                 const conversation = await response.json();
                 const senderName = conversation.otherParticipant?.fullName || 'User';
+                const senderRole = conversation.otherParticipant?.role || null;
                 const avatar = this.getInitials(senderName);
                 
-                // Open chat with proper name
-                await this.openChat(message.senderId, senderName, avatar, false);
+                // Open chat with proper name, role and product context from message
+                const productContext = message.productContext || null;
+                await this.openChat(message.senderId, senderName, avatar, false, senderRole, productContext);
                 
                 // Add the message
                 const chat = this.chats.get(message.senderId);
@@ -218,31 +221,57 @@ class FloatingChatManager {
             // Fallback: open with basic info
             const senderName = 'User';
             const avatar = this.getInitials(senderName);
-            await this.openChat(message.senderId, senderName, avatar, false);
+            await this.openChat(message.senderId, senderName, avatar, false, null);
         }
     }
 
-    async openChat(userId, userName, avatar = null, minimized = false) {
+    async openChat(userId, userName, avatar = null, minimized = false, role = null, productContext = null) {
         // Check if chat already exists
         if (this.chats.has(userId)) {
             const chat = this.chats.get(userId);
+            
+            // Update name if a better name is provided (not generic like "Provider", "User", etc.)
+            const genericNames = ['Provider', 'User', 'Customer', 'Staff', 'Admin'];
+            if (userName && !genericNames.includes(userName) && genericNames.includes(chat.userName)) {
+                chat.userName = userName;
+                chat.displayName = role ? `${userName} (${role})` : (chat.role ? `${userName} (${chat.role})` : userName);
+                // Update UI
+                const nameElement = chat.element?.querySelector('.chat-user-name');
+                if (nameElement) {
+                    nameElement.textContent = chat.displayName;
+                }
+                this.saveChatsState();
+            }
+            
+            // Update product context if provided
+            if (productContext) {
+                chat.productContext = productContext;
+                this.updateProductBanner(chat);
+            }
+            
             if (chat.isMinimized) {
                 this.toggleMinimize(userId);
             }
             return;
         }
 
+        // Format display name with role if available
+        const displayName = role ? `${userName} (${role})` : userName;
+
         // Create chat window
         const chat = {
             userId: userId,
             userName: userName,
+            displayName: displayName,
+            role: role,
             avatar: avatar || this.getInitials(userName),
             conversationId: null,
             messages: [],
             messagesLoaded: false, // Track if messages have been loaded
             isMinimized: minimized,
             unreadCount: 0,
-            element: null
+            element: null,
+            productContext: productContext // Store product context for this chat
         };
 
         // Create UI
@@ -258,12 +287,12 @@ class FloatingChatManager {
         // Add to map
         this.chats.set(userId, chat);
 
-        // Load conversation
+        // Load conversation (this will update userName from API)
         if (!minimized) {
             await this.loadConversation(chat);
         }
 
-        // Save state
+        // Save state after loadConversation updates userName
         this.saveChatsState();
     }
 
@@ -276,7 +305,7 @@ class FloatingChatManager {
             <div class="floating-chat-header">
                 <div class="chat-header-info">
                     <div class="chat-avatar">${this.escapeHtml(chat.avatar)}</div>
-                    <div class="chat-user-name">${this.escapeHtml(chat.userName)}</div>
+                    <div class="chat-user-name">${this.escapeHtml(chat.displayName || chat.userName)}</div>
                 </div>
                 <div class="chat-header-actions">
                     <button type="button" class="chat-header-btn minimize-btn" title="Minimize">
@@ -294,6 +323,20 @@ class FloatingChatManager {
                 ${chat.unreadCount > 0 ? `<span class="chat-unread-badge">${chat.unreadCount}</span>` : ''}
             </div>
             <div class="floating-chat-body">
+                <div class="chat-product-banner hidden">
+                    <img class="chat-product-thumb" src="" alt="Product" />
+                    <div class="chat-product-info">
+                        <div class="chat-product-label">About product:</div>
+                        <div class="chat-product-name"></div>
+                    </div>
+                    <a href="#" class="chat-product-view-link" target="_blank" title="View product">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
+                </div>
                 <div class="chat-messages-area">
                     <div class="chat-loading">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
@@ -312,6 +355,11 @@ class FloatingChatManager {
                 </div>
             </div>
         `;
+        
+        // Update product banner if product context exists
+        if (chat.productContext) {
+            this.updateProductBannerElement(window, chat.productContext);
+        }
 
         // Event listeners
         const header = window.querySelector('.floating-chat-header');
@@ -405,6 +453,30 @@ class FloatingChatManager {
 
             const conversation = await response.json();
             chat.conversationId = conversation.id;
+
+            // Update userName, role and displayName from conversation API (has fullName from Profile)
+            const otherParticipant = conversation.otherParticipant;
+            if (otherParticipant) {
+                // Always update userName from API if available (fullName from Profile table)
+                if (otherParticipant.fullName) {
+                    chat.userName = otherParticipant.fullName;
+                }
+                // Update role if available
+                if (otherParticipant.role) {
+                    chat.role = otherParticipant.role;
+                }
+                // Update displayName with real name and role
+                chat.displayName = chat.role ? `${chat.userName} (${chat.role})` : chat.userName;
+                // Update avatar from profile picture if available
+                if (otherParticipant.profilePictureUrl) {
+                    chat.avatar = this.getInitials(chat.userName);
+                }
+                // Update the header UI
+                const nameElement = chat.element?.querySelector('.chat-user-name');
+                if (nameElement) {
+                    nameElement.textContent = chat.displayName;
+                }
+            }
 
             // Load messages
             await this.loadMessages(chat);
@@ -505,7 +577,7 @@ class FloatingChatManager {
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${isMe ? 'me' : 'them'}`;
         messageEl.dataset.messageId = messageId; // Track message ID in DOM
-        
+
         // Add avatar for messages from others
         if (!isMe) {
             messageEl.innerHTML = `
@@ -522,6 +594,12 @@ class FloatingChatManager {
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
+        }
+        
+        // Update chat's product context from incoming message if available (always update to latest product)
+        if (message.productContext) {
+            chat.productContext = message.productContext;
+            this.updateProductBanner(chat);
         }
 
         messagesArea.appendChild(messageEl);
@@ -542,24 +620,54 @@ class FloatingChatManager {
             const tempMessage = {
                 content: message,
                 senderId: this.currentUserId,
-                sentAt: new Date().toISOString()
+                sentAt: new Date().toISOString(),
+                productContext: chat.productContext // Include product context in temp message
             };
             this.addMessageToChat(chat, tempMessage);
             this.scrollToBottom(chat);
 
-            // Send via SignalR
+            // Send via SignalR with productId if available
+            const productId = chat.productContext?.id || null;
             await this.signalRConnection.invoke(
                 "SendMessageAsync",
                 chat.conversationId,
                 chat.userId,
                 message,
-                null // productId
+                productId
             );
 
             input.value = '';
+            
+            // Clear product context after first message sent (optional - keep for ongoing conversation)
+            // chat.productContext = null;
         } catch (error) {
             console.error('Error sending message:', error);
             window.toastManager?.error('Failed to send message');
+        }
+    }
+    
+    // Update product banner in chat window
+    updateProductBanner(chat) {
+        if (!chat.element) return;
+        this.updateProductBannerElement(chat.element, chat.productContext);
+    }
+    
+    updateProductBannerElement(element, productContext) {
+        const banner = element.querySelector('.chat-product-banner');
+        if (!banner) return;
+        
+        if (productContext && productContext.id) {
+            const thumb = banner.querySelector('.chat-product-thumb');
+            const name = banner.querySelector('.chat-product-name');
+            const link = banner.querySelector('.chat-product-view-link');
+            
+            if (thumb) thumb.src = productContext.imageUrl || '/images/placeholder.png';
+            if (name) name.textContent = productContext.name || 'Product';
+            if (link) link.href = `/products/detail/${productContext.id}`;
+            
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
         }
     }
 
@@ -634,12 +742,12 @@ class FloatingChatManager {
     }
 
     // Public method to open chat from outside
-    static openChatWith(userId, userName, avatar) {
+    static openChatWith(userId, userName, avatar, role = null) {
         if (!window.floatingChatManager) {
             console.warn('FloatingChatManager not initialized');
             return;
         }
-        window.floatingChatManager.openChat(userId, userName, avatar);
+        window.floatingChatManager.openChat(userId, userName, avatar, false, role);
     }
 }
 
@@ -648,12 +756,22 @@ class FloatingChatManager {
 window.floatingChatManager = new FloatingChatManager();
 
 // Global helper function - simple and direct since manager initializes immediately
-window.openFloatingChat = (userId, userName, avatar) => {
+window.openFloatingChat = (userId, userName, avatar, role = null, productContext = null) => {
     if (window.floatingChatManager) {
-        window.floatingChatManager.openChat(userId, userName, avatar);
+        window.floatingChatManager.openChat(userId, userName, avatar, false, role, productContext);
     } else {
         console.error('FloatingChatManager not initialized');
     }
+};
+
+// Helper function to open chat with product context from Product Detail page
+window.openFloatingChatWithProduct = (userId, userName, avatar, role, product) => {
+    const productContext = product ? {
+        id: product.id,
+        name: product.name,
+        imageUrl: product.imageUrl
+    } : null;
+    window.openFloatingChat(userId, userName, avatar, role, productContext);
 };
 
 

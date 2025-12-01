@@ -2431,11 +2431,27 @@
                                     <span style="font-weight: 600; color: ${shippingFee === 0 ? '#10b981' : '#1d1d1f'}; white-space: nowrap;">${shippingFee === 0 ? 'FREE' : formatCurrency(shippingFee) + ' đ'}</span>
                                 </div>
                                 
-                                <!-- Discount -->
+                                <!-- Discount Code -->
                                 <div class="summary-item">
-                                    <span>Discount:</span>
+                                    <span>Discount Code:</span>
                                     <span style="font-weight: 600; color: ${discountAmount > 0 ? '#ef4444' : '#86868b'}; white-space: nowrap;">${discountAmount > 0 ? '-' : ''}${formatCurrency(discountAmount)} đ</span>
                                 </div>
+                                
+                                <!-- Item Rental Discount -->
+                                ${order.itemRentalCountDiscount > 0 ? `
+                                <div class="summary-item">
+                                    <span>Item Rental Discount <span style="font-size: 0.75rem; color: #86868b;">(${order.itemRentalCountDiscountPercent || 0}%)</span>:</span>
+                                    <span style="font-weight: 600; color: #ef4444; white-space: nowrap;">-${formatCurrency(order.itemRentalCountDiscount)} đ</span>
+                                </div>
+                                ` : ''}
+                                
+                                <!-- Loyalty Discount -->
+                                ${order.loyaltyDiscount > 0 ? `
+                                <div class="summary-item">
+                                    <span>Loyalty Discount <span style="font-size: 0.75rem; color: #86868b;">(${order.loyaltyDiscountPercent || 0}%)</span>:</span>
+                                    <span style="font-weight: 600; color: #ef4444; white-space: nowrap;">-${formatCurrency(order.loyaltyDiscount)} đ</span>
+                                </div>
+                                ` : ''}
                                 
                                 <!-- Security Deposit (if rental) -->
                                 ${totalDeposit > 0 ? `
@@ -2448,6 +2464,17 @@
                                     </div>
                                 ` : ''}
                                 
+                                <!-- Platform Commission -->
+                                ${order.totalCommission > 0 ? `
+                                    <div class="summary-item" style="background: #e0e7ff; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                        <span style="color: #4338ca;">
+                                            <strong>Platform Commission</strong>
+                                            <div style="font-size: 0.75rem; font-weight: normal; margin-top: 0.125rem;">(included in total)</div>
+                                        </span>
+                                        <span style="font-weight: 700; color: #6366f1; white-space: nowrap;">+${formatCurrency(order.totalCommission)} đ</span>
+                                    </div>
+                                ` : ''}
+                                
                                 <!-- Calculation Formula -->
                                 <div class="summary-item" style="font-size: 0.75rem; color: #86868b; margin: 0.75rem 0; padding: 0.5rem; background: #f9fafb; border-radius: 4px; border-left: 3px solid #8b5cf6;">
                                     <span style="font-style: italic;">Formula:</span>
@@ -2455,14 +2482,17 @@
                                         ${calculatedSubtotal > 0 ? formatCurrency(calculatedSubtotal) : '0'} 
                                         ${totalDeposit > 0 ? ' + ' + formatCurrency(totalDeposit) : ''} 
                                         ${shippingFee > 0 ? ' + ' + formatCurrency(shippingFee) : ''} 
+                                        ${order.totalCommission > 0 ? ' + ' + formatCurrency(order.totalCommission) : ''} 
                                         ${discountAmount > 0 ? ' - ' + formatCurrency(discountAmount) : ''}
+                                        ${order.itemRentalCountDiscount > 0 ? ' - ' + formatCurrency(order.itemRentalCountDiscount) : ''}
+                                        ${order.loyaltyDiscount > 0 ? ' - ' + formatCurrency(order.loyaltyDiscount) : ''}
                                     </span>
                                 </div>
                                 
                                 <!-- Total -->
                                 <div class="summary-item total-item" style="margin-top: 0.5rem;">
-                                    <span><strong>Total ${totalDeposit > 0 ? '(incl. deposit)' : ''}</strong></span>
-                                    <span class="total-value">${formatCurrency(finalTotal)} đ</span>
+                                    <span><strong>Total ${(totalDeposit > 0 || order.totalCommission > 0) ? '(incl. deposit, incl. commission)' : ''}</strong></span>
+                                    <span class="total-value">${formatCurrency(order.totalAmount)} đ</span>
                                 </div>
                             </div>
                         </div>

@@ -148,7 +148,8 @@ namespace Services.ConversationServices
                 {
                     UserId = otherUser.Id,
                     FullName = otherUser.Profile?.FullName,
-                    ProfilePictureUrl = otherUser.Profile?.ProfilePictureUrl
+                    ProfilePictureUrl = otherUser.Profile?.ProfilePictureUrl,
+                    Role = otherUser.Role.ToString()
                 },
                 ProductContext = lastMessageProduct == null ? null : new ProductContextDto
                 {
@@ -182,7 +183,8 @@ namespace Services.ConversationServices
                 {
                     UserId = otherUser.Id,
                     FullName = otherUser.Profile?.FullName,
-                    ProfilePictureUrl = otherUser.Profile?.ProfilePictureUrl
+                    ProfilePictureUrl = otherUser.Profile?.ProfilePictureUrl,
+                    Role = otherUser.Role.ToString()
                 },
                 ProductContext = lastMessageProduct == null ? null : new ProductContextDto
                 {

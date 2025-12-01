@@ -65,7 +65,7 @@ namespace ShareItFE.Pages.CheckoutPage
         public decimal DiscountAmount { get; set; }
 
         /// <summary>
-        /// Auto discount for item rental count (2% per previous rental of specific item, max 20%)
+        /// Auto discount for item rental count (1% per 3 times product has been rented, max 30%)
         /// </summary>
         public decimal ItemRentalCountDiscount { get; set; }
 
@@ -85,7 +85,7 @@ namespace ShareItFE.Pages.CheckoutPage
         public decimal LoyaltyDiscountPercent { get; set; }
 
         /// <summary>
-        /// Total previous rental count for specific items
+        /// Total RentCount of products (how many times products have been rented)
         /// </summary>
         public int TotalItemRentalCount { get; set; }
 
@@ -938,7 +938,7 @@ namespace ShareItFE.Pages.CheckoutPage
 
         /// <summary>
         /// Fetch auto discount preview from API
-        /// - Item rental count discount: 2% per previous rental of specific item, max 20%
+        /// - Item rental discount: 1% per 3 times product has been rented, max 30%
         /// - Loyalty discount: 2% per previous rental × items, max 15%
         /// </summary>
         private async Task FetchAutoDiscountAsync(HttpClient client)

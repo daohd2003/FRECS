@@ -950,7 +950,7 @@ function renderOrdersTablePaginated(paginationInfo, filter) {
                 </thead>
                 <tbody>
                     ${data.map(item => `
-                        <tr class="table-row-clickable" onclick="window.location.href='/order/details/${item.id}'">
+                        <tr class="table-row-clickable" onclick="window.location.href='/provider/order/${item.id}'">
                             <td><strong>${item.orderNumber}</strong></td>
                             <td>${item.customerName}</td>
                             <td>${item.providerName}</td>

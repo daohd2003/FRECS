@@ -259,7 +259,7 @@
                                         <span class="text-gray-600 flex items-center gap-1">
                                             Item Rental Discount
                                             <span class="text-xs text-gray-500" id="item-rental-percent">(@Model.ItemRentalCountDiscountPercent%)</span>
-                                            <span class="text-xs text-gray-400 cursor-help" title="2% discount per previous rental of this specific item, max 20%. You have rented these items @Model.TotalItemRentalCount time(s) before.">ⓘ</span>
+                                            <span class="text-xs text-gray-400 cursor-help" title="1% discount per 3 times product has been rented, max 30%. These products have been rented @Model.TotalItemRentalCount time(s) total.">ⓘ</span>
                                         </span>
                                         <span class="font-semibold text-green-600" id="item-rental-discount">
                                             @if (Model.ItemRentalCountDiscount > 0)
