@@ -2,7 +2,7 @@
 @model ShareItFE.Pages.Staff.OrderAdministratorModel
 @{
     ViewData["Title"] = "Order Administrator";
-    Layout = "/Pages/Shared/_Layout.cshtml";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/user-management.css" asp-append-version="true" />
@@ -2463,25 +2463,10 @@
                                 </div>
                                 
                                 <!-- Discount Code -->
+                                ${discountAmount > 0 ? `
                                 <div class="summary-item">
                                     <span>Discount Code:</span>
-                                    <span style="font-weight: 600; color: ${discountAmount > 0 ? '#ef4444' : '#86868b'}; white-space: nowrap;">${discountAmount > 0 ? '-' : ''}${formatCurrency(discountAmount)} đ</span>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- Item Rental Discount -->
-                                ${order.itemRentalDiscount > 0 ? `
-                                <div class="summary-item">
-                                    <span style="color: #86868b;">Item Rental Discount (${order.itemRentalDiscountPercent || 0}%)</span>
-                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.itemRentalDiscount)} đ</span>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- Loyalty Discount -->
-                                ${order.loyaltyDiscount > 0 ? `
-                                <div class="summary-item">
-                                    <span style="color: #86868b;">Loyalty Discount (${order.loyaltyDiscountPercent || 0}%)</span>
-                                    <span style="font-weight: 600; color: #1d1d1f; white-space: nowrap;">${formatCurrency(order.loyaltyDiscount)} đ</span>
+                                    <span style="font-weight: 600; color: #ef4444; white-space: nowrap;">-${formatCurrency(discountAmount)} đ</span>
                                 </div>
                                 ` : ''}
                                 

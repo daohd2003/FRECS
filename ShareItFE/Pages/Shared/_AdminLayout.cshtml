@@ -137,14 +137,14 @@
                         </a>
                     }
 
-                    <a href="#" class="nav-item disabled" style="opacity: 0.6; cursor: not-allowed;">
+                    <a asp-page="/Staff/OrderAdministrator" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Staff/OrderAdministrator" ? "active" : "")">
                         <i class="bi bi-cart-check"></i>
-                        <span>Order Administration</span>
+                        <span>Order Administrator</span>
                     </a>
 
-                    <a href="#" class="nav-item disabled" style="opacity: 0.6; cursor: not-allowed;">
+                    <a asp-page="/Staff/FeedbackManagement" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString() == "/Staff/FeedbackManagement" ? "active" : "")">
                         <i class="bi bi-star"></i>
-                        <span>Product Feedback</span>
+                        <span>Feedback Management</span>
                     </a>
 
                     <a asp-page="/Admin/Compensation/Index" class="nav-item @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Compensation") == true ? "active" : "")">

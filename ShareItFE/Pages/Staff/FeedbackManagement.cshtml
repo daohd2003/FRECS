@@ -2,7 +2,7 @@
 @model ShareItFE.Pages.Staff.FeedbackManagementModel
 @{
     ViewData["Title"] = "Feedback Management";
-    Layout = "_Layout";
+    Layout = Model.CurrentUserRole == "admin" ? "_AdminLayout" : "_Layout";
 }
 
 @section Styles {
