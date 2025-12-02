@@ -110,7 +110,7 @@
                                     </div>
                                     <div class="flex flex-col w-full">
                                         <label class="text-sm font-medium text-gray-700 mb-2">Rental Period</label>
-                                        <div id="rentalPeriodDisplay" class="h-10 px-4 flex items-center bg-purple-100 text-purple-800 font-semibold rounded-lg w-fit">
+                                        <div id="rentalPeriodDisplay" class="h-10 px-4 flex items-center bg-purple-100 text-purple-800 font-semibold rounded-lg w-fit" style="margin-top: -2%;">
                                             @if (firstRentalItem.StartDate.HasValue && firstRentalItem.EndDate.HasValue)
                                             {
                                                 @firstRentalItem.StartDate.Value.ToString("dd/MM/yyyy") <span class="mx-2">→</span> @firstRentalItem.EndDate.Value.ToString("dd/MM/yyyy")
