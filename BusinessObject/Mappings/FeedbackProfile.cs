@@ -27,7 +27,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null))
                 .ForMember(dest => dest.OrderIdFromFeedback, opt => opt.MapFrom(src => src.Order != null ? src.Order.Id.ToString() : null))
                 .ForMember(dest => dest.SubmittedAt, opt => opt.MapFrom(src => src.CreatedAt))
-
+                .ForMember(dest => dest.ProfilePictureUrl, opt => opt.MapFrom(src => src.Customer != null && src.Customer.Profile != null ? src.Customer.Profile.ProfilePictureUrl : null))
                 .ForMember(dest => dest.ProviderResponse, opt => opt.MapFrom(src => src.ProviderResponse))
                 .ForMember(dest => dest.ProviderResponseAt, opt => opt.MapFrom(src => src.ProviderResponseAt))
                 .ForMember(dest => dest.ProviderResponseById, opt => opt.MapFrom(src => src.ProviderResponseById))

@@ -132,39 +132,38 @@ namespace ShareItAPI.Controllers
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAllWithOrderStats()
         {
-            // OPTIMIZED: Only load basic user info without orders
             var users = await _userService.GetAllAsync();
             
-            // Return minimal data - order stats will be loaded on-demand
-            var usersWithStats = users.Select(user => new
+            // Load order stats for each user
+            var usersWithStats = new List<object>();
+            foreach (var user in users)
             {
-                user.Id,
-                user.Email,
-                user.Role,
-                user.IsActive,
-                user.CreatedAt,
-                user.LastLogin,
-                user.Profile,
-                TotalOrders = 0, // Will be loaded on-demand when viewing details
-                OrdersByStatus = new { },
-                ReturnedOrdersBreakdown = new
+                var stats = await _userService.GetUserOrderStatsAsync(user.Id);
+                
+                usersWithStats.Add(new
                 {
-                    RentalProductsCount = 0,
-                    RentalTotalEarnings = 0m,
-                    PurchaseProductsCount = 0,
-                    PurchaseTotalEarnings = 0m,
-                    TotalEarnings = 0m,
-                    RentalOrdersCount = 0,
-                    PurchaseOrdersCount = 0
-                }
-            }).ToList();
+                    user.Id,
+                    user.Email,
+                    user.Role,
+                    user.IsActive,
+                    user.CreatedAt,
+                    user.LastLogin,
+                    user.Profile,
+                    TotalOrders = stats?.TotalOrders ?? 0,
+                    OrdersByStatus = stats?.OrdersByStatus ?? new OrdersByStatusDto(),
+                    ReturnedOrdersBreakdown = stats?.ReturnedOrdersBreakdown ?? new ReturnedOrdersBreakdownDto()
+                });
+            }
             
             // For staff, only return customers and providers
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
             if (userRole?.ToLower() == "staff")
             {
                 usersWithStats = usersWithStats
-                    .Where(u => u.Role.ToString() == "customer" || u.Role.ToString() == "provider")
+                    .Where(u => {
+                        var roleValue = u.GetType().GetProperty("Role")?.GetValue(u)?.ToString();
+                        return roleValue == "customer" || roleValue == "provider";
+                    })
                     .ToList();
             }
             

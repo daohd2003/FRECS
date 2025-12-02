@@ -231,7 +231,7 @@ class ProviderApplicationManagement {
 
         const type = this.deriveProviderType(app);
         const taxHtml = app.taxId
-            ? `${this.escapeHtml(app.taxId)}${type === 'business' ? ` <a href="https://tracuunnt.gdt.gov.vn/" target="_blank" rel="noopener" class="tax-check-link">Check</a>` : ''}`
+            ? this.escapeHtml(app.taxId)
             : '<span class="text-muted">N/A</span>';
 
         const actions = app.status === 'pending' ? `
@@ -241,6 +241,17 @@ class ProviderApplicationManagement {
                     <circle cx="12" cy="12" r="3"></circle>
                 </svg>
             </button>
+            ${type === 'business' ? `
+                <button class="action-btn" onclick="window.open('https://tracuunnt.gdt.gov.vn/', '_blank')" 
+                        title="Check Tax ID" 
+                        style="background: #3b82f6; color: white;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </button>
+            ` : ''}
             <button class="action-btn approve-btn" onclick="providerAppMgmt.showApproveModal('${app.id}')" title="Approve">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -261,6 +272,17 @@ class ProviderApplicationManagement {
                     <circle cx="12" cy="12" r="3"></circle>
                 </svg>
             </button>
+            ${type === 'business' ? `
+                <button class="action-btn" onclick="window.open('https://tracuunnt.gdt.gov.vn/', '_blank')" 
+                        title="Check Tax ID" 
+                        style="background: #3b82f6; color: white;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </button>
+            ` : ''}
         `;
 
         return `

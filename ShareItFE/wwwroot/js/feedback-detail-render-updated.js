@@ -1,5 +1,35 @@
+// Helper function to generate default avatar (same as User Management)
+function getDefaultAvatar(name, email) {
+    const text = name || email || 'U';
+    const hash = hashCode(text);
+    const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+    const color = colors[Math.abs(hash) % colors.length];
+    const initial = text.charAt(0).toUpperCase();
+    
+    return `data:image/svg+xml,${encodeURIComponent(`
+        <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="${color}"/>
+            <text x="20" y="26" text-anchor="middle" fill="white" font-family="Arial" font-size="16" font-weight="bold">${initial}</text>
+        </svg>
+    `)}`;
+}
+
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return hash;
+}
+
 // Updated renderFeedbackDetail function
 function renderFeedbackDetail(feedback) {
+    console.log('Feedback Detail Data:', feedback);
+    console.log('Customer Data:', feedback.customer);
+    console.log('ProfilePicture:', feedback.customer?.profilePicture);
+    
     const content = document.getElementById('feedbackDetailContent');
     
     // Build Order Item section HTML
@@ -130,7 +160,7 @@ function renderFeedbackDetail(feedback) {
                 Customer Information
             </h3>
             <div class="customer-detail-card">
-                <img src="${feedback.customer.profilePicture || '/images/default-avatar.png'}" 
+                <img src="${feedback.customer.profilePicture || getDefaultAvatar(feedback.customer.customerName, feedback.customer.email)}" 
                      alt="${feedback.customer.customerName}" 
                      class="customer-detail-avatar">
                 <div>

@@ -13,6 +13,32 @@ let currentFilters = {
     pageSize: 10
 };
 
+// Helper function to generate default avatar (same as User Management)
+function getDefaultAvatar(name, email) {
+    const text = name || email || 'U';
+    const hash = hashCode(text);
+    const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+    const color = colors[Math.abs(hash) % colors.length];
+    const initial = text.charAt(0).toUpperCase();
+    
+    return `data:image/svg+xml,${encodeURIComponent(`
+        <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" fill="${color}"/>
+            <text x="20" y="26" text-anchor="middle" fill="white" font-family="Arial" font-size="16" font-weight="bold">${initial}</text>
+        </svg>
+    `)}`;
+}
+
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return hash;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
@@ -251,11 +277,12 @@ function renderFeedbackTable(feedbacks) {
             </td>
             <td>
                 <div class="action-buttons">
-                    <button class="action-btn action-btn-expand" 
-                            onclick="toggleExpandRow(this, null)"
+                    <button class="action-btn action-btn-primary" 
+                            onclick="showProductFeedbacksModal('${product.productId}', '${escapeHtml(product.productName)}')"
                             title="View All Feedbacks">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"></polyline>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
                         </svg>
                     </button>
                 </div>
@@ -503,7 +530,62 @@ async function viewFeedbackDetail(feedbackId) {
         if (!response.ok) throw new Error('Failed to load feedback detail');
         
         const result = await response.json();
-        const feedback = result.data;
+        let feedback = result.data;
+        
+        console.log('=== FEEDBACK DETAIL DEBUG ===');
+        console.log('Result type:', typeof result);
+        console.log('Result.data type:', typeof result.data);
+        console.log('Is result.data an array?:', Array.isArray(result.data));
+        console.log('Result.data:', result.data);
+        
+        // If data is an array, take the first item
+        if (Array.isArray(feedback)) {
+            console.log('Data is array, taking first item');
+            feedback = feedback[0];
+        }
+        
+        console.log('Final feedback object:', feedback);
+        console.log('Customer Object:', feedback?.customer);
+        console.log('All feedback keys:', Object.keys(feedback || {}));
+        
+        // Log raw response text to see actual JSON structure
+        console.log('Raw response check:');
+        console.log('- Has customer property?:', 'customer' in (feedback || {}));
+        console.log('- Has customerName property?:', 'customerName' in (feedback || {}));
+        console.log('- customerName value:', feedback?.customerName);
+        console.log('- customerEmail value:', feedback?.customerEmail);
+        console.log('- customerProfilePicture value:', feedback?.customerProfilePicture);
+        
+        if (feedback?.customer) {
+            console.log('Customer keys:', Object.keys(feedback.customer));
+            console.log('ProfilePicture value:', feedback.customer.profilePicture);
+        }
+        
+        // If customer object doesn't have profilePicture, fetch it from user API
+        const needsFetchAvatar = feedback && !feedback.customerProfilePicture && !feedback.customer?.profilePicture;
+        console.log('Check if needs fetch avatar:', needsFetchAvatar, 'customerId:', feedback?.customerId);
+        
+        if (needsFetchAvatar && feedback.customerId) {
+            console.log('Fetching user profile for customerId:', feedback.customerId);
+            try {
+                const userResponse = await fetch(`${window.apiSettings?.baseUrl || 'https://localhost:7256/api'}/users/${feedback.customerId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (userResponse.ok) {
+                    const userResult = await userResponse.json();
+                    const userData = userResult.data;
+                    console.log('User data fetched:', userData);
+                    
+                    // Add profile picture to feedback object
+                    if (userData?.profile?.profilePictureUrl) {
+                        feedback.customerProfilePicture = userData.profile.profilePictureUrl;
+                        console.log('Added customerProfilePicture:', feedback.customerProfilePicture);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch user profile:', err);
+            }
+        }
         
         renderFeedbackDetail(feedback);
         document.getElementById('feedbackDetailModal').style.display = 'block';
@@ -515,6 +597,13 @@ async function viewFeedbackDetail(feedbackId) {
 
 
 function renderFeedbackDetail(feedback) {
+    console.log('>>> renderFeedbackDetail CALLED <<<');
+    console.log('Feedback parameter:', feedback);
+    console.log('Has customer?:', !!feedback.customer);
+    console.log('customerProfilePicture value:', feedback.customerProfilePicture);
+    console.log('customer.profilePicture value:', feedback.customer?.profilePicture);
+    console.log('Will use avatar:', feedback.customerProfilePicture || feedback.customer?.profilePicture || 'FALLBACK');
+    
     const content = document.getElementById('feedbackDetailContent');
     
     // Build Order Item section HTML
@@ -645,14 +734,15 @@ function renderFeedbackDetail(feedback) {
                 Customer Information
             </h3>
             <div class="customer-detail-card">
-                <img src="${feedback.customer.profilePicture || '/images/default-avatar.png'}" 
-                     alt="${feedback.customer.customerName}" 
-                     class="customer-detail-avatar">
+                <img src="${feedback.customerProfilePicture || feedback.customer?.profilePicture || getDefaultAvatar(feedback.customerName || feedback.customer?.customerName, feedback.customerEmail || feedback.customer?.email)}" 
+                     alt="${feedback.customerName || feedback.customer?.customerName}" 
+                     class="customer-detail-avatar"
+                     onerror="this.src='${getDefaultAvatar(feedback.customerName || feedback.customer?.customerName, feedback.customerEmail || feedback.customer?.email)}'"
                 <div>
-                    <h4 style="margin: 0 0 0.25rem 0;">${feedback.customer.customerName}</h4>
-                    <p style="color: #666; margin: 0;">${feedback.customer.email || ''}</p>
+                    <h4 style="margin: 0 0 0.25rem 0;">${feedback.customer?.customerName || feedback.customerName}</h4>
+                    <p style="color: #666; margin: 0;">${feedback.customer?.email || feedback.customerEmail || ''}</p>
                     <p style="color: #999; font-size: 0.875rem; margin: 0.25rem 0 0 0;">
-                        Submitted: ${formatDate(feedback.customer.submittedAt)}
+                        Submitted: ${formatDate(feedback.customer?.submittedAt || feedback.createdAt)}
                     </p>
                 </div>
             </div>
@@ -1017,6 +1107,13 @@ if (!document.getElementById('toast-animations')) {
     document.head.appendChild(style);
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -1105,3 +1202,202 @@ document.addEventListener('click', function(event) {
         openImageLightbox(event.target.src, customerName);
     }
 });
+
+
+// Product Feedbacks Modal Functions
+async function showProductFeedbacksModal(productId, productName) {
+    const modal = document.getElementById('productFeedbacksModal');
+    const title = document.getElementById('productFeedbacksTitle');
+    const content = document.getElementById('productFeedbacksContent');
+    
+    // Set title
+    title.textContent = `All Feedbacks for: ${productName}`;
+    
+    // Show modal with loading
+    modal.style.display = 'block';
+    content.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Loading feedbacks...</div>';
+    
+    try {
+        const token = localStorage.getItem('AccessToken')
+                   || localStorage.getItem('token')
+                   || sessionStorage.getItem('AccessToken')
+                   || getCookie('AccessToken');
+        
+        // Fetch all feedbacks for this product using management endpoint
+        // Note: API_BASE_URL already includes '/feedbacks/management'
+        const response = await fetch(`${API_BASE_URL}/product/${productId}?page=1&pageSize=100`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load product feedbacks');
+        
+        const result = await response.json();
+        let feedbacks = result.data?.items || result.data || [];
+        
+        // DEBUG: Log to see actual data structure
+        console.log('=== MODAL FEEDBACKS DEBUG ===');
+        console.log('API Response:', result);
+        console.log('Feedbacks array:', feedbacks);
+        if (feedbacks.length > 0) {
+            console.log('First feedback structure:', feedbacks[0]);
+            console.log('Customer object:', feedbacks[0].customer);
+            console.log('Rating:', feedbacks[0].rating);
+            console.log('CreatedAt:', feedbacks[0].createdAt);
+        }
+        
+        // Filter based on current tab
+        if (currentTab === 'blocked') {
+            feedbacks = feedbacks.filter(fb => fb.isBlocked === true);
+        } else if (currentTab === 'flagged') {
+            feedbacks = feedbacks.filter(fb => fb.isFlagged === true && fb.isBlocked === false);
+        } else if (currentTab === 'all') {
+            feedbacks = feedbacks.filter(fb => fb.isBlocked === false);
+        }
+        
+        // Render feedbacks in modal
+        if (feedbacks.length === 0) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <svg style="width: 64px; height: 64px; margin-bottom: 16px; color: #ddd;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <p>No feedbacks found for this product</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Build feedbacks HTML
+        let html = '<div class="feedbacks-list" style="display: flex; flex-direction: column; gap: 16px;">';
+        
+        feedbacks.forEach(feedback => {
+            // Try multiple possible field names
+            const userName = feedback.customer?.customerName 
+                          || feedback.customerName 
+                          || feedback.userName 
+                          || feedback.user?.name
+                          || feedback.user?.fullName
+                          || 'Anonymous';
+            
+            const userAvatar = feedback.profilePictureUrl
+                            || feedback.customerProfilePicture
+                            || feedback.customer?.profilePicture 
+                            || feedback.customerAvatar
+                            || feedback.userAvatar 
+                            || feedback.user?.avatar
+                            || feedback.user?.profilePicture
+                            || getDefaultAvatar(userName, feedback.customerEmail || feedback.customer?.email);
+            
+            const rating = feedback.rating || 0;
+            const comment = feedback.comment || '';
+            
+            const createdAt = feedback.createdAt 
+                           || feedback.customer?.submittedAt 
+                           || feedback.submittedAt;
+            const formattedDate = createdAt 
+                ? new Date(createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : 'N/A';
+            
+            const providerResponse = feedback.providerResponse?.responseText 
+                                  || feedback.providerResponseText
+                                  || feedback.providerResponse 
+                                  || '';
+            
+            const feedbackId = feedback.feedbackId || feedback.id;
+            const isBlocked = feedback.status?.isBlocked || feedback.isBlocked || false;
+            
+            console.log('Rendering feedback:', { userName, userAvatar, rating, formattedDate, comment });
+            
+            html += `
+                <div class="feedback-card" style="background: #f8f9fa; border-radius: 8px; padding: 16px; border: 1px solid #e9ecef;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                        <img src="${userAvatar}" alt="${userName}" 
+                             style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <div style="font-weight: 600; color: #1e293b;">${escapeHtml(userName)}</div>
+                                    <div style="font-size: 12px; color: #64748b;">${formattedDate}</div>
+                                </div>
+                                <div class="rating-stars" style="color: #fbbf24;">
+                                    ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}
+                                </div>
+                            </div>
+                            <div style="margin-top: 8px; color: #475569; line-height: 1.5;">
+                                ${escapeHtml(comment)}
+                            </div>
+                            ${providerResponse ? `
+                                <div style="margin-top: 12px; padding: 12px; background: white; border-left: 3px solid #3b82f6; border-radius: 4px;">
+                                    <div style="font-size: 12px; font-weight: 600; color: #3b82f6; margin-bottom: 4px;">Provider Response:</div>
+                                    <div style="color: #475569; font-size: 14px;">${escapeHtml(providerResponse)}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button class="action-btn action-btn-primary" 
+                                onclick="viewFeedbackDetail('${feedbackId}')"
+                                title="View Details"
+                                style="padding: 6px 12px; font-size: 13px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            View
+                        </button>
+                        ${isBlocked ? `
+                            <button class="action-btn action-btn-success" 
+                                    onclick="unblockFeedback('${feedbackId}')"
+                                    title="Unblock"
+                                    style="padding: 6px 12px; font-size: 13px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                    <rect x="5" y="11" width="14" height="10" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                </svg>
+                                Unblock
+                            </button>
+                        ` : `
+                            <button class="action-btn action-btn-danger" 
+                                    onclick="blockFeedback('${feedbackId}')"
+                                    title="Block"
+                                    style="padding: 6px 12px; font-size: 13px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                Block
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        content.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading product feedbacks:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <p>Failed to load feedbacks. Please try again.</p>
+            </div>
+        `;
+    }
+}
+
+function closeProductFeedbacksModal() {
+    const modal = document.getElementById('productFeedbacksModal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('productFeedbacksModal');
+    if (event.target === modal) {
+        closeProductFeedbacksModal();
+    }
+}

@@ -677,7 +677,7 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 </td>
                 <td>
                     <div class="orders-info">
-                        <div class="orders-count">${totalOrders} orders</div>
+                        <div class="orders-count">${totalOrders !== undefined && totalOrders !== null ? totalOrders : 0} orders</div>
                     </div>
                 </td>
                 <td>

@@ -366,6 +366,17 @@
             font-weight: 600;
             color: #1e293b;
             margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 150px;
+            cursor: help;
+        }
+        
+        .product-name:hover {
+            overflow: visible;
+            white-space: normal;
+            word-break: break-word;
         }
         .product-id {
             font-size: 12px;
@@ -435,6 +446,30 @@
             padding: 10px 8px;
             text-align: left;
             vertical-align: middle;
+        }
+        
+        /* Căn giữa các cột từ Category trở đi */
+        .categories-table th:nth-child(3),
+        .categories-table td:nth-child(3),
+        .categories-table th:nth-child(4),
+        .categories-table td:nth-child(4),
+        .categories-table th:nth-child(5),
+        .categories-table td:nth-child(5),
+        .categories-table th:nth-child(7),
+        .categories-table td:nth-child(7) {
+            text-align: center;
+        }
+        
+        /* Căn phải cho Pricing */
+        .categories-table th:nth-child(6),
+        .categories-table td:nth-child(6) {
+            text-align: right;
+        }
+        
+        /* Đảm bảo Pricing và Stock không xuống hàng */
+        .categories-table td:nth-child(6),
+        .categories-table td:nth-child(7) {
+            white-space: nowrap;
         }
         .categories-table th {
             font-size: 12px;
