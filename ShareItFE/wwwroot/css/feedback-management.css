@@ -423,6 +423,11 @@
     animation: fadeIn 0.3s;
 }
 
+/* Detail modal should appear above other modals */
+#feedbackDetailModal {
+    z-index: 1100;
+}
+
 .modal-content {
     background: white;
     margin: 2% auto;

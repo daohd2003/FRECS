@@ -307,6 +307,7 @@
         .products-table table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         
         .products-table thead th {
@@ -316,17 +317,50 @@
             font-weight: 600;
             color: #86868b;
             border-bottom: 2px solid #e5e5e7;
+            white-space: nowrap;
+        }
+        
+        .products-table thead th:nth-child(1) {
+            width: 45%;
+        }
+        
+        .products-table thead th:nth-child(2) {
+            width: 12%;
+            text-align: center;
+        }
+        
+        .products-table thead th:nth-child(3) {
+            width: 20%;
+            text-align: right;
+        }
+        
+        .products-table thead th:nth-child(4) {
+            width: 23%;
+            text-align: right;
+            padding-right: 4rem;
         }
         
         .products-table tbody td {
             padding: 1rem 0.75rem;
             border-bottom: 1px solid #f5f5f7;
+            vertical-align: top;
+        }
+        
+        .products-table tbody td:nth-child(4) {
+            padding-right: 4rem;
+        }
+        
+        .products-table tbody td:nth-child(2),
+        .products-table tbody td:nth-child(3),
+        .products-table tbody td:nth-child(4) {
+            white-space: nowrap;
         }
         
         .product-info-row {
             display: flex;
-            align-items: center;
-            gap: 1rem;
+            align-items: flex-start;
+            gap: 0.75rem;
+            max-width: 100%;
         }
         
         .product-thumb {
@@ -334,12 +368,21 @@
             height: 60px;
             object-fit: cover;
             border-radius: 8px;
+            flex-shrink: 0;
+        }
+        
+        .product-info-details {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
         }
         
         .product-name {
             font-weight: 600;
             color: #1d1d1f;
             margin-bottom: 0.25rem;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         
         .product-color {
@@ -358,8 +401,8 @@
         
         .summary-statistics-row {
             display: grid;
-            grid-template-columns: 1.5fr 1fr;
-            gap: 1rem;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.25rem;
             margin-bottom: 1.5rem;
         }
         
@@ -1881,13 +1924,120 @@
                 img.removeAttribute('onclick');
             });
             
-            // PDF options
+            // Readable sizing - allow multi-page for complete content
+            pdfContent.style.fontSize = '10px';
+            pdfContent.style.lineHeight = '1.3';
+            
+            // Moderate spacing reduction
+            const infoCardsRow = pdfContent.querySelector('.info-cards-row');
+            if (infoCardsRow) {
+                infoCardsRow.style.gap = '8px';
+                infoCardsRow.style.marginBottom = '10px';
+            }
+            
+            const summaryRow = pdfContent.querySelector('.summary-statistics-row');
+            if (summaryRow) {
+                summaryRow.style.gap = '8px';
+                summaryRow.style.marginBottom = '10px';
+            }
+            
+            const footerRow = pdfContent.querySelector('.footer-info-row');
+            if (footerRow) {
+                footerRow.style.gap = '8px';
+            }
+            
+            // Moderate card spacing
+            const cards = pdfContent.querySelectorAll('.info-card, .products-section, .order-summary-card, .statistics-card, .dates-card, .additional-info-card');
+            cards.forEach(card => {
+                card.style.marginBottom = '8px';
+                card.style.padding = '10px';
+            });
+            
+            // Card headers
+            const cardHeaders = pdfContent.querySelectorAll('.card-header, .section-header, .summary-header, .stats-header, .footer-card-header');
+            cardHeaders.forEach(header => {
+                header.style.padding = '6px 10px';
+                header.style.fontSize = '10px';
+                header.style.marginBottom = '8px';
+            });
+            
+            // Card bodies
+            const cardBodies = pdfContent.querySelectorAll('.card-body, .summary-body, .stats-body, .footer-card-body');
+            cardBodies.forEach(body => {
+                body.style.padding = '8px';
+            });
+            
+            // Card items - readable
+            const cardItems = pdfContent.querySelectorAll('.card-item, .summary-item, .stat-item, .footer-item');
+            cardItems.forEach(item => {
+                item.style.marginBottom = '5px';
+                item.style.fontSize = '9px';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.flexWrap = 'nowrap';
+            });
+            
+            // Fix Order Summary text wrapping
+            const summaryLabels = pdfContent.querySelectorAll('.summary-item > span:first-child');
+            summaryLabels.forEach(label => {
+                label.style.whiteSpace = 'nowrap';
+                label.style.marginRight = '8px';
+            });
+            
+            const summaryValues = pdfContent.querySelectorAll('.summary-item > span:last-child, .total-value');
+            summaryValues.forEach(value => {
+                value.style.whiteSpace = 'nowrap';
+                value.style.textAlign = 'right';
+            });
+            
+            // Table styling
+            const tableCells = pdfContent.querySelectorAll('td, th');
+            tableCells.forEach(cell => {
+                cell.style.padding = '6px 8px';
+                cell.style.fontSize = '9px';
+            });
+            
+            // Product image size
+            const productImages = pdfContent.querySelectorAll('.product-thumb');
+            productImages.forEach(img => {
+                img.style.width = '40px';
+                img.style.height = '40px';
+            });
+            
+            // Product info details
+            const productDetails = pdfContent.querySelectorAll('.product-name, .product-color');
+            productDetails.forEach(detail => {
+                detail.style.fontSize = '9px';
+                detail.style.marginBottom = '3px';
+            });
+            
+            // Get actual content height
+            const contentHeight = pdfContent.scrollHeight || pdfContent.offsetHeight || 2000;
+            
+            // PDF options - ensure full content capture with natural page breaks
             const opt = {
-                margin: 10,
+                margin: [8, 8, 8, 8],
                 filename: orderCode + '.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    logging: false,
+                    height: contentHeight + 100,
+                    windowHeight: contentHeight + 100,
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait',
+                    compress: true
+                },
+                pagebreak: { 
+                    mode: ['css', 'legacy']
+                }
             };
             
             // Generate PDF
@@ -2382,7 +2532,7 @@
                                         <th>PRODUCT</th>
                                         <th style="text-align: center;">QUANTITY</th>
                                         <th style="text-align: right;">UNIT PRICE</th>
-                                        <th style="text-align: right;">TOTAL</th>
+                                        <th style="text-align: right; padding-right: 5rem;"><span style="display: inline-block;">TOTAL</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2403,7 +2553,7 @@
                                                          class="product-thumb product-thumbnail" 
                                                          onclick="openLightbox('${item.productImage || '/images/placeholder.png'}', '${item.productName}')" 
                                                          title="Click to zoom" />
-                                                    <div style="flex: 1;">
+                                                    <div class="product-info-details">
                                                         <div class="product-name">${item.productName}</div>
                                                         <div class="product-color">Color: <strong>${item.color}</strong></div>
                                                         ${isRental ? `
@@ -2431,10 +2581,11 @@
                                             </td>
                                             <td style="text-align: center;">${item.quantity}</td>
                                             <td style="text-align: right;">
-                                                ${formatCurrency(item.unitPrice)} đ
-                                                ${isRental ? `<div style="font-size: 0.75rem; color: #86868b;">/day</div>` : ''}
+                                                <div style="white-space: nowrap;">${formatCurrency(item.unitPrice)} đ${isRental ? ' <span style="font-size: 0.75rem; color: #86868b;">/day</span>' : ''}</div>
                                             </td>
-                                            <td style="text-align: right;" class="product-total">${formatCurrency(item.totalPrice)} đ</td>
+                                            <td style="text-align: right;" class="product-total">
+                                                <div style="white-space: nowrap;">${formatCurrency(item.totalPrice)} đ</div>
+                                            </td>
                                         </tr>
                                     `}).join('')}
                                 </tbody>

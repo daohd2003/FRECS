@@ -1,4 +1,5 @@
 using BusinessObject.Enums;
+using System.Text.Json.Serialization;
 
 namespace BusinessObject.DTOs.FeedbackDto
 {
@@ -7,13 +8,29 @@ namespace BusinessObject.DTOs.FeedbackDto
         public Guid FeedbackId { get; set; }
         
         // Product Information
+        [JsonPropertyName("product")]
         public ProductInfoDto? Product { get; set; }
         
         // Order Item Information (if feedback is for a product from an order)
+        [JsonPropertyName("orderItem")]
         public OrderItemInfoDto? OrderItem { get; set; }
         
-        // Customer Information
+        // Customer Information (nested)
+        [JsonPropertyName("customer")]
         public CustomerInfoDto Customer { get; set; }
+        
+        // Customer Information (flat - for compatibility)
+        [JsonPropertyName("customerId")]
+        public Guid CustomerId { get; set; }
+        
+        [JsonPropertyName("customerName")]
+        public string? CustomerName { get; set; }
+        
+        [JsonPropertyName("customerEmail")]
+        public string? CustomerEmail { get; set; }
+        
+        [JsonPropertyName("customerProfilePicture")]
+        public string? CustomerProfilePicture { get; set; }
         
         // Feedback Content
         public int Rating { get; set; }
@@ -22,9 +39,11 @@ namespace BusinessObject.DTOs.FeedbackDto
         public DateTime? UpdatedAt { get; set; }
         
         // Provider Response
+        [JsonPropertyName("providerResponse")]
         public ProviderResponseInfoDto? ProviderResponse { get; set; }
         
         // Status Information
+        [JsonPropertyName("status")]
         public StatusInfoDto Status { get; set; }
     }
     
@@ -48,10 +67,19 @@ namespace BusinessObject.DTOs.FeedbackDto
     
     public class CustomerInfoDto
     {
+        [JsonPropertyName("customerId")]
         public Guid CustomerId { get; set; }
+        
+        [JsonPropertyName("customerName")]
         public string CustomerName { get; set; }
+        
+        [JsonPropertyName("email")]
         public string? Email { get; set; }
+        
+        [JsonPropertyName("profilePicture")]
         public string? ProfilePicture { get; set; }
+        
+        [JsonPropertyName("submittedAt")]
         public DateTime SubmittedAt { get; set; }
     }
     

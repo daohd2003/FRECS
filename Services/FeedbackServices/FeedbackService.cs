@@ -728,6 +728,7 @@ namespace Services.FeedbackServices
                         TotalReviews = feedback.Product.RatingCount
                     } : null,
                     OrderItem = orderItemInfo,
+                    // Nested customer object
                     Customer = new CustomerInfoDto
                     {
                         CustomerId = feedback.CustomerId,
@@ -736,6 +737,11 @@ namespace Services.FeedbackServices
                         ProfilePicture = feedback.Customer?.Profile?.ProfilePictureUrl,
                         SubmittedAt = feedback.CreatedAt
                     },
+                    // Flat customer fields for compatibility
+                    CustomerId = feedback.CustomerId,
+                    CustomerName = feedback.Customer?.Profile?.FullName ?? "Unknown",
+                    CustomerEmail = feedback.Customer?.Email,
+                    CustomerProfilePicture = feedback.Customer?.Profile?.ProfilePictureUrl,
                     Rating = feedback.Rating,
                     Comment = feedback.Comment,
                     CreatedAt = feedback.CreatedAt,
