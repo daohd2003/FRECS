@@ -423,8 +423,16 @@
 
 @section Scripts {
     <script>
-        // Auto discount data
-        let autoDiscountData = null;
+        // Auto discount data - initialize from server-side values
+        let autoDiscountData = @Html.Raw(Json.Serialize(new {
+            itemRentalCountDiscountAmount = Model.ItemRentalCountDiscount,
+            itemRentalCountDiscountPercent = Model.ItemRentalCountDiscountPercent,
+            loyaltyDiscountAmount = Model.LoyaltyDiscount,
+            loyaltyDiscountPercent = Model.LoyaltyDiscountPercent,
+            totalAutoDiscount = Model.ItemRentalCountDiscount + Model.LoyaltyDiscount,
+            previousRentalCount = Model.PreviousRentalCount,
+            totalItemRentalCount = Model.TotalItemRentalCount
+        }));
 
         document.addEventListener('DOMContentLoaded', () => {
             const toastSuccess = document.getElementById('toast-success');
@@ -1225,10 +1233,19 @@
                 ? `-${discountCodeAmount.toLocaleString()} VND` 
                 : '0 VND';
             
-            // Calculate total discount (discount code + auto discount)
+            // Calculate total discount (discount code + auto discount: Item Rental Discount + Loyalty Discount)
             let totalDiscount = discountCodeAmount;
+            
+            // Get auto discount from DOM if autoDiscountData is not available
             if (autoDiscountData) {
                 totalDiscount += autoDiscountData.totalAutoDiscount || 0;
+            } else {
+                // Fallback: read auto discount values from DOM
+                const itemRentalText = document.getElementById('item-rental-discount')?.textContent || '0';
+                const loyaltyText = document.getElementById('loyalty-discount')?.textContent || '0';
+                const itemRentalAmount = parseInt(itemRentalText.replace(/[^0-9]/g, '')) || 0;
+                const loyaltyAmount = parseInt(loyaltyText.replace(/[^0-9]/g, '')) || 0;
+                totalDiscount += itemRentalAmount + loyaltyAmount;
             }
             
             // Update total
