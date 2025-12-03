@@ -26,6 +26,7 @@ namespace Repositories.TransactionRepositories
 
             // 1. Giao dịch từ bảng Transactions (Purchase/Rental)
             var transactionQuery = _context.Transactions
+                .AsNoTracking()
                 .Include(t => t.Orders)
                     .ThenInclude(o => o.Customer)
                         .ThenInclude(c => c.Profile)
@@ -77,21 +78,31 @@ namespace Repositories.TransactionRepositories
                 }
             }
 
-            // 2. Giao dịch hoàn tiền cọc (DepositRefund)
+            // 2. Giao dịch hoàn tiền cọc (DepositRefund) - load without Order navigation to avoid tracking issues
             var depositRefunds = await _context.DepositRefunds
-                .Include(dr => dr.Order)
-                    .ThenInclude(o => o.Customer)
-                        .ThenInclude(c => c.Profile)
-                .Include(dr => dr.Order)
-                    .ThenInclude(o => o.Provider)
-                        .ThenInclude(p => p.Profile)
+                .AsNoTracking()
                 .Include(dr => dr.RefundBankAccount)
                 .Include(dr => dr.ProcessedByAdmin)
                     .ThenInclude(a => a.Profile)
                 .ToListAsync();
 
+            // Get all order IDs from deposit refunds
+            var refundOrderIds = depositRefunds.Select(dr => dr.OrderId).Distinct().ToList();
+            
+            // Load orders separately to avoid relationship tracking issues
+            var refundOrders = await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Customer)
+                    .ThenInclude(c => c.Profile)
+                .Include(o => o.Provider)
+                    .ThenInclude(p => p.Profile)
+                .Where(o => refundOrderIds.Contains(o.Id))
+                .ToDictionaryAsync(o => o.Id);
+
             foreach (var refund in depositRefunds)
             {
+                refundOrders.TryGetValue(refund.OrderId, out var refundOrder);
+                
                 allTransactions.Add(new TransactionManagementDto
                 {
                     Id = refund.Id,
@@ -102,11 +113,11 @@ namespace Repositories.TransactionRepositories
                     Status = refund.Status,
                     StatusDisplay = GetStatusDisplay(refund.Status),
                     CustomerId = refund.CustomerId,
-                    CustomerName = refund.Order?.Customer?.Profile?.FullName ?? "N/A",
-                    CustomerEmail = refund.Order?.Customer?.Email ?? "N/A",
-                    ProviderId = refund.Order?.ProviderId,
-                    ProviderName = refund.Order?.Provider?.Profile?.FullName ?? "N/A",
-                    ProviderEmail = refund.Order?.Provider?.Email ?? "N/A",
+                    CustomerName = refundOrder?.Customer?.Profile?.FullName ?? "N/A",
+                    CustomerEmail = refundOrder?.Customer?.Email ?? "N/A",
+                    ProviderId = refundOrder?.ProviderId,
+                    ProviderName = refundOrder?.Provider?.Profile?.FullName ?? "N/A",
+                    ProviderEmail = refundOrder?.Provider?.Email ?? "N/A",
                     OrderId = refund.OrderId,
                     OrderCode = $"ORD-{refund.OrderId.ToString().Substring(0, 8).ToUpper()}",
                     Notes = refund.Notes,
@@ -127,6 +138,7 @@ namespace Repositories.TransactionRepositories
 
             // 3. Giao dịch rút tiền provider (WithdrawalRequest)
             var withdrawals = await _context.WithdrawalRequests
+                .AsNoTracking()
                 .Include(wr => wr.Provider)
                     .ThenInclude(p => p.Profile)
                 .Include(wr => wr.BankAccount)
@@ -234,6 +246,7 @@ namespace Repositories.TransactionRepositories
         {
             // Try to find in Transactions table first
             var transaction = await _context.Transactions
+                .AsNoTracking()
                 .Include(t => t.Orders)
                     .ThenInclude(o => o.Customer)
                         .ThenInclude(c => c.Profile)
@@ -286,14 +299,9 @@ namespace Repositories.TransactionRepositories
                 }
             }
 
-            // Try DepositRefund
+            // Try DepositRefund - load without Order navigation to avoid tracking issues
             var depositRefund = await _context.DepositRefunds
-                .Include(dr => dr.Order)
-                    .ThenInclude(o => o.Customer)
-                        .ThenInclude(c => c.Profile)
-                .Include(dr => dr.Order)
-                    .ThenInclude(o => o.Provider)
-                        .ThenInclude(p => p.Profile)
+                .AsNoTracking()
                 .Include(dr => dr.RefundBankAccount)
                 .Include(dr => dr.ProcessedByAdmin)
                     .ThenInclude(a => a.Profile)
@@ -301,6 +309,15 @@ namespace Repositories.TransactionRepositories
 
             if (depositRefund != null)
             {
+                // Load Order separately to avoid relationship tracking issues
+                var refundOrder = await _context.Orders
+                    .AsNoTracking()
+                    .Include(o => o.Customer)
+                        .ThenInclude(c => c.Profile)
+                    .Include(o => o.Provider)
+                        .ThenInclude(p => p.Profile)
+                    .FirstOrDefaultAsync(o => o.Id == depositRefund.OrderId);
+
                 return new TransactionManagementDto
                 {
                     Id = depositRefund.Id,
@@ -311,11 +328,11 @@ namespace Repositories.TransactionRepositories
                     Status = depositRefund.Status,
                     StatusDisplay = GetStatusDisplay(depositRefund.Status),
                     CustomerId = depositRefund.CustomerId,
-                    CustomerName = depositRefund.Order?.Customer?.Profile?.FullName ?? "N/A",
-                    CustomerEmail = depositRefund.Order?.Customer?.Email ?? "N/A",
-                    ProviderId = depositRefund.Order?.ProviderId,
-                    ProviderName = depositRefund.Order?.Provider?.Profile?.FullName ?? "N/A",
-                    ProviderEmail = depositRefund.Order?.Provider?.Email ?? "N/A",
+                    CustomerName = refundOrder?.Customer?.Profile?.FullName ?? "N/A",
+                    CustomerEmail = refundOrder?.Customer?.Email ?? "N/A",
+                    ProviderId = refundOrder?.ProviderId,
+                    ProviderName = refundOrder?.Provider?.Profile?.FullName ?? "N/A",
+                    ProviderEmail = refundOrder?.Provider?.Email ?? "N/A",
                     OrderId = depositRefund.OrderId,
                     OrderCode = $"ORD-{depositRefund.OrderId.ToString().Substring(0, 8).ToUpper()}",
                     Notes = depositRefund.Notes,
@@ -336,6 +353,7 @@ namespace Repositories.TransactionRepositories
 
             // Try WithdrawalRequest
             var withdrawal = await _context.WithdrawalRequests
+                .AsNoTracking()
                 .Include(wr => wr.Provider)
                     .ThenInclude(p => p.Profile)
                 .Include(wr => wr.BankAccount)
