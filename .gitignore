@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Bỏ qua tất cả file appsettings.json ở bất kỳ thư mục nào
+**/appsettings.json
+
+# Bỏ qua file cấu hình pipeline (ở thư mục gốc)
+azure-pipelines.yml
