@@ -35,10 +35,14 @@ namespace Repositories.TransactionRepositories
 
         public async Task<decimal> GetTotalReceivedByProviderAsync(Guid providerId)
         {
-            // Get all returned orders for this provider
+            // Get orders for this provider:
+            // - Rental orders: status must be 'returned'
+            // - Purchase orders: status can be 'in_use' or 'returned' (when customer receives the item, status is in_use)
             var orders = await _context.Orders
                 .Include(o => o.Items)
-                .Where(o => o.ProviderId == providerId && o.Status == OrderStatus.returned)
+                .Where(o => o.ProviderId == providerId 
+                    && (o.Status == OrderStatus.returned 
+                        || (o.Status == OrderStatus.in_use && o.Items.Any(i => i.TransactionType == TransactionType.purchase))))
                 .ToListAsync();
 
             decimal totalGrossRevenue = 0;
@@ -47,15 +51,41 @@ namespace Repositories.TransactionRepositories
             // Calculate net revenue (same logic as RevenueRepository.GetTotalEarningsAsync)
             foreach (var order in orders)
             {
-                // Add gross revenue (Subtotal excludes deposit)
-                totalGrossRevenue += order.Subtotal;
-
-                // Calculate platform fee using commission amount saved at order creation time
-                foreach (var item in order.Items)
+                // Check if this order should be counted:
+                // - If order has rental items, only count when status is 'returned'
+                // - If order has purchase items, count when status is 'in_use' or 'returned'
+                bool hasRentalItems = order.Items.Any(i => i.TransactionType == TransactionType.rental);
+                bool hasPurchaseItems = order.Items.Any(i => i.TransactionType == TransactionType.purchase);
+                
+                bool shouldCount = false;
+                if (hasRentalItems && !hasPurchaseItems)
                 {
-                    // Use the commission amount that was calculated and saved when the order was created
-                    // This ensures historical accuracy regardless of current commission rate changes
-                    totalPlatformFee += item.CommissionAmount;
+                    // Pure rental order: only count when returned
+                    shouldCount = order.Status == OrderStatus.returned;
+                }
+                else if (hasPurchaseItems && !hasRentalItems)
+                {
+                    // Pure purchase order: count when in_use or returned
+                    shouldCount = order.Status == OrderStatus.in_use || order.Status == OrderStatus.returned;
+                }
+                else
+                {
+                    // Mixed order: count when returned (rental items require return)
+                    shouldCount = order.Status == OrderStatus.returned;
+                }
+
+                if (shouldCount)
+                {
+                    // Add gross revenue (Subtotal excludes deposit)
+                    totalGrossRevenue += order.Subtotal;
+
+                    // Calculate platform fee using commission amount saved at order creation time
+                    foreach (var item in order.Items)
+                    {
+                        // Use the commission amount that was calculated and saved when the order was created
+                        // This ensures historical accuracy regardless of current commission rate changes
+                        totalPlatformFee += item.CommissionAmount;
+                    }
                 }
             }
 
@@ -79,8 +109,10 @@ namespace Repositories.TransactionRepositories
         public async Task<IEnumerable<ProviderPaymentDto>> GetAllProviderPaymentsAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
             // Build query with optional date filtering
+            // Include both returned orders and purchase orders with in_use status
             var query = _context.Orders
-                .Where(o => o.Status == OrderStatus.returned);  // Only count returned orders
+                .Where(o => o.Status == OrderStatus.returned 
+                    || (o.Status == OrderStatus.in_use && o.Items.Any(i => i.TransactionType == TransactionType.purchase)));
             
             // Apply date filters if provided
             if (startDate.HasValue)
@@ -117,15 +149,41 @@ namespace Repositories.TransactionRepositories
                 // Calculate net revenue (same logic as RevenueRepository.GetTotalEarningsAsync)
                 foreach (var order in provider.Orders)
                 {
-                    // Add gross revenue (Subtotal excludes deposit)
-                    totalGrossRevenue += order.Subtotal;
-
-                    // Calculate platform fee using commission amount saved at order creation time
-                    foreach (var item in order.Items)
+                    // Check if this order should be counted:
+                    // - If order has rental items, only count when status is 'returned'
+                    // - If order has purchase items, count when status is 'in_use' or 'returned'
+                    bool hasRentalItems = order.Items.Any(i => i.TransactionType == TransactionType.rental);
+                    bool hasPurchaseItems = order.Items.Any(i => i.TransactionType == TransactionType.purchase);
+                    
+                    bool shouldCount = false;
+                    if (hasRentalItems && !hasPurchaseItems)
                     {
-                        // Use the commission amount that was calculated and saved when the order was created
-                        // This ensures historical accuracy regardless of current commission rate changes
-                        totalPlatformFee += item.CommissionAmount;
+                        // Pure rental order: only count when returned
+                        shouldCount = order.Status == OrderStatus.returned;
+                    }
+                    else if (hasPurchaseItems && !hasRentalItems)
+                    {
+                        // Pure purchase order: count when in_use or returned
+                        shouldCount = order.Status == OrderStatus.in_use || order.Status == OrderStatus.returned;
+                    }
+                    else
+                    {
+                        // Mixed order: count when returned (rental items require return)
+                        shouldCount = order.Status == OrderStatus.returned;
+                    }
+
+                    if (shouldCount)
+                    {
+                        // Add gross revenue (Subtotal excludes deposit)
+                        totalGrossRevenue += order.Subtotal;
+
+                        // Calculate platform fee using commission amount saved at order creation time
+                        foreach (var item in order.Items)
+                        {
+                            // Use the commission amount that was calculated and saved when the order was created
+                            // This ensures historical accuracy regardless of current commission rate changes
+                            totalPlatformFee += item.CommissionAmount;
+                        }
                     }
                 }
 

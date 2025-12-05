@@ -355,6 +355,33 @@ namespace ShareItFE.Pages.Provider
             try
             {
                 var client = await GetAuthenticatedClientAsync();
+                
+                // Check product status before deletion
+                var productResponse = await client.GetAsync($"api/products/{productId}");
+                if (productResponse.IsSuccessStatusCode)
+                {
+                    var productContent = await productResponse.Content.ReadAsStringAsync();
+                    try
+                    {
+                        var productApiResponse = JsonSerializer.Deserialize<ApiResponse<ProductDTO>>(productContent, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                        
+                        if (productApiResponse?.Data != null && 
+                            productApiResponse.Data.AvailabilityStatus != null &&
+                            productApiResponse.Data.AvailabilityStatus.Equals("pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            TempData["ErrorMessage"] = "Cannot delete product with Pending status. Please wait for admin approval or contact support.";
+                            return RedirectToPage();
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, continue with deletion attempt (API will handle validation)
+                    }
+                }
+                
                 var response = await client.DeleteAsync($"api/products/{productId}");
 
                 if (response.IsSuccessStatusCode)
