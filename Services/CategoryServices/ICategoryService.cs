@@ -8,6 +8,7 @@ namespace Services.CategoryServices
 	public interface ICategoryService
 	{
 		Task<IEnumerable<CategoryDto>> GetAllAsync();
+		Task<IEnumerable<CategoryDto>> GetAllWithActiveProductsAsync();
 		Task<CategoryDto?> GetByIdAsync(Guid id);
 		Task<CategoryDto?> GetByNameAsync(string name);
 		Task<CategoryDto> CreateAsync(CategoryCreateUpdateDto dto, Guid userId);

@@ -68,6 +68,18 @@ namespace ShareItAPI.Controllers
 		return Ok(categories);
 	}
 
+	/// <summary>
+	/// Get all categories with only active products (available/unavailable status)
+	/// Used for customer-facing pages like Home browse by category
+	/// </summary>
+	[HttpGet("active-products")]
+	[AllowAnonymous]
+	public async Task<IActionResult> GetAllWithActiveProducts()
+	{
+		var categories = await _service.GetAllWithActiveProductsAsync();
+		return Ok(categories);
+	}
+
 		[HttpGet("{id}")]
 		[AllowAnonymous]
 		public async Task<IActionResult> GetById(Guid id)

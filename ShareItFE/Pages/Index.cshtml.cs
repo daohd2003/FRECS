@@ -48,7 +48,7 @@ namespace ShareItFE.Pages
         {
             try
             {
-                var response = await client.GetAsync("api/categories");
+                var response = await client.GetAsync("api/categories/active-products");
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonOptions = new JsonSerializerOptions

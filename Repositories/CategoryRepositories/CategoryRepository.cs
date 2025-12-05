@@ -18,6 +18,14 @@ namespace Repositories.CategoryRepositories
         public async Task<List<Category>> GetAllCategoryAsync()
         {
             return await _context.Categories
+                                 .Include(c => c.Products)
+                                 .OrderBy(c => c.Name)
+                                 .ToListAsync();
+        }
+
+        public async Task<List<Category>> GetAllCategoryWithActiveProductsAsync()
+        {
+            return await _context.Categories
                                  .Include(c => c.Products.Where(p => 
                                      p.AvailabilityStatus == BusinessObject.Enums.AvailabilityStatus.available ||
                                      p.AvailabilityStatus == BusinessObject.Enums.AvailabilityStatus.unavailable))
