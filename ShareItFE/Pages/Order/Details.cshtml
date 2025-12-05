@@ -1982,7 +1982,8 @@
                     console.log('OrderItem structure:', violation.orderItem); // Debug OrderItem structure
                     
                     // Extract evidence data from images array
-                    const evidenceUrls = violation.images ? violation.images.map(img => img.imageUrl) : [];
+                    // Handle both camelCase (imageUrl) and PascalCase (ImageUrl) from API
+                    const evidenceUrls = violation.images ? violation.images.map(img => img.imageUrl || img.ImageUrl || '').filter(url => url) : [];
                     const evidenceCount = violation.images ? violation.images.length : 0;
                     
                     console.log('Evidence URLs extracted:', evidenceUrls); // Debug evidence URLs
@@ -2037,12 +2038,16 @@
                                         <div class="violation-evidence">
                                             <h6><i class="bi bi-images"></i> Evidence Photos</h6>
                                             <div class="evidence-gallery">
-                                                ${evidenceUrls.map((url, idx) => `
+                                                ${evidenceUrls.map((url, idx) => {
+                                                    // Escape URL for HTML attribute
+                                                    const escapedUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                                                    return `
                                                     <div class="evidence-item">
-                                                        <img src="${url}" alt="Evidence ${idx + 1}" class="evidence-image" onclick="openImageModal('${url}', 'Evidence ${idx + 1}')" />
+                                                        <img src="${url}" alt="Evidence ${idx + 1}" class="evidence-image" data-image-url="${escapedUrl}" data-image-title="Evidence ${idx + 1}" style="cursor: pointer;" />
                                                         <div class="evidence-number">${idx + 1}</div>
                                                     </div>
-                                                `).join('')}
+                                                `;
+                                                }).join('')}
                                             </div>
                                         </div>
                                     ` : evidenceCount > 0 ? `
@@ -2176,6 +2181,17 @@
                 });
                 
                 $('#violations-list').html(html);
+                
+                // Bind click event to evidence images using event delegation
+                $(document).off('click', '.evidence-image').on('click', '.evidence-image', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const imageUrl = $(this).data('image-url');
+                    const imageTitle = $(this).data('image-title') || 'Evidence Photo';
+                    if (imageUrl) {
+                        openImageModal(imageUrl, imageTitle);
+                    }
+                });
                 
                 // Bind event handlers
                 $('.accept-violation-btn').on('click', function() {
@@ -2437,40 +2453,49 @@
                 }
             }
 
-            // Image Modal for Evidence Photos
-            function openImageModal(imageUrl, title) {
+            // Image Modal for Evidence Photos - Expose to global scope
+            window.openImageModal = function(imageUrl, title) {
+                console.log('Opening image modal:', imageUrl, title);
+                
                 // Remove existing modal if any
                 $('#image-modal').remove();
                 
+                // Escape title for HTML
+                const escapedTitle = (title || 'Evidence Photo').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
                 // Create image modal
                 const imageModal = `
-                    <div id="image-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; z-index: 9999;">
+                    <div id="image-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; z-index: 9999; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8);">
                         <div class="image-modal-content" style="max-width: 90vw; max-height: 90vh; position: relative; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
                             <div class="image-modal-header" style="padding: 16px 20px; background: #343a40; color: white; display: flex; justify-content: space-between; align-items: center;">
-                                <h5 style="margin: 0; font-weight: 600;">${title}</h5>
-                                <button onclick="closeImageModal()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.3s;">&times;</button>
+                                <h5 style="margin: 0; font-weight: 600;">${escapedTitle}</h5>
+                                <button class="close-image-modal-btn" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.3s;">&times;</button>
                             </div>
-                            <div class="image-modal-body" style="padding: 0; text-align: center; background: #f8f9fa;">
-                                <img src="${imageUrl}" alt="${title}" style="max-width: 100%; max-height: 70vh; object-fit: contain; display: block; margin: 0 auto;">
+                            <div class="image-modal-body" style="padding: 20px; text-align: center; background: #f8f9fa; max-height: calc(90vh - 80px); overflow: auto;">
+                                <img src="${imageUrl.replace(/"/g, '&quot;')}" alt="${escapedTitle}" style="max-width: 100%; max-height: calc(90vh - 120px); object-fit: contain; display: block; margin: 0 auto;">
                             </div>
                         </div>
                     </div>
                 `;
                 
                 $('body').append(imageModal);
-                $('#image-modal').removeClass('hidden');
+                
+                // Close button handler
+                $('.close-image-modal-btn').on('click', function() {
+                    window.closeImageModal();
+                });
                 
                 // Close on click outside
                 $('#image-modal').on('click', function(e) {
                     if (e.target === this) {
-                        closeImageModal();
+                        window.closeImageModal();
                     }
                 });
-            }
+            };
 
-            function closeImageModal() {
+            window.closeImageModal = function() {
                 $('#image-modal').remove();
-            }
+            };
 
             // Handle ESC key to close image modal
             $(document).on('keydown', function(e) {

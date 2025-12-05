@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.OData.Results;
 using Services.ProductServices;
 using Services.ContentModeration;
 using Services.ConversationServices;
+using System;
 using System.Security.Claims;
 
 namespace ShareItAPI.Controllers
@@ -408,6 +409,10 @@ namespace ShareItAPI.Controllers
                 // Check ownership
                 if (product.ProviderId != providerId)
                     return Forbid("You can only delete your own products.");
+
+                // Check if product status is Pending - prevent deletion
+                if (product.AvailabilityStatus != null && product.AvailabilityStatus.Equals("pending", StringComparison.OrdinalIgnoreCase))
+                    return BadRequest(new ApiResponse<string>("Cannot delete product with Pending status. Please wait for admin approval or contact support.", null));
 
                 // Kiểm tra xem product có references không
                 var hasOrderItems = await _service.HasOrderItemsAsync(id);
