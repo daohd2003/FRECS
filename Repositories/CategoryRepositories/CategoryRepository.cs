@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Models;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,37 @@ namespace Repositories.CategoryRepositories
         {
             return await _context.Categories
                                  .Include(c => c.Products)
+                                 .OrderBy(c => c.Name)
+                                 .ToListAsync();
+        }
+
+        public async Task<List<Category>> GetAllCategoryWithActiveProductsAsync()
+        {
+            return await _context.Categories
+                                 .Include(c => c.Products.Where(p => 
+                                     p.AvailabilityStatus == BusinessObject.Enums.AvailabilityStatus.available ||
+                                     p.AvailabilityStatus == BusinessObject.Enums.AvailabilityStatus.unavailable))
+                                 .OrderBy(c => c.Name)
+                                 .ToListAsync();
+        }
+
+        public async Task<List<CategoryWithProductCountDto>> GetAllCategoryWithActiveProductCountAsync()
+        {
+            return await _context.Categories
+                                 .AsNoTracking()
+                                 .Select(c => new CategoryWithProductCountDto
+                                 {
+                                     Id = c.Id,
+                                     Name = c.Name,
+                                     Description = c.Description,
+                                     ImageUrl = c.ImageUrl,
+                                     IsActive = c.IsActive,
+                                     CreatedAt = c.CreatedAt,
+                                     UpdatedAt = c.UpdatedAt,
+                                     ActiveProductCount = c.Products.Count(p => 
+                                         p.AvailabilityStatus == BusinessObject.Enums.AvailabilityStatus.available ||
+                                         p.AvailabilityStatus == BusinessObject.Enums.AvailabilityStatus.unavailable)
+                                 })
                                  .OrderBy(c => c.Name)
                                  .ToListAsync();
         }
