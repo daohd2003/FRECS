@@ -35,6 +35,11 @@ namespace Services.CategoryServices
             return _mapper.Map<IEnumerable<CategoryDto>>(entities);
         }
 
+        public async Task<IEnumerable<CategoryWithProductCountDto>> GetAllWithActiveProductCountAsync()
+        {
+            return await _repository.GetAllCategoryWithActiveProductCountAsync();
+        }
+
         public async Task<CategoryDto?> GetByIdAsync(Guid id)
         {
             var entity = await _repository.GetByIdAsync(id);

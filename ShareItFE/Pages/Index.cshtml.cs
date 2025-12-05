@@ -30,8 +30,8 @@ namespace ShareItFE.Pages
         // Changed back to List<ProductDTO> for proper method support
         public List<ProductDTO> TopRentals { get; set; } = new List<ProductDTO>();
         
-        // Categories loaded from database
-        public List<CategoryDto> Categories { get; set; } = new List<CategoryDto>();
+        // Categories loaded from database (optimized with count only)
+        public List<CategoryWithProductCountDto> Categories { get; set; } = new List<CategoryWithProductCountDto>();
 
         public async Task OnGetAsync()
         {
@@ -48,7 +48,7 @@ namespace ShareItFE.Pages
         {
             try
             {
-                var response = await client.GetAsync("api/categories/active-products");
+                var response = await client.GetAsync("api/categories/active-product-count");
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonOptions = new JsonSerializerOptions
@@ -57,21 +57,21 @@ namespace ShareItFE.Pages
                         Converters = { new JsonStringEnumConverter() }
                     };
 
-                    // API returns List<CategoryDto> directly without ApiResponse wrapper for GetAll
-                    Categories = await response.Content.ReadFromJsonAsync<List<CategoryDto>>(jsonOptions)
-                                 ?? new List<CategoryDto>();
+                    // API returns List<CategoryWithProductCountDto> - optimized, no product data loaded
+                    Categories = await response.Content.ReadFromJsonAsync<List<CategoryWithProductCountDto>>(jsonOptions)
+                                 ?? new List<CategoryWithProductCountDto>();
                     
                     // Filter only active categories and sort by product count
                     Categories = Categories
                         .Where(c => c.IsActive)
-                        .OrderByDescending(c => c.Products?.Count ?? 0)
+                        .OrderByDescending(c => c.ActiveProductCount)
                         .ToList();
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading categories from API");
-                Categories = new List<CategoryDto>();
+                Categories = new List<CategoryWithProductCountDto>();
             }
         }
 
