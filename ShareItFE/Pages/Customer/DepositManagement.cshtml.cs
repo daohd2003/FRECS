@@ -321,5 +321,35 @@ namespace ShareItFE.Pages.Customer
                 return new JsonResult(new { success = false, message = ex.Message });
             }
         }
+
+        public async Task<IActionResult> OnPostReopenRefundAsync(Guid refundId)
+        {
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+                var response = await client.PostAsync($"api/depositrefunds/reopen/{refundId}", null);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return new JsonResult(new { success = true, message = "Refund request reopened successfully." });
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to reopen refund. Status: {StatusCode}, Response: {Response}",
+                        response.StatusCode, errorContent);
+                    return new JsonResult(new
+                    {
+                        success = false,
+                        message = "Failed to reopen refund request. Only failed refunds can be reopened."
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reopening refund for ID: {RefundId}", refundId);
+                return new JsonResult(new { success = false, message = ex.Message });
+            }
+        }
     }
 }

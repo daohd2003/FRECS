@@ -150,14 +150,36 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// Reopen a rejected refund request
+        /// Reopen a rejected refund request (Admin can reopen any, Customer can only reopen their own)
         /// </summary>
         [HttpPost("reopen/{refundId}")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,customer")]
         public async Task<IActionResult> ReopenRefund(Guid refundId)
         {
             try
             {
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return Unauthorized(new ApiResponse<object>("Invalid user ID", null));
+                }
+
+                // If customer, verify they own this refund request
+                if (userRole == "customer")
+                {
+                    var refund = await _refundService.GetRefundDetailAsync(refundId);
+                    if (refund == null)
+                    {
+                        return NotFound(new ApiResponse<object>("Refund request not found", null));
+                    }
+                    if (refund.CustomerId != userId)
+                    {
+                        return Forbid();
+                    }
+                }
+
                 var success = await _refundService.ReopenRefundAsync(refundId);
                 if (success)
                 {
