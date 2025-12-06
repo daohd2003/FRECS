@@ -302,7 +302,12 @@ namespace ShareItFE.Pages.Products
                 }
 
                 // Fetch feedbacks with pagination using correct endpoint
+                // Pass currentUserId to backend so it can filter blocked feedbacks properly
                 var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
+                if (CurrentUserId.HasValue)
+                {
+                    feedbacksRequestUri += $"&currentUserId={CurrentUserId.Value}";
+                }
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
@@ -672,7 +677,12 @@ namespace ShareItFE.Pages.Products
                 }
 
                 // Fetch feedbacks with pagination using correct endpoint
+                // Pass currentUserId to backend so it can filter blocked feedbacks properly
                 var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
+                if (CurrentUserId.HasValue)
+                {
+                    feedbacksRequestUri += $"&currentUserId={CurrentUserId.Value}";
+                }
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)

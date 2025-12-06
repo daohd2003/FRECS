@@ -1391,36 +1391,125 @@
                             if (response.ok) {
                                 showToast('Feedback updated successfully!', 'success');
                                 
-                                // Update feedback in DOM without reloading
-                                const feedbackCard = document.querySelector(`.bg-gray-50[data-feedback-id="${editingFeedbackId}"]`);
-                                if (feedbackCard) {
-                                    // Update rating stars (Lucide icons)
-                                    const starsContainer = feedbackCard.querySelector('.flex.items-center.space-x-2 .flex');
-                                    if (starsContainer) {
-                                        const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
-                                        stars.forEach((star, index) => {
-                                            if (index < rating) {
-                                                star.classList.add('fill-yellow-400', 'text-yellow-400');
-                                                star.classList.remove('text-gray-300');
-                                            } else {
-                                                star.classList.remove('fill-yellow-400', 'text-yellow-400');
-                                                star.classList.add('text-gray-300');
+                                // Fetch updated feedback from server to get latest data (including isBlocked, isVisible, etc.)
+                                try {
+                                    const feedbackResponse = await fetch(`@Model.ApiBaseUrl/feedbacks/${editingFeedbackId}`, {
+                                        headers: {
+                                            'Authorization': `Bearer ${token}`
+                                        }
+                                    });
+                                    
+                                    if (feedbackResponse.ok) {
+                                        const feedbackResult = await feedbackResponse.json();
+                                        const updatedFeedback = feedbackResult.data;
+                                        
+                                        console.log('[Edit Feedback] Fetched updated feedback:', updatedFeedback);
+                                        
+                                        // Update feedback in DOM with server data
+                                        const feedbackCard = document.querySelector(`.bg-gray-50[data-feedback-id="${editingFeedbackId}"]`);
+                                        if (feedbackCard) {
+                                            console.log('[Edit Feedback] Updating feedback card in DOM');
+                                            console.log('[Edit Feedback] IsBlocked:', updatedFeedback.isBlocked, 'IsVisible:', updatedFeedback.isVisible);
+                                            
+                                            // Check if feedback was unblocked (was blocked, now clean)
+                                            const wasBlocked = feedbackCard.classList.contains('border-2') && feedbackCard.classList.contains('border-red-300');
+                                            const isNowClean = !updatedFeedback.isBlocked && updatedFeedback.isVisible;
+                                            
+                                            if (wasBlocked && isNowClean) {
+                                                console.log('[Edit Feedback] Feedback was unblocked - removing blocked styling');
+                                                
+                                                // Remove blocked border styling
+                                                feedbackCard.classList.remove('border-2', 'border-red-300');
+                                                
+                                                // Remove blocked badge
+                                                const blockedBadge = feedbackCard.querySelector('.inline-flex.items-center.px-2.py-1.text-xs.font-medium.text-red-700.bg-red-100.rounded-full');
+                                                if (blockedBadge) {
+                                                    blockedBadge.remove();
+                                                }
+                                                
+                                                // Remove blocked warning box (bg-red-50)
+                                                const blockedWarning = feedbackCard.querySelector('.bg-red-50.border-l-4.border-red-500');
+                                                if (blockedWarning) {
+                                                    blockedWarning.remove();
+                                                }
+                                                
+                                                // Remove orange warning box (bg-orange-50) if exists
+                                                const orangeWarning = feedbackCard.querySelector('.bg-orange-50.border-l-4.border-orange-500');
+                                                if (orangeWarning) {
+                                                    orangeWarning.remove();
+                                                }
                                             }
-                                        });
+                                            
+                                            // Update rating stars (Lucide icons)
+                                            const starsContainer = feedbackCard.querySelector('.flex.items-center.space-x-2 .flex');
+                                            if (starsContainer) {
+                                                const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
+                                                stars.forEach((star, index) => {
+                                                    if (index < updatedFeedback.rating) {
+                                                        star.classList.add('fill-yellow-400', 'text-yellow-400');
+                                                        star.classList.remove('text-gray-300');
+                                                    } else {
+                                                        star.classList.remove('fill-yellow-400', 'text-yellow-400');
+                                                        star.classList.add('text-gray-300');
+                                                    }
+                                                });
+                                            }
+                                            
+                                            // Update comment text - find the correct element
+                                            // If feedback was blocked, comment is inside <details>, otherwise it's direct <p>
+                                            let commentElement = feedbackCard.querySelector('.text-gray-700');
+                                            
+                                            // If not found or was in blocked state, create new comment element
+                                            const needsCommentRecreation = !commentElement || (wasBlocked && isNowClean);
+                                            if (needsCommentRecreation) {
+                                                // Remove old comment structure
+                                                const oldComment = feedbackCard.querySelector('.text-gray-700');
+                                                if (oldComment) oldComment.remove();
+                                                
+                                                // Create new clean comment element
+                                                const newComment = document.createElement('p');
+                                                newComment.className = 'text-gray-700';
+                                                newComment.textContent = updatedFeedback.comment || 'No comment provided';
+                                                
+                                                // Insert after the user info section
+                                                const userInfoSection = feedbackCard.querySelector('.flex.items-center.justify-between.mb-4');
+                                                if (userInfoSection) {
+                                                    userInfoSection.insertAdjacentElement('afterend', newComment);
+                                                }
+                                            } else {
+                                                commentElement.textContent = updatedFeedback.comment || 'No comment provided';
+                                            }
+                                            
+                                            // Update edit button data attributes
+                                            const editBtn = feedbackCard.querySelector('.edit-feedback-btn');
+                                            if (editBtn) {
+                                                editBtn.setAttribute('data-rating', updatedFeedback.rating);
+                                                editBtn.setAttribute('data-comment', updatedFeedback.comment);
+                                            }
+                                            
+                                            console.log('[Edit Feedback] Feedback card updated successfully');
+                                        } else {
+                                            // Feedback card not found in DOM (was blocked/hidden initially)
+                                            console.log('[Edit Feedback] Feedback card not found in DOM');
+                                            
+                                            // If feedback is now clean (unblocked), reload to show it
+                                            if (!updatedFeedback.isBlocked && updatedFeedback.isVisible) {
+                                                console.log('[Edit Feedback] Feedback is now clean - reloading page to display it');
+                                                window.location.reload();
+                                            } else {
+                                                // Still blocked, just close modal
+                                                console.log('[Edit Feedback] Feedback still blocked - no need to reload');
+                                            }
+                                        }
+                                    } else {
+                                        console.warn('[Edit Feedback] Failed to fetch updated feedback, reloading page...');
+                                        // Fallback: reload page if fetch fails
+                                        window.location.reload();
                                     }
-                                    
-                                    // Update comment text
-                                    const commentElement = feedbackCard.querySelector('.text-gray-700');
-                                    if (commentElement) {
-                                        commentElement.textContent = comment || 'No comment provided';
-                                    }
-                                    
-                                    // Update edit button data attributes
-                                    const editBtn = feedbackCard.querySelector('.edit-feedback-btn');
-                                    if (editBtn) {
-                                        editBtn.setAttribute('data-rating', rating);
-                                        editBtn.setAttribute('data-comment', comment);
-                                    }
+                                } catch (fetchError) {
+                                    console.error('[Edit Feedback] Error fetching updated feedback:', fetchError);
+                                    // Fallback: reload page if error occurs
+                                    window.location.reload();
                                 }
                                 
                                 // Close modal

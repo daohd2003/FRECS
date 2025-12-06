@@ -1990,7 +1990,13 @@
             document.getElementById('editProductId').value = product.id;
             document.getElementById('editProductImage').src = product.primaryImagesUrl || '/images/no-image.png';
             document.getElementById('editProductName').value = product.name;
-            document.getElementById('editProductDescription').value = product.description || '';
+            
+            // Strip HTML tags from description to show plain text only
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = product.description || '';
+            const plainTextDescription = tempDiv.textContent || tempDiv.innerText || '';
+            document.getElementById('editProductDescription').value = plainTextDescription;
+            
             document.getElementById('editProductSize').value = product.size || '';
             document.getElementById('editProductColor').value = product.color || '';
             document.getElementById('editProductGender').value = product.gender || 'Unisex';

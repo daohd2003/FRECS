@@ -200,13 +200,20 @@ namespace ShareItAPI.Controllers
                 try
                 {
                     currentUserId = GetCurrentUserId();
+                    Console.WriteLine($"[GET FEEDBACKS] Authenticated user: {currentUserId}");
                 }
                 catch
                 {
                     // User not authenticated, continue as anonymous
+                    Console.WriteLine($"[GET FEEDBACKS] Failed to get user ID from token");
                 }
             }
+            else
+            {
+                Console.WriteLine($"[GET FEEDBACKS] Anonymous request - no authentication");
+            }
             
+            Console.WriteLine($"[GET FEEDBACKS] ProductId: {productId}, CurrentUserId: {currentUserId?.ToString() ?? "null"}");
             var response = await _feedbackService.GetFeedbacksByProductAsync(productId, page, pageSize, currentUserId);
             if (response.Data == null)
             {

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
@@ -8,6 +8,7 @@ using Repositories.FeedbackRepositories;
 using Repositories.OrderRepositories;
 using Repositories.RepositoryBase;
 using Services.ContentModeration;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Services.FeedbackServices
 {
@@ -20,6 +21,7 @@ namespace Services.FeedbackServices
         private readonly IRepository<User> _userRepo;
         private readonly IMapper _mapper;
         private readonly IContentModerationService _contentModerationService;
+        private readonly IMemoryCache _cache;
 
         public FeedbackService(
             IFeedbackRepository feedbackRepo,
@@ -28,7 +30,8 @@ namespace Services.FeedbackServices
             IRepository<Product> productRepo,
             IRepository<User> userRepo,
             IMapper mapper,
-            IContentModerationService contentModerationService)
+            IContentModerationService contentModerationService,
+            IMemoryCache cache)
         {
             _feedbackRepo = feedbackRepo;
             _orderRepo = orderRepo;
@@ -37,6 +40,7 @@ namespace Services.FeedbackServices
             _userRepo = userRepo;
             _mapper = mapper;
             _contentModerationService = contentModerationService;
+            _cache = cache;
         }
 
         /// <summary>
@@ -127,14 +131,14 @@ namespace Services.FeedbackServices
                 }
             }
 
-            // --- Check content moderation ---
-            var moderationResult = await _contentModerationService.CheckContentAsync(dto.Comment ?? "");
-            var isViolation = !moderationResult.IsAppropriate;
-            var violationReason = moderationResult.Reason;
+            // --- Check content moderation SYNCHRONOUSLY (like product) ---
+            Console.WriteLine($"[FEEDBACK] Checking moderation for comment: '{dto.Comment}'");
             
-            Console.WriteLine($"[MODERATION] Comment: {dto.Comment}");
-            Console.WriteLine($"[MODERATION] IsViolation: {isViolation}");
-            Console.WriteLine($"[MODERATION] Reason: {violationReason}");
+            var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(dto.Comment ?? "");
+            var isViolation = !moderationResult.IsAppropriate;
+            
+            Console.WriteLine($"[FEEDBACK MODERATION] IsViolation: {isViolation}");
+            Console.WriteLine($"[FEEDBACK MODERATION] Reason: {moderationResult.Reason}");
             
             // --- Create Feedback Entity ---
             var feedback = _mapper.Map<Feedback>(dto);
@@ -148,21 +152,21 @@ namespace Services.FeedbackServices
             feedback.OrderId = orderId;
             feedback.OrderItemId = orderItemId;
             
-            // Simplified: If AI detects violation → Block immediately
+            // Set visibility based on moderation result
             if (isViolation)
             {
-                Console.WriteLine($"[MODERATION] Blocking feedback {feedback.Id} due to AI detection");
+                Console.WriteLine($"[FEEDBACK MODERATION] Blocking feedback {feedback.Id} due to violation");
                 feedback.IsBlocked = true;
-                feedback.IsVisible = false; // Hidden from public
-                feedback.ViolationReason = violationReason;
+                feedback.IsVisible = false;
+                feedback.ViolationReason = moderationResult.Reason;
                 feedback.BlockedAt = DateTimeHelper.GetVietnamTime();
-                // Note: BlockedById is null (auto-blocked by AI, not by staff)
             }
             else
             {
-                Console.WriteLine($"[MODERATION] Feedback {feedback.Id} is clean");
+                Console.WriteLine($"[FEEDBACK MODERATION] Feedback {feedback.Id} is clean");
                 feedback.IsBlocked = false;
                 feedback.IsVisible = true;
+                feedback.ViolationReason = null;
             }
 
             // Bước 5: Lưu feedback vào database
@@ -406,18 +410,34 @@ namespace Services.FeedbackServices
                 }
             }
 
-            // Check content moderation before updating
-            var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(dto.ResponseContent);
+            // Check if provider response actually changed
+            var responseChanged = feedback.ProviderResponse != dto.ResponseContent;
             
-            if (!moderationResult.IsAppropriate)
+            // Only check moderation if response changed
+            if (responseChanged)
             {
-                throw new InvalidOperationException($"Response content violates community guidelines: {moderationResult.Reason}");
+                Console.WriteLine($"[FEEDBACK UPDATE] Provider response changed - checking moderation synchronously");
+                
+                // Clear cache to force fresh AI check
+                var cacheKey = GenerateFeedbackCacheKey(null, dto.ResponseContent);
+                _cache.Remove(cacheKey);
+
+                var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(null, dto.ResponseContent);
+                
+                if (!moderationResult.IsAppropriate)
+                {
+                    throw new InvalidOperationException($"Response content violates community guidelines: {moderationResult.Reason}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[FEEDBACK UPDATE] Provider response unchanged - skipping moderation check");
             }
 
             // Update response
             feedback.ProviderResponse = dto.ResponseContent;
-            feedback.ProviderResponseAt = DateTime.UtcNow; // Update timestamp
-            feedback.ProviderResponseById = providerOrAdminId; // Update responder ID
+            feedback.ProviderResponseAt = DateTime.UtcNow;
+            feedback.ProviderResponseById = providerOrAdminId;
 
             await _feedbackRepo.UpdateAsync(feedback);
         }
@@ -445,25 +465,32 @@ namespace Services.FeedbackServices
             var wasBlocked = feedback.IsBlocked;
             var wasInvisible = !feedback.IsVisible;
 
-            // Check content moderation - always check if comment exists (even if not changed)
-            var commentToCheck = !string.IsNullOrWhiteSpace(dto.Comment) ? dto.Comment : feedback.Comment;
+            // Check if comment actually changed
+            var commentChanged = feedback.Comment != dto.Comment;
             
-            if (!string.IsNullOrWhiteSpace(commentToCheck))
+            // Only check moderation if comment changed
+            if (commentChanged && !string.IsNullOrWhiteSpace(dto.Comment))
             {
-                var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(commentToCheck);
+                Console.WriteLine($"[FEEDBACK UPDATE] Comment changed - checking moderation synchronously");
+                
+                // Clear cache to force fresh AI check
+                var cacheKey = GenerateFeedbackCacheKey(dto.Comment, null);
+                _cache.Remove(cacheKey);
+                
+                var moderationResult = await _contentModerationService.CheckFeedbackContentAsync(dto.Comment);
                 
                 if (!moderationResult.IsAppropriate)
                 {
                     // Content violates guidelines - keep/set as blocked
                     feedback.IsBlocked = true;
                     feedback.IsFlagged = true;
-                    feedback.IsVisible = false; // Hide from public
+                    feedback.IsVisible = false;
                     feedback.ViolationReason = moderationResult.Reason;
                     
                     if (!wasBlocked)
                     {
                         feedback.BlockedAt = DateTime.UtcNow;
-                        feedback.BlockedById = null; // Auto-blocked by system
+                        feedback.BlockedById = null;
                     }
                     
                     throw new InvalidOperationException($"Feedback content violates community guidelines: {moderationResult.Reason}");
@@ -475,17 +502,25 @@ namespace Services.FeedbackServices
                     {
                         feedback.IsBlocked = false;
                         feedback.IsFlagged = false;
-                        feedback.IsVisible = true; // Make feedback visible to everyone
+                        feedback.IsVisible = true;
                         feedback.ViolationReason = null;
                         feedback.BlockedAt = null;
                         feedback.BlockedById = null;
                     }
                 }
             }
+            else if (!commentChanged)
+            {
+                Console.WriteLine($"[FEEDBACK UPDATE] Comment unchanged - skipping moderation check, allowing rating update");
+            }
 
             // Update feedback
             feedback.Rating = dto.Rating;
-            feedback.Comment = dto.Comment;
+            // Only update comment if provided (null means keep existing comment)
+            if (dto.Comment != null)
+            {
+                feedback.Comment = dto.Comment;
+            }
             feedback.UpdatedAt = DateTime.UtcNow;
 
             await _feedbackRepo.UpdateAsync(feedback);
@@ -522,6 +557,16 @@ namespace Services.FeedbackServices
         {
             var user = await _userRepo.GetByIdAsync(userId);
             return user?.Role == UserRole.admin;
+        }
+
+        private string GenerateFeedbackCacheKey(string? comment, string? providerResponse)
+        {
+            // Create hash from content to use as cache key (same logic as ContentModerationService)
+            var content = $"{comment?.Trim().ToLower()}|{providerResponse?.Trim().ToLower()}";
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+            var hash = Convert.ToBase64String(hashBytes);
+            return $"feedback:{hash}";
         }
         // Overload for backward compatibility with tests
         public async Task<ApiResponse<PaginatedResponse<FeedbackResponseDto>>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize)
@@ -569,34 +614,50 @@ namespace Services.FeedbackServices
             var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize);
 
             // Check if current user is the provider of this product
+            // IMPORTANT: Check product directly, not through feedback (in case no feedbacks exist yet)
             bool isProvider = false;
-            if (currentUserId.HasValue && paginatedFeedbacks.Items.Any())
+            if (currentUserId.HasValue)
             {
-                var firstFeedback = paginatedFeedbacks.Items.First();
-                if (firstFeedback.Product?.ProviderId == currentUserId.Value)
+                var product = await _productRepo.GetByIdAsync(productId);
+                if (product != null && product.ProviderId == currentUserId.Value)
                 {
                     isProvider = true;
+                    Console.WriteLine($"[FEEDBACK FILTER] User {currentUserId} is the PROVIDER of product {productId}");
                 }
             }
 
             // Filter feedbacks based on visibility rules
+            Console.WriteLine($"[FEEDBACK FILTER] Total feedbacks: {paginatedFeedbacks.Items.Count}, CurrentUserId: {currentUserId?.ToString() ?? "null"}, IsProvider: {isProvider}");
+            
             var filteredFeedbacks = paginatedFeedbacks.Items.Where(f =>
             {
                 // Always show visible feedbacks
-                if (f.IsVisible) return true;
+                if (f.IsVisible)
+                {
+                    Console.WriteLine($"[FEEDBACK FILTER] Feedback {f.Id} - VISIBLE - SHOW");
+                    return true;
+                }
                 
                 // Provider sees ALL feedbacks (including blocked)
-                if (isProvider) return true;
+                if (isProvider)
+                {
+                    Console.WriteLine($"[FEEDBACK FILTER] Feedback {f.Id} - BLOCKED but user is PROVIDER - SHOW");
+                    return true;
+                }
                 
                 // Show blocked feedbacks only to the author
                 if (!f.IsVisible && currentUserId.HasValue && f.CustomerId == currentUserId.Value)
                 {
+                    Console.WriteLine($"[FEEDBACK FILTER] Feedback {f.Id} - BLOCKED but user is AUTHOR - SHOW");
                     return true;
                 }
                 
                 // Hide from everyone else
+                Console.WriteLine($"[FEEDBACK FILTER] Feedback {f.Id} - BLOCKED and user is NOT author/provider - HIDE");
                 return false;
             }).ToList();
+            
+            Console.WriteLine($"[FEEDBACK FILTER] Filtered feedbacks: {filteredFeedbacks.Count}");
 
             var responseDtos = _mapper.Map<List<FeedbackResponseDto>>(filteredFeedbacks);
             

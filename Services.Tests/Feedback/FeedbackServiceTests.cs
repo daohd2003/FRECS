@@ -3,6 +3,7 @@ using AutoMapper;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.FeedbackDto;
 using BusinessObject.Enums;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using Repositories.FeedbackRepositories;
 using Repositories.OrderRepositories;
@@ -49,6 +50,7 @@ namespace Services.Tests.Feedback
         private readonly Mock<IRepository<User>> _mockUserRepository;
         private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<Services.ContentModeration.IContentModerationService> _mockContentModerationService;
+        private readonly Mock<IMemoryCache> _mockCache;
         private readonly FeedbackService _feedbackService;
 
         public FeedbackServiceTests()
@@ -60,10 +62,11 @@ namespace Services.Tests.Feedback
             _mockUserRepository = new Mock<IRepository<User>>();
             _mockMapper = new Mock<IMapper>();
             _mockContentModerationService = new Mock<Services.ContentModeration.IContentModerationService>();
+            _mockCache = new Mock<IMemoryCache>();
 
             // Setup default behavior: no violations
             _mockContentModerationService
-                .Setup(x => x.CheckContentAsync(It.IsAny<string>()))
+                .Setup(x => x.CheckFeedbackContentAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = true,
@@ -77,7 +80,8 @@ namespace Services.Tests.Feedback
                 _mockProductRepository.Object,
                 _mockUserRepository.Object,
                 _mockMapper.Object,
-                _mockContentModerationService.Object
+                _mockContentModerationService.Object,
+                _mockCache.Object
             );
         }
 
@@ -2229,7 +2233,7 @@ namespace Services.Tests.Feedback
             var product = new BusinessObject.Models.Product { Id = productId };
 
             // Mock content moderation - clean content
-            _mockContentModerationService.Setup(x => x.CheckContentAsync(dto.Comment))
+            _mockContentModerationService.Setup(x => x.CheckFeedbackContentAsync(dto.Comment, null))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = true,
@@ -2290,7 +2294,7 @@ namespace Services.Tests.Feedback
                 f.ViolationReason == null
             )), Times.Once);
 
-            _mockContentModerationService.Verify(x => x.CheckContentAsync(dto.Comment), Times.Once);
+            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync(dto.Comment, null), Times.Once);
         }
 
         /// <summary>
@@ -2332,7 +2336,7 @@ namespace Services.Tests.Feedback
             var product = new BusinessObject.Models.Product { Id = productId };
 
             // Mock content moderation - inappropriate content detected
-            _mockContentModerationService.Setup(x => x.CheckContentAsync(dto.Comment))
+            _mockContentModerationService.Setup(x => x.CheckFeedbackContentAsync(dto.Comment, null))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = false,
@@ -2392,7 +2396,7 @@ namespace Services.Tests.Feedback
                 f.BlockedById == null // Auto-blocked by AI, not by staff
             )), Times.Once);
 
-            _mockContentModerationService.Verify(x => x.CheckContentAsync(dto.Comment), Times.Once);
+            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync(dto.Comment, null), Times.Once);
         }
 
         /// <summary>
@@ -2434,7 +2438,7 @@ namespace Services.Tests.Feedback
             var product = new BusinessObject.Models.Product { Id = productId };
 
             // Mock content moderation - empty content is appropriate
-            _mockContentModerationService.Setup(x => x.CheckContentAsync(""))
+            _mockContentModerationService.Setup(x => x.CheckFeedbackContentAsync("", null))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = true,
@@ -2486,7 +2490,7 @@ namespace Services.Tests.Feedback
             Assert.NotNull(result);
 
             // Verify content moderation was called with empty string
-            _mockContentModerationService.Verify(x => x.CheckContentAsync(""), Times.Once);
+            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync("", null), Times.Once);
 
             // Verify feedback was added without blocking
             _mockFeedbackRepository.Verify(x => x.AddAsync(It.Is<BusinessObject.Models.Feedback>(f =>
@@ -2534,7 +2538,7 @@ namespace Services.Tests.Feedback
             var product = new BusinessObject.Models.Product { Id = productId };
 
             // Mock content moderation - hate speech detected
-            _mockContentModerationService.Setup(x => x.CheckContentAsync(dto.Comment))
+            _mockContentModerationService.Setup(x => x.CheckFeedbackContentAsync(dto.Comment, null))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = false,
@@ -2593,7 +2597,7 @@ namespace Services.Tests.Feedback
                 f.ViolationReason == "Contains hate speech and racial discrimination"
             )), Times.Once);
 
-            _mockContentModerationService.Verify(x => x.CheckContentAsync(dto.Comment), Times.Once);
+            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync(dto.Comment, null), Times.Once);
         }
 
         /// <summary>
@@ -2635,7 +2639,7 @@ namespace Services.Tests.Feedback
             var product = new BusinessObject.Models.Product { Id = productId };
 
             // Mock content moderation - spam detected
-            _mockContentModerationService.Setup(x => x.CheckContentAsync(dto.Comment))
+            _mockContentModerationService.Setup(x => x.CheckFeedbackContentAsync(dto.Comment, null))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = false,
@@ -2694,7 +2698,7 @@ namespace Services.Tests.Feedback
                 f.ViolationReason == "Contains excessive repeating characters"
             )), Times.Once);
 
-            _mockContentModerationService.Verify(x => x.CheckContentAsync(dto.Comment), Times.Once);
+            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync(dto.Comment, null), Times.Once);
         }
 
         /// <summary>
@@ -2737,7 +2741,7 @@ namespace Services.Tests.Feedback
             var product = new BusinessObject.Models.Product { Id = productId, AverageRating = 5.0m, RatingCount = 1 };
 
             // Mock content moderation - inappropriate
-            _mockContentModerationService.Setup(x => x.CheckContentAsync(dto.Comment))
+            _mockContentModerationService.Setup(x => x.CheckFeedbackContentAsync(dto.Comment, null))
                 .ReturnsAsync(new BusinessObject.DTOs.ProductDto.ContentModerationResultDTO
                 {
                     IsAppropriate = false,
@@ -3105,10 +3109,11 @@ namespace Services.Tests.Feedback
         }
 
         /// <summary>
-        /// Test: Update feedback rating only (no comment change) - should still check existing comment
+        /// Test: Update feedback rating only (no comment change) - should skip moderation check
+        /// Expected: Moderation NOT called (comment unchanged), rating updated successfully
         /// </summary>
         [Fact]
-        public async Task UpdateCustomerFeedback_RatingOnlyUpdate_ShouldCheckExistingComment()
+        public async Task UpdateCustomerFeedback_RatingOnlyUpdate_ShouldSkipModerationCheck()
         {
             // Arrange
             var feedbackId = Guid.NewGuid();
@@ -3160,10 +3165,11 @@ namespace Services.Tests.Feedback
             await _feedbackService.UpdateCustomerFeedbackAsync(feedbackId, updateDto, customerId);
 
             // Assert
-            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync("Existing clean comment", null), Times.Once);
+            // Moderation should NOT be called when comment is unchanged (dto.Comment = null means no change)
+            _mockContentModerationService.Verify(x => x.CheckFeedbackContentAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             Assert.NotNull(capturedFeedback);
             Assert.Equal(5, capturedFeedback.Rating);
-            Assert.Null(capturedFeedback.Comment);
+            Assert.Equal("Existing clean comment", capturedFeedback.Comment); // Comment should remain unchanged
             _mockFeedbackRepository.Verify(x => x.UpdateAsync(capturedFeedback), Times.Once);
         }
 

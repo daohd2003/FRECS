@@ -10,6 +10,13 @@
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
         <div class="alert alert-success">@Model.SuccessMessage</div>
+        <script>
+            // Clear localStorage draft on successful submission
+            if (window.ProviderApplicationStorage) {
+                ProviderApplicationStorage.clear();
+                console.log('[Success] localStorage draft cleared after successful submission');
+            }
+        </script>
     }
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
@@ -63,6 +70,14 @@
             background: #eaf4ff;
         }
     </style>
+
+    <!-- localStorage Manager for form persistence -->
+    <script src="~/js/provider-application-storage.js"></script>
+    
+    <!-- Current User ID for localStorage security -->
+    <script>
+        window.CURRENT_USER_ID = '@Model.CurrentUserId';
+    </script>
 
     <form method="post" class="card p-4" enctype="multipart/form-data" data-api-root="@Model.ApiBaseUrl" id="applyForm" autocomplete="off">
         <div class="form-grid mb-3">
@@ -382,10 +397,43 @@
         // ============================================
 
         // Global variable to store verified CCCD ID
-        let verifiedCccdId = null;
+        // Wrap in object so it can be passed by reference to localStorage manager
+        let verifiedCccdIdRef = { value: null };
+        // Getter/setter for backward compatibility
+        Object.defineProperty(window, 'verifiedCccdId', {
+            get: () => verifiedCccdIdRef.value,
+            set: (val) => { verifiedCccdIdRef.value = val; }
+        });
 
         // Wait for DOM to load before running
         function initializeVerification() {
+            // ========== RESTORE FROM LOCALSTORAGE ==========
+            console.log('[Init] Checking for saved draft...');
+            const draft = ProviderApplicationStorage.getData();
+            let hasRestoredData = false;
+            
+            if (draft && !ProviderApplicationStorage.isExpired(draft)) {
+                console.log('[Init] Found valid draft, restoring...');
+                
+                // Restore form fields first
+                ProviderApplicationStorage.restore.formFields();
+                
+                // Restore verification (pass reference to verifiedCccdId)
+                ProviderApplicationStorage.restore.verification(verifiedCccdIdRef);
+                
+                // Restore images
+                ProviderApplicationStorage.restore.images();
+                
+                // Show notification - DISABLED (user request)
+                // ProviderApplicationStorage.restore.showNotification();
+                
+                hasRestoredData = true;
+            }
+            
+            // Setup auto-save for form fields
+            ProviderApplicationStorage.setupAutoSave();
+            // ========== END RESTORE ==========
+            
             // Try to find element with multiple selectors
             let taxIdInput = document.getElementById('taxIdInput');
             if (!taxIdInput) {
@@ -471,41 +519,49 @@
             }
 
             // Variable to track if user has interacted
-            let userHasInteracted = false;
+            // If we restored data, mark as interacted to prevent clearing
+            let userHasInteracted = hasRestoredData;
 
-            // CLEAR Tax ID value when page loads to prevent autofill
-            taxIdInput.value = '';
-
-            // Ensure notifications and error messages are hidden when page loads
-            if (verificationDiv) {
-                verificationDiv.classList.add('verification-hidden');
-                verificationDiv.style.display = 'none';
+            // CLEAR Tax ID value when page loads to prevent autofill (but NOT if we restored data)
+            if (!hasRestoredData) {
+                taxIdInput.value = '';
             }
-            if (taxIdError) {
-                taxIdError.style.display = 'none';
+
+            // Ensure notifications and error messages are hidden when page loads (but NOT if we restored data)
+            if (!hasRestoredData) {
+                if (verificationDiv) {
+                    verificationDiv.classList.add('verification-hidden');
+                    verificationDiv.style.display = 'none';
+                }
+                if (taxIdError) {
+                    taxIdError.style.display = 'none';
+                }
             }
             if (submitBtn) {
                 submitBtn.disabled = false;
             }
 
             // Clear multiple times to ensure autofill is prevented (browser may autofill after a bit)
-            const clearAutofill = () => {
-                if (!userHasInteracted && taxIdInput.value) {
-                    taxIdInput.value = '';
-                    if (verificationDiv) {
-                        verificationDiv.classList.add('verification-hidden');
-                        verificationDiv.style.display = 'none';
+            // But ONLY if we didn't restore data
+            if (!hasRestoredData) {
+                const clearAutofill = () => {
+                    if (!userHasInteracted && taxIdInput.value) {
+                        taxIdInput.value = '';
+                        if (verificationDiv) {
+                            verificationDiv.classList.add('verification-hidden');
+                            verificationDiv.style.display = 'none';
+                        }
+                        if (taxIdError) {
+                            taxIdError.style.display = 'none';
+                        }
                     }
-                    if (taxIdError) {
-                        taxIdError.style.display = 'none';
-                    }
-                }
-            };
+                };
 
-            setTimeout(clearAutofill, 50);
-            setTimeout(clearAutofill, 100);
-            setTimeout(clearAutofill, 200);
-            setTimeout(clearAutofill, 500);
+                setTimeout(clearAutofill, 50);
+                setTimeout(clearAutofill, 100);
+                setTimeout(clearAutofill, 200);
+                setTimeout(clearAutofill, 500);
+            }
 
             // Function to update visibility
             function updateVerificationVisibility(isUserInteraction = false) {
@@ -588,18 +644,19 @@
                             businessLicenseSection.style.display = 'none';
                         }
 
-                        // Clear files
-                        if (idCardFront) idCardFront.value = '';
-                        if (idCardBack) idCardBack.value = '';
+                        // ⚠️ IMPORTANT: DO NOT clear CCCD files here!
+                        // CCCD verification should persist when switching between 10-digit ↔ 12-digit
+                        // Only clear if user explicitly removes them or starts fresh
+                        
+                        // Only clear business license and selfie (type-specific files)
                         const businessLicenseInput = document.getElementById('businessLicenseImage');
                         if (businessLicenseInput) businessLicenseInput.value = '';
 
-                        const _lf = document.getElementById('frontFileName');
-                        const _lb = document.getElementById('backFileName');
                         const _lbl = document.getElementById('businessLicenseFileName');
-                        if (_lf) _lf.textContent = 'No file chosen';
-                        if (_lb) _lb.textContent = 'No file chosen';
                         if (_lbl) _lbl.textContent = 'No file chosen';
+                        
+                        // Note: CCCD files (idCardFront, idCardBack) are NOT cleared
+                        // They remain valid for both individual and business types
                     }
                 }
             }
@@ -674,6 +731,16 @@
             bindPreview(idCardFront, idCardFrontPreview);
             bindPreview(idCardBack, idCardBackPreview);
 
+            // If we restored data, trigger visibility update to show correct sections
+            if (hasRestoredData && taxIdInput.value) {
+                console.log('[Init] Triggering visibility update after restore...');
+                // Use setTimeout to ensure DOM is ready
+                setTimeout(() => {
+                    updateVerificationVisibility(true);
+                    console.log('[Init] Visibility updated for TaxID:', taxIdInput.value);
+                }, 100);
+            }
+
             // Business License file picker
             const btnBusinessLicensePick = document.getElementById('btnBusinessLicensePick');
             const businessLicenseInput = document.getElementById('businessLicenseImage');
@@ -695,6 +762,10 @@
                             const url = URL.createObjectURL(file);
                             businessLicensePreview.src = url;
                             businessLicensePreview.style.display = 'inline-block';
+                            
+                            // Save to localStorage
+                            ProviderApplicationStorage.save.image('businessLicense', url);
+                            console.log('[Storage] Business license saved to localStorage');
                         } else {
                             // PDF or other - hide preview
                             if (businessLicensePreview) {
@@ -765,6 +836,16 @@
                 }
             });
 
+            // Helper: Convert File to base64
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+
             // CCCD Verification function
             async function verifyCccdImage(side) {
                 const isBack = side === 'back';
@@ -778,6 +859,9 @@
                 }
 
                 const file = fileInput.files[0];
+                
+                // ⭐ Convert file to base64 for localStorage
+                const imageBase64 = await fileToBase64(file);
 
                 // Show loading status
                 if (statusSpan) {
@@ -821,6 +905,10 @@
                             resultDiv.style.display = 'block';
                         }
 
+                        // Get the preview image URL (already displayed)
+                        const previewEl = isBack ? idCardBackPreview : idCardFrontPreview;
+                        const imageUrl = previewEl?.src || data.imageUrl;
+
                         // Store verified CCCD ID for validation (FRONT side only)
                         if (data.idNumber && data.idNumber.length === 12 && !isBack) {
                             verifiedCccdId = data.idNumber; // Save for validation
@@ -842,6 +930,13 @@
                                 updateVerificationVisibility(true);
                             }
                         }
+                        
+                        // ⭐ Save verification to localStorage with base64 for restore
+                        ProviderApplicationStorage.save.verification(isBack ? 'back' : 'front', {
+                            imageUrl: imageUrl,
+                            imageBase64: imageBase64, // ⭐ Save base64 for file restore
+                            aiData: data
+                        });
 
                         showToastMini('success', `${isBack ? 'Back' : 'Front'} side verified successfully`);
                     } else {
@@ -925,9 +1020,15 @@
                         const selfieFile = selfieInput?.files?.[0];
                         if (!selfieFile) errors.push('Selfie image is required for face matching verification.');
 
-                        // ✅ CRITICAL VALIDATION: Tax ID must match CCCD ID
+                        // ✅ VALIDATION: If user enters 12-digit TaxID, it should match CCCD
+                        // BUT: If CCCD is already verified, allow user to use different 12-digit TaxID
+                        // (e.g., user verified with CCCD 079012345678, but wants to use TaxID 079099999999)
+                        // This is allowed because CCCD verification proves identity, TaxID can be different
+                        
+                        // Only warn if TaxID doesn't match CCCD, but don't block submission
                         if (verifiedCccdId && taxValClean !== verifiedCccdId) {
-                            errors.push(`❌ Tax ID (${taxValClean}) does NOT match your CCCD ID (${verifiedCccdId}). Please correct it.`);
+                            console.warn(`⚠️ Tax ID (${taxValClean}) does NOT match CCCD ID (${verifiedCccdId}), but allowing submission since CCCD is verified.`);
+                            // Don't add to errors - allow submission with verified CCCD
                         }
                     } else if (taxValClean.length === 10) {
                         // BUSINESS - Require CCCD + Business License
@@ -1092,6 +1193,11 @@
                 console.log('✅ Selfie captured and ready:', file.size, 'bytes');
                 showToastMini('success', '✅ Selfie captured successfully!');
 
+                // Save selfie to localStorage
+                const selfieUrl = canvas.toDataURL('image/jpeg', 0.92);
+                ProviderApplicationStorage.save.image('selfie', selfieUrl);
+                console.log('[Storage] Selfie saved to localStorage');
+
                 // Auto-verify face matching with CCCD front image
                 await verifyFaceMatch(file);
             });
@@ -1197,6 +1303,14 @@
                 selfieImageInput.value = '';
                 selfiePreviewContainer.style.display = 'none';
                 startCameraContainer.style.display = 'block';
+
+                // Clear selfie from localStorage
+                const draft = ProviderApplicationStorage.getData();
+                if (draft && draft.selfie) {
+                    delete draft.selfie;
+                    localStorage.setItem('providerApplicationDraft', JSON.stringify(draft));
+                    console.log('[Storage] Selfie cleared from localStorage');
+                }
 
                 // Hide face match result
                 const faceMatchResult = document.getElementById('faceMatchResult');
