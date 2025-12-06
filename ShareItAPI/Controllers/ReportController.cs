@@ -107,6 +107,15 @@ namespace ShareItAPI.Controllers
                         return BadRequest(new ApiResponse<string>("OrderItemId is required when reporting about a specific product.", null));
                     }
                 }
+                else if (reportDto.ReportType == ReportType.Order)
+                {
+                    // Report về toàn bộ order - cần OrderId, không cần OrderItemId
+                    if (!reportDto.OrderId.HasValue)
+                    {
+                        return BadRequest(new ApiResponse<string>("OrderId is required when reporting about an order.", null));
+                    }
+                    reportDto.OrderItemId = null;
+                }
                 else if (reportDto.ReportType == ReportType.General)
                 {
                     // General reports không cần OrderId hoặc OrderItemId
