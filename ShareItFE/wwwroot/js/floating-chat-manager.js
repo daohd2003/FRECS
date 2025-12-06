@@ -3,6 +3,9 @@
  * Manages multiple floating chat windows that persist across page navigation
  */
 
+// Guard against duplicate declaration
+if (typeof FloatingChatManager === 'undefined') {
+
 class FloatingChatManager {
     constructor() {
         this.chats = new Map();
@@ -168,19 +171,41 @@ class FloatingChatManager {
             // Add message to existing chat
             this.addMessageToChat(chat, message, false);
             
-            // Show unread badge if minimized
+            // Show unread badge if minimized, mark as read if expanded
             if (chat.isMinimized) {
                 chat.unreadCount++;
                 this.updateUnreadBadge(chat);
             } else {
                 this.scrollToBottom(chat);
+                // Mark messages as read since chat is expanded and visible
+                if (chat.conversationId) {
+                    this.markMessagesAsRead(chat.conversationId);
+                }
             }
         } else {
-            // Auto-open new chat window for incoming message
-            console.log('New message from:', message);
-            
+            // Auto-open new chat window for incoming message (will be expanded by default)
             // Get sender info from message or fetch from API
             await this.openChatForIncomingMessage(message);
+        }
+    }
+    
+    /**
+     * Mark all messages in a conversation as read
+     * Called when chat window is expanded and messages are visible
+     */
+    async markMessagesAsRead(conversationId) {
+        if (!conversationId || !this.accessToken) return;
+        
+        try {
+            await fetch(`${this.apiUrl}/conversations/${conversationId}/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`
+                }
+            });
+        } catch (error) {
+            // Silently fail - not critical if mark-read fails
+            console.error('Error marking messages as read:', error);
         }
     }
     
@@ -214,6 +239,10 @@ class FloatingChatManager {
                 if (chat) {
                     this.addMessageToChat(chat, message, false);
                     this.scrollToBottom(chat);
+                    // Mark as read since chat is opened in expanded state
+                    if (chat.conversationId) {
+                        this.markMessagesAsRead(chat.conversationId);
+                    }
                 }
             }
         } catch (error) {
@@ -417,6 +446,10 @@ class FloatingChatManager {
                 this.loadConversation(chat);
             } else {
                 this.scrollToBottom(chat);
+                // Mark messages as read when expanding chat
+                if (chat.conversationId) {
+                    this.markMessagesAsRead(chat.conversationId);
+                }
             }
         }
 
@@ -527,6 +560,11 @@ class FloatingChatManager {
             chat.messagesLoaded = true; // Mark as loaded
 
             this.renderMessages(chat);
+            
+            // Mark messages as read after loading (chat is expanded when loadMessages is called)
+            if (chat.conversationId && !chat.isMinimized) {
+                this.markMessagesAsRead(chat.conversationId);
+            }
         } catch (error) {
             console.error('Error loading messages:', error);
             this.showError(chat, 'Failed to load messages');
@@ -774,4 +812,4 @@ window.openFloatingChatWithProduct = (userId, userName, avatar, role, product) =
     window.openFloatingChat(userId, userName, avatar, role, productContext);
 };
 
-
+} // End of guard against duplicate declaration
