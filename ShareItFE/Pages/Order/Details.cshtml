@@ -517,8 +517,25 @@
                 <input type="hidden" id="report-provider-id-item" value="@Model.Order?.ProviderId" />
                 
                 <div class="form-group">
-                    <label>Select Product to Report <span class="text-danger">*</span></label>
+                    <label>What would you like to report? <span class="text-danger">*</span></label>
                     <div class="product-selection">
+                        <!-- Option to report entire order -->
+                        <div class="product-option">
+                            <input type="radio" id="report-entire-order" name="selectedProduct" value="entire-order" class="form-check-input" />
+                            <label for="report-entire-order" class="product-label" style="background: #fef3c7; border: 1px solid #f59e0b;">
+                                <div style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #f59e0b; border-radius: 4px;">
+                                    <i class="bi bi-box-seam" style="font-size: 24px; color: white;"></i>
+                                </div>
+                                <div class="product-info">
+                                    <strong style="color: #92400e;">Report Entire Order</strong>
+                                    <small style="color: #b45309;">Report an issue with the whole order</small>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <!-- Separator -->
+                        <div style="text-align: center; color: #9ca3af; font-size: 12px; padding: 5px 0;">— or select a specific product —</div>
+                        
                         @foreach (var item in Model.Order.Items)
                         {
                             <div class="product-option">
@@ -558,6 +575,12 @@
                         <option value="Hygiene/Cleanliness Issue">Hygiene/Cleanliness Issue</option>
                         <option value="Other">Other</option>
                     </select>
+                </div>
+                
+                <div class="form-group" id="custom-issue-type-group" style="display: none;">
+                    <label for="custom-issue-type">Specify Issue Type <span class="text-danger">*</span></label>
+                    <input type="text" id="custom-issue-type" class="form-control" placeholder="Enter your issue type..." maxlength="100" />
+                    <small class="text-muted">Please describe the type of issue you're experiencing</small>
                 </div>
                 
                 <div class="form-group">
@@ -1679,9 +1702,24 @@
             document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     if (this.checked) {
-                        document.getElementById('report-item-id').value = this.value;
+                        // Set report-item-id only if not reporting entire order
+                        document.getElementById('report-item-id').value = this.value === 'entire-order' ? '' : this.value;
                     }
                 });
+            });
+            
+            // Handle Issue Type change - show/hide custom input when "Other" is selected
+            document.getElementById('report-item-subject').addEventListener('change', function() {
+                const customGroup = document.getElementById('custom-issue-type-group');
+                const customInput = document.getElementById('custom-issue-type');
+                if (this.value === 'Other') {
+                    customGroup.style.display = 'block';
+                    customInput.required = true;
+                } else {
+                    customGroup.style.display = 'none';
+                    customInput.required = false;
+                    customInput.value = '';
+                }
             });
             
             // Handle Add Images button click
@@ -1794,26 +1832,43 @@
                 document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
                     radio.checked = false;
                 });
+                // Hide custom issue type field
+                document.getElementById('custom-issue-type-group').style.display = 'none';
+                document.getElementById('custom-issue-type').value = '';
+                document.getElementById('custom-issue-type').required = false;
                 updateEvidenceCounter();
             };
             
             window.submitItemReport = async function() {
-                const itemId = document.getElementById('report-item-id').value;
-                const subject = document.getElementById('report-item-subject').value;
+                const selectedProduct = document.querySelector('input[name="selectedProduct"]:checked');
+                let subject = document.getElementById('report-item-subject').value;
+                const customIssueType = document.getElementById('custom-issue-type').value;
                 const description = document.getElementById('report-item-description').value;
                 const priority = document.getElementById('report-item-priority').value;
                 const orderId = document.getElementById('report-item-order-id').value;
                 const providerId = document.getElementById('report-provider-id-item').value;
                 
                 // Validation
-                if (!itemId) {
-                    alert('Please select a product to report');
+                if (!selectedProduct) {
+                    alert('Please select what you want to report');
                     return;
                 }
+                
+                const isEntireOrder = selectedProduct.value === 'entire-order';
+                const itemId = isEntireOrder ? null : selectedProduct.value;
                 
                 if (!subject) {
                     alert('Please select an issue type');
                     return;
+                }
+                
+                // If "Other" is selected, use custom issue type
+                if (subject === 'Other') {
+                    if (!customIssueType || customIssueType.trim().length < 3) {
+                        alert('Please specify your issue type (minimum 3 characters)');
+                        return;
+                    }
+                    subject = customIssueType.trim();
                 }
                 
                 if (!description || description.trim().length < 5) {
@@ -1870,16 +1925,21 @@
                         headers['Authorization'] = `Bearer ${accessToken}`;
                     }
                     
+                    // Build report data based on report type
                     const reportData = {
                         reporteeId: providerId,
                         orderId: orderId,
-                        orderItemId: itemId,
-                        reportType: 'OrderItem',
+                        reportType: isEntireOrder ? 'Order' : 'OrderItem',
                         subject: subject,
                         description: description.trim(),
                         priority: priority,
                         evidenceImages: evidenceUrls
                     };
+                    
+                    // Only include orderItemId if reporting a specific item
+                    if (!isEntireOrder) {
+                        reportData.orderItemId = itemId;
+                    }
                     
                     const response = await fetch('@Model.ApiBaseUrl/report', {
                         method: 'POST',
@@ -1888,7 +1948,10 @@
                     });
                     
                     if (response.ok) {
-                        alert('Your product report has been submitted successfully. Our team will review it shortly.');
+                        const successMessage = isEntireOrder 
+                            ? 'Your order report has been submitted successfully. Our team will review it shortly.'
+                            : 'Your product report has been submitted successfully. Our team will review it shortly.';
+                        alert(successMessage);
                         closeReportItemModal();
                     } else {
                         const errorData = await response.json().catch(() => ({ message: 'Failed to submit report' }));
