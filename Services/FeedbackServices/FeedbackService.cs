@@ -580,7 +580,8 @@ namespace Services.FeedbackServices
                 return new ApiResponse<PaginatedResponse<FeedbackResponseDto>>("Invalid page or pageSize", null);
             }
 
-            var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize);
+            // For staff/admin: Include ALL feedbacks (including blocked ones)
+            var paginatedFeedbacks = await _feedbackRepo.GetFeedbacksByProductAsync(productId, page, pageSize, includeBlocked: true);
             var responseDtos = _mapper.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items);
             
             // Map moderation fields
