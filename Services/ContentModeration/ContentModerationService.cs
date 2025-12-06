@@ -78,7 +78,6 @@ namespace Services.ContentModeration
                 var (isValid, reason, violatedTerms) = PerformFeedbackPreValidation(content);
                 if (!isValid)
                 {
-                    Console.WriteLine($"[FEEDBACK MODERATION] Pre-validation FAILED: {reason}");
                     return new ContentModerationResultDTO
                     {
                         IsAppropriate = false,
@@ -91,7 +90,6 @@ namespace Services.ContentModeration
                 var cacheKey = $"feedback:{GenerateCacheKey(content, null)}";
                 if (_cache.TryGetValue(cacheKey, out ContentModerationResultDTO? cachedResult))
                 {
-                    Console.WriteLine($"[FEEDBACK MODERATION CACHE] ✓ Cache HIT");
                     return cachedResult!;
                 }
 
@@ -206,12 +204,10 @@ Remember: ONLY block profanity and threats. ALL opinions and complaints are allo
             try
             {
                 // Pre-validation check BEFORE calling AI (catches spam, repeating chars, etc.)
-                Console.WriteLine($"[MODERATION DEBUG] Running pre-validation check...");
                 var (isValid, reason, violatedTerms) = PerformPreValidation(name, description);
 
                 if (!isValid)
                 {
-                    Console.WriteLine($"[MODERATION] Pre-validation FAILED: {reason}");
                     return new ContentModerationResultDTO
                     {
                         IsAppropriate = false,
@@ -224,24 +220,16 @@ Remember: ONLY block profanity and threats. ALL opinions and complaints are allo
                 var cacheKey = GenerateCacheKey(name, description);
                 if (_cache.TryGetValue(cacheKey, out ContentModerationResultDTO? cachedResult))
                 {
-                    Console.WriteLine($"[MODERATION CACHE] ✓ Cache HIT - Skipping API call");
                     return cachedResult!;
                 }
 
-                Console.WriteLine($"[MODERATION DEBUG] Pre-validation PASSED. Proceeding to AI check...");
-                Console.WriteLine($"[MODERATION DEBUG] Input - Name: '{name}' | Description: '{description}'");
-
                 var prompt = BuildModerationPrompt(name, description);
-                Console.WriteLine($"[MODERATION DEBUG] Sending to AI...");
 
                 // This will throw detailed exceptions if any error occurs
                 var geminiResponse = await SendRequestToGeminiAsync(prompt);
 
-                Console.WriteLine($"[MODERATION DEBUG] AI Response: {geminiResponse?.Substring(0, Math.Min(500, geminiResponse?.Length ?? 0))}...");
-
                 if (string.IsNullOrEmpty(geminiResponse))
                 {
-                    Console.WriteLine($"[MODERATION DEBUG] Empty response from AI");
                     return new ContentModerationResultDTO
                     {
                         IsAppropriate = false,
@@ -251,7 +239,6 @@ Remember: ONLY block profanity and threats. ALL opinions and complaints are allo
                 }
 
                 var result = ParseModerationResponse(geminiResponse);
-                Console.WriteLine($"[MODERATION DEBUG] Final Decision - IsAppropriate: {result.IsAppropriate} | Reason: {result.Reason}");
 
                 // Cache the result for 7 days (increased from 24 hours for better performance)
                 // Longer cache = more cache hits = faster response time
@@ -260,7 +247,6 @@ Remember: ONLY block profanity and threats. ALL opinions and complaints are allo
                     .SetPriority(CacheItemPriority.High);
 
                 _cache.Set(cacheKey, result, cacheOptions);
-                Console.WriteLine($"[MODERATION CACHE] ✓ Result cached for 7 days");
 
                 return result;
             }
@@ -362,7 +348,6 @@ Remember: ONLY block profanity and threats. ALL opinions and complaints are allo
             // Nếu chỉ có 1-2 ký tự khác nhau trong chuỗi dài → spam
             if (totalChars >= 5 && distinctChars <= 2)
             {
-                Console.WriteLine($"[SPAM DETECTED] Only {distinctChars} distinct chars in {totalChars} chars: '{text}'");
                 return true;
             }
 
@@ -381,7 +366,6 @@ Remember: ONLY block profanity and threats. ALL opinions and complaints are allo
                     // ✅ GIẢM threshold: Nếu lặp >= 4 lần → spam (trước đây là >4)
                     if (repeatCount >= 4)
                     {
-                        Console.WriteLine($"[SPAM DETECTED] Character '{cleanText[i]}' repeated {repeatCount} times in: '{text}'");
                         return true;
                     }
                 }
@@ -700,7 +684,6 @@ Remember: ONE violation = REJECT. Be strict.";
             if (profanityRegex.IsMatch(lowerContent))
             {
                 var match = profanityRegex.Match(lowerContent);
-                Console.WriteLine($"[PROFANITY DETECTED] Found '{match.Value}' in feedback: '{content}'");
                 return (false, $"Feedback contains inappropriate language", new List<string> { "profanity", match.Value });
             }
             
@@ -733,7 +716,6 @@ Remember: ONE violation = REJECT. Be strict.";
                 if (insultRegex.IsMatch(lowerContent))
                 {
                     var match = insultRegex.Match(lowerContent);
-                    Console.WriteLine($"[INSULT DETECTED] Found '{match.Value}' in feedback: '{content}'");
                     return (false, $"Feedback contains personal insults or disrespectful language", new List<string> { "insult", match.Value });
                 }
             }

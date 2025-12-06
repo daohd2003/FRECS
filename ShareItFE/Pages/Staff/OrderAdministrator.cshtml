@@ -1531,16 +1531,16 @@
                                                 <line x1="8" y1="2" x2="8" y2="6"></line>
                                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                                             </svg>
-                                            @order.RentalStartDate.Value.ToString("MM/dd/yyyy")
+                                            @order.RentalStartDate.Value.ToString("dd/MM/yyyy")
                                         </div>
-                                        <div class="rental-dates">to @order.RentalEndDate.Value.ToString("MM/dd/yyyy")</div>
+                                        <div class="rental-dates">to @order.RentalEndDate.Value.ToString("dd/MM/yyyy")</div>
                                     }
                                     else
                                     {
                                         <span>-</span>
                                     }
                                 </td>
-                                <td><span class="date-time">@order.CreatedAt.ToString("MM/dd/yyyy, hh:mm tt")</span></td>
+                                <td><span class="date-time">@order.CreatedAt.ToString("dd/MM/yyyy, HH:mm")</span></td>
                                 <td>
                                     <button onclick="viewOrderDetail('@order.Id')" class="btn-view">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

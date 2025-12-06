@@ -168,7 +168,7 @@ namespace Services.Tests.Feedback
                 }
             };
 
-            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()))
                 .ReturnsAsync(paginatedFeedbacks);
 
             _mockMapper.Setup(x => x.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items))
@@ -189,7 +189,7 @@ namespace Services.Tests.Feedback
             Assert.Equal("Great product!", result.Data.Items[0].Comment);
 
             // Verify repository was called
-            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize), Times.Once);
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()), Times.Once);
 
             // Verify mapper was called
             _mockMapper.Verify(x => x.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items), Times.Once);
@@ -219,7 +219,7 @@ namespace Services.Tests.Feedback
 
             var emptyFeedbackDtos = new List<FeedbackResponseDto>();
 
-            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()))
                 .ReturnsAsync(paginatedFeedbacks);
 
             _mockMapper.Setup(x => x.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items))
@@ -232,12 +232,12 @@ namespace Services.Tests.Feedback
             Assert.NotNull(result);
             Assert.Equal("Success", result.Message);
             Assert.NotNull(result.Data);
-            Assert.Empty(result.Data.Items);
+            Assert.Empty(result.Data.Items); // No items on this page
             Assert.Equal(page, result.Data.Page);
-            Assert.Equal(0, result.Data.TotalItems); // Filtered count is 0
+            Assert.Equal(5, result.Data.TotalItems); // Total items in database (for pagination calculation)
 
             // Verify repository was called
-            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize), Times.Once);
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()), Times.Once);
         }
 
         /// <summary>
@@ -264,7 +264,7 @@ namespace Services.Tests.Feedback
 
             var emptyFeedbackDtos = new List<FeedbackResponseDto>();
 
-            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()))
                 .ReturnsAsync(paginatedFeedbacks);
 
             _mockMapper.Setup(x => x.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items))
@@ -282,7 +282,7 @@ namespace Services.Tests.Feedback
             Assert.Equal(page, result.Data.Page);
 
             // Verify repository was called
-            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize), Times.Once);
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()), Times.Once);
         }
 
         /// <summary>
@@ -310,7 +310,7 @@ namespace Services.Tests.Feedback
 
             var emptyFeedbackDtos = new List<FeedbackResponseDto>();
 
-            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(nonExistentProductId, page, pageSize))
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(nonExistentProductId, page, pageSize, It.IsAny<bool>()))
                 .ReturnsAsync(paginatedFeedbacks);
 
             _mockMapper.Setup(x => x.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items))
@@ -327,7 +327,7 @@ namespace Services.Tests.Feedback
             Assert.Equal(0, result.Data.TotalItems);
 
             // Verify repository was called
-            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(nonExistentProductId, page, pageSize), Times.Once);
+            _mockFeedbackRepository.Verify(x => x.GetFeedbacksByProductAsync(nonExistentProductId, page, pageSize, It.IsAny<bool>()), Times.Once);
 
             // Note: Service doesn't check if product exists - just returns empty feedback list
         }
@@ -433,7 +433,7 @@ namespace Services.Tests.Feedback
                 Comment = f.Comment
             }).ToList();
 
-            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize))
+            _mockFeedbackRepository.Setup(x => x.GetFeedbacksByProductAsync(productId, page, pageSize, It.IsAny<bool>()))
                 .ReturnsAsync(paginatedFeedbacks);
 
             _mockMapper.Setup(x => x.Map<List<FeedbackResponseDto>>(paginatedFeedbacks.Items))
@@ -448,7 +448,7 @@ namespace Services.Tests.Feedback
             Assert.Equal(2, result.Data.Items.Count); // Page 2 has 2 items (items 6-7 out of 12)
             Assert.Equal(page, result.Data.Page);
             Assert.Equal(pageSize, result.Data.PageSize);
-            Assert.Equal(2, result.Data.TotalItems); // Filtered count
+            Assert.Equal(12, result.Data.TotalItems); // Total items in database (for pagination calculation)
         }
         #region GetFeedbacksByProductAndCustomerAsync Tests (Provider Role - View Customer Comments)
 
