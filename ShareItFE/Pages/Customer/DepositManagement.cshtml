@@ -489,6 +489,12 @@
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" id="reopenRefundBtn" class="btn-reopen" style="display: none;" onclick="reopenRefundRequest()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 16px; height: 16px; margin-right: 6px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reopen Request
+                </button>
                 <button type="button" class="btn-secondary" onclick="closeRefundDetailModal()">Close</button>
             </div>
         </div>
@@ -1723,14 +1729,24 @@ async function viewRefundDetails(refundId) {
     }
 }
 
+// Store current refund ID for reopen action
+let currentRefundId = null;
+
 function populateStatusBanner(refund) {
     const banner = document.getElementById('refundStatusBanner');
     const title = document.getElementById('refundStatusTitle');
     const description = document.getElementById('refundStatusDescription');
     const icon = banner.querySelector('.status-icon');
+    const reopenBtn = document.getElementById('reopenRefundBtn');
+    
+    // Store current refund ID
+    currentRefundId = refund.id;
     
     // Remove existing status classes
     banner.classList.remove('completed', 'initiated', 'failed');
+    
+    // Hide reopen button by default
+    reopenBtn.style.display = 'none';
     
     const status = refund.status.toLowerCase();
     
@@ -1747,8 +1763,63 @@ function populateStatusBanner(refund) {
     } else if (status === 'failed') {
         banner.classList.add('failed');
         title.textContent = 'Refund Failed';
-        description.textContent = 'There was an issue processing your refund. Please contact our support team for assistance.';
+        description.textContent = 'There was an issue processing your refund. If you have resolved the issue mentioned in the admin notes, you can reopen this request for review.';
         icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+        // Show reopen button for failed refunds
+        reopenBtn.style.display = 'inline-flex';
+    }
+}
+
+// Reopen refund request
+async function reopenRefundRequest() {
+    if (!currentRefundId) {
+        alert('Error: No refund selected.');
+        return;
+    }
+    
+    const confirmed = confirm('Are you sure you want to reopen this refund request?\n\nThis will change the status back to "Initiated" so the admin can review it again.');
+    
+    if (!confirmed) return;
+    
+    const reopenBtn = document.getElementById('reopenRefundBtn');
+    const originalText = reopenBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        reopenBtn.disabled = true;
+        reopenBtn.innerHTML = `
+            <svg class="spinner" viewBox="0 0 50 50" style="width: 16px; height: 16px; margin-right: 6px;">
+                <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+            </svg>
+            Processing...
+        `;
+        
+        // Call the reopen handler
+        const response = await fetch(`?handler=ReopenRefund&refundId=${currentRefundId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Refund request has been reopened successfully! The admin will review it again.');
+            closeRefundDetailModal();
+            // Reload the page to refresh the data
+            window.location.reload();
+        } else {
+            alert(result.message || 'Failed to reopen refund request. Please try again.');
+            reopenBtn.disabled = false;
+            reopenBtn.innerHTML = originalText;
+        }
+    } catch (error) {
+        console.error('Error reopening refund:', error);
+        alert('An error occurred. Please try again.');
+        reopenBtn.disabled = false;
+        reopenBtn.innerHTML = originalText;
     }
 }
 
@@ -1887,6 +1958,29 @@ window.onclick = function(event) {
     background-color: #f3f4f6;
     color: #1f2937;
     border-color: #9ca3af;
+}
+
+.btn-reopen {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-reopen:hover {
+    background-color: #fde68a;
+    border-color: #f59e0b;
+}
+
+.btn-reopen:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .btn-primary {
