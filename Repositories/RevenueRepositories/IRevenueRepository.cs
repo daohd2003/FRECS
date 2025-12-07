@@ -12,7 +12,7 @@ namespace Repositories.RevenueRepositories
         Task<decimal> GetTotalEarningsAsync(Guid providerId);
         Task<decimal> GetPendingAmountAsync(Guid providerId);
         Task<decimal> GetPenaltyRevenueInPeriodAsync(Guid providerId, DateTime start, DateTime end);
-        Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid providerId, DateTime start, DateTime end, int limit = 5);
+        Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid providerId, DateTime start, DateTime end, int limit = 5, TransactionType? transactionType = null);
         Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid providerId, DateTime start, DateTime end, int limit = 5);
     }
 }

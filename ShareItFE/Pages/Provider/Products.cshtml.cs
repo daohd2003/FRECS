@@ -70,7 +70,7 @@ namespace ShareItFE.Pages.Provider
         {
             new SelectListItem { Value = "All Status", Text = "All Status" },
             new SelectListItem { Value = "Active", Text = "Active" },
-            new SelectListItem { Value = "Inactive", Text = "Inactive" },
+            //new SelectListItem { Value = "Inactive", Text = "Inactive" },
             new SelectListItem { Value = "Pending", Text = "Pending" },
             new SelectListItem { Value = "Archived", Text = "Archived" }
         };

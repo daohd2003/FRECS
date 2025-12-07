@@ -332,7 +332,32 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <!-- Top 5 Revenue by Product -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top 5 Product Revenue</h3>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Top 5 Product Revenue</h3>
+                            <div class="flex items-center space-x-2">
+                                <form method="get" class="flex items-center space-x-2">
+                                    <input type="hidden" name="Tab" value="@Model.Tab" />
+                                    <input type="hidden" name="Period" value="@Model.Period" />
+                                    @if (Model.StartDate.HasValue && Model.EndDate.HasValue)
+                                    {
+                                        <input type="hidden" name="StartDate" value="@Model.StartDate.Value.ToString("yyyy-MM-dd")" />
+                                        <input type="hidden" name="EndDate" value="@Model.EndDate.Value.ToString("yyyy-MM-dd")" />
+                                    }
+                                    <button type="submit" name="RevenueTypeFilter" value="all" 
+                                            class="px-3 py-1 text-xs rounded-lg transition-colors @(Model.RevenueTypeFilter == "all" || string.IsNullOrEmpty(Model.RevenueTypeFilter) ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")">
+                                        All
+                                    </button>
+                                    <button type="submit" name="RevenueTypeFilter" value="rental" 
+                                            class="px-3 py-1 text-xs rounded-lg transition-colors @(Model.RevenueTypeFilter == "rental" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")">
+                                        Rental
+                                    </button>
+                                    <button type="submit" name="RevenueTypeFilter" value="purchase" 
+                                            class="px-3 py-1 text-xs rounded-lg transition-colors @(Model.RevenueTypeFilter == "purchase" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")">
+                                        Purchase
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                         @if (Model.TopRevenueItems != null && Model.TopRevenueItems.Any())
                         {
                             <div class="space-y-4">
@@ -340,18 +365,22 @@
                                 {
                                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                                         <div class="flex items-center space-x-4 flex-1">
-                                            @if (!string.IsNullOrEmpty(item.ProductImageUrl))
-                                            {
-                                                <img src="@item.ProductImageUrl" alt="@item.ProductName" class="w-16 h-16 object-cover rounded-lg" />
-                                            }
-                                            else
-                                            {
-                                                <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                    <i data-lucide="image" class="h-8 w-8 text-gray-400"></i>
-                                                </div>
-                                            }
+                                            <a href="/products/detail/@item.ProductId" class="flex-shrink-0">
+                                                @if (!string.IsNullOrEmpty(item.ProductImageUrl))
+                                                {
+                                                    <img src="@item.ProductImageUrl" alt="@item.ProductName" class="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors">
+                                                        <i data-lucide="image" class="h-8 w-8 text-gray-400"></i>
+                                                    </div>
+                                                }
+                                            </a>
                                             <div class="flex-1 min-w-0">
-                                                <h4 class="text-sm font-semibold text-gray-900 truncate">@item.ProductName</h4>
+                                                <a href="/products/detail/@item.ProductId" class="block">
+                                                    <h4 class="text-sm font-semibold text-gray-900 truncate hover:text-purple-600 cursor-pointer transition-colors">@item.ProductName</h4>
+                                                </a>
                                                 <div class="flex items-center space-x-2 mt-1">
                                                     <span class="text-xs px-2 py-1 rounded-full @(item.TransactionType == "rental" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700")">
                                                         @(item.TransactionType == "rental" ? "Rental" : "Purchase")

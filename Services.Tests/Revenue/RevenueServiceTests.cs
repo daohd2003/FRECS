@@ -224,7 +224,7 @@ namespace Services.Tests.Revenue
                 }
             };
 
-            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5, It.IsAny<TransactionType?>()))
                 .ReturnsAsync(topProducts);
 
             // Act
@@ -236,7 +236,7 @@ namespace Services.Tests.Revenue
             Assert.Equal(5000, result[0].Revenue);
             Assert.Equal(5, result[0].OrderCount);
             Assert.Equal("rental", result[0].TransactionType);
-            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5), Times.Once);
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5, It.IsAny<TransactionType?>()), Times.Once);
         }
 
         [Fact]
@@ -259,7 +259,7 @@ namespace Services.Tests.Revenue
                 }
             };
 
-            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, startDate, endDate, 5))
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, startDate, endDate, 5, It.IsAny<TransactionType?>()))
                 .ReturnsAsync(topProducts);
 
             // Act
@@ -267,7 +267,7 @@ namespace Services.Tests.Revenue
 
             // Assert
             Assert.Single(result);
-            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, startDate, endDate, 5), Times.Once);
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, startDate, endDate, 5, It.IsAny<TransactionType?>()), Times.Once);
         }
 
         [Fact]
@@ -277,7 +277,7 @@ namespace Services.Tests.Revenue
             var providerId = Guid.NewGuid();
             var topProducts = new List<TopRevenueItemDto>();
 
-            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5, It.IsAny<TransactionType?>()))
                 .ReturnsAsync(topProducts);
 
             // Act
@@ -288,7 +288,8 @@ namespace Services.Tests.Revenue
                 providerId,
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
-                5), Times.Once);
+                5,
+                It.IsAny<TransactionType?>()), Times.Once);
         }
 
         [Fact]
@@ -298,7 +299,7 @@ namespace Services.Tests.Revenue
             var providerId = Guid.NewGuid();
             var topProducts = new List<TopRevenueItemDto>();
 
-            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5, It.IsAny<TransactionType?>()))
                 .ReturnsAsync(topProducts);
 
             // Act
@@ -309,7 +310,8 @@ namespace Services.Tests.Revenue
                 providerId,
                 It.IsAny<DateTime>(),
                 It.IsAny<DateTime>(),
-                5), Times.Once);
+                5,
+                It.IsAny<TransactionType?>()), Times.Once);
         }
 
         [Fact]
@@ -318,7 +320,7 @@ namespace Services.Tests.Revenue
             // Arrange
             var providerId = Guid.NewGuid();
 
-            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5))
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 5, It.IsAny<TransactionType?>()))
                 .ReturnsAsync(new List<TopRevenueItemDto>());
 
             // Act
@@ -337,14 +339,14 @@ namespace Services.Tests.Revenue
 
             var topProducts = new List<TopRevenueItemDto>();
 
-            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit))
+            _revenueRepo.Setup(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit, It.IsAny<TransactionType?>()))
                 .ReturnsAsync(topProducts);
 
             // Act
             await _service.GetTopRevenueByProductAsync(providerId, "month", null, null, limit);
 
             // Assert
-            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit), Times.Once);
+            _revenueRepo.Verify(r => r.GetTopRevenueByProductAsync(providerId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), limit, It.IsAny<TransactionType?>()), Times.Once);
         }
 
         #endregion

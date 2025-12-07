@@ -1,4 +1,5 @@
 using BusinessObject.DTOs.RevenueDtos;
+using BusinessObject.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.RevenueServices;
@@ -283,7 +284,7 @@ namespace ShareItAPI.Controllers
         /// </summary>
         [HttpGet("top-revenue")]
         [Authorize(Roles = "provider")]
-        public async Task<ActionResult<List<TopRevenueItemDto>>> GetTopRevenue([FromQuery] string period = "month", [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null, [FromQuery] int limit = 5)
+        public async Task<ActionResult<List<TopRevenueItemDto>>> GetTopRevenue([FromQuery] string period = "month", [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null, [FromQuery] int limit = 5, [FromQuery] string? transactionType = null)
         {
             try
             {
@@ -293,7 +294,16 @@ namespace ShareItAPI.Controllers
                     return Unauthorized("User not found");
                 }
 
-                var topRevenue = await _revenueService.GetTopRevenueByProductAsync(userId, period, startDate, endDate, limit);
+                TransactionType? typeFilter = null;
+                if (!string.IsNullOrEmpty(transactionType))
+                {
+                    if (Enum.TryParse<TransactionType>(transactionType, true, out var parsedType))
+                    {
+                        typeFilter = parsedType;
+                    }
+                }
+
+                var topRevenue = await _revenueService.GetTopRevenueByProductAsync(userId, period, startDate, endDate, limit, typeFilter);
                 return Ok(topRevenue);
             }
             catch (ArgumentException ex)
