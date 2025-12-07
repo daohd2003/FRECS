@@ -27,9 +27,6 @@ namespace ShareItAPI.Controllers
                             ?? User.FindFirstValue("userId")
                             ?? User.FindFirstValue("id");
             
-            Console.WriteLine($"User claims: {string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"))}");
-            Console.WriteLine($"UserIdString: {userIdString}");
-            
             if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 throw new InvalidOperationException("User ID from authentication token is missing or invalid.");
@@ -262,7 +259,6 @@ namespace ShareItAPI.Controllers
                 Console.WriteLine($"StaffId: {staffId}");
                 
                 var response = await _feedbackService.BlockFeedbackAsync(feedbackId, staffId);
-                Console.WriteLine($"Service response - Success: {response.Data}, Message: {response.Message}");
                 
                 if (!response.Data)
                     return BadRequest(response);
@@ -270,9 +266,7 @@ namespace ShareItAPI.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in BlockFeedback: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace });
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 

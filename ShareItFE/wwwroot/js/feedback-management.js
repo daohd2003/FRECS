@@ -10,8 +10,10 @@ let currentFilters = {
     rating: null,
     timeFilter: '',
     isBlocked: null,
-    pageSize: 10
+    pageSize: 10 // Products per page
 };
+let allProducts = []; // Store all grouped products for client-side pagination
+let totalProducts = 0;
 
 // Helper function to generate default avatar (same as User Management)
 function getDefaultAvatar(name, email) {
@@ -99,11 +101,16 @@ function switchTab(tab) {
     });
     document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
     
-    // Simplified: Blocked tab shows blocked feedbacks only
+    // For staff/admin: 
+    // - "All Feedbacks" tab: Don't filter by isBlocked (fetch all feedbacks)
+    // - "Blocked Content" tab: Filter isBlocked = true (only blocked feedbacks)
     if (tab === 'blocked') {
         currentFilters.isBlocked = true;
+        console.log('Switched to Blocked tab - will fetch only blocked feedbacks');
     } else {
-        currentFilters.isBlocked = null;
+        // Remove the filter entirely so backend returns everything
+        delete currentFilters.isBlocked;
+        console.log('Switched to All tab - will fetch all feedbacks');
     }
     
     loadFeedbacks();
@@ -159,14 +166,23 @@ async function loadFeedbacks() {
             return;
         }
         
+        // Fetch ALL feedbacks (with large pageSize) to group them client-side
         const params = new URLSearchParams({
-            pageNumber: currentPage,
-            pageSize: currentFilters.pageSize,
-            ...(currentFilters.searchTerm && { searchTerm: currentFilters.searchTerm }),
-            ...(currentFilters.rating && { rating: currentFilters.rating }),
-            ...(currentFilters.timeFilter && { timeFilter: currentFilters.timeFilter }),
-            ...(currentFilters.isBlocked !== null && { isBlocked: currentFilters.isBlocked })
+            pageNumber: 1,
+            pageSize: 1000 // Get all feedbacks
         });
+        
+        // Add filters only if they have values
+        if (currentFilters.searchTerm) params.append('searchTerm', currentFilters.searchTerm);
+        if (currentFilters.rating) params.append('rating', currentFilters.rating);
+        if (currentFilters.timeFilter) params.append('timeFilter', currentFilters.timeFilter);
+        // Only add isBlocked if it exists in currentFilters (true for blocked tab, undefined for all tab)
+        if ('isBlocked' in currentFilters && currentFilters.isBlocked !== null) {
+            params.append('isBlocked', currentFilters.isBlocked);
+            console.log('Adding isBlocked filter:', currentFilters.isBlocked);
+        } else {
+            console.log('No isBlocked filter - fetching all feedbacks');
+        }
         
         const response = await fetch(`${API_BASE_URL}?${params}`, {
             headers: {
@@ -177,17 +193,163 @@ async function loadFeedbacks() {
         if (!response.ok) throw new Error('Failed to load feedbacks');
         
         const result = await response.json();
-        const data = result.data;
+        const feedbacks = result.data.items;
         
-        renderFeedbackTable(data.items);
-        renderPagination(data.page, data.pageSize, data.totalItems);
+        console.log('=== LOAD FEEDBACKS DEBUG ===');
+        console.log('Current tab:', currentTab);
+        console.log('isBlocked filter:', currentFilters.isBlocked);
+        console.log('Feedbacks loaded:', feedbacks.length);
+        if (feedbacks.length > 0) {
+            console.log('Sample feedback:', feedbacks[0]);
+            console.log('Blocked feedbacks:', feedbacks.filter(f => f.isBlocked).length);
+            console.log('Visible feedbacks:', feedbacks.filter(f => !f.isBlocked).length);
+        }
+        
+        // Group feedbacks by product client-side
+        groupFeedbacksByProduct(feedbacks);
+        
+        // Render current page
+        renderCurrentPage();
     } catch (error) {
         console.error('Error loading feedbacks:', error);
-        showNotification('Failed to load feedbacks', 'error');
+        console.error('Error details:', error.message);
+        
+        let errorMessage = 'Error loading feedbacks';
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            errorMessage = 'Cannot connect to API. Please make sure the API is running.';
+        }
+        
+        showNotification(errorMessage, 'error');
         document.getElementById('feedbackTableBody').innerHTML = `
-            <tr><td colspan="8" class="text-center" style="color: #d32f2f;">Error loading feedbacks</td></tr>
+            <tr><td colspan="8" class="text-center" style="color: #d32f2f; padding: 40px;">
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">⚠️ ${errorMessage}</div>
+                <div style="font-size: 0.9rem; color: #666;">Check browser console for details</div>
+            </td></tr>
         `;
     }
+}
+
+function groupFeedbacksByProduct(feedbacks) {
+    console.log('Grouping feedbacks:', feedbacks.length);
+    
+    if (!feedbacks || feedbacks.length === 0) {
+        console.log('No feedbacks to group');
+        allProducts = [];
+        totalProducts = 0;
+        return;
+    }
+    
+    const productGroups = {};
+    
+    feedbacks.forEach(feedback => {
+        const productId = feedback.productId;
+        if (!productId) {
+            console.log('Feedback without productId:', feedback);
+            return;
+        }
+        
+        if (!productGroups[productId]) {
+            productGroups[productId] = {
+                productId: productId,
+                productName: feedback.productName,
+                productImageUrl: feedback.productImageUrl,
+                providerName: feedback.providerName,
+                feedbacks: [],
+                totalReviews: 0,
+                avgRating: 0,
+                flaggedCount: 0,
+                blockedCount: 0,
+                latestDate: null
+            };
+        }
+        
+        productGroups[productId].feedbacks.push(feedback);
+        productGroups[productId].totalReviews++;
+        if (feedback.isBlocked) productGroups[productId].blockedCount++;
+        
+        const feedbackDate = new Date(feedback.createdAt);
+        if (!productGroups[productId].latestDate || feedbackDate > productGroups[productId].latestDate) {
+            productGroups[productId].latestDate = feedbackDate;
+        }
+    });
+    
+    // Calculate average ratings
+    Object.values(productGroups).forEach(group => {
+        const totalRating = group.feedbacks.reduce((sum, fb) => sum + fb.rating, 0);
+        group.avgRating = totalRating / group.totalReviews;
+    });
+    
+    // Convert to array and sort by latest review
+    allProducts = Object.values(productGroups).sort((a, b) => b.latestDate - a.latestDate);
+    totalProducts = allProducts.length;
+    
+    console.log('Total products after grouping:', totalProducts);
+    console.log('Product groups:', Object.keys(productGroups).length);
+}
+
+function renderCurrentPage() {
+    const startIndex = (currentPage - 1) * currentFilters.pageSize;
+    const endIndex = startIndex + currentFilters.pageSize;
+    const productsToShow = allProducts.slice(startIndex, endIndex);
+    
+    console.log('Rendering page:', currentPage);
+    console.log('Products to show:', productsToShow.length);
+    console.log('Total products:', totalProducts);
+    
+    renderFeedbackTableFromProducts(productsToShow);
+    renderPagination(currentPage, currentFilters.pageSize, totalProducts);
+}
+
+function renderFeedbackTableFromProducts(products) {
+    const tbody = document.getElementById('feedbackTableBody');
+    
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No products with feedbacks found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = products.map((product, index) => `
+        <tr data-product-id="${product.productId}">
+            <td>${(currentPage - 1) * currentFilters.pageSize + index + 1}</td>
+            <td>
+                <div class="product-cell">
+                    <img src="${product.productImageUrl || '/images/placeholder.png'}" 
+                         alt="${product.productName}" 
+                         class="product-image">
+                    <div class="product-info">
+                        <p class="product-name">${product.productName || 'N/A'}</p>
+                        <p class="product-provider">by ${product.providerName || 'Unknown'}</p>
+                    </div>
+                </div>
+            </td>
+            <td style="text-align: center;">
+                <strong style="font-size: 1.25rem; color: #1976d2;">${product.totalReviews}</strong>
+            </td>
+            <td style="text-align: center;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span class="rating-stars">${'⭐'.repeat(Math.round(product.avgRating))}</span>
+                    <span class="rating-number">${product.avgRating.toFixed(1)}/5</span>
+                </div>
+            </td>
+            <td style="text-align: center;">
+                <span style="color: ${product.blockedCount > 0 ? '#d32f2f' : '#666'}; font-weight: ${product.blockedCount > 0 ? 'bold' : 'normal'}; font-size: 1.1rem;">
+                    ${product.blockedCount}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="action-btn action-btn-primary" 
+                            onclick="showProductFeedbacksModal('${product.productId}', '${escapeHtml(product.productName)}')"
+                            title="View All Feedbacks">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
 }
 
 function renderFeedbackTable(feedbacks) {
@@ -369,14 +531,15 @@ async function toggleExpandRow(button, feedbackId) {
         // Remove loading row
         loadingRow.remove();
         
-        // Create expanded content with filtered feedbacks
+        // Create expanded content with all feedbacks (including blocked for staff/admin)
         const expandedRow = document.createElement('tr');
         expandedRow.className = 'expanded-row';
+        const blockedCount = feedbacks.filter(f => f.isBlocked).length;
         expandedRow.innerHTML = `
             <td colspan="8">
                 <div class="expanded-content">
                     <h4 style="margin-bottom: 15px; color: #1976d2;">
-                        ${currentTab === 'blocked' ? 'Blocked Feedbacks' : 'All Feedbacks'} for this Product (${feedbacks.length} total)
+                        All Feedbacks for this Product (${feedbacks.length} total${blockedCount > 0 ? `, ${blockedCount} blocked` : ''})
                     </h4>
                     <div class="product-feedbacks-list">
                         ${feedbacks.map((fb, index) => `
@@ -880,6 +1043,17 @@ async function blockFeedback(feedbackId, fromModal = false) {
     }
 }
 
+// Wrapper functions for modal buttons
+async function unblockFeedbackFromModal(feedbackId) {
+    await unblockFeedback(feedbackId, true);
+    closeProductFeedbacksModal();
+}
+
+async function blockFeedbackFromModal(feedbackId) {
+    await blockFeedback(feedbackId, true);
+    closeProductFeedbacksModal();
+}
+
 async function unblockFeedback(feedbackId, fromModal = false) {
     if (!confirm('Are you sure you want to unblock this feedback?')) {
         return;
@@ -976,12 +1150,12 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     const options = { 
         year: 'numeric', 
-        month: 'short', 
-        day: 'numeric',
+        month: '2-digit', 
+        day: '2-digit',
         hour: '2-digit',
         minute: '2-digit'
     };
-    return date.toLocaleDateString('en-US', options);
+    return date.toLocaleString('vi-VN', options);
 }
 
 function formatCurrency(amount) {
@@ -1225,6 +1399,7 @@ async function showProductFeedbacksModal(productId, productName) {
         
         // Fetch all feedbacks for this product using management endpoint
         // Note: API_BASE_URL already includes '/feedbacks/management'
+        // For staff/admin, we want to see ALL feedbacks including blocked ones
         const response = await fetch(`${API_BASE_URL}/product/${productId}?page=1&pageSize=100`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1238,23 +1413,21 @@ async function showProductFeedbacksModal(productId, productName) {
         
         // DEBUG: Log to see actual data structure
         console.log('=== MODAL FEEDBACKS DEBUG ===');
+        console.log('Current tab:', currentTab);
         console.log('API Response:', result);
         console.log('Feedbacks array:', feedbacks);
         if (feedbacks.length > 0) {
             console.log('First feedback structure:', feedbacks[0]);
-            console.log('Customer object:', feedbacks[0].customer);
-            console.log('Rating:', feedbacks[0].rating);
-            console.log('CreatedAt:', feedbacks[0].createdAt);
+            console.log('Blocked feedbacks:', feedbacks.filter(f => f.isBlocked).length);
         }
         
-        // Filter based on current tab
+        // Filter feedbacks based on current tab
         if (currentTab === 'blocked') {
+            // In Blocked Content tab: Only show blocked feedbacks
             feedbacks = feedbacks.filter(fb => fb.isBlocked === true);
-        } else if (currentTab === 'flagged') {
-            feedbacks = feedbacks.filter(fb => fb.isFlagged === true && fb.isBlocked === false);
-        } else if (currentTab === 'all') {
-            feedbacks = feedbacks.filter(fb => fb.isBlocked === false);
+            console.log('Filtered to blocked only:', feedbacks.length);
         }
+        // In All Feedbacks tab: Show all feedbacks (no filtering needed)
         
         // Render feedbacks in modal
         if (feedbacks.length === 0) {
@@ -1270,8 +1443,14 @@ async function showProductFeedbacksModal(productId, productName) {
             return;
         }
         
-        // Build feedbacks HTML
-        let html = '<div class="feedbacks-list" style="display: flex; flex-direction: column; gap: 16px;">';
+        // Build feedbacks HTML - showing ALL feedbacks including blocked ones for staff/admin
+        const blockedCount = feedbacks.filter(f => f.isBlocked || f.status?.isBlocked).length;
+        let html = `
+            <div style="margin-bottom: 16px; padding: 12px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1976d2;">
+                <strong>Showing all ${feedbacks.length} feedback(s)</strong>
+                ${blockedCount > 0 ? `<span style="color: #d32f2f; margin-left: 8px;">(${blockedCount} blocked)</span>` : ''}
+            </div>
+            <div class="feedbacks-list" style="display: flex; flex-direction: column; gap: 16px;">`;
         
         feedbacks.forEach(feedback => {
             // Try multiple possible field names
@@ -1311,11 +1490,28 @@ async function showProductFeedbacksModal(productId, productName) {
             
             console.log('Rendering feedback:', { userName, userAvatar, rating, formattedDate, comment });
             
+            const violationReason = feedback.violationReason || feedback.status?.violationReason || '';
+            
             html += `
-                <div class="feedback-card" style="background: #f8f9fa; border-radius: 8px; padding: 16px; border: 1px solid #e9ecef;">
+                <div class="feedback-card" style="background: ${isBlocked ? '#ffebee' : '#f8f9fa'}; border-radius: 8px; padding: 16px; border: ${isBlocked ? '2px solid #d32f2f' : '1px solid #e9ecef'};">
+                    ${isBlocked ? `
+                        <div style="background: #d32f2f; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.875rem; font-weight: bold; margin-bottom: 12px; display: inline-block;">
+                            🚫 BLOCKED CONTENT
+                        </div>
+                        ${violationReason ? `
+                            <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+                                <div style="font-weight: 600; color: #e65100; margin-bottom: 4px; font-size: 0.875rem;">
+                                    ⚠️ Violation Reason:
+                                </div>
+                                <div style="color: #d84315; font-size: 0.875rem;">
+                                    ${escapeHtml(violationReason)}
+                                </div>
+                            </div>
+                        ` : ''}
+                    ` : ''}
                     <div style="display: flex; gap: 12px; margin-bottom: 12px;">
                         <img src="${userAvatar}" alt="${userName}" 
-                             style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                             style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; ${isBlocked ? 'opacity: 0.6;' : ''}">
                         <div style="flex: 1;">
                             <div style="display: flex; justify-content: space-between; align-items: start;">
                                 <div>
@@ -1326,7 +1522,7 @@ async function showProductFeedbacksModal(productId, productName) {
                                     ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}
                                 </div>
                             </div>
-                            <div style="margin-top: 8px; color: #475569; line-height: 1.5;">
+                            <div style="margin-top: 8px; color: ${isBlocked ? '#999' : '#475569'}; line-height: 1.5; ${isBlocked ? 'text-decoration: line-through;' : ''}">
                                 ${escapeHtml(comment)}
                             </div>
                             ${providerResponse ? `
@@ -1350,7 +1546,7 @@ async function showProductFeedbacksModal(productId, productName) {
                         </button>
                         ${isBlocked ? `
                             <button class="action-btn action-btn-success" 
-                                    onclick="unblockFeedback('${feedbackId}')"
+                                    onclick="unblockFeedbackFromModal('${feedbackId}')"
                                     title="Unblock"
                                     style="padding: 6px 12px; font-size: 13px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
@@ -1361,7 +1557,7 @@ async function showProductFeedbacksModal(productId, productName) {
                             </button>
                         ` : `
                             <button class="action-btn action-btn-danger" 
-                                    onclick="blockFeedback('${feedbackId}')"
+                                    onclick="blockFeedbackFromModal('${feedbackId}')"
                                     title="Block"
                                     style="padding: 6px 12px; font-size: 13px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">

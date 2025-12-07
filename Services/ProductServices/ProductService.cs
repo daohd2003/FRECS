@@ -12,6 +12,7 @@ using Repositories.ProductRepositories;
 using Services.NotificationServices;
 using Services.ConversationServices;
 using Services.CloudServices;
+using Microsoft.Extensions.Caching.Memory;
 
 
 namespace Services.ProductServices
@@ -25,6 +26,7 @@ namespace Services.ProductServices
         private readonly IConversationService _conversationService;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly INotificationService _notificationService;
+        private readonly IMemoryCache _cache;
 
         public ProductService(
             IProductRepository productRepository,
@@ -33,7 +35,8 @@ namespace Services.ProductServices
             IServiceProvider serviceProvider,
             IConversationService conversationService,
             ICloudinaryService cloudinaryService,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IMemoryCache cache)
         {
             _productRepository = productRepository;
             _mapper = mapper;
@@ -42,6 +45,7 @@ namespace Services.ProductServices
             _conversationService = conversationService;
             _cloudinaryService = cloudinaryService;
             _notificationService = notificationService;
+            _cache = cache;
         }
 
         /// <summary>
@@ -200,6 +204,14 @@ namespace Services.ProductServices
             Console.WriteLine($"[UPDATE] Product {productDto.Id} - Name changed: {nameChanged} | Description changed: {descriptionChanged}");
             Console.WriteLine($"[UPDATE] Old Name: '{existingProduct.Name}' → New Name: '{productDto.Name}'");
             Console.WriteLine($"[UPDATE] Old Description: '{existingProduct.Description}' → New Description: '{productDto.Description}'");
+
+            // Clear cache if content changed to force fresh AI moderation check
+            if (nameChanged || descriptionChanged)
+            {
+                var cacheKey = GenerateCacheKey(productDto.Name, productDto.Description);
+                _cache.Remove(cacheKey);
+                Console.WriteLine($"[UPDATE] Cache cleared for changed content - forcing fresh AI check");
+            }
 
             // UPDATE NGAY LẬP TỨC
             var updated = await _productRepository.UpdateProductWithImagesAsync(productDto);
@@ -468,6 +480,16 @@ namespace Services.ProductServices
                 Console.WriteLine($"[PRODUCT SERVICE] Failed to extract public ID from URL: {ex.Message}");
                 return null;
             }
+        }
+
+        private string GenerateCacheKey(string name, string? description)
+        {
+            // Create hash from content to use as cache key (same logic as ContentModerationService)
+            var content = $"{name?.Trim().ToLower()}|{description?.Trim().ToLower()}";
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+            var hash = Convert.ToBase64String(hashBytes);
+            return $"moderation:{hash}";
         }
 
         private async Task<Guid?> GetDefaultStaffIdAsync()

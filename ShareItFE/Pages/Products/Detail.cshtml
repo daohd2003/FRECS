@@ -1,11 +1,7 @@
-﻿@page "/products/detail/{id:guid}"
+@page "/products/detail/{id:guid}"
 @model ShareItFE.Pages.Products.DetailModel
 @{
     ViewData["Title"] = Model.Product?.Name ?? "Product Detail";
-    // Debug: Check IsOwnProduct value
-    var debugIsOwnProduct = Model.IsOwnProduct;
-    var debugUserId = Model.CurrentUserId;
-    var debugProviderId = Model.Product?.ProviderId;
 }
 
 @using System.Text.Json
@@ -115,7 +111,7 @@
                                 }
                             </div>
                             <span class="text-sm text-gray-600">
-                                @Model.Product.AverageRating.ToString("F1") (@Model.TotalFeedbacks reviews)
+                                @Model.Product.AverageRating.ToString("F1") (@Model.VisibleFeedbacks @(Model.VisibleFeedbacks == 1 ? "review" : "reviews"))
                             </span>
                         </div>
                         @if(!string.IsNullOrEmpty(Model.Product.GetStatsDisplay()))
@@ -324,7 +320,20 @@
                                 }
                             </div>
                             <span class="text-lg font-semibold">@Model.Product.AverageRating.ToString("F1")</span>
-                            <span class="text-gray-500">(@Model.TotalFeedbacks reviews)</span>
+                            @if (Model.IsOwnProduct && Model.TotalFeedbacks > Model.VisibleFeedbacks)
+                            {
+                                @* Provider sees total count with blocked info *@
+                                <span class="text-gray-500">
+                                    (@Model.TotalFeedbacks @(Model.TotalFeedbacks == 1 ? "review" : "reviews"), @(Model.TotalFeedbacks - Model.VisibleFeedbacks) blocked)
+                                </span>
+                            }
+                            else
+                            {
+                                @* Regular users see only visible count *@
+                                <span class="text-gray-500">
+                                    (@Model.VisibleFeedbacks @(Model.VisibleFeedbacks == 1 ? "review" : "reviews"))
+                                </span>
+                            }
                         </div>
                     </div>
 
@@ -421,6 +430,7 @@
                     </div>
                     
                     @* Pagination Controls *@
+                    @* Debug: TotalPages = @Model.TotalPages, TotalFeedbacks = @Model.TotalFeedbacks, PageSize = @Model.PageSize *@
                     @if (Model.TotalPages > 1)
                     {
                         <div id="pagination-container" class="mt-8 flex justify-center">
@@ -461,10 +471,6 @@
                                     </button>
                                 }
                             </nav>
-                            <div id="loading-reviews" class="hidden ml-4 flex items-center">
-                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                                <span class="ml-2 text-sm text-gray-600">Loading...</span>
-                            </div>
                         </div>
                     }
                 </div>
@@ -635,13 +641,9 @@
         const productId = '@Model.Product.Id';
 
         async function loadReviews(page) {
-            const loadingElement = document.getElementById('loading-reviews');
             const reviewsContainer = document.querySelector('#reviews .space-y-6');
             
             try {
-                // Show loading indicator
-                loadingElement.classList.remove('hidden');
-                
                 // Fetch new reviews
                 const response = await fetch(`/products/detail/${productId}?page=${page}&handler=Reviews`, {
                     method: 'GET',
@@ -666,12 +668,19 @@
                     // Update reviews content with smooth transition
                     reviewsContainer.style.opacity = '0.5';
                     setTimeout(() => {
+                        // Update reviews content
                         reviewsContainer.innerHTML = newReviews.innerHTML;
-                        reviewsContainer.style.opacity = '1';
                         
                         // Update pagination
                         const currentPaginationNav = document.querySelector('#pagination-container nav');
                         currentPaginationNav.innerHTML = newPagination.innerHTML;
+                        
+                        // IMPORTANT: Re-create Lucide icons AFTER DOM update
+                        // This renders all star icons and other SVG icons in the new content
+                        lucide.createIcons();
+                        
+                        // Restore opacity after icons are created
+                        reviewsContainer.style.opacity = '1';
                         
                         // Re-attach event listeners
                         attachPaginationListeners();
@@ -692,9 +701,6 @@
             } catch (error) {
                 console.error('Error loading reviews:', error);
                 showToast('Failed to load reviews', 'error');
-            } finally {
-                // Hide loading indicator
-                loadingElement.classList.add('hidden');
             }
         }
 
@@ -1300,6 +1306,66 @@
                 return null;
             }
 
+            // Function to reload product rating from API
+            async function reloadProductRating() {
+                try {
+                    const token = getAccessToken();
+                    const response = await fetch(`@Model.ApiBaseUrl/products/${productId}`, {
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        const product = result.data;
+                        
+                        if (product) {
+                            console.log('[Reload Rating] Updated product rating:', product.averageRating, 'Count:', product.ratingCount);
+                            
+                            // Update all rating displays on the page
+                            const ratingDisplays = document.querySelectorAll('.flex.items-center.space-x-1, .flex.items-center.space-x-2');
+                            ratingDisplays.forEach(display => {
+                                // Find star containers
+                                const starsContainer = display.querySelector('.flex');
+                                if (starsContainer) {
+                                    const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
+                                    if (stars.length === 5) {
+                                        // Update stars
+                                        stars.forEach((star, index) => {
+                                            if (index < Math.round(product.averageRating)) {
+                                                star.classList.add('fill-yellow-400', 'text-yellow-400');
+                                                star.classList.remove('text-gray-300');
+                                            } else {
+                                                star.classList.remove('fill-yellow-400', 'text-yellow-400');
+                                                star.classList.add('text-gray-300');
+                                            }
+                                        });
+                                        
+                                        // Update rating text
+                                        const ratingText = display.querySelector('.text-sm.text-gray-600, .text-lg.font-semibold');
+                                        if (ratingText) {
+                                            const currentText = ratingText.textContent;
+                                            // Check if it's the detailed format (with review count)
+                                            if (currentText.includes('(') && currentText.includes('review')) {
+                                                ratingText.textContent = `${product.averageRating.toFixed(1)} (${product.ratingCount} ${product.ratingCount === 1 ? 'review' : 'reviews'})`;
+                                            } else {
+                                                // Just the rating number
+                                                ratingText.textContent = product.averageRating.toFixed(1);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            console.log('[Reload Rating] Rating displays updated successfully');
+                        }
+                    } else {
+                        console.warn('[Reload Rating] Failed to fetch product:', response.status);
+                    }
+                } catch (error) {
+                    console.error('[Reload Rating] Error reloading product rating:', error);
+                }
+            }
+
             // Handle edit feedback button clicks
             document.addEventListener('click', function(e) {
                 if (e.target.closest('.edit-feedback-btn')) {
@@ -1391,36 +1457,129 @@
                             if (response.ok) {
                                 showToast('Feedback updated successfully!', 'success');
                                 
-                                // Update feedback in DOM without reloading
-                                const feedbackCard = document.querySelector(`.bg-gray-50[data-feedback-id="${editingFeedbackId}"]`);
-                                if (feedbackCard) {
-                                    // Update rating stars (Lucide icons)
-                                    const starsContainer = feedbackCard.querySelector('.flex.items-center.space-x-2 .flex');
-                                    if (starsContainer) {
-                                        const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
-                                        stars.forEach((star, index) => {
-                                            if (index < rating) {
-                                                star.classList.add('fill-yellow-400', 'text-yellow-400');
-                                                star.classList.remove('text-gray-300');
-                                            } else {
-                                                star.classList.remove('fill-yellow-400', 'text-yellow-400');
-                                                star.classList.add('text-gray-300');
+                                // Fetch updated feedback from server to get latest data (including isBlocked, isVisible, etc.)
+                                try {
+                                    const feedbackResponse = await fetch(`@Model.ApiBaseUrl/feedbacks/${editingFeedbackId}`, {
+                                        headers: {
+                                            'Authorization': `Bearer ${token}`
+                                        }
+                                    });
+                                    
+                                    if (feedbackResponse.ok) {
+                                        const feedbackResult = await feedbackResponse.json();
+                                        const updatedFeedback = feedbackResult.data;
+                                        
+                                        console.log('[Edit Feedback] Fetched updated feedback:', updatedFeedback);
+                                        
+                                        // Update feedback in DOM with server data
+                                        const feedbackCard = document.querySelector(`.bg-gray-50[data-feedback-id="${editingFeedbackId}"]`);
+                                        if (feedbackCard) {
+                                            console.log('[Edit Feedback] Updating feedback card in DOM');
+                                            console.log('[Edit Feedback] IsBlocked:', updatedFeedback.isBlocked, 'IsVisible:', updatedFeedback.isVisible);
+                                            
+                                            // Check if feedback was unblocked (was blocked, now clean)
+                                            const wasBlocked = feedbackCard.classList.contains('border-2') && feedbackCard.classList.contains('border-red-300');
+                                            const isNowClean = !updatedFeedback.isBlocked && updatedFeedback.isVisible;
+                                            
+                                            if (wasBlocked && isNowClean) {
+                                                console.log('[Edit Feedback] Feedback was unblocked - removing blocked styling');
+                                                
+                                                // Remove blocked border styling
+                                                feedbackCard.classList.remove('border-2', 'border-red-300');
+                                                
+                                                // Remove blocked badge
+                                                const blockedBadge = feedbackCard.querySelector('.inline-flex.items-center.px-2.py-1.text-xs.font-medium.text-red-700.bg-red-100.rounded-full');
+                                                if (blockedBadge) {
+                                                    blockedBadge.remove();
+                                                }
+                                                
+                                                // Remove blocked warning box (bg-red-50)
+                                                const blockedWarning = feedbackCard.querySelector('.bg-red-50.border-l-4.border-red-500');
+                                                if (blockedWarning) {
+                                                    blockedWarning.remove();
+                                                }
+                                                
+                                                // Remove orange warning box (bg-orange-50) if exists
+                                                const orangeWarning = feedbackCard.querySelector('.bg-orange-50.border-l-4.border-orange-500');
+                                                if (orangeWarning) {
+                                                    orangeWarning.remove();
+                                                }
                                             }
-                                        });
+                                            
+                                            // Update rating stars (Lucide icons)
+                                            const starsContainer = feedbackCard.querySelector('.flex.items-center.space-x-2 .flex');
+                                            if (starsContainer) {
+                                                const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
+                                                stars.forEach((star, index) => {
+                                                    if (index < updatedFeedback.rating) {
+                                                        star.classList.add('fill-yellow-400', 'text-yellow-400');
+                                                        star.classList.remove('text-gray-300');
+                                                    } else {
+                                                        star.classList.remove('fill-yellow-400', 'text-yellow-400');
+                                                        star.classList.add('text-gray-300');
+                                                    }
+                                                });
+                                            }
+                                            
+                                            // Update comment text - find the correct element
+                                            // If feedback was blocked, comment is inside <details>, otherwise it's direct <p>
+                                            let commentElement = feedbackCard.querySelector('.text-gray-700');
+                                            
+                                            // If not found or was in blocked state, create new comment element
+                                            const needsCommentRecreation = !commentElement || (wasBlocked && isNowClean);
+                                            if (needsCommentRecreation) {
+                                                // Remove old comment structure
+                                                const oldComment = feedbackCard.querySelector('.text-gray-700');
+                                                if (oldComment) oldComment.remove();
+                                                
+                                                // Create new clean comment element
+                                                const newComment = document.createElement('p');
+                                                newComment.className = 'text-gray-700';
+                                                newComment.textContent = updatedFeedback.comment || 'No comment provided';
+                                                
+                                                // Insert after the user info section
+                                                const userInfoSection = feedbackCard.querySelector('.flex.items-center.justify-between.mb-4');
+                                                if (userInfoSection) {
+                                                    userInfoSection.insertAdjacentElement('afterend', newComment);
+                                                }
+                                            } else {
+                                                commentElement.textContent = updatedFeedback.comment || 'No comment provided';
+                                            }
+                                            
+                                            // Update edit button data attributes
+                                            const editBtn = feedbackCard.querySelector('.edit-feedback-btn');
+                                            if (editBtn) {
+                                                editBtn.setAttribute('data-rating', updatedFeedback.rating);
+                                                editBtn.setAttribute('data-comment', updatedFeedback.comment);
+                                            }
+                                            
+                                            console.log('[Edit Feedback] Feedback card updated successfully');
+                                        } else {
+                                            // Feedback card not found in DOM (was blocked/hidden initially)
+                                            console.log('[Edit Feedback] Feedback card not found in DOM');
+                                            
+                                            // If feedback is now clean (unblocked), reload to show it
+                                            if (!updatedFeedback.isBlocked && updatedFeedback.isVisible) {
+                                                console.log('[Edit Feedback] Feedback is now clean - reloading page to display it');
+                                                window.location.reload();
+                                            } else {
+                                                // Still blocked, just close modal
+                                                console.log('[Edit Feedback] Feedback still blocked - no need to reload');
+                                            }
+                                        }
+                                        
+                                        // IMPORTANT: Reload product rating after feedback update
+                                        // This ensures the average rating and review count are updated
+                                        await reloadProductRating();
+                                    } else {
+                                        console.warn('[Edit Feedback] Failed to fetch updated feedback, reloading page...');
+                                        // Fallback: reload page if fetch fails
+                                        window.location.reload();
                                     }
-                                    
-                                    // Update comment text
-                                    const commentElement = feedbackCard.querySelector('.text-gray-700');
-                                    if (commentElement) {
-                                        commentElement.textContent = comment || 'No comment provided';
-                                    }
-                                    
-                                    // Update edit button data attributes
-                                    const editBtn = feedbackCard.querySelector('.edit-feedback-btn');
-                                    if (editBtn) {
-                                        editBtn.setAttribute('data-rating', rating);
-                                        editBtn.setAttribute('data-comment', comment);
-                                    }
+                                } catch (fetchError) {
+                                    console.error('[Edit Feedback] Error fetching updated feedback:', fetchError);
+                                    // Fallback: reload page if error occurs
+                                    window.location.reload();
                                 }
                                 
                                 // Close modal
