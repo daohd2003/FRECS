@@ -24,7 +24,7 @@ namespace BusinessObject.Mappings
                 .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer.Profile.FullName))
                 .ForMember(dest => dest.CustomerEmail, opt => opt.MapFrom(src => src.Customer.Email))
 
-                .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.Customer.Profile.Address))
+                .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.DeliveryAddress ?? src.Customer.Profile.Address))
                 .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Customer.Profile.Phone))
                 .ForMember(dest => dest.ScheduledDate, opt => opt.MapFrom(src => src.RentalStart ?? DateTime.UtcNow))
                 .ForMember(dest => dest.DeliveredDate, opt => opt.MapFrom(src =>

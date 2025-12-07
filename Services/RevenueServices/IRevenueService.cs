@@ -16,7 +16,7 @@ namespace Services.RevenueServices
         Task<bool> DeleteBankAccountAsync(Guid userId, Guid accountId);
         Task<bool> SetPrimaryBankAccountAsync(Guid userId, Guid accountId);
         Task<bool> RequestPayoutAsync(Guid userId, decimal amount);
-        Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5);
+        Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5, BusinessObject.Enums.TransactionType? transactionType = null);
         Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5);
     }
 }

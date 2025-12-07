@@ -49,6 +49,9 @@ namespace ShareItFE.Pages
         [BindProperty(SupportsGet = true)]
         public DateTime? EndDate { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public string? RevenueTypeFilter { get; set; } = "all"; // "all", "rental", "purchase"
+
         [TempData]
         public string SuccessMessage { get; set; }
 
@@ -92,7 +95,12 @@ namespace ShareItFE.Pages
                 var bankTask = client.GetAsync("api/revenue/bank-accounts");
                 var withdrawalHistoryTask = client.GetAsync("api/withdrawals/history");
                 var balanceTask = client.GetAsync("api/withdrawals/available-balance");
-                var topRevenueTask = client.GetAsync($"api/revenue/top-revenue?period={Period}&limit=5");
+                var topRevenueUrl = $"api/revenue/top-revenue?period={Period}&limit=5";
+                if (!string.IsNullOrEmpty(RevenueTypeFilter) && RevenueTypeFilter != "all")
+                {
+                    topRevenueUrl += $"&transactionType={RevenueTypeFilter}";
+                }
+                var topRevenueTask = client.GetAsync(topRevenueUrl);
                 var topCustomersTask = client.GetAsync($"api/revenue/top-customers?period={Period}&limit=5");
 
                 // Wait for all requests to complete
