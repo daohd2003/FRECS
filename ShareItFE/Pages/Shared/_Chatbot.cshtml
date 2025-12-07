@@ -190,6 +190,13 @@
             function toggleChatbot() {
                 chatbotWidget.classList.toggle('hidden');
                 chatToggleBtn.style.display = chatbotWidget.classList.contains('hidden') ? 'flex' : 'none';
+                
+                // Scroll to bottom when opening chatbot
+                if (!chatbotWidget.classList.contains('hidden')) {
+                    setTimeout(() => {
+                        chatBody.scrollTop = chatBody.scrollHeight;
+                    }, 50);
+                }
             }
 
             // Initialize visibility
