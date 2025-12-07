@@ -420,7 +420,7 @@ namespace Services.RevenueServices
             };
         }
 
-        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5)
+        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5, TransactionType? transactionType = null)
         {
             var now = DateTimeHelper.GetVietnamTime();
             DateTime start, end;
@@ -450,7 +450,7 @@ namespace Services.RevenueServices
                 }
             }
 
-            return await _revenueRepository.GetTopRevenueByProductAsync(userId, start, end, limit);
+            return await _revenueRepository.GetTopRevenueByProductAsync(userId, start, end, limit, transactionType);
         }
 
         public async Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5)

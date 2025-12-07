@@ -152,17 +152,68 @@ namespace Repositories.RevenueRepositories
             return penaltyRevenue;
         }
 
-        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid providerId, DateTime start, DateTime end, int limit = 5)
+        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid providerId, DateTime start, DateTime end, int limit = 5, TransactionType? transactionType = null)
         {
-            var topProducts = await _context.OrderItems
+            // Logic:
+            // - Rental orders: only count when status is 'returned'
+            // - Purchase orders: count when status is 'in_use' or 'returned' (when customer receives the item, status is in_use)
+            // - Mixed orders: count when status is 'returned' (rental items require return)
+            
+            // First, get all orders in the period with their items
+            var orders = await _context.Orders
                 .AsNoTracking()
-                .Include(oi => oi.Order)
+                .Include(o => o.Items)
+                .Where(o => o.ProviderId == providerId
+                    && o.CreatedAt >= start
+                    && o.CreatedAt < end
+                    && (o.Status == OrderStatus.returned 
+                        || o.Status == OrderStatus.in_use))
+                .ToListAsync();
+
+            // Filter orders based on the correct logic
+            var validOrderIds = new List<Guid>();
+            foreach (var order in orders)
+            {
+                bool hasRentalItems = order.Items.Any(i => i.TransactionType == TransactionType.rental);
+                bool hasPurchaseItems = order.Items.Any(i => i.TransactionType == TransactionType.purchase);
+                
+                bool shouldCount = false;
+                if (hasRentalItems && !hasPurchaseItems)
+                {
+                    // Pure rental order: only count when returned
+                    shouldCount = order.Status == OrderStatus.returned;
+                }
+                else if (hasPurchaseItems && !hasRentalItems)
+                {
+                    // Pure purchase order: count when in_use or returned
+                    shouldCount = order.Status == OrderStatus.in_use || order.Status == OrderStatus.returned;
+                }
+                else if (hasRentalItems && hasPurchaseItems)
+                {
+                    // Mixed order: count when returned (rental items require return)
+                    shouldCount = order.Status == OrderStatus.returned;
+                }
+
+                if (shouldCount)
+                {
+                    validOrderIds.Add(order.Id);
+                }
+            }
+
+            // Now query order items from valid orders
+            var query = _context.OrderItems
+                .AsNoTracking()
                 .Include(oi => oi.Product)
                     .ThenInclude(p => p.Images)
-                .Where(oi => oi.Order.ProviderId == providerId
-                    && oi.Order.Status == OrderStatus.returned
-                    && oi.Order.CreatedAt >= start
-                    && oi.Order.CreatedAt < end)
+                .Where(oi => validOrderIds.Contains(oi.OrderId));
+
+            // Filter by transaction type if specified
+            if (transactionType.HasValue)
+            {
+                query = query.Where(oi => oi.TransactionType == transactionType.Value);
+            }
+
+            var topProducts = await query
                 .GroupBy(oi => new { oi.ProductId, oi.TransactionType })
                 .Select(g => new
                 {
