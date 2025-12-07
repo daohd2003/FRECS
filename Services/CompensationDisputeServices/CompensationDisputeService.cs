@@ -2,6 +2,7 @@ using AutoMapper;
 using BusinessObject.DTOs.IssueResolutionDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.CompensationDisputeRepositories;
 using System;
 using System.Collections.Generic;
@@ -96,7 +97,7 @@ namespace Services.CompensationDisputeServices
                 ProviderCompensationAmount = providerCompensationAmount,
                 Reason = dto.Reason,
                 ResolutionStatus = ResolutionStatus.COMPLETED,
-                ProcessedAt = DateTime.UtcNow,
+                ProcessedAt = DateTimeHelper.GetVietnamTime(),
                 ProcessedByAdminId = adminId
             };
 
@@ -113,7 +114,7 @@ namespace Services.CompensationDisputeServices
             if (orderToUpdate != null && orderToUpdate.Status == OrderStatus.returned_with_issue)
             {
                 orderToUpdate.Status = OrderStatus.returned;
-                orderToUpdate.UpdatedAt = DateTime.UtcNow;
+                orderToUpdate.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 _context.Orders.Update(orderToUpdate);
             }
 
@@ -156,7 +157,7 @@ namespace Services.CompensationDisputeServices
                         RefundAmount = totalDeposit - customerFineAmount,
                         Status = TransactionStatus.initiated,
                         Notes = $"Refund after admin resolution: {dto.ResolutionType}. Reason: {truncatedReason}",
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTimeHelper.GetVietnamTime()
                     };
 
                     await _context.DepositRefunds.AddAsync(depositRefund);
@@ -187,7 +188,7 @@ namespace Services.CompensationDisputeServices
             foreach (var order in ordersToUpdate)
             {
                 order.Status = OrderStatus.returned;
-                order.UpdatedAt = DateTime.UtcNow;
+                order.UpdatedAt = DateTimeHelper.GetVietnamTime();
             }
 
             await _context.SaveChangesAsync();

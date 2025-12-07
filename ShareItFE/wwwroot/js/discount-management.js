@@ -337,7 +337,7 @@ function displayDiscountCodes(discountCodes) {
 
     discountCodes.forEach(function(discount) {
         const statusClass = getStatusBadgeClass(discount.status);
-        const expirationDate = new Date(discount.expirationDate).toLocaleDateString('vi-VN');
+        const expirationDate = new Date(discount.expirationDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
         const valueDisplay = discount.discountType === 'Percentage' ? `${discount.value}%` : `${discount.value.toLocaleString('vi-VN')} VND`;
         const progress = Math.min((discount.usedCount / discount.quantity * 100), 100);
         const usageTypeText = discount.usageType;

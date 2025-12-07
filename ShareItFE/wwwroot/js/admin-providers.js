@@ -815,7 +815,7 @@ function renderTransactionsTable() {
                                     ${orderDisplay}
                                 </td>
                                 <td style="padding: 0.75rem 1rem; font-size: 0.875rem; color: #6b7280;">
-                                    ${transactionDate ? new Date(transactionDate).toLocaleDateString('vi-VN') : 'N/A'}
+                                    ${transactionDate ? new Date(transactionDate).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'N/A'}
                                 </td>
                                 <td style="padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 600; color: #10b981;">
                                     ${amount.toLocaleString('vi-VN')}₫

@@ -3,6 +3,7 @@ using BusinessObject.DTOs.VNPay;
 using BusinessObject.Enums;
 using BusinessObject.Enums.VNPay;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Common.Utilities.VNPAY;
 using Common.Utilities.VNPAY.Common.Utilities.VNPAY;
 using DataAccess;
@@ -92,7 +93,7 @@ namespace ShareItAPI.Controllers
                     CustomerId = customerId,
                     Amount = totalMoney,
                     Status = BusinessObject.Enums.TransactionStatus.initiated,
-                    TransactionDate = DateTime.UtcNow,
+                    TransactionDate = DateTimeHelper.GetVietnamTime(),
                     Orders = validOrders,
                     PaymentMethod = "VNPAY",
                     Content = requestDto.Note
@@ -206,7 +207,7 @@ namespace ShareItAPI.Controllers
                                                 UserId = order.CustomerId,
                                                 DiscountCodeId = order.DiscountCodeId.Value,
                                                 OrderId = order.Id,
-                                                UsedAt = DateTime.UtcNow
+                                                UsedAt = DateTimeHelper.GetVietnamTime()
                                             };
                                             await _context.UsedDiscountCodes.AddAsync(usedDiscountCode);
                                             

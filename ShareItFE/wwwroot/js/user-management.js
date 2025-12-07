@@ -1225,7 +1225,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
-            day: '2-digit'
+            day: '2-digit',
+            timeZone: 'Asia/Ho_Chi_Minh'
         });
     }
 

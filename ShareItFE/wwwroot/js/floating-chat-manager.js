@@ -272,9 +272,10 @@ class FloatingChatManager {
                 this.saveChatsState();
             }
             
-            // Update product context if provided
-            if (productContext) {
+            // Update product context if provided, or clear if explicitly set to null
+            if (productContext !== undefined) {
                 chat.productContext = productContext;
+                chat._productContextExplicitlySet = true; // Flag to prevent override from message history
                 this.updateProductBanner(chat);
             }
             
@@ -300,7 +301,8 @@ class FloatingChatManager {
             isMinimized: minimized,
             unreadCount: 0,
             element: null,
-            productContext: productContext // Store product context for this chat
+            productContext: productContext, // Store product context for this chat
+            _productContextExplicitlySet: productContext !== undefined // Flag to prevent override from message history
         };
 
         // Create UI
@@ -635,7 +637,8 @@ class FloatingChatManager {
         }
         
         // Update chat's product context from incoming message if available (always update to latest product)
-        if (message.productContext) {
+        // But respect explicitly set productContext (e.g., null from Report Management)
+        if (message.productContext && !chat._productContextExplicitlySet) {
             chat.productContext = message.productContext;
             this.updateProductBanner(chat);
         }
@@ -772,11 +775,11 @@ class FloatingChatManager {
         
         // Less than 24 hours
         if (diff < 86400000) {
-            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
         }
         
         // Older
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' });
     }
 
     // Public method to open chat from outside

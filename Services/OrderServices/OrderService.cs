@@ -451,7 +451,7 @@ namespace Services.OrderServices
                 TotalPenaltyAmount = totalPenalties,
                 RefundAmount = refundAmount,
                 Status = BusinessObject.Enums.TransactionStatus.initiated,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 Notes = totalPenalties > 0 
                     ? $"Deposit refund with penalty deduction. Total penalties: {totalPenalties:N0} ₫" 
                     : "Full deposit refund - no violations"
@@ -761,7 +761,7 @@ namespace Services.OrderServices
                             
                             if (discountCode != null && 
                                 discountCode.Status == BusinessObject.Enums.DiscountStatus.Active &&
-                                discountCode.ExpirationDate > DateTime.UtcNow &&
+                                discountCode.ExpirationDate > DateTimeHelper.GetVietnamTime() &&
                                 discountCode.UsedCount < discountCode.Quantity)
                             {
                                 // Determine applicable subtotal based on discount code UsageType

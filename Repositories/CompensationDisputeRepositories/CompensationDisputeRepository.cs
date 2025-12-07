@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.IssueResolutionDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -191,7 +192,7 @@ namespace Repositories.CompensationDisputeRepositories
                 return false;
 
             violation.Status = status;
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _context.SaveChangesAsync();
             return true;
         }

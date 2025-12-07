@@ -145,10 +145,11 @@ namespace Services.CartServices
                 }
                 
                 // Xác định ngày bắt đầu thuê (mặc định ngày mai nếu không có)
-                DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? DateTime.UtcNow.Date.AddDays(1));
-                if (startDate < DateTime.UtcNow.Date)
+                var vietnamNow = DateTimeHelper.GetVietnamTime();
+                DateTime startDate = (cartAddRequestDto.StartDate?.Date ?? vietnamNow.Date.AddDays(1));
+                if (startDate < vietnamNow.Date)
                 {
-                    startDate = DateTime.UtcNow.Date.AddDays(1); // Không cho thuê ngày quá khứ
+                    startDate = vietnamNow.Date.AddDays(1); // Không cho thuê ngày quá khứ
                 }
 
                 // Tìm cart item đã tồn tại với cùng ProductId, StartDate, RentalDays
@@ -322,7 +323,7 @@ namespace Services.CartServices
                     if (updateDto.StartDate.HasValue)
                     {
                         var newStart = updateDto.StartDate.Value.Date;
-                        if (newStart < DateTime.UtcNow.Date)
+                        if (newStart < DateTimeHelper.GetVietnamTime().Date)
                         {
                             throw new ArgumentException("Start Date cannot be in the past.");
                         }
@@ -509,7 +510,7 @@ namespace Services.CartServices
                     else
                     {
                         // Rent Again: Set start date to tomorrow (user can adjust in cart)
-                        startDate = DateTime.UtcNow.Date.AddDays(1);
+                        startDate = DateTimeHelper.GetVietnamTime().Date.AddDays(1);
                         if (orderItem.RentalDays.HasValue)
                         {
                             endDate = startDate.Value.AddDays(orderItem.RentalDays.Value);

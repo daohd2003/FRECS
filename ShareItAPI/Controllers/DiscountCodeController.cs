@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.DiscountCodeDto;
 using BusinessObject.Enums;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.DiscountCodeServices;
@@ -101,8 +102,8 @@ namespace ShareItAPI.Controllers
                     return NotFound(new ApiResponse<string>("Discount code not found", null));
                 }
 
-                // Check if code is still valid
-                if (discountCode.Status != DiscountStatus.Active || discountCode.ExpirationDate <= DateTime.UtcNow)
+                // Check if code is still valid (compare with Vietnam time UTC+7)
+                if (discountCode.Status != DiscountStatus.Active || discountCode.ExpirationDate <= DateTimeHelper.GetVietnamTime())
                 {
                     return BadRequest(new ApiResponse<string>("Discount code is not valid or has expired", null));
                 }
@@ -277,9 +278,11 @@ namespace ShareItAPI.Controllers
                 var usedDiscountCodeIds = await _discountCodeService.GetUsedDiscountCodeIdsByUserAsync(userId);
                 
                 // Filter only active codes that haven't expired, still have quantity, and NOT used by this user
+                // Compare with Vietnam time (UTC+7)
+                var vietnamNow = DateTimeHelper.GetVietnamTime();
                 var availableCodes = discountCodes.Where(dc => 
                     dc.Status == DiscountStatus.Active && 
-                    dc.ExpirationDate > DateTime.UtcNow && 
+                    dc.ExpirationDate > vietnamNow && 
                     dc.UsedCount < dc.Quantity &&
                     !usedDiscountCodeIds.Contains(dc.Id)
                 ).ToList();
