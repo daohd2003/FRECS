@@ -4,6 +4,7 @@ using BusinessObject.DTOs.BankQR;
 using BusinessObject.DTOs.OrdersDto;
 using BusinessObject.DTOs.TransactionsDto;
 using BusinessObject.Enums;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -84,7 +85,7 @@ namespace ShareItAPI.Controllers
                 CustomerId = customerId,
                 Amount = totalMoney,
                 Status = BusinessObject.Enums.TransactionStatus.initiated,
-                TransactionDate = DateTime.UtcNow,
+                TransactionDate = DateTimeHelper.GetVietnamTime(),
                 Orders = validOrders,
                 PaymentMethod = "SEPay"
             };

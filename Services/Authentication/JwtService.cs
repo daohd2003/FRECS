@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.Login;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -205,7 +206,7 @@ namespace Services.Authentication
 
             user.RefreshToken = newRefreshToken;
             user.RefreshTokenExpiryTime = newExpiry;
-            user.LastLogin = DateTime.UtcNow;
+            user.LastLogin = DateTimeHelper.GetVietnamTime();
             await _userRepository.UpdateAsync(user);
 
             // Nếu accessToken cũ còn tồn tại → thêm vào danh sách blacklist
@@ -261,7 +262,7 @@ namespace Services.Authentication
                 // Lưu refresh token vào database để sử dụng sau này
                 user.RefreshToken = refreshToken;
                 user.RefreshTokenExpiryTime = refreshExpiry;
-                user.LastLogin = DateTime.UtcNow; // Cập nhật thời gian đăng nhập cuối
+                user.LastLogin = DateTimeHelper.GetVietnamTime(); // Cập nhật thời gian đăng nhập cuối
 
                 await _userRepository.UpdateAsync(user);
 

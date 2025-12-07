@@ -1,4 +1,5 @@
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
@@ -48,7 +49,7 @@ namespace Repositories.SystemConfigRepositories
             if (config != null)
             {
                 config.Value = value;
-                config.UpdatedAt = DateTime.UtcNow;
+                config.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 config.UpdatedByAdminId = adminId;
                 _context.SystemConfigs.Update(config);
             }
@@ -58,7 +59,7 @@ namespace Repositories.SystemConfigRepositories
                 {
                     Key = key,
                     Value = value,
-                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTimeHelper.GetVietnamTime(),
                     UpdatedByAdminId = adminId
                 };
                 _context.SystemConfigs.Add(config);

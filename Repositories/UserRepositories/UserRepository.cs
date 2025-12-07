@@ -144,7 +144,7 @@ namespace Repositories.UserRepositories
                     Role = UserRole.customer, // Mặc định là customer
                     PasswordHash = "", // Không có password (login bằng Google)
                     RefreshToken = "",
-                    RefreshTokenExpiryTime = DateTime.Now,
+                    RefreshTokenExpiryTime = DateTimeHelper.GetVietnamTime(),
                     IsActive = true,
                     CreatedAt = DateTimeHelper.GetVietnamTime(),
                     EmailConfirmed = true, // Google đã verify email
@@ -213,7 +213,7 @@ namespace Repositories.UserRepositories
                 Role = UserRole.customer,
                 PasswordHash = string.Empty,
                 RefreshToken = string.Empty,
-                RefreshTokenExpiryTime = DateTime.Now,
+                RefreshTokenExpiryTime = DateTimeHelper.GetVietnamTime(),
                 IsActive = true,
                 CreatedAt = DateTimeHelper.GetVietnamTime(),
                 Profile = new Profile

@@ -1,5 +1,6 @@
 ﻿using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.Login;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -88,7 +89,7 @@ namespace ShareItAPI.Controllers
 
                 user.RefreshTokenExpiryTime = expiryTime;
                 user.RefreshToken = refreshTokens;
-                user.LastLogin = DateTime.UtcNow;
+                user.LastLogin = DateTimeHelper.GetVietnamTime();
                 await _userService.UpdateAsync(user);
 
                 var response = new TokenResponseDto
@@ -142,7 +143,7 @@ namespace ShareItAPI.Controllers
 
                 user.RefreshTokenExpiryTime = expiryTime;
                 user.RefreshToken = refreshTokens;
-                user.LastLogin = DateTime.UtcNow;
+                user.LastLogin = DateTimeHelper.GetVietnamTime();
 
                 await _userService.UpdateAsync(user);
 

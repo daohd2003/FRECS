@@ -1,4 +1,5 @@
 ﻿using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -139,7 +140,7 @@ namespace Repositories.ConversationRepositories
             if (conversation != null)
             {
                 conversation.LastMessageId = messageId;
-                conversation.UpdatedAt = DateTime.UtcNow;
+                conversation.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 await _context.SaveChangesAsync();
             }
         }

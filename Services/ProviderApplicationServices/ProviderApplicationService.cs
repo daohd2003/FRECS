@@ -410,7 +410,7 @@ namespace Services.ProviderApplicationServices
             }
 
             app.Status = dto.NewStatus;
-            app.ReviewedAt = DateTime.UtcNow;
+            app.ReviewedAt = DateTimeHelper.GetVietnamTime();
             app.ReviewedByAdminId = adminId;
             app.ReviewComment = dto.ReviewComment;
 

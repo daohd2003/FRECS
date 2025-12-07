@@ -1103,16 +1103,17 @@
                 });
             });
             // Open floating chat to start conversation with a user
-            function openFloatingChatWith(userId, userName) {
+            function openFloatingChatWith(userId, userName, role = null) {
                 if (!userId) return;
                 
                 // Check if openFloatingChat function exists (from floating-chat-manager.js)
                 if (typeof window.openFloatingChat === 'function') {
                     // Open floating chat with the specific user
-                    window.openFloatingChat(userId, userName || 'User', null);
+                    // Pass null for productContext to ensure no product banner is shown
+                    window.openFloatingChat(userId, userName || 'User', null, role, null);
                 } else if (typeof window.FloatingChatManager !== 'undefined' && typeof window.FloatingChatManager.openChatWith === 'function') {
                     // Fallback to static method
-                    window.FloatingChatManager.openChatWith(userId, userName || 'User', null);
+                    window.FloatingChatManager.openChatWith(userId, userName || 'User', null, role);
                 } else {
                     console.error('FloatingChatManager not found. Make sure floating-chat-manager.js is loaded.');
                     showToast('Chat feature is not available at the moment.', 'error');

@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.DashboardStatsDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -132,7 +133,7 @@ namespace Repositories.DashboardRepositories
                 .Where(u => u.CreatedAt >= startDate && u.CreatedAt <= endDate)
                 .CountAsync();
 
-            var today = DateTime.UtcNow.Date;
+            var today = DateTimeHelper.GetVietnamTime().Date;
             var activeUsersToday = await _context.Users
                 .Where(u => u.LastLogin.HasValue && u.LastLogin.Value.Date == today)
                 .CountAsync();

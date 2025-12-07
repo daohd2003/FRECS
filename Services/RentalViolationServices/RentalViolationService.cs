@@ -391,7 +391,7 @@ namespace Services.RentalViolationServices
                 violation.PenaltyAmount = dto.PenaltyAmount.Value;
 
             // Keep existing status (don't reset to PENDING like UpdateViolationByProviderAsync)
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             return await _violationRepo.UpdateViolationAsync(violation);
         }
@@ -414,7 +414,7 @@ namespace Services.RentalViolationServices
             {
                 // Customer accepts
                 violation.Status = ViolationStatus.CUSTOMER_ACCEPTED;
-                violation.CustomerResponseAt = DateTime.UtcNow;
+                violation.CustomerResponseAt = DateTimeHelper.GetVietnamTime();
 
                 // Update violation first
                 var updateResult = await _violationRepo.UpdateViolationAsync(violation);
@@ -430,7 +430,7 @@ namespace Services.RentalViolationServices
                 // Customer rejects - does not automatically escalate to admin
                 violation.Status = ViolationStatus.CUSTOMER_REJECTED;
                 violation.CustomerNotes = dto.CustomerNotes;
-                violation.CustomerResponseAt = DateTime.UtcNow;
+                violation.CustomerResponseAt = DateTimeHelper.GetVietnamTime();
 
                 // Upload customer's evidence if any
                 if (dto.EvidenceFiles != null && dto.EvidenceFiles.Any())
@@ -566,7 +566,7 @@ namespace Services.RentalViolationServices
                     Notes = totalPenalties > 0
                         ? $"Deposit refund after all violations resolved. Total penalties: {totalPenalties:N0} ₫"
                         : "Full deposit refund - no penalties",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTimeHelper.GetVietnamTime()
                 };
 
                 await _context.DepositRefunds.AddAsync(depositRefund);
@@ -611,7 +611,7 @@ namespace Services.RentalViolationServices
                 {
                     var oldStatus = order.Status; // Store old status for UpdateProductCounts
                     order.Status = OrderStatus.returned;
-                    order.UpdatedAt = DateTime.UtcNow;
+                    order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
                     // Update product counts (RentCount/BuyCount) when order becomes returned
                     await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
@@ -664,7 +664,7 @@ namespace Services.RentalViolationServices
             {
                 var oldStatus = order.Status; // Store old status for UpdateProductCounts
                 order.Status = OrderStatus.returned;
-                order.UpdatedAt = DateTime.UtcNow;
+                order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
                 // Update product counts (RentCount/BuyCount) when order becomes returned
                 await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
@@ -802,7 +802,7 @@ namespace Services.RentalViolationServices
 
             // Update status to PENDING_ADMIN_REVIEW
             violation.Status = ViolationStatus.PENDING_ADMIN_REVIEW;
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             // Store escalation reason in separate fields based on who escalated
             if (!string.IsNullOrEmpty(escalationReason))
@@ -877,8 +877,8 @@ namespace Services.RentalViolationServices
 
             // Update provider response
             violation.ProviderResponseToCustomer = response;
-            violation.ProviderResponseAt = DateTime.UtcNow;
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.ProviderResponseAt = DateTimeHelper.GetVietnamTime();
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             var updateResult = await _violationRepo.UpdateViolationAsync(violation);
 

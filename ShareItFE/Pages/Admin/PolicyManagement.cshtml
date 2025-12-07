@@ -107,17 +107,10 @@
 </div>
 
 @section Scripts {
-    <!-- TinyMCE Configuration -->
+    <!-- TinyMCE Configuration - API Key loaded from appsettings.json -->
     <script>
-        // ============================================
-        // TinyMCE API Key Configuration
-        // Change this value if you need to update the API key
-        // ============================================
-        const TINYMCE_API_KEY = 'jegcrh9wlz6y0amfpc51xftk0kqhhyqk2y2g1ljhqhgf3m1r';
-    </script>
-    
-    <!-- TinyMCE CDN -->
-    <script>
+        const TINYMCE_API_KEY = '@Model.TinyMceApiKey';
+        
         // Dynamically load TinyMCE with the configured API key
         (function() {
             const script = document.createElement('script');

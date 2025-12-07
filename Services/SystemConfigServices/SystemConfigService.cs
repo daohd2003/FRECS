@@ -1,4 +1,5 @@
 using BusinessObject.DTOs.SystemConfigDto;
+using BusinessObject.Utilities;
 using Repositories.SystemConfigRepositories;
 using System;
 using System.Threading.Tasks;
@@ -28,7 +29,7 @@ namespace Services.SystemConfigServices
             {
                 RentalCommissionRate = rentalRate * 100, // Convert to percentage
                 PurchaseCommissionRate = purchaseRate * 100, // Convert to percentage
-                LastUpdated = rentalConfig?.UpdatedAt ?? DateTime.UtcNow,
+                LastUpdated = rentalConfig?.UpdatedAt ?? DateTimeHelper.GetVietnamTime(),
                 UpdatedByAdminId = rentalConfig?.UpdatedByAdminId
             };
         }

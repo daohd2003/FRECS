@@ -900,7 +900,7 @@
                         </td>
                         <td>${pricingDisplay}</td>
                         <td>${stockDisplay}</td>
-                        <td>${new Date(product.createdAt).toLocaleDateString()}</td>
+                        <td>${new Date(product.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                         <td>
                             <div class="action-buttons">
                                 ${product.availabilityStatus.toLowerCase() === 'pending' ? `
@@ -1086,7 +1086,7 @@
                         <td>
                             ${reasonDisplay}
                         </td>
-                        <td style="white-space: nowrap; font-size: 11px;">${new Date(product.createdAt).toLocaleDateString()}</td>
+                        <td style="white-space: nowrap; font-size: 11px;">${new Date(product.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                                                 <td>
                                                     <div class="action-buttons">
                                 <button class="action-btn approve-btn" onclick="unflagProduct('${product.id}')" title="Approve">✓</button>
@@ -1549,7 +1549,7 @@
                     </td>
                     <td>${pricingDisplay}</td>
                     <td>${stockDisplay}</td>
-                    <td>${new Date(product.createdAt).toLocaleDateString()}</td>
+                    <td>${new Date(product.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                     <td>
                         <div class="action-buttons">
                             ${product.availabilityStatus.toLowerCase() === 'pending' ? `

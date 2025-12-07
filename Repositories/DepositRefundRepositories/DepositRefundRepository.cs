@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.DepositRefundDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -225,7 +226,7 @@ namespace Repositories.DepositRefundRepositories
             refund.Notes = notes;
             refund.ExternalTransactionId = externalTransactionId;
             refund.ProcessedByAdminId = adminId;
-            refund.ProcessedAt = DateTime.UtcNow;
+            refund.ProcessedAt = DateTimeHelper.GetVietnamTime();
 
             await _context.SaveChangesAsync();
             return true;
@@ -240,7 +241,7 @@ namespace Repositories.DepositRefundRepositories
             refund.Status = TransactionStatus.failed;
             refund.Notes = notes;
             refund.ProcessedByAdminId = adminId;
-            refund.ProcessedAt = DateTime.UtcNow;
+            refund.ProcessedAt = DateTimeHelper.GetVietnamTime();
 
             await _context.SaveChangesAsync();
             return true;

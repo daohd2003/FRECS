@@ -106,7 +106,7 @@ namespace Repositories.ReportRepositories
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 Priority = dto.Priority,
                 EvidenceImages = dto.EvidenceImages != null && dto.EvidenceImages.Any() 
                     ? JsonSerializer.Serialize(dto.EvidenceImages) 

@@ -2,6 +2,7 @@ using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.StaffDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.Authentication;
@@ -109,7 +110,7 @@ namespace ShareItAPI.Controllers
                     Role = UserRole.staff,
                     IsActive = request.IsActive,
                     EmailConfirmed = true, // Staff account không cần verify email
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTimeHelper.GetVietnamTime()
                 };
 
                 // Tạo profile cho staff
