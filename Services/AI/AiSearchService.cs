@@ -271,47 +271,51 @@ Answer in English:";
         private async Task<string?> SendRequestToGeminiAsync(string prompt)
         {
             var apiKey = _openAIOptions.ApiKey;
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}";
+            var url = "https://openrouter.ai/api/v1/chat/completions";
 
             var requestData = new
             {
-                contents = new[]
+                model = "google/gemini-2.5-flash-preview-09-2025",
+                messages = new[]
                 {
-            new
-            {
-                parts = new[]
-                {
-                    new { text = prompt }
-                }
-            }
-        }
+                    new
+                    {
+                        role = "user",
+                        content = prompt
+                    }
+                },
+                max_tokens = 2048
             };
 
             var content = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
 
             try
             {
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Content = content;
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                var response = await _httpClient.PostAsync(url, content, cts.Token);
+                var response = await _httpClient.SendAsync(request, cts.Token);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError("Gemini API error: {StatusCode} - {Reason}", response.StatusCode, response.ReasonPhrase);
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("OpenRouter API error: {StatusCode} - {Reason} - {Content}", response.StatusCode, response.ReasonPhrase, errorContent);
                     return "Sorry, the assistant cannot answer the question at this time.";
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(responseJson);
                 return doc.RootElement
-                    .GetProperty("candidates")[0]
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
                     .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
                     .GetString();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error when calling Gemini API");
+                _logger.LogError(ex, "Error when calling OpenRouter API");
                 return "An error occurred while contacting the assistant service.";
             }
         }
