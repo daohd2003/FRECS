@@ -27,6 +27,7 @@ namespace ShareItFE.Pages
         public PayoutSummaryDto PayoutSummary { get; set; } = new PayoutSummaryDto();
         public List<BankAccountDto> BankAccounts { get; set; } = new List<BankAccountDto>();
         public List<WithdrawalHistoryDto> WithdrawalHistory { get; set; } = new List<WithdrawalHistoryDto>();
+        public List<WithdrawalHistoryDto> PagedWithdrawalHistory { get; set; } = new List<WithdrawalHistoryDto>();
         public decimal AvailableBalance { get; set; } = 0;
         public List<TopRevenueItemDto> TopRevenueItems { get; set; } = new List<TopRevenueItemDto>();
         public List<TopCustomerDto> TopCustomers { get; set; } = new List<TopCustomerDto>();
@@ -51,6 +52,12 @@ namespace ShareItFE.Pages
 
         [BindProperty(SupportsGet = true)]
         public string? RevenueTypeFilter { get; set; } = "all"; // "all", "rental", "purchase"
+
+        [BindProperty(SupportsGet = true)]
+        public int WithdrawalPage { get; set; } = 1;
+
+        public int WithdrawalPageSize { get; set; } = 5;
+        public int WithdrawalTotalPages { get; set; }
 
         [TempData]
         public string SuccessMessage { get; set; }
@@ -171,6 +178,27 @@ namespace ShareItFE.Pages
                     var withdrawalJson = await withdrawalHistoryResponse.Content.ReadAsStringAsync();
                     var apiResponse = JsonSerializer.Deserialize<ApiResponse<IEnumerable<WithdrawalHistoryDto>>>(withdrawalJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     WithdrawalHistory = apiResponse?.Data?.ToList() ?? new List<WithdrawalHistoryDto>();
+
+                    // Server-side pagination for withdrawal history (5 items per page)
+                    WithdrawalTotalPages = (int)Math.Ceiling(WithdrawalHistory.Count / (double)WithdrawalPageSize);
+                    if (WithdrawalTotalPages == 0)
+                    {
+                        WithdrawalTotalPages = 1;
+                    }
+
+                    if (WithdrawalPage < 1)
+                    {
+                        WithdrawalPage = 1;
+                    }
+                    else if (WithdrawalPage > WithdrawalTotalPages)
+                    {
+                        WithdrawalPage = WithdrawalTotalPages;
+                    }
+
+                    PagedWithdrawalHistory = WithdrawalHistory
+                        .Skip((WithdrawalPage - 1) * WithdrawalPageSize)
+                        .Take(WithdrawalPageSize)
+                        .ToList();
                 }
 
                 // Process available balance
@@ -220,6 +248,58 @@ namespace ShareItFE.Pages
             }
 
             return Page();
+        }
+
+        public async Task<IActionResult> OnGetTopRevenueAsync(string? transactionType, DateTime? startDate, DateTime? endDate, string? period, int limit = 5)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return new UnauthorizedResult();
+            }
+
+            UserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "customer";
+            if (!string.Equals(UserRole, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ForbidResult();
+            }
+
+            // Use current page values if query params not provided
+            var effectivePeriod = string.IsNullOrEmpty(period) ? Period : period;
+            var effectiveStart = startDate ?? StartDate;
+            var effectiveEnd = endDate ?? EndDate;
+
+            try
+            {
+                var client = await _clientHelper.GetAuthenticatedClientAsync();
+
+                var topRevenueUrl = $"api/revenue/top-revenue?period={effectivePeriod}&limit={limit}";
+                if (!string.IsNullOrEmpty(transactionType) && transactionType != "all")
+                {
+                    topRevenueUrl += $"&transactionType={transactionType}";
+                }
+
+                if (effectiveStart.HasValue && effectiveEnd.HasValue)
+                {
+                    topRevenueUrl += $"&startDate={effectiveStart.Value:yyyy-MM-dd}&endDate={effectiveEnd.Value:yyyy-MM-dd}";
+                }
+
+                var response = await client.GetAsync(topRevenueUrl);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return StatusCode((int)response.StatusCode, "Failed to load top revenue");
+                }
+
+                var topRevenueJson = await response.Content.ReadAsStringAsync();
+                var items = JsonSerializer.Deserialize<List<TopRevenueItemDto>>(topRevenueJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<TopRevenueItemDto>();
+
+                return new JsonResult(items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading top revenue via handler");
+                return StatusCode(500, "Internal error");
+            }
         }
 
         public async Task<IActionResult> OnPostCreateBankAccountAsync()
