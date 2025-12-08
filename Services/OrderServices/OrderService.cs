@@ -1099,7 +1099,18 @@ namespace Services.OrderServices
                 }
 
                 var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-                
+
+                // Violation summary (provider view)
+                var orderItemIds = order.Items.Select(i => i.Id).ToList();
+                var violationQuery = _context.RentalViolations
+                    .AsNoTracking()
+                    .Where(v => orderItemIds.Contains(v.OrderItemId));
+                orderDetailsDto.HasReturnIssues = await violationQuery.AnyAsync();
+                if (orderDetailsDto.HasReturnIssues)
+                {
+                    orderDetailsDto.TotalPenaltyAmount = await violationQuery.SumAsync(v => v.PenaltyAmount);
+                }
+
                 // Fetch payment info from Transaction for provider
                 var transaction = await _context.Transactions
                     .AsNoTracking()
@@ -1145,7 +1156,18 @@ namespace Services.OrderServices
                 }
 
                 var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-                
+
+                // Violation summary for customer view (to surface penalties even after resolve)
+                var orderItemIds = order.Items.Select(i => i.Id).ToList();
+                var violationQuery = _context.RentalViolations
+                    .AsNoTracking()
+                    .Where(v => orderItemIds.Contains(v.OrderItemId));
+                orderDetailsDto.HasReturnIssues = await violationQuery.AnyAsync();
+                if (orderDetailsDto.HasReturnIssues)
+                {
+                    orderDetailsDto.TotalPenaltyAmount = await violationQuery.SumAsync(v => v.PenaltyAmount);
+                }
+
                 // Fetch latest payment method without loading entire transactions collection
                 var latestPaymentMethod = await _context.Transactions
                     .AsNoTracking()

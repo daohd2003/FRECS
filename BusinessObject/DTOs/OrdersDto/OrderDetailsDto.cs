@@ -39,5 +39,15 @@ namespace BusinessObject.DTOs.OrdersDto
         public DateTime? EstimatedDelivery { get; set; }
         public string PaymentMethod { get; set; }
         public string? Notes { get; set; }
+
+        /// <summary>
+        /// Đơn hàng từng có vi phạm/penalty (dù hiện đã ở trạng thái returned)
+        /// </summary>
+        public bool HasReturnIssues { get; set; }
+
+        /// <summary>
+        /// Tổng penalty (nếu có) để hiển thị cho khách xem lại
+        /// </summary>
+        public decimal? TotalPenaltyAmount { get; set; }
     }
 }

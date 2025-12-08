@@ -319,11 +319,12 @@
                             </button>
                         }
                         
-                        <!-- Handle Violations Button (for returned_with_issue orders) -->
-                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                        <!-- Handle/Review Violations Button -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue 
+                            || (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned && Model.Order.HasReturnIssues))
                         {
                             <button type="button" class="btn btn-warning handle-violations-btn" data-order-id="@Model.Order.Id">
-                                <i class="bi bi-exclamation-triangle"></i> Handle Violations
+                                <i class="bi bi-exclamation-triangle"></i> @(Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue ? "Handle Violations" : "View Penalties")
                             </button>
                         }
                         
