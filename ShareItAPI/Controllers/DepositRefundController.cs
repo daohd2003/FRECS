@@ -86,10 +86,10 @@ namespace ShareItAPI.Controllers
         /// <summary>
         /// Feature: View deposit history
         /// The user views the history of funds deposited.
-        /// Get customer's refund history
+        /// Get customer's refund history (also available for providers who rent/buy from other providers)
         /// </summary>
         [HttpGet("my")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetMyRefunds()
         {
             try
@@ -150,10 +150,10 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// Reopen a rejected refund request (Admin can reopen any, Customer can only reopen their own)
+        /// Reopen a rejected refund request (Admin can reopen any, Customer/Provider can only reopen their own)
         /// </summary>
         [HttpPost("reopen/{refundId}")]
-        [Authorize(Roles = "admin,customer")]
+        [Authorize(Roles = "admin,customer,provider")]
         public async Task<IActionResult> ReopenRefund(Guid refundId)
         {
             try
@@ -166,8 +166,8 @@ namespace ShareItAPI.Controllers
                     return Unauthorized(new ApiResponse<object>("Invalid user ID", null));
                 }
 
-                // If customer, verify they own this refund request
-                if (userRole == "customer")
+                // If customer or provider, verify they own this refund request
+                if (userRole == "customer" || userRole == "provider")
                 {
                     var refund = await _refundService.GetRefundDetailAsync(refundId);
                     if (refund == null)
