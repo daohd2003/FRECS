@@ -243,25 +243,54 @@ namespace Repositories.RevenueRepositories
 
         public async Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid providerId, DateTime start, DateTime end, int limit = 5)
         {
-            var topCustomers = await _context.Orders
+            // Load orders that could contribute to revenue:
+            // - rental orders counted only when returned
+            // - purchase orders counted when in_use or returned
+            // - mixed orders counted when returned
+            var orders = await _context.Orders
                 .AsNoTracking()
+                .Include(o => o.Items)
                 .Include(o => o.Customer)
                     .ThenInclude(c => c.Profile)
                 .Where(o => o.ProviderId == providerId
-                    && o.Status == OrderStatus.returned
                     && o.CreatedAt >= start
-                    && o.CreatedAt < end)
+                    && o.CreatedAt < end
+                    && (o.Status == OrderStatus.returned || o.Status == OrderStatus.in_use))
+                .ToListAsync();
+
+            var validOrders = orders
+                .Where(order =>
+                {
+                    var hasRentalItems = order.Items.Any(i => i.TransactionType == TransactionType.rental);
+                    var hasPurchaseItems = order.Items.Any(i => i.TransactionType == TransactionType.purchase);
+
+                    if (hasRentalItems && !hasPurchaseItems)
+                    {
+                        return order.Status == OrderStatus.returned;
+                    }
+
+                    if (hasPurchaseItems && !hasRentalItems)
+                    {
+                        return order.Status == OrderStatus.in_use || order.Status == OrderStatus.returned;
+                    }
+
+                    // Mixed order: only count when returned so rental flow is completed
+                    return order.Status == OrderStatus.returned;
+                })
+                .ToList();
+
+            var topCustomers = validOrders
                 .GroupBy(o => o.CustomerId)
                 .Select(g => new
                 {
                     CustomerId = g.Key,
+                    Customer = g.First().Customer,
                     TotalSpent = g.Sum(o => o.Subtotal),
-                    OrderCount = g.Count(),
-                    Customer = g.First().Customer
+                    OrderCount = g.Count()
                 })
                 .OrderByDescending(x => x.TotalSpent)
                 .Take(limit)
-                .ToListAsync();
+                .ToList();
 
             return topCustomers.Select(x => new TopCustomerDto
             {
