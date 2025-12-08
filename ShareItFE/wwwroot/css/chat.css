@@ -347,17 +347,25 @@
 .message-bubble img,
 .message-bubble video {
     display: block;
-    max-width: 100%;
+    max-width: 260px; /* Giới hạn kích thước tối đa */
+    width: auto;
+    height: auto;
     background: transparent !important;
     border-radius: 8px;
     margin: 0;
     padding: 0;
+    object-fit: contain;
 }
 
 /* Remove background from image containers */
 .message-bubble img {
     background-color: transparent !important;
     box-shadow: none !important;
+}
+
+/* Ensure bubble container constrains media properly */
+.message-bubble {
+    overflow: hidden;
 }
 
 /* Link styling in messages */
@@ -426,6 +434,7 @@
     flex-direction: column;
     max-width: 70%;
     word-wrap: break-word;
+    overflow: hidden;
 }
 
     .message-bubble-container.me {
@@ -437,3 +446,9 @@
         align-items: flex-start;
         width: -webkit-fill-available;
     }
+
+/* Ensure message bubble doesn't exceed container */
+.message-bubble-container .message-bubble {
+    max-width: 100%;
+    box-sizing: border-box;
+}

@@ -618,19 +618,43 @@ class FloatingChatManager {
         messageEl.className = `chat-message ${isMe ? 'me' : 'them'}`;
         messageEl.dataset.messageId = messageId; // Track message ID in DOM
 
+        // Build message content - handle attachments
+        let messageContent = '';
+        if (message.attachment && message.attachment.url) {
+            const att = message.attachment;
+            if (att.type === 'image') {
+                messageContent = `<img src="${this.escapeHtml(att.url)}" alt="${this.escapeHtml(att.fileName || 'image')}" style="max-width:200px;border-radius:8px;cursor:pointer;" onclick="window.open('${this.escapeHtml(att.url)}','_blank')">`;
+                if (message.content) {
+                    messageContent += `<div style="margin-top:6px;">${this.escapeHtml(message.content)}</div>`;
+                }
+            } else if (att.type === 'video') {
+                messageContent = `<video src="${this.escapeHtml(att.url)}" controls style="max-width:200px;border-radius:8px;"></video>`;
+                if (message.content) {
+                    messageContent += `<div style="margin-top:6px;">${this.escapeHtml(message.content)}</div>`;
+                }
+            } else {
+                messageContent = `<a href="${this.escapeHtml(att.url)}" target="_blank" rel="noopener noreferrer">📎 ${this.escapeHtml(att.fileName || 'Download file')}</a>`;
+                if (message.content) {
+                    messageContent += `<div style="margin-top:6px;">${this.escapeHtml(message.content)}</div>`;
+                }
+            }
+        } else {
+            messageContent = `<span>${this.escapeHtml(message.content || '')}</span>`;
+        }
+
         // Add avatar for messages from others
         if (!isMe) {
             messageEl.innerHTML = `
                 <div class="message-avatar">${this.escapeHtml(chat.avatar)}</div>
                 <div class="message-bubble">
-                    <span>${this.escapeHtml(message.content)}</span>
+                    ${messageContent}
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
         } else {
             messageEl.innerHTML = `
                 <div class="message-bubble">
-                    <span>${this.escapeHtml(message.content)}</span>
+                    ${messageContent}
                     <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
                 </div>
             `;
