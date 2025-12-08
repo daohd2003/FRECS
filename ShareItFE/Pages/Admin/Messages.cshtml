@@ -468,7 +468,19 @@
                     signalRConnection.on("ReceiveMessage", (message) => {
                         const convoToUpdate = conversations.find(c => c.id === message.conversationId);
                         if (convoToUpdate) {
-                            convoToUpdate.lastMessageContent = message.content;
+                            // Cập nhật lastMessageContent - hiển thị thông tin attachment nếu có
+                            if (message.attachment) {
+                                const attachmentType = message.attachment.type;
+                                if (attachmentType === 'image') {
+                                    convoToUpdate.lastMessageContent = message.content || '📷 Sent an image';
+                                } else if (attachmentType === 'video') {
+                                    convoToUpdate.lastMessageContent = message.content || '🎥 Sent a video';
+                                } else {
+                                    convoToUpdate.lastMessageContent = message.content || `📎 ${message.attachment.fileName || 'Sent a file'}`;
+                                }
+                            } else {
+                                convoToUpdate.lastMessageContent = message.content;
+                            }
                             convoToUpdate.updatedAt = message.sentAt;
                             convoToUpdate.productContext = message.productContext;
                             if (!selectedConversation || message.conversationId !== selectedConversation.id) {
@@ -483,11 +495,19 @@
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {
                             const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
-                            // Only display message if it's not from current user (to avoid duplicate with temp message)
-                            if (!isMe) {
-                                const el = createMessageElement(message, isMe);
-                                messagesContainerEl.appendChild(el);
-                                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                            // Hiển thị tin nhắn: với attachment thì luôn hiển thị, với text thì chỉ hiển thị từ người khác
+                            const hasAttachment = message.attachment && message.attachment.url;
+                            if (!isMe || hasAttachment) {
+                                // Nếu là tin nhắn của mình có attachment, cần hiển thị vì không có temp message cho attachment
+                                if (isMe && hasAttachment) {
+                                    const el = createMessageElement(message, isMe);
+                                    messagesContainerEl.appendChild(el);
+                                    messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                                } else if (!isMe) {
+                                    const el = createMessageElement(message, isMe);
+                                    messagesContainerEl.appendChild(el);
+                                    messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                                }
                             }
                             if (message.productContext) {
                                 productImageEl.src = message.productContext.imageUrl || 'https://www.shutterstock.com/image-vector/image-icon-trendy-flat-style-600nw-643080895.jpg';

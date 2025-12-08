@@ -151,7 +151,7 @@ namespace Repositories.UserRepositories
                     Profile = new Profile
                     {
                         FullName = username, // Username tạm thời
-                        ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg" // Avatar mặc định
+                        ProfilePictureUrl = "https://res.cloudinary.com/dtzg1vs7r/image/upload/v1765160862/t%E1%BA%A3i_xu%E1%BB%91ng_zhflev.jpg" // Avatar mặc định
                     }
                 };
 
@@ -220,7 +220,7 @@ namespace Repositories.UserRepositories
                 {
                     FullName = string.IsNullOrWhiteSpace(payload.Name) ? username : payload.Name,
                     ProfilePictureUrl = string.IsNullOrWhiteSpace(payload.PictureUrl)
-                        ? "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg"
+                        ? "https://res.cloudinary.com/dtzg1vs7r/image/upload/v1765160862/t%E1%BA%A3i_xu%E1%BB%91ng_zhflev.jpg"
                         : payload.PictureUrl
                 }
             };

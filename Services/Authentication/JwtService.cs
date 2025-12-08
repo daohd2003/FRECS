@@ -352,7 +352,7 @@ namespace Services.Authentication
             newUser.Profile = new Profile
             {
                 FullName = request.FullName ?? "",
-                ProfilePictureUrl = "https://inkythuatso.com/uploads/thumbnails/800/2023/03/3-anh-dai-dien-trang-inkythuatso-03-15-25-56.jpg" // Avatar mặc định
+                ProfilePictureUrl = "https://res.cloudinary.com/dtzg1vs7r/image/upload/v1765160862/t%E1%BA%A3i_xu%E1%BB%91ng_zhflev.jpg" // Avatar mặc định
             };
 
             // Tạo token để user có thể đăng nhập ngay (nhưng chưa xác thực email)
