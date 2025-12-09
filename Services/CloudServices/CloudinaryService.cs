@@ -228,6 +228,8 @@ namespace Services.CloudServices
             var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
             var isImage = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(extension);
             var isVideo = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm" }.Contains(extension);
+            var isAudio = new[] { ".mp3", ".wav", ".ogg", ".webm", ".m4a", ".aac" }.Contains(extension) 
+                          || file.ContentType?.StartsWith("audio/") == true;
 
             var folder = $"ShareIt/chat/{userId}";
             var publicId = $"chat_{userId}_{Path.GetFileNameWithoutExtension(Path.GetRandomFileName())}";
@@ -278,6 +280,30 @@ namespace Services.CloudServices
                     PublicId = vidResult.PublicId,
                     Type = "video",
                     ThumbnailUrl = thumbnailUrl,
+                    MimeType = file.ContentType,
+                    FileName = file.FileName,
+                    FileSize = file.Length
+                };
+            }
+            else if (isAudio)
+            {
+                // Upload audio as raw file (Cloudinary handles audio as raw resource)
+                var audioParams = new RawUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream()),
+                    PublicId = publicId,
+                    Folder = folder,
+                    Overwrite = false
+                };
+                var audioResult = await _cloudinary.UploadAsync(audioParams);
+                if (audioResult.Error != null) throw new Exception(audioResult.Error.Message);
+
+                return new ChatAttachmentUploadResult
+                {
+                    Url = audioResult.SecureUrl?.ToString(),
+                    PublicId = audioResult.PublicId,
+                    Type = "audio",
+                    ThumbnailUrl = null,
                     MimeType = file.ContentType,
                     FileName = file.FileName,
                     FileSize = file.Length
