@@ -7,6 +7,7 @@ using Moq;
 using Services.ProductServices;
 using Services.ContentModeration;
 using Services.ConversationServices;
+using Services.NotificationServices;
 using ShareItAPI.Controllers;
 
 namespace Services.Tests.Controllers
@@ -31,6 +32,7 @@ namespace Services.Tests.Controllers
         private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<IContentModerationService> _mockContentModerationService;
         private readonly Mock<IConversationService> _mockConversationService;
+        private readonly Mock<INotificationService> _mockNotificationService;
         private readonly ProductController _controller;
 
         public ProductControllerTests()
@@ -38,12 +40,14 @@ namespace Services.Tests.Controllers
             _mockProductService = new Mock<IProductService>();
             _mockMapper = new Mock<IMapper>();
             _mockContentModerationService = new Mock<IContentModerationService>();
+            _mockNotificationService = new Mock<INotificationService>();
             _mockConversationService = new Mock<IConversationService>();
             _controller = new ProductController(
                 _mockProductService.Object, 
                 _mockMapper.Object,
                 _mockContentModerationService.Object,
-                _mockConversationService.Object
+                _mockConversationService.Object,
+                _mockNotificationService.Object
             );
         }
 

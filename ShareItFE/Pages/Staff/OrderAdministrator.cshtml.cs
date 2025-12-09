@@ -93,9 +93,27 @@ namespace ShareItFE.Pages.Staff
                         TotalOrderCount = allOrders.Count;
                         TotalRentalOrders = allOrders.Count(o => o.TransactionType == "rental");
                         TotalPurchaseOrders = allOrders.Count(o => o.TransactionType == "purchase");
-                        TotalRevenue = allOrders.Sum(o => o.TotalAmount);
-                        TotalRentalRevenue = allOrders.Where(o => o.TransactionType == "rental").Sum(o => o.TotalAmount);
-                        TotalPurchaseRevenue = allOrders.Where(o => o.TransactionType == "purchase").Sum(o => o.TotalAmount);
+                        
+                        // Revenue calculation based on order type:
+                        // - Purchase orders: count when in_use (payment completed, customer received)
+                        // - Rental orders: count when returned (rental period completed)
+                        // - All orders must have IsPaid = true (payment completed)
+                        
+                        // Purchase revenue: only in_use status AND paid
+                        var purchaseCompletedOrders = allOrders.Where(o => 
+                            o.TransactionType == "purchase" &&
+                            o.Status == BusinessObject.Enums.OrderStatus.in_use &&
+                            o.IsPaid).ToList();
+                        
+                        // Rental revenue: only returned status AND paid
+                        var rentalCompletedOrders = allOrders.Where(o => 
+                            o.TransactionType == "rental" &&
+                            o.Status == BusinessObject.Enums.OrderStatus.returned &&
+                            o.IsPaid).ToList();
+                        
+                        TotalPurchaseRevenue = purchaseCompletedOrders.Sum(o => o.TotalAmount);
+                        TotalRentalRevenue = rentalCompletedOrders.Sum(o => o.TotalAmount);
+                        TotalRevenue = TotalPurchaseRevenue + TotalRentalRevenue;
                         
                         // Filter
                         var ordersFiltered = allOrders.AsEnumerable();

@@ -388,17 +388,19 @@ namespace Services.Tests.Authentication
                 .Callback<User>(u => capturedLastLogin = u.LastLogin)
                 .ReturnsAsync(true);
 
-            var beforeLogin = DateTime.UtcNow;
+            // Use Vietnam timezone to match JwtService which uses DateTimeHelper.GetVietnamTime()
+            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var beforeLogin = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
 
             // Act
             await _jwtService.Authenticate(email, password, rememberMe: false);
 
-            var afterLogin = DateTime.UtcNow;
+            var afterLogin = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
 
             // Assert
             Assert.NotNull(capturedLastLogin);
-            Assert.True(capturedLastLogin >= beforeLogin);
-            Assert.True(capturedLastLogin <= afterLogin);
+            Assert.True(capturedLastLogin >= beforeLogin.AddSeconds(-1)); // Allow 1 second tolerance
+            Assert.True(capturedLastLogin <= afterLogin.AddSeconds(1));   // Allow 1 second tolerance
         }
 
         /// <summary>

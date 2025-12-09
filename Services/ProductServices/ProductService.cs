@@ -185,7 +185,7 @@ namespace Services.ProductServices
             return _mapper.Map<ProductDTO>(newProduct);
         }
 
-        public async Task<bool> UpdateAsync(ProductDTO productDto)
+        public async Task<bool> UpdateAsync(ProductDTO productDto, bool skipModerationCheck = false)
         {
             // Lấy thông tin product hiện tại
             var existingProduct = await _productRepository.GetProductWithImagesAndProviderAsync(productDto.Id);
@@ -215,6 +215,13 @@ namespace Services.ProductServices
 
             // UPDATE NGAY LẬP TỨC
             var updated = await _productRepository.UpdateProductWithImagesAsync(productDto);
+
+            // Skip moderation check if requested (e.g., admin update already checked moderation)
+            if (skipModerationCheck)
+            {
+                Console.WriteLine($"[UPDATE] Skipping moderation check (admin update)");
+                return updated;
+            }
 
             if (updated)
             {

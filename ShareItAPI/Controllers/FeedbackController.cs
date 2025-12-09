@@ -161,7 +161,7 @@ namespace ShareItAPI.Controllers
         /// PUT: api/feedback/{feedbackId}/update
         /// </summary>
         [HttpPut("{feedbackId:guid}/update")]
-        [Authorize(Roles = "customer,admin")]
+        [Authorize(Roles = "customer,provider,admin")]
         public async Task<IActionResult> UpdateCustomerFeedback(Guid feedbackId, [FromBody] UpdateFeedbackDto dto)
         {
             try
