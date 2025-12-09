@@ -93,7 +93,14 @@ namespace Repositories.CompensationDisputeRepositories
                     SenderId = m.SenderId,
                     SenderName = m.Sender.Profile != null ? m.Sender.Profile.FullName : m.Sender.Email,
                     Content = m.Content,
-                    SentAt = m.SentAt
+                    SentAt = m.SentAt,
+                    Attachment = string.IsNullOrEmpty(m.AttachmentUrl) ? null : new MessageAttachmentDto
+                    {
+                        Url = m.AttachmentUrl,
+                        Type = m.AttachmentType,
+                        MimeType = m.MimeType,
+                        FileName = m.FileName
+                    }
                 })
                 .ToListAsync();
 
