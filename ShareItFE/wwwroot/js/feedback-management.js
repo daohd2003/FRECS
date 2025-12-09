@@ -1138,7 +1138,8 @@ function renderPagination(page, pageSize, totalItems) {
 
 function changePage(page) {
     currentPage = page;
-    loadFeedbacks();
+    // Use cached data instead of fetching again from API
+    renderCurrentPage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

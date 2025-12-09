@@ -356,7 +356,7 @@
                                                 }
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <div class="flex">
+                                                <div class="flex rating-stars-container">
                                                     @for (int i = 1; i <= 5; i++)
                                                     {
                                                         <i data-lucide="star" class="h-4 w-4 @(i <= feedback.Rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")"></i>
@@ -1321,13 +1321,24 @@
                         if (product) {
                             console.log('[Reload Rating] Updated product rating:', product.averageRating, 'Count:', product.ratingCount);
                             
-                            // Update all rating displays on the page
+                            // Update product rating displays on the page (NOT individual feedback ratings)
+                            // Only update elements that are NOT inside feedback cards
                             const ratingDisplays = document.querySelectorAll('.flex.items-center.space-x-1, .flex.items-center.space-x-2');
                             ratingDisplays.forEach(display => {
+                                // Skip if this is inside a feedback card (has rating-stars-container or is inside [data-feedback-id])
+                                if (display.closest('[data-feedback-id]') || display.querySelector('.rating-stars-container')) {
+                                    return; // Skip feedback card ratings
+                                }
+                                
                                 // Find star containers
                                 const starsContainer = display.querySelector('.flex');
                                 if (starsContainer) {
-                                    const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
+                                    // Skip if this is a feedback rating container
+                                    if (starsContainer.classList.contains('rating-stars-container')) {
+                                        return;
+                                    }
+                                    
+                                    const stars = starsContainer.querySelectorAll('[data-lucide="star"], svg');
                                     if (stars.length === 5) {
                                         // Update stars
                                         stars.forEach((star, index) => {
@@ -1427,18 +1438,27 @@
                     // If edit mode, call API to update
                     if (isEditMode && editingFeedbackId) {
                         e.preventDefault(); // Prevent form submission for edit mode
+                        
+                        // Prevent double-click: disable button while processing
+                        const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+                        if (submitBtn.disabled) {
+                            return false;
+                        }
+                        
+                        const originalBtnText = submitBtn.textContent;
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Updating...';
+                        
                         try {
                             // Get token using helper function
                             const token = getAccessToken();
                             
                             if (!token) {
                                 showToast('Please log in to edit feedback', 'error');
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = originalBtnText;
                                 return false;
                             }
-
-                            console.log('[Edit Feedback] Sending update request for feedback:', editingFeedbackId);
-                            console.log('[Edit Feedback] API URL:', `@Model.ApiBaseUrl/feedbacks/${editingFeedbackId}/update`);
-                            console.log('[Edit Feedback] Payload:', { rating, comment });
                             
                             const response = await fetch(`@Model.ApiBaseUrl/feedbacks/${editingFeedbackId}/update`, {
                                 method: 'PUT',
@@ -1452,8 +1472,6 @@
                                 })
                             });
 
-                            console.log('[Edit Feedback] Response status:', response.status);
-                            
                             if (response.ok) {
                                 showToast('Feedback updated successfully!', 'success');
                                 
@@ -1469,20 +1487,14 @@
                                         const feedbackResult = await feedbackResponse.json();
                                         const updatedFeedback = feedbackResult.data;
                                         
-                                        console.log('[Edit Feedback] Fetched updated feedback:', updatedFeedback);
-                                        
                                         // Update feedback in DOM with server data
                                         const feedbackCard = document.querySelector(`.bg-gray-50[data-feedback-id="${editingFeedbackId}"]`);
                                         if (feedbackCard) {
-                                            console.log('[Edit Feedback] Updating feedback card in DOM');
-                                            console.log('[Edit Feedback] IsBlocked:', updatedFeedback.isBlocked, 'IsVisible:', updatedFeedback.isVisible);
-                                            
                                             // Check if feedback was unblocked (was blocked, now clean)
                                             const wasBlocked = feedbackCard.classList.contains('border-2') && feedbackCard.classList.contains('border-red-300');
                                             const isNowClean = !updatedFeedback.isBlocked && updatedFeedback.isVisible;
                                             
                                             if (wasBlocked && isNowClean) {
-                                                console.log('[Edit Feedback] Feedback was unblocked - removing blocked styling');
                                                 
                                                 // Remove blocked border styling
                                                 feedbackCard.classList.remove('border-2', 'border-red-300');
@@ -1506,12 +1518,14 @@
                                                 }
                                             }
                                             
-                                            // Update rating stars (Lucide icons)
-                                            const starsContainer = feedbackCard.querySelector('.flex.items-center.space-x-2 .flex');
+                                            // Update rating stars (Lucide icons - after render they become SVG)
+                                            const starsContainer = feedbackCard.querySelector('.rating-stars-container');
+                                            const newRating = parseInt(updatedFeedback.rating);
+                                            
                                             if (starsContainer) {
-                                                const stars = starsContainer.querySelectorAll('[data-lucide="star"]');
+                                                const stars = starsContainer.querySelectorAll('svg');
                                                 stars.forEach((star, index) => {
-                                                    if (index < updatedFeedback.rating) {
+                                                    if (index < newRating) {
                                                         star.classList.add('fill-yellow-400', 'text-yellow-400');
                                                         star.classList.remove('text-gray-300');
                                                     } else {
@@ -1519,6 +1533,8 @@
                                                         star.classList.add('text-gray-300');
                                                     }
                                                 });
+                                            } else {
+                                                console.warn('[Edit Feedback] Stars container not found');
                                             }
                                             
                                             // Update comment text - find the correct element
@@ -1552,35 +1568,28 @@
                                                 editBtn.setAttribute('data-rating', updatedFeedback.rating);
                                                 editBtn.setAttribute('data-comment', updatedFeedback.comment);
                                             }
-                                            
-                                            console.log('[Edit Feedback] Feedback card updated successfully');
                                         } else {
                                             // Feedback card not found in DOM (was blocked/hidden initially)
-                                            console.log('[Edit Feedback] Feedback card not found in DOM');
-                                            
                                             // If feedback is now clean (unblocked), reload to show it
                                             if (!updatedFeedback.isBlocked && updatedFeedback.isVisible) {
-                                                console.log('[Edit Feedback] Feedback is now clean - reloading page to display it');
                                                 window.location.reload();
-                                            } else {
-                                                // Still blocked, just close modal
-                                                console.log('[Edit Feedback] Feedback still blocked - no need to reload');
                                             }
                                         }
                                         
-                                        // IMPORTANT: Reload product rating after feedback update
-                                        // This ensures the average rating and review count are updated
+                                        // Reload product rating after feedback update
                                         await reloadProductRating();
                                     } else {
-                                        console.warn('[Edit Feedback] Failed to fetch updated feedback, reloading page...');
                                         // Fallback: reload page if fetch fails
                                         window.location.reload();
                                     }
                                 } catch (fetchError) {
-                                    console.error('[Edit Feedback] Error fetching updated feedback:', fetchError);
-                                    // Fallback: reload page if error occurs
+                                    console.error('[Edit Feedback] Error:', fetchError);
                                     window.location.reload();
                                 }
+                                
+                                // Re-enable button after successful update
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Submit Feedback';
                                 
                                 // Close modal
                                 feedbackModal.classList.add('hidden');
@@ -1592,12 +1601,18 @@
                             } else {
                                 let errorMessage = 'Failed to update feedback';
                                 try {
-                                    const error = await response.json();
-                                    errorMessage = error.message || error.title || errorMessage;
-                                    console.error('[Edit Feedback] Error response:', error);
+                                    const responseText = await response.text();
+                                    try {
+                                        const error = JSON.parse(responseText);
+                                        errorMessage = error.message || error.title || errorMessage;
+                                    } catch (parseError) {
+                                        if (response.status === 401) {
+                                            errorMessage = 'Please log in to edit feedback';
+                                        } else if (response.status === 403) {
+                                            errorMessage = 'You are not authorized to edit this feedback';
+                                        }
+                                    }
                                 } catch (e) {
-                                    const errorText = await response.text();
-                                    console.error('[Edit Feedback] Error text:', errorText);
                                     if (response.status === 401) {
                                         errorMessage = 'Please log in to edit feedback';
                                     } else if (response.status === 403) {
@@ -1605,10 +1620,14 @@
                                     }
                                 }
                                 showToast(errorMessage, 'error');
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = originalBtnText;
                             }
                         } catch (error) {
                             console.error('Error updating feedback:', error);
                             showToast('An error occurred while updating feedback', 'error');
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = originalBtnText;
                         }
                         return false;
                     }

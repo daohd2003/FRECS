@@ -26,5 +26,6 @@ namespace Services.UserServices
         Task<bool> UnblockUserAsync(Guid id);
         Task<IEnumerable<User>> GetCustomersAndProvidersAsync();
         Task<UserOrderStatsDto?> GetUserOrderStatsAsync(Guid userId);
+        Task<IEnumerable<UserWithOrderStatsDto>> GetAllUsersWithOrderStatsAsync(bool staffOnly = false);
     }
 }

@@ -135,73 +135,41 @@ namespace Services.UserServices
 
         public async Task<UserOrderStatsDto?> GetUserOrderStatsAsync(Guid userId)
         {
-            var user = await _userRepository.GetUserWithOrdersAsync(userId);
+            // Use optimized repository method that queries database directly
+            // No loading of all orders - COUNT/SUM computed in database
+            return await _userRepository.GetUserOrderStatsOptimizedAsync(userId);
+        }
+
+        /// <summary>
+        /// Get all users with order count only (optimized for list view)
+        /// Detailed stats are loaded on-demand via GetUserOrderStatsAsync
+        /// </summary>
+        public async Task<IEnumerable<UserWithOrderStatsDto>> GetAllUsersWithOrderStatsAsync(bool staffOnly = false)
+        {
+            // Use optimized query that only counts orders (no loading all order data)
+            var usersWithCount = await _userRepository.GetAllUsersWithOrderCountAsync();
             
-            if (user == null)
+            // Filter for staff if needed
+            if (staffOnly)
             {
-                return null;
+                usersWithCount = usersWithCount.Where(x => x.User.Role == UserRole.customer || x.User.Role == UserRole.provider);
             }
             
-            // Get relevant orders based on role
-            var ordersAsCustomer = user.OrdersAsCustomer ?? new List<Order>();
-            var ordersAsProvider = user.OrdersAsProvider ?? new List<Order>();
-            
-            var relevantOrders = user.Role == UserRole.provider 
-                ? ordersAsProvider 
-                : ordersAsCustomer;
-
-            // Count orders by status
-            var ordersByStatus = new OrdersByStatusDto
+            // Map to DTO with only TotalOrders (detailed stats loaded on View Detail click)
+            return usersWithCount.Select(x => new UserWithOrderStatsDto
             {
-                Pending = relevantOrders.Count(o => o.Status == OrderStatus.pending),
-                Approved = relevantOrders.Count(o => o.Status == OrderStatus.approved),
-                InTransit = relevantOrders.Count(o => o.Status == OrderStatus.in_transit),
-                InUse = relevantOrders.Count(o => o.Status == OrderStatus.in_use),
-                Returning = relevantOrders.Count(o => o.Status == OrderStatus.returning),
-                Returned = relevantOrders.Count(o => o.Status == OrderStatus.returned),
-                Cancelled = relevantOrders.Count(o => o.Status == OrderStatus.cancelled),
-                ReturnedWithIssue = relevantOrders.Count(o => o.Status == OrderStatus.returned_with_issue)
-            };
-
-            // Calculate earnings/spending for returned orders
-            var returnedOrders = relevantOrders
-                .Where(o => o.Status == OrderStatus.returned || o.Status == OrderStatus.returned_with_issue)
-                .ToList();
-
-            var allReturnedItems = returnedOrders
-                .Where(o => o.Items != null)
-                .SelectMany(o => o.Items)
-                .ToList();
-
-            var rentalProducts = allReturnedItems
-                .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental)
-                .ToList();
-            
-            var purchaseProducts = allReturnedItems
-                .Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase)
-                .ToList();
-
-            var rentalEarnings = rentalProducts.Sum(item => 
-                item.DailyRate * (item.RentalDays ?? 0) * item.Quantity);
-
-            var purchaseEarnings = purchaseProducts.Sum(item => 
-                item.DailyRate * item.Quantity);
-
-            return new UserOrderStatsDto
-            {
-                TotalOrders = relevantOrders.Count(),
-                OrdersByStatus = ordersByStatus,
-                ReturnedOrdersBreakdown = new ReturnedOrdersBreakdownDto
-                {
-                    RentalProductsCount = rentalProducts.Count,
-                    RentalTotalEarnings = rentalEarnings,
-                    PurchaseProductsCount = purchaseProducts.Count,
-                    PurchaseTotalEarnings = purchaseEarnings,
-                    TotalEarnings = rentalEarnings + purchaseEarnings,
-                    RentalOrdersCount = rentalProducts.Count,
-                    PurchaseOrdersCount = purchaseProducts.Count
-                }
-            };
+                Id = x.User.Id,
+                Email = x.User.Email,
+                Role = x.User.Role.ToString(),
+                IsActive = x.User.IsActive ?? true,
+                CreatedAt = x.User.CreatedAt,
+                LastLogin = x.User.LastLogin,
+                Profile = x.User.Profile,
+                TotalOrders = x.OrderCount,
+                // Empty stats - will be loaded on-demand when user clicks View Detail
+                OrdersByStatus = new OrdersByStatusDto(),
+                ReturnedOrdersBreakdown = new ReturnedOrdersBreakdownDto()
+            }).ToList();
         }
     }
 }

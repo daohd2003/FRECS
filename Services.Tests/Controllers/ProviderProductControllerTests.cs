@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Services.ContentModeration;
 using Services.ConversationServices;
+using Services.NotificationServices;
 using Services.ProductServices;
 using ShareItAPI.Controllers;
 using System.Security.Claims;
@@ -45,6 +46,7 @@ namespace Services.Tests.Controllers
         private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<IContentModerationService> _mockModerationService;
         private readonly Mock<IConversationService> _mockConversationService;
+        private readonly Mock<INotificationService> _mockNotificationService;
         private readonly ProductController _controller;
         private readonly Guid _providerId = Guid.NewGuid();
 
@@ -54,12 +56,14 @@ namespace Services.Tests.Controllers
             _mockMapper = new Mock<IMapper>();
             _mockModerationService = new Mock<IContentModerationService>();
             _mockConversationService = new Mock<IConversationService>();
+            _mockNotificationService = new Mock<INotificationService>();
 
             _controller = new ProductController(
                 _mockService.Object,
                 _mockMapper.Object,
                 _mockModerationService.Object,
-                _mockConversationService.Object
+                _mockConversationService.Object,
+                _mockNotificationService.Object
             );
 
             // Setup authenticated user context
@@ -315,7 +319,7 @@ namespace Services.Tests.Controllers
                 Images = new List<ProductImageDTO>()
             };
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
 
             // Act
@@ -348,7 +352,7 @@ namespace Services.Tests.Controllers
                 Images = new List<ProductImageDTO>()
             };
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(false);
 
             // Act
@@ -383,7 +387,7 @@ namespace Services.Tests.Controllers
                 }
             };
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
 
             // Act
@@ -416,7 +420,7 @@ namespace Services.Tests.Controllers
                 Images = new List<ProductImageDTO>()
             };
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
@@ -451,7 +455,7 @@ namespace Services.Tests.Controllers
             _mockService.Setup(s => s.HasOrderItemsAsync(productId))
                 .ReturnsAsync(false);
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
 
             // Act
@@ -523,7 +527,7 @@ namespace Services.Tests.Controllers
             _mockService.Setup(s => s.HasOrderItemsAsync(productId))
                 .ReturnsAsync(true);
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
 
             // Act
@@ -557,7 +561,7 @@ namespace Services.Tests.Controllers
             _mockService.Setup(s => s.HasOrderItemsAsync(productId))
                 .ReturnsAsync(false);
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(false);
 
             // Act
@@ -589,7 +593,7 @@ namespace Services.Tests.Controllers
             _mockService.Setup(s => s.GetByIdAsync(productId))
                 .ReturnsAsync(product);
 
-            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>()))
+            _mockService.Setup(s => s.UpdateAsync(It.IsAny<ProductDTO>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
 
             // Act

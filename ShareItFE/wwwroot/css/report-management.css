@@ -322,22 +322,30 @@ body {
 .empty-state {
     text-align: center;
     padding: 3rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
-
-    .empty-state .icon {
-        font-size: 3rem;
-        color: var(--gray-300);
-        margin-bottom: 1rem;
-    }
 
     .empty-state h3 {
         font-size: 1.125rem;
         font-weight: 500;
         color: var(--gray-900);
+        margin: 0;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .empty-state h3 .icon {
+        font-size: 1.5rem;
+        color: var(--gray-300);
+        margin-right: 0.5rem;
     }
 
     .empty-state p {
         color: var(--gray-500);
+        margin: 0.25rem 0 0 0;
     }
 
 /* Pagination */

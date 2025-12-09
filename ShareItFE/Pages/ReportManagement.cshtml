@@ -479,7 +479,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="5"><div class="empty-state"><div class="icon"><i class="bi bi-folder2-open"></i></div><h3>No reports found</h3><p>There are no reports to display in this view.</p></div></td></tr>
+                        <tr><td colspan="5"><div class="empty-state"><h3><i class="bi bi-folder2-open icon"></i>No reports found</h3><p>There are no reports to display in this view.</p></div></td></tr>
                     }
                 </tbody>
             </table>
@@ -780,18 +780,52 @@
 
             // --- Function to update a row in the main table ---
             function updateTableRow(reportData) {
-                const row = document.querySelector(`tr[data-report-id='${reportData.id}']`);
-                if (!row) return;
+                const reportId = (reportData.id || reportData.Id || '').toString();
+                console.log('[updateTableRow] Looking for row with reportId:', reportId);
+                
+                // Normalize GUID: remove dashes for comparison
+                const normalizedReportId = reportId.replace(/-/g, '').toLowerCase();
+                
+                // Try to find row with exact match first
+                let row = document.querySelector(`tr[data-report-id='${reportId}']`);
+                
+                // If not found, try normalized comparison (handle GUID format differences)
+                if (!row) {
+                    const allRows = document.querySelectorAll('tr[data-report-id]');
+                    console.log('[updateTableRow] Searching through', allRows.length, 'rows');
+                    for (const r of allRows) {
+                        const rowId = r.getAttribute('data-report-id') || '';
+                        const normalizedRowId = rowId.replace(/-/g, '').toLowerCase();
+                        console.log('[updateTableRow] Comparing:', normalizedRowId, 'vs', normalizedReportId);
+                        if (normalizedRowId === normalizedReportId) {
+                            row = r;
+                            console.log('[updateTableRow] Found matching row!');
+                            break;
+                        }
+                    }
+                }
+                
+                if (!row) {
+                    console.log('[updateTableRow] Row not found for reportId:', reportId);
+                    return;
+                }
 
+                console.log('[updateTableRow] Found row, updating status');
                 const statusCell = row.querySelector('td:nth-child(4)');
-                const statusString = reportData.status.toString();
+                if (!statusCell) {
+                    console.log('[updateTableRow] Status cell not found');
+                    return;
+                }
+                
+                const statusString = (reportData.status || reportData.Status || '').toString();
                 const statusIcon = getStatusIcon(statusString);
 
                 statusCell.innerHTML = `
-                    <span class="status-badge status-${statusString.toLowerCase()}">
+                    <span class="status-badge status-${statusString.toLowerCase().replace(/ /g, '-')}">
                         <i class="${statusIcon}"></i>
-                        <span>${statusString.replace(/_/g, " ")}</span>
+                        <span>${statusString.replace(/_/g, ' ')}</span>
                     </span>`;
+                console.log('[updateTableRow] Status updated to:', statusString);
             }
 
             // --- Function to map status string to icon class ---
@@ -822,10 +856,14 @@
                 }
 
                 const result = await response.json();
+                console.log('[updateReportAction] Response result:', result);
 
                 if (result.success) {
                     showToast(result.message, 'success');
                     currentReport = result.data;
+                    console.log('[updateReportAction] currentReport after update:', currentReport);
+                    console.log('[updateReportAction] Report ID:', currentReport?.id || currentReport?.Id);
+                    console.log('[updateReportAction] New Status:', currentReport?.status || currentReport?.Status);
                     populateModal(currentReport);
                     updateTableRow(currentReport);
                 } else {
@@ -905,8 +943,8 @@
 
                 // Right Column
                 document.getElementById('modal-assigned-admin').textContent = getValue('assignedAdminName') || 'Not Assigned';
-                document.getElementById('modal-status-select').value = report.status ?? 'open';
-                document.getElementById('modal-admin-select').value = report.assignedAdminId ?? '';
+                document.getElementById('modal-status-select').value = getValue('status') || 'open';
+                document.getElementById('modal-admin-select').value = report.assignedAdminId ?? report.AssignedAdminId ?? '';
                 document.getElementById('modal-response-message').value = '';
 
                 const statusBadge = document.getElementById('modal-current-status-badge');
@@ -921,7 +959,7 @@
                 const statusValue = getValue('status');
                 document.getElementById('modal-status-select').value = statusValue;
                 const adminSelect = document.getElementById('modal-admin-select');
-                adminSelect.value = report.assignedAdminId ?? '';
+                adminSelect.value = report.assignedAdminId ?? report.AssignedAdminId ?? '';
                 
                 // Toggle response section based on current status
                 toggleResponseSection(statusValue);
@@ -937,15 +975,16 @@
                 console.log('Order Code:', report.orderCode ?? report.OrderCode);
                 
                 // Check if report is order-related (handle both string and number formats)
+                const reportTypeStr = String(reportType || '').toLowerCase();
                 const isOrderItem = reportType === 'OrderItem' || 
                                    reportType === 1 || 
-                                   reportType?.toLowerCase() === 'orderitem' ||
+                                   reportTypeStr === 'orderitem' ||
                                    (report.orderItemId ?? report.OrderItemId) != null;
                 
                 // Check if report is for entire order (not specific item)
                 const isOrderReport = reportType === 'Order' || 
                                      reportType === 2 || 
-                                     reportType?.toLowerCase() === 'order';
+                                     reportTypeStr === 'order';
                 
                 // Combined check for order-related reports
                 const isOrderRelated = isOrderItem || isOrderReport;
@@ -1179,45 +1218,6 @@
                 updateReportAction('respond', { reportId: (currentReport.id || currentReport.Id), responseMessage: responseMessage, newStatus: 'resolved' });
             });
 
-            // --- Helper Functions outside DOMContentLoaded ---
-            function showToast(message, type = 'success') {
-                const toast = document.createElement('div');
-                toast.className = `notification-toast ${type}`;
-                toast.textContent = message;
-                document.body.appendChild(toast);
-                setTimeout(() => {
-                    toast.style.opacity = 0;
-                    setTimeout(() => toast.remove(), 500);
-                }, 4000);
-            }
-
-            function updateTableRow(reportData) {
-                const reportId = reportData.id || reportData.Id;
-                const row = document.querySelector(`tr[data-report-id='${reportId}']`);
-                if (!row) return;
-
-                const statusCell = row.querySelector('td:nth-child(4)');
-                const statusString = reportData.status.toString();
-                const statusIcon = getStatusIcon(statusString);
-
-                statusCell.innerHTML = `
-                    <span class="status-badge status-${statusString.toLowerCase()}">
-                        <i class="${statusIcon}"></i>
-                        <span>${statusString.replace(/_/g, " ")}</span>
-                    </span>`;
-            }
-
-            function getStatusIcon(status) {
-                 switch(status) {
-                    case 'open': return 'bi-clock';
-                    case 'in_progress': return 'bi-arrow-repeat';
-                    case 'resolved': return 'bi-check-circle-fill';
-                    case 'awaiting_customer_response': return 'bi-person-vcard';
-                    case 'ResolutionNote': return 'bi-journal-check';
-                    default: return 'bi-question-circle';
-                }
-            }
-            
             // Image Modal Functions
             window.openImageModal = function(imageUrl) {
                 const modal = document.getElementById('image-modal');
