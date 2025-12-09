@@ -1,4 +1,5 @@
 using BusinessObject.DTOs.Login;
+using BusinessObject.DTOs.UsersDto;
 using BusinessObject.Models;
 using Repositories.RepositoryBase;
 using System;
@@ -17,5 +18,7 @@ namespace Repositories.UserRepositories
         Task<User?> GetByRefreshTokenAsync(string refreshToken);
         Task<IEnumerable<User>> GetAllWithOrdersAsync();
         Task<User?> GetUserWithOrdersAsync(Guid userId);
+        Task<IEnumerable<(User User, int OrderCount)>> GetAllUsersWithOrderCountAsync();
+        Task<UserOrderStatsDto?> GetUserOrderStatsOptimizedAsync(Guid userId);
     }
 }

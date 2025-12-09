@@ -10,7 +10,7 @@ namespace Services.ProductServices
 
         /*Task<ProductDTO> AddAsync(ProductDTO productDto);*/
         Task<ProductDTO> AddAsync(ProductRequestDTO productDto);
-        Task<bool> UpdateAsync(ProductDTO productDto);
+        Task<bool> UpdateAsync(ProductDTO productDto, bool skipModerationCheck = false);
         Task<bool> UpdateProductStatusAsync(ProductStatusUpdateDto request);
         Task<bool> UpdateProductImagesAsync(Guid productId, List<ProductImageDTO> newImages);
 

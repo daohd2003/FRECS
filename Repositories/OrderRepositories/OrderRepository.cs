@@ -209,6 +209,19 @@ namespace Repositories.OrderRepositories
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
+        
+        /// <summary>
+        /// Get order IDs that have completed payment (Transaction.Status == completed)
+        /// </summary>
+        public async Task<HashSet<Guid>> GetPaidOrderIdsAsync()
+        {
+            var paidOrderIds = await _context.Transactions
+                .Where(t => t.Status == TransactionStatus.completed)
+                .SelectMany(t => t.Orders.Select(o => o.Id))
+                .Distinct()
+                .ToListAsync();
+            return paidOrderIds.ToHashSet();
+        }
 
         public async Task<Order> GetOrderWithFullDetailsAsync(Guid orderId)
         {

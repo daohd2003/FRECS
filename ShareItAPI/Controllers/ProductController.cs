@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.OData.Results;
 using Services.ProductServices;
 using Services.ContentModeration;
 using Services.ConversationServices;
+using Services.NotificationServices;
 using System;
 using System.Security.Claims;
 
@@ -23,17 +24,20 @@ namespace ShareItAPI.Controllers
         private readonly IMapper _mapper;
         private readonly IContentModerationService _moderationService;
         private readonly IConversationService _conversationService;
+        private readonly INotificationService _notificationService;
 
         public ProductController(
             IProductService service,
             IMapper mapper,
             IContentModerationService moderationService,
-            IConversationService conversationService)
+            IConversationService conversationService,
+            INotificationService notificationService)
         {
             _service = service;
             _mapper = mapper;
             _moderationService = moderationService;
             _conversationService = conversationService;
+            _notificationService = notificationService;
         }
 
         /// <summary>
@@ -324,7 +328,8 @@ namespace ShareItAPI.Controllers
                     Images = existingProduct.Images // Admin keeps existing images
                 };
 
-                var result = await _service.UpdateAsync(productDto);
+                // Skip moderation check in UpdateAsync since AdminUpdate already checked moderation above
+                var result = await _service.UpdateAsync(productDto, skipModerationCheck: true);
                 if (!result) return BadRequest(new ApiResponse<string>("Update failed.", null));
 
                 return Ok(new ApiResponse<string>("Product updated successfully.", null));
@@ -420,7 +425,7 @@ namespace ShareItAPI.Controllers
 
                 // TẤT CẢ sản phẩm khi xóa đều chuyển sang archived
                 product.AvailabilityStatus = "archived";
-                var updateResult = await _service.UpdateAsync(product);
+                var updateResult = await _service.UpdateAsync(product, skipModerationCheck: true);
 
                 if (!updateResult)
                     return BadRequest(new ApiResponse<string>("Failed to archive product.", null));
@@ -781,7 +786,7 @@ namespace ShareItAPI.Controllers
                 {
                     // Soft delete - archive
                     product.AvailabilityStatus = "archived";
-                    var updateResult = await _service.UpdateAsync(product);
+                    var updateResult = await _service.UpdateAsync(product, skipModerationCheck: true);
 
                     if (!updateResult)
                         return BadRequest("Failed to archive product.");
@@ -796,7 +801,7 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// Admin: Manually flag product for violation and send chat notification to provider
+        /// Admin: Manually flag product for violation (optionally send chat notification to provider)
         /// </summary>
         [HttpPost("admin/{id}/flag")]
         [Authorize(Roles = "admin,staff")]
@@ -812,17 +817,42 @@ namespace ShareItAPI.Controllers
 
                 // Update product status to pending
                 product.AvailabilityStatus = "pending";
-                var updateResult = await _service.UpdateAsync(product);
+                var updateResult = await _service.UpdateAsync(product, skipModerationCheck: true);
 
                 if (!updateResult)
                     return BadRequest("Failed to update product status.");
 
-                // Send CHAT notification to provider (instead of email)
+                // Always send bell notification to provider (like AI moderation does)
                 if (product.ProviderId != Guid.Empty)
                 {
                     try
                     {
-                        // Get current staff ID from claims
+                        var violatedTermsText = request.ViolatedTerms != null && request.ViolatedTerms.Any()
+                            ? string.Join(", ", request.ViolatedTerms)
+                            : "inappropriate content";
+
+                        var notificationMessage = $"Your product '{product.Name}' has been flagged for review due to: {request.Reason ?? "content policy violation"}. Violated terms: {violatedTermsText}. Please update your product to comply with our guidelines.";
+
+                        await _notificationService.SendNotification(
+                            userId: product.ProviderId,
+                            message: notificationMessage,
+                            type: BusinessObject.Enums.NotificationType.content_violation,
+                            orderId: null
+                        );
+
+                        Console.WriteLine($"[FLAG] Bell notification sent to Provider {product.ProviderId}");
+                    }
+                    catch (Exception notifEx)
+                    {
+                        Console.WriteLine($"[FLAG] Failed to send bell notification: {notifEx.Message}");
+                    }
+                }
+
+                // Optionally send chat message if requested
+                if (request.SendNotification == true && product.ProviderId != Guid.Empty)
+                {
+                    try
+                    {
                         var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                         if (Guid.TryParse(staffIdClaim, out var staffId))
                         {
@@ -836,28 +866,21 @@ namespace ShareItAPI.Controllers
                             );
 
                             return Ok(new ApiResponse<string>(
-                                "Product flagged successfully and chat notification sent to provider.",
-                                "Flagged"));
-                        }
-                        else
-                        {
-                            return Ok(new ApiResponse<string>(
-                                "Product flagged successfully but failed to get staff ID for notification.",
+                                "Product flagged successfully and notifications sent to provider.",
                                 "Flagged"));
                         }
                     }
                     catch (Exception chatEx)
                     {
-                        // Log but don't fail the operation
-                        Console.WriteLine($"Failed to send chat notification: {chatEx.Message}");
+                        Console.WriteLine($"[FLAG] Failed to send chat notification: {chatEx.Message}");
                         return Ok(new ApiResponse<string>(
-                            "Product flagged successfully but chat notification failed.",
+                            "Product flagged successfully. Bell notification sent but chat notification failed.",
                             "Flagged"));
                     }
                 }
 
                 return Ok(new ApiResponse<string>(
-                    "Product flagged successfully.",
+                    "Product flagged successfully and notification sent to provider.",
                     "Flagged"));
             }
             catch (Exception ex)
@@ -881,9 +904,9 @@ namespace ShareItAPI.Controllers
                 if (product == null)
                     return NotFound("Product not found.");
 
-                // Update product status
+                // Update product status - skip moderation check since admin is manually approving
                 product.AvailabilityStatus = request.NewStatus ?? "available";
-                var updateResult = await _service.UpdateAsync(product);
+                var updateResult = await _service.UpdateAsync(product, skipModerationCheck: true);
 
                 if (!updateResult)
                     return BadRequest("Failed to update product status.");
@@ -993,6 +1016,7 @@ public class ManualFlagRequest
 {
     public string? Reason { get; set; }
     public List<string>? ViolatedTerms { get; set; }
+    public bool? SendNotification { get; set; } = false; // Default: don't send notification
 }
 
 // DTO for approve product
