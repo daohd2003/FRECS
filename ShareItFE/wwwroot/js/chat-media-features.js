@@ -125,6 +125,24 @@ class ChatMediaFeatures {
             this.updateSendLikeButton();
         });
 
+        // Listen for form submit to reset button state after message is sent
+        this.messageForm.addEventListener('submit', () => {
+            // Use setTimeout to ensure this runs after the form submit handler resets the input
+            // The SignalR invoke is async, so we need to wait a bit longer
+            setTimeout(() => {
+                this.updateSendLikeButton();
+            }, 500);
+        });
+
+        // Also poll for input changes since programmatic value changes don't trigger 'input' event
+        this._lastInputValue = this.messageInput.value;
+        setInterval(() => {
+            if (this.messageInput.value !== this._lastInputValue) {
+                this._lastInputValue = this.messageInput.value;
+                this.updateSendLikeButton();
+            }
+        }, 200);
+
         // Initial state - show like, hide send
         this.updateSendLikeButton();
     }
