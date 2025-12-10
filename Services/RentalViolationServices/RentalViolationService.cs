@@ -144,8 +144,39 @@ namespace Services.RentalViolationServices
                                 uploadedFilePublicIds.Add(uploadResult.PublicId);
                             }
 
-                            // Determine file type
-                            string fileType = file.ContentType.StartsWith("image/") ? "image" : "video";
+                            // Determine file type - check both ContentType and file extension for accuracy
+                            string fileType = "image"; // default
+                            if (file.ContentType != null)
+                            {
+                                if (file.ContentType.StartsWith("image/"))
+                                {
+                                    fileType = "image";
+                                }
+                                else if (file.ContentType.StartsWith("video/"))
+                                {
+                                    fileType = "video";
+                                }
+                                else
+                                {
+                                    // Fallback: check file extension if ContentType is not reliable
+                                    var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                                    var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                                    if (videoExtensions.Contains(extension))
+                                    {
+                                        fileType = "video";
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // If ContentType is null, check extension
+                                var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                                var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                                if (videoExtensions.Contains(extension))
+                                {
+                                    fileType = "video";
+                                }
+                            }
 
                             // Save to database
                             var image = new RentalViolationImage
@@ -261,16 +292,27 @@ namespace Services.RentalViolationServices
             var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
             var violationDtos = _mapper.Map<IEnumerable<RentalViolationDto>>(violations).ToList();
 
-            // Populate evidence URLs for each violation
+            // Populate evidence URLs and images for each violation
             foreach (var dto in violationDtos)
             {
                 var violation = violations.First(v => v.ViolationId == dto.ViolationId);
                 if (violation.Images != null && violation.Images.Any())
                 {
-                    dto.EvidenceUrls = violation.Images
+                    var providerImages = violation.Images
                         .Where(img => img.UploadedBy == BusinessObject.Enums.EvidenceUploadedBy.PROVIDER)
-                        .Select(img => img.ImageUrl)
                         .ToList();
+
+                    dto.EvidenceUrls = providerImages.Select(img => img.ImageUrl).ToList();
+                    dto.EvidenceImages = providerImages.Select(img => new RentalViolationImageDto
+                    {
+                        ImageId = img.ImageId,
+                        ViolationId = img.ViolationId,
+                        ImageUrl = img.ImageUrl,
+                        UploadedBy = img.UploadedBy,
+                        UploadedByDisplay = img.UploadedBy == EvidenceUploadedBy.PROVIDER ? "Nhà cung cấp" : "Khách hàng",
+                        FileType = img.FileType,
+                        UploadedAt = img.UploadedAt
+                    }).ToList();
                     dto.EvidenceCount = dto.EvidenceUrls.Count;
                 }
             }
@@ -444,7 +486,39 @@ namespace Services.RentalViolationServices
                             "violations"
                         );
 
-                        string fileType = file.ContentType.StartsWith("image/") ? "image" : "video";
+                        // Determine file type - check both ContentType and file extension for accuracy
+                        string fileType = "image"; // default
+                        if (file.ContentType != null)
+                        {
+                            if (file.ContentType.StartsWith("image/"))
+                            {
+                                fileType = "image";
+                            }
+                            else if (file.ContentType.StartsWith("video/"))
+                            {
+                                fileType = "video";
+                            }
+                            else
+                            {
+                                // Fallback: check file extension if ContentType is not reliable
+                                var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                                var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                                if (videoExtensions.Contains(extension))
+                                {
+                                    fileType = "video";
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // If ContentType is null, check extension
+                            var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                            var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                            if (videoExtensions.Contains(extension))
+                            {
+                                fileType = "video";
+                            }
+                        }
 
                         var image = new RentalViolationImage
                         {
