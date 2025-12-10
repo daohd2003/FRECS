@@ -1001,12 +1001,6 @@
                 try {
                     const existingViolations = @Html.Raw(JsonSerializer.Serialize(Model.ExistingViolations, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
                     
-                    // DEBUG: Check evidence data
-                    console.log('DEBUG: ExistingViolations loaded:', existingViolations);
-                    existingViolations.forEach((v, i) => {
-                        console.log(`DEBUG: Violation ${i + 1} - evidenceCount: ${v.evidenceCount}, evidenceUrls:`, v.evidenceUrls);
-                    });
-                    
                     // Add delay to ensure form is fully rendered
                     setTimeout(function() {
                         if (typeof prePopulateViolations === 'function') {
