@@ -44,5 +44,10 @@ namespace BusinessObject.DTOs.RentalViolationDto
         /// Danh sách URL của ảnh/video bằng chứng (để hiển thị khi edit)
         /// </summary>
         public List<string> EvidenceUrls { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Danh sách chi tiết ảnh/video bằng chứng (bao gồm FileType để phân biệt image/video)
+        /// </summary>
+        public List<RentalViolationImageDto> EvidenceImages { get; set; } = new List<RentalViolationImageDto>();
     }
 }
