@@ -50,17 +50,6 @@
 
 @section Scripts {
     <script src="~/js/dist/browser/signalr.js"></script>
-    <style>
-        .voice-message-player { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,0.1); border-radius: 20px; min-width: 180px; max-width: 240px; }
-        .message-bubble.me .voice-message-player { background: rgba(255,255,255,0.2); }
-        .voice-play-btn { width: 32px; height: 32px; min-width: 32px; border-radius: 50%; border: none; background: #667eea; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .voice-waveform-display { flex: 1; height: 24px; display: flex; align-items: center; gap: 2px; }
-        .voice-waveform-display .waveform-bar { width: 3px; background: rgba(0,0,0,0.3); border-radius: 2px; transition: background 0.1s; }
-        .message-bubble.me .voice-waveform-display .waveform-bar { background: rgba(255,255,255,0.4); }
-        .voice-waveform-display .waveform-bar.active { background: #667eea; }
-        .message-bubble.me .voice-waveform-display .waveform-bar.active { background: white; }
-        .voice-duration-display { font-size: 12px; font-family: monospace; min-width: 32px; text-align: right; }
-    </style>
     <script>
         function generateWaveformBars(count) { let bars = ''; for (let i = 0; i < count; i++) { bars += '<div class="waveform-bar" style="height: ' + (Math.random() * 60 + 20) + '%"></div>'; } return bars; }
         function setupVoicePlayer(audioId, container) {
@@ -123,6 +112,12 @@
                 
                 if (message.attachment) {
                     const att = message.attachment;
+                    // Check if this is a voice message (webm from voice recording)
+                    const isVoiceMessage = att.type === 'audio' || 
+                        (att.mimeType && att.mimeType.includes('audio')) ||
+                        (att.fileName && att.fileName.includes('voice')) ||
+                        (att.url && att.url.includes('.webm') && att.type === 'video');
+                    
                     if (att.type === 'image') {
                         const img = document.createElement('img');
                         img.src = att.url;
@@ -138,7 +133,7 @@
                             caption.style.marginTop = '6px';
                             bubbleDiv.appendChild(caption);
                         }
-                    } else if (att.type === 'video') {
+                    } else if (att.type === 'video' && !isVoiceMessage) {
                         const video = document.createElement('video');
                         video.src = att.url;
                         video.controls = true;
@@ -151,7 +146,7 @@
                             caption.style.marginTop = '6px';
                             bubbleDiv.appendChild(caption);
                         }
-                    } else if (att.type === 'audio') {
+                    } else if (isVoiceMessage) {
                         const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                         const voiceContainer = document.createElement('div');
                         voiceContainer.className = 'voice-message-player';
@@ -317,11 +312,30 @@
 
                     const messages = await response.json();
 
-                    messages.reverse().forEach(msg => {
-                        const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
-                        const el = createMessageElement(msg, isMe);
-                        messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
-                    });
+                    // API trả về: newest first (mới nhất trước, cũ nhất sau)
+                    // Hiển thị: oldest on top, newest at bottom (cũ nhất ở trên, mới nhất ở dưới)
+                    
+                    // Reverse để có thứ tự: oldest first (cũ nhất trước, mới nhất sau)
+                    messages.reverse();
+                    
+                    if (page === 1) {
+                        // Page 1: append từng tin nhắn (cũ nhất append trước → ở trên)
+                        messages.forEach(msg => {
+                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(msg, isMe);
+                            messagesContainerEl.appendChild(el);
+                        });
+                    } else {
+                        // Page 2+: prepend vào đầu container
+                        // Sau khi reverse: [oldest, ..., newest]
+                        // Prepend từ cuối về đầu để oldest ở trên cùng
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                            const msg = messages[i];
+                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(msg, isMe);
+                            messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
+                        }
+                    }
 
                     return messages.length;
                 } catch (err) {
@@ -408,6 +422,14 @@
                 const file = e.target.files[0];
                 uploadInput.value = '';
                 if (!file || !selectedConversation || !signalRConnection) return;
+                
+                // Video size limit: 25MB for luxury rental web
+                const MAX_VIDEO_SIZE = 25 * 1024 * 1024; // 25MB
+                if (file.type.startsWith('video/') && file.size > MAX_VIDEO_SIZE) {
+                    alert('Video file is too large. Maximum size is 25MB.');
+                    return;
+                }
+                
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
@@ -577,8 +599,24 @@
             }
 
             init();
+
+            // Initialize Chat Media Features (Emoji, GIF, Voice)
+            setTimeout(() => {
+                if (typeof ChatMediaFeatures !== 'undefined') {
+                    new ChatMediaFeatures({
+                        messageInput: messageInput,
+                        sendBtn: sendBtn,
+                        messageForm: sendMessageForm,
+                        apiUrl: apiUrl,
+                        accessToken: accessToken,
+                        getSelectedConversation: () => selectedConversation,
+                        getSignalRConnection: () => signalRConnection
+                    });
+                }
+            }, 100);
         });
     </script>
+    <script src="~/js/chat-media-features.js"></script>
 }
 
 

@@ -82,6 +82,9 @@ namespace Repositories.ConversationRepositories
 
         public async Task<IEnumerable<Message>> GetMessagesByConversationIdAsync(Guid conversationId, int pageNumber, int pageSize)
         {
+            // API trả về: newest first (mới nhất trước) cho pagination
+            // Page 1 = tin nhắn mới nhất, Page 2 = tin nhắn cũ hơn, ...
+            // FE sẽ reverse để hiển thị: oldest on top, newest at bottom
             return await _context.Messages
                 .Where(m => m.ConversationId == conversationId)
 
@@ -92,7 +95,6 @@ namespace Repositories.ConversationRepositories
                 .OrderByDescending(m => m.SentAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .OrderBy(m => m.SentAt)
                 .AsNoTracking()
                 .AsSplitQuery()
                 .ToListAsync();
