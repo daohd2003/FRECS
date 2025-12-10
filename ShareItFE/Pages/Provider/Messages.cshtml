@@ -161,6 +161,12 @@
                 
                 if (message.attachment) {
                     const att = message.attachment;
+                    // Check if this is a voice message (webm from voice recording)
+                    const isVoiceMessage = att.type === 'audio' || 
+                        (att.mimeType && att.mimeType.includes('audio')) ||
+                        (att.fileName && att.fileName.includes('voice')) ||
+                        (att.url && att.url.includes('.webm') && att.type === 'video');
+                    
                     if (att.type === 'image') {
                         const img = document.createElement('img');
                         img.src = att.url;
@@ -176,7 +182,7 @@
                             caption.style.marginTop = '6px';
                             bubbleDiv.appendChild(caption);
                         }
-                    } else if (att.type === 'video') {
+                    } else if (att.type === 'video' && !isVoiceMessage) {
                         const video = document.createElement('video');
                         video.src = att.url;
                         video.controls = true;
@@ -189,7 +195,7 @@
                             caption.style.marginTop = '6px';
                             bubbleDiv.appendChild(caption);
                         }
-                    } else if (att.type === 'audio') {
+                    } else if (isVoiceMessage) {
                         // Voice message with custom player
                         const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                         const voiceContainer = document.createElement('div');
@@ -419,12 +425,30 @@
 
                     const messages = await response.json();
 
-                    // Thêm messages - mới nhất ở dưới cùng (traditional chat style)
-                    messages.forEach(msg => {
-                        const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
-                        const el = createMessageElement(msg, isMe);
-                        messagesContainerEl.appendChild(el); // Append to bottom
-                    });
+                    // API trả về: newest first (mới nhất trước, cũ nhất sau)
+                    // Hiển thị: oldest on top, newest at bottom (cũ nhất ở trên, mới nhất ở dưới)
+                    
+                    // Reverse để có thứ tự: oldest first (cũ nhất trước, mới nhất sau)
+                    messages.reverse();
+                    
+                    if (page === 1) {
+                        // Page 1: append từng tin nhắn (cũ nhất append trước → ở trên)
+                        messages.forEach(msg => {
+                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(msg, isMe);
+                            messagesContainerEl.appendChild(el);
+                        });
+                    } else {
+                        // Page 2+: prepend vào đầu container
+                        // Sau khi reverse: [oldest, ..., newest]
+                        // Prepend từ cuối về đầu để oldest ở trên cùng
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                            const msg = messages[i];
+                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(msg, isMe);
+                            messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
+                        }
+                    }
 
                     return messages.length;
                 } catch (err) {
@@ -512,6 +536,14 @@
                 const file = e.target.files[0];
                 uploadInput.value = '';
                 if (!file || !selectedConversation || !signalRConnection) return;
+                
+                // Video size limit: 25MB for luxury rental web
+                const MAX_VIDEO_SIZE = 25 * 1024 * 1024; // 25MB
+                if (file.type.startsWith('video/') && file.size > MAX_VIDEO_SIZE) {
+                    alert('Video file is too large. Maximum size is 25MB.');
+                    return;
+                }
+                
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
@@ -679,6 +711,22 @@
             }
 
             init();
+
+            // Initialize Chat Media Features (Emoji, GIF, Voice)
+            setTimeout(() => {
+                if (typeof ChatMediaFeatures !== 'undefined') {
+                    new ChatMediaFeatures({
+                        messageInput: messageInput,
+                        sendBtn: sendBtn,
+                        messageForm: sendMessageForm,
+                        apiUrl: apiUrl,
+                        accessToken: accessToken,
+                        getSelectedConversation: () => selectedConversation,
+                        getSignalRConnection: () => signalRConnection
+                    });
+                }
+            }, 100);
         });
     </script>
+    <script src="~/js/chat-media-features.js"></script>
 }
