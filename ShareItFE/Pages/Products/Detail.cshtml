@@ -1887,35 +1887,52 @@
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
 
-                function prependOldMessage(message) {
-                    const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
-                    const el = createMessageElement(message, isMe);
-                    messagesContainer.prepend(el);
-                }
-
                 // Main Logic Functions
-                async function loadMessageHistory() {
-                    if (isLoadingMessages || allMessagesLoaded || !currentConversationId) return;
+                // API trả về: newest first (mới nhất trước, cũ nhất sau)
+                // Hiển thị: oldest on top, newest at bottom (cũ nhất ở trên, mới nhất ở dưới)
+                async function loadMessages(conversationId, page) {
+                    if (isLoadingMessages || allMessagesLoaded) return 0;
                     isLoadingMessages = true;
 
                     try {
-                        const response = await fetch(`${apiUrl}/conversations/${currentConversationId}/messages?page=${currentPage}&pageSize=${pageSize}`, {
+                        const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages?pageNumber=${page}&pageSize=${pageSize}`, {
                             headers: { 'Authorization': 'Bearer ' + accessToken }
                         });
                         if (!response.ok) throw new Error('Failed to load messages.');
 
                         const messages = await response.json();
-                        const oldScrollHeight = messagesContainer.scrollHeight;
 
-                        if (messages.length > 0) {
-                            messages.reverse().forEach(prependOldMessage);
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
-                            currentPage++;
-                            } else {
+                        // Reverse để có thứ tự: oldest first (cũ nhất trước, mới nhất sau)
+                        messages.reverse();
+
+                        if (page === 1) {
+                            // Page 1: append từng tin nhắn (cũ nhất append trước → ở trên)
+                            messages.forEach(msg => {
+                                const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                                const el = createMessageElement(msg, isMe);
+                                messagesContainer.appendChild(el);
+                            });
+                        } else {
+                            // Page 2+: prepend vào đầu container
+                            // Sau khi reverse: [oldest, ..., newest]
+                            // Prepend từ cuối về đầu để oldest ở trên cùng
+                            for (let i = messages.length - 1; i >= 0; i--) {
+                                const msg = messages[i];
+                                const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                                const el = createMessageElement(msg, isMe);
+                                messagesContainer.insertBefore(el, messagesContainer.firstChild);
+                            }
+                        }
+
+                        // Mark as all loaded if fewer messages than pageSize
+                        if (messages.length < pageSize) {
                             allMessagesLoaded = true;
                         }
+
+                        return messages.length;
                     } catch (error) {
                         console.error(error);
+                        return 0;
                     } finally {
                         isLoadingMessages = false;
                     }
@@ -1963,7 +1980,8 @@
 
                         messagesContainer.innerHTML = '';
                         await setupSignalRConnection();
-                        await loadMessageHistory();
+                        await loadMessages(currentConversationId, currentPage);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll xuống dưới
                     } catch (error) {
                         console.error(error);
                         messagesContainer.innerHTML = `<div class="text-center text-red-500">${error.message}</div>`;
@@ -2015,9 +2033,16 @@
                     }
                 });
 
-                messagesContainer.addEventListener('scroll', () => {
-                    if (messagesContainer.scrollTop === 0 && currentConversationId) {
-                        loadMessageHistory();
+                messagesContainer.addEventListener('scroll', async () => {
+                    // Load older messages when scrolled to top
+                    if (messagesContainer.scrollTop === 0 && currentConversationId && !isLoadingMessages && !allMessagesLoaded) {
+                        const prevHeight = messagesContainer.scrollHeight;
+                        currentPage++;
+                        const loaded = await loadMessages(currentConversationId, currentPage);
+                        if (loaded > 0) {
+                            const newHeight = messagesContainer.scrollHeight;
+                            messagesContainer.scrollTop = newHeight - prevHeight;
+                        }
                     }
                 });
             </text>
