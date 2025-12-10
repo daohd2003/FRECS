@@ -553,8 +553,9 @@ class ChatMediaFeatures {
         const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000);
         const mins = Math.floor(duration / 60);
         const secs = duration % 60;
+        const barCount = 20;
 
-        const bars = Array.from({ length: 20 }, () => 
+        const bars = Array.from({ length: barCount }, () => 
             `<div class="page-chat-wave-bar" style="height: ${Math.random() * 60 + 20}%"></div>`
         ).join('');
 
@@ -583,28 +584,75 @@ class ChatMediaFeatures {
 
         const audioUrl = URL.createObjectURL(this.recordedBlob);
         const audio = new Audio(audioUrl);
+        const playBtn = this.previewUI.querySelector('.page-chat-prev-play');
+        const durationEl = this.previewUI.querySelector('.page-chat-prev-duration');
+        const waveformBars = this.previewUI.querySelectorAll('.page-chat-wave-bar');
+        let playbackInterval = null;
+        const totalDuration = duration; // Use recorded duration
+
+        // Helper to format duration
+        const formatDuration = (seconds) => {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        };
+
+        // Helper to update playback UI
+        const updatePlaybackUI = () => {
+            if (audio && durationEl && audio.duration && !isNaN(audio.duration)) {
+                // Show remaining time (countdown)
+                const remaining = Math.max(0, Math.ceil(audio.duration - audio.currentTime));
+                durationEl.textContent = formatDuration(remaining);
+                
+                // Update waveform progress
+                const progress = audio.currentTime / audio.duration;
+                const activeBarCount = Math.floor(progress * barCount);
+                waveformBars.forEach((bar, index) => {
+                    if (index < activeBarCount) {
+                        bar.classList.add('active');
+                    } else {
+                        bar.classList.remove('active');
+                    }
+                });
+            }
+        };
+
+        // Helper to reset UI
+        const resetUI = () => {
+            durationEl.textContent = formatDuration(totalDuration);
+            waveformBars.forEach(bar => bar.classList.remove('active'));
+            playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        };
 
         this.previewUI.querySelector('.page-chat-prev-cancel').addEventListener('click', () => {
+            if (playbackInterval) clearInterval(playbackInterval);
+            audio.pause();
             this.recordedBlob = null;
             this.hideRecordingUI();
         });
 
-        const playBtn = this.previewUI.querySelector('.page-chat-prev-play');
         playBtn.addEventListener('click', () => {
             if (audio.paused) {
                 audio.play();
                 playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+                // Start interval to update waveform animation
+                playbackInterval = setInterval(updatePlaybackUI, 50);
             } else {
                 audio.pause();
+                if (playbackInterval) clearInterval(playbackInterval);
                 playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
             }
         });
 
         audio.addEventListener('ended', () => {
-            playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+            if (playbackInterval) clearInterval(playbackInterval);
+            audio.currentTime = 0;
+            resetUI();
         });
 
         this.previewUI.querySelector('.page-chat-prev-send').addEventListener('click', () => {
+            if (playbackInterval) clearInterval(playbackInterval);
+            audio.pause();
             this.sendVoiceMessage();
         });
     }
