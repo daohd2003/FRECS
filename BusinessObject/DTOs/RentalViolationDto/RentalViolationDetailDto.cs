@@ -56,5 +56,17 @@ namespace BusinessObject.DTOs.RentalViolationDto
         /// Danh sách ảnh/video bằng chứng
         /// </summary>
         public List<RentalViolationImageDto> Images { get; set; }
+
+        /// <summary>
+        /// Ghi chú/lý do của Admin khi giải quyết tranh chấp
+        /// Chỉ có giá trị khi Status = RESOLVED_BY_ADMIN
+        /// </summary>
+        public string? AdminResolutionNote { get; set; }
+
+        /// <summary>
+        /// Loại quyết định của Admin: UPHOLD_CLAIM, REJECT_CLAIM, COMPROMISE
+        /// Chỉ có giá trị khi Status = RESOLVED_BY_ADMIN
+        /// </summary>
+        public string? AdminResolutionType { get; set; }
     }
 }

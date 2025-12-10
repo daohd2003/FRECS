@@ -15,6 +15,7 @@ class FloatingChatManager {
         this.apiUrl = null;
         this.signalRUrl = null;
         this.container = null;
+        this.timestampUpdateInterval = null;
         
         this.init();
     }
@@ -33,6 +34,42 @@ class FloatingChatManager {
         if (this.accessToken) {
             this.setupSignalR();
         }
+        
+        // Start timestamp auto-update interval (every 30 seconds)
+        this.startTimestampUpdater();
+    }
+    
+    /**
+     * Start interval to auto-update message timestamps
+     * Updates "Just now" -> "1m ago" -> "2m ago" etc.
+     */
+    startTimestampUpdater() {
+        // Clear existing interval if any
+        if (this.timestampUpdateInterval) {
+            clearInterval(this.timestampUpdateInterval);
+        }
+        
+        // Update timestamps every 30 seconds
+        this.timestampUpdateInterval = setInterval(() => {
+            this.updateAllTimestamps();
+        }, 30000);
+    }
+    
+    /**
+     * Update all message timestamps in all chat windows
+     */
+    updateAllTimestamps() {
+        this.chats.forEach((chat) => {
+            if (!chat.element) return;
+            
+            const timeElements = chat.element.querySelectorAll('.message-time[data-timestamp]');
+            timeElements.forEach((el) => {
+                const timestamp = el.dataset.timestamp;
+                if (timestamp) {
+                    el.textContent = this.formatTime(timestamp);
+                }
+            });
+        });
     }
 
     loadConfig() {
@@ -1860,20 +1897,23 @@ class FloatingChatManager {
             messageContent = `<span>${this.escapeHtml(message.content || '')}</span>`;
         }
 
+        // Get timestamp for data attribute (for auto-update)
+        const messageTimestamp = message.sentAt || message.createdAt;
+        
         // Add avatar for messages from others
         if (!isMe) {
             messageEl.innerHTML = `
                 <div class="message-avatar">${this.escapeHtml(chat.avatar)}</div>
                 <div class="message-bubble">
                     ${messageContent}
-                    <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
+                    <div class="message-time" data-timestamp="${this.escapeHtml(messageTimestamp)}">${this.formatTime(messageTimestamp)}</div>
                 </div>
             `;
         } else {
             messageEl.innerHTML = `
                 <div class="message-bubble">
                     ${messageContent}
-                    <div class="message-time">${this.formatTime(message.sentAt || message.createdAt)}</div>
+                    <div class="message-time" data-timestamp="${this.escapeHtml(messageTimestamp)}">${this.formatTime(messageTimestamp)}</div>
                 </div>
             `;
         }
