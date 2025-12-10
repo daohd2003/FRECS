@@ -358,10 +358,25 @@ function previewFiles(input, itemId) {
     
     // Add new files to the array
     Array.from(input.files).forEach((file) => {
+        // Validate file format (must match backend validation)
+        const fileName = file.name.toLowerCase();
+        const extension = fileName.substring(fileName.lastIndexOf('.'));
+        
+        const allowedImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+        const allowedVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv'];
+        
+        const isImage = allowedImageExtensions.includes(extension);
+        const isVideo = allowedVideoExtensions.includes(extension);
+        
+        if (!isImage && !isVideo) {
+            alert(`File "${file.name}" has invalid format. Only images (JPG, PNG, GIF, WebP, BMP) or videos (MP4, MOV, AVI, MKV, WebM, FLV, WMV) are accepted.`);
+            return;
+        }
+        
         // Validate file size (10MB for images, 100MB for videos)
-        const maxSize = file.type.startsWith('image/') ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
+        const maxSize = isImage ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
         if (file.size > maxSize) {
-            alert(`File "${file.name}" is too large. Maximum ${file.type.startsWith('image/') ? '10MB' : '100MB'} allowed.`);
+            alert(`File "${file.name}" is too large. Maximum ${isImage ? '10MB' : '100MB'} allowed.`);
             return;
         }
         
