@@ -44,6 +44,7 @@
         // Floating chat config for authenticated users
         window.adminChatConfig = {
             currentUserId: '@currentUserId',
+            currentUserRole: '@currentUserRole',
             accessToken: '@Context.Request.Cookies["AccessToken"]',
             apiBaseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
             signalRRootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")'

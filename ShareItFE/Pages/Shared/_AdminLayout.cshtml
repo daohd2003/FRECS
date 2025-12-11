@@ -37,6 +37,7 @@
         // Admin chat config - available on all admin pages
         window.adminChatConfig = {
             currentUserId: '@userId',
+            currentUserRole: '@userRole',
             accessToken: '@accessToken',
             apiBaseUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:BaseUrl"] ?? "https://localhost:7256/api")',
             signalRRootUrl: '@(Configuration[$"ApiSettings:{Environment.EnvironmentName}:RootUrl"] ?? "https://localhost:7256")'

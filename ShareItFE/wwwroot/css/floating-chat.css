@@ -1432,3 +1432,327 @@
     background: #4a4a6a;
     border-radius: 3px;
 }
+
+
+/* ==================== PRODUCT PICKER ==================== */
+.product-picker {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-radius: 12px 12px 0 0;
+    padding: 0;
+    max-height: 320px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 100;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.product-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e8e8e8;
+    flex-shrink: 0;
+}
+
+.product-picker-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333333;
+}
+
+.product-picker-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #666666;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.product-picker-close:hover {
+    background: #f0f0f0;
+    color: #333333;
+}
+
+/* Product Picker Toggle Button (for Provider to switch between My/All Products) */
+.product-picker-toggle {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: #667eea;
+    color: #ffffff;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.product-picker-toggle:hover {
+    background: #5a6fd6;
+    transform: rotate(180deg);
+}
+
+/* Product Picker Tabs (for Provider chatting with Staff/Admin) */
+.product-picker-tabs {
+    display: flex;
+    border-bottom: 1px solid #e8e8e8;
+    flex-shrink: 0;
+}
+
+.product-picker-tab {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    color: #666666;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+}
+
+.product-picker-tab:hover {
+    background: #f5f5f5;
+    color: #333333;
+}
+
+.product-picker-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: #f8f9ff;
+}
+
+.product-picker-search {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e8e8e8;
+    flex-shrink: 0;
+}
+
+.product-picker-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f5f5f5;
+    color: #333333;
+    font-size: 13px;
+    outline: none;
+}
+
+.product-picker-search-input::placeholder {
+    color: #999999;
+}
+
+.product-picker-search-input:focus {
+    background: #ffffff;
+    border-color: #667eea;
+}
+
+.product-picker-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.product-picker-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.product-picker-content::-webkit-scrollbar-thumb {
+    background: #d0d0d0;
+    border-radius: 3px;
+}
+
+.product-picker-list {
+    padding: 8px;
+}
+
+.product-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+}
+
+.product-picker-item:hover {
+    background: rgba(102, 126, 234, 0.08);
+    border-color: rgba(102, 126, 234, 0.2);
+}
+
+.product-picker-item.selected {
+    background: rgba(102, 126, 234, 0.15);
+    border-color: #667eea;
+}
+
+.product-picker-item-image {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: #f0f0f0;
+}
+
+.product-picker-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.product-picker-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.product-picker-item-details {
+    font-size: 11px;
+    color: #666666;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.product-picker-item-price {
+    color: #667eea;
+    font-weight: 500;
+}
+
+.product-picker-item-category {
+    color: #888888;
+}
+
+.product-picker-loading,
+.product-picker-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: #999999;
+    font-size: 13px;
+}
+
+.product-picker-loading svg {
+    animation: spin 1s linear infinite;
+    margin-bottom: 8px;
+}
+
+.product-picker-load-more {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 10px;
+    border: 1px dashed #d0d0d0;
+    border-radius: 8px;
+    background: transparent;
+    color: #667eea;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.product-picker-load-more:hover {
+    background: rgba(102, 126, 234, 0.08);
+    border-color: #667eea;
+}
+
+/* Selected product indicator in chat input */
+.chat-selected-product {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f3e8ff 100%);
+    border-radius: 8px;
+    border: 1px solid #e9d5ff;
+}
+
+.chat-selected-product-image {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.chat-selected-product-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-selected-product-label {
+    font-size: 10px;
+    color: #7c3aed;
+    font-weight: 500;
+}
+
+.chat-selected-product-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-selected-product-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #999999;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.chat-selected-product-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+
+/* Buy price styling for floating chat product picker */
+.product-picker-item-buy-price {
+    color: #059669 !important;
+    font-weight: 600;
+}
+
+.product-picker-item-buy-price::before {
+    content: "Buy: ";
+    font-weight: 400;
+    color: #666666;
+}
+
+.product-picker-item-price:not(.product-picker-item-buy-price)::before {
+    content: "Rent: ";
+    font-weight: 400;
+    color: #666666;
+}

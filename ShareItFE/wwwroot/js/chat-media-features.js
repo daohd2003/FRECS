@@ -13,6 +13,7 @@ class ChatMediaFeatures {
         this.accessToken = options.accessToken;
         this.getSelectedConversation = options.getSelectedConversation;
         this.getSignalRConnection = options.getSignalRConnection;
+        this.currentUserRole = options.currentUserRole || null;
         
         this.mediaRecorder = null;
         this.audioChunks = [];
@@ -84,6 +85,17 @@ class ChatMediaFeatures {
         mediaContainer.appendChild(gifBtn);
         this.gifBtn = gifBtn;
 
+        // Product button
+        const productBtn = document.createElement('button');
+        productBtn.type = 'button';
+        productBtn.className = 'page-chat-media-btn';
+        productBtn.title = 'Attach product';
+        productBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/>
+        </svg>`;
+        mediaContainer.appendChild(productBtn);
+        this.productBtn = productBtn;
+
         // Insert media container before the form
         this.messageForm.parentNode.insertBefore(mediaContainer, this.messageForm);
         this.mediaContainer = mediaContainer;
@@ -117,6 +129,10 @@ class ChatMediaFeatures {
         this.gifBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.toggleGifPicker();
+        });
+        this.productBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleProductPicker();
         });
         this.likeBtn.addEventListener('click', () => this.sendLikeEmoji());
 
@@ -722,7 +738,286 @@ class ChatMediaFeatures {
     }
 
     closePickers() {
-        document.querySelectorAll('.page-chat-emoji-picker, .page-chat-gif-picker').forEach(p => p.remove());
+        document.querySelectorAll('.page-chat-emoji-picker, .page-chat-gif-picker, .page-chat-product-picker').forEach(p => p.remove());
+    }
+
+    // ==================== PRODUCT PICKER ====================
+    toggleProductPicker() {
+        const existingPicker = document.querySelector('.page-chat-product-picker');
+        if (existingPicker) {
+            existingPicker.remove();
+            return;
+        }
+
+        this.closePickers();
+
+        // Provider always has tabs to choose between own products and all products
+        const conversation = this.getSelectedConversation();
+        const currentRole = this.currentUserRole?.toLowerCase();
+        const showTabs = currentRole === 'provider';
+
+        const picker = document.createElement('div');
+        picker.className = 'page-chat-product-picker';
+        picker.innerHTML = `
+            <div class="page-chat-product-header">
+                <span class="page-chat-product-title">Select a Product</span>
+                <button type="button" class="page-chat-product-close" title="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            ${showTabs ? `
+            <div class="page-chat-product-tabs">
+                <button type="button" class="page-chat-product-tab active" data-source="my">My Products</button>
+                <button type="button" class="page-chat-product-tab" data-source="all">All Products</button>
+            </div>
+            ` : ''}
+            <div class="page-chat-product-search">
+                <input type="text" class="page-chat-product-input" placeholder="Search products..." autocomplete="off">
+            </div>
+            <div class="page-chat-product-content">
+                <div class="page-chat-product-list">
+                    <div class="page-chat-product-loading">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                        <div>Loading products...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.messageForm.parentNode.insertBefore(picker, this.messageForm);
+
+        const searchInput = picker.querySelector('.page-chat-product-input');
+        const closeBtn = picker.querySelector('.page-chat-product-close');
+        const listContainer = picker.querySelector('.page-chat-product-list');
+        const tabs = picker.querySelectorAll('.page-chat-product-tab');
+
+        let currentPage = 1;
+        let totalCount = 0;
+        let isLoading = false;
+        let searchTimeout = null;
+        let currentSource = 'my'; // 'my' for own products, 'all' for browse products
+
+        const loadProducts = async (searchTerm = '', page = 1, append = false) => {
+            if (isLoading) return;
+            isLoading = true;
+
+            if (!append) {
+                listContainer.innerHTML = `
+                    <div class="page-chat-product-loading">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                        <div>Loading products...</div>
+                    </div>
+                `;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    pageSize: '10'
+                });
+                if (searchTerm) params.append('searchTerm', searchTerm);
+                
+                // Pass recipientId and recipientRole for proper product filtering
+                const convo = this.getSelectedConversation();
+                if (convo?.otherParticipant?.userId) {
+                    params.append('recipientId', convo.otherParticipant.userId);
+                }
+                if (convo?.otherParticipant?.role) {
+                    params.append('recipientRole', convo.otherParticipant.role);
+                }
+                // Pass source for Provider to choose between own products or all products
+                if (showTabs) params.append('source', currentSource);
+
+                const response = await fetch(`${this.apiUrl}/conversations/products-for-chat?${params}`, {
+                    headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load products');
+
+                const data = await response.json();
+                totalCount = data.totalCount;
+                currentPage = page;
+
+                if (!append) {
+                    listContainer.innerHTML = '';
+                } else {
+                    const loadMoreBtn = listContainer.querySelector('.page-chat-product-load-more');
+                    if (loadMoreBtn) loadMoreBtn.remove();
+                }
+
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(product => {
+                        const item = document.createElement('div');
+                        item.className = 'page-chat-product-item';
+                        item.dataset.productId = product.id;
+                        
+                        // Build price display based on available options
+                        let priceHtml = '';
+                        if (product.pricePerDay && product.pricePerDay > 0) {
+                            priceHtml += `<span class="page-chat-product-price">₫${product.pricePerDay.toLocaleString()}/day</span>`;
+                        }
+                        if (product.purchasePrice && product.purchasePrice > 0) {
+                            priceHtml += `<span class="page-chat-product-price page-chat-product-buy-price">₫${product.purchasePrice.toLocaleString()}</span>`;
+                        }
+                        if (!priceHtml) {
+                            priceHtml = '<span class="page-chat-product-price">Price not set</span>';
+                        }
+                        
+                        item.innerHTML = `
+                            <img class="page-chat-product-image" src="${this.escapeHtml(product.imageUrl || '/images/placeholder.png')}" alt="${this.escapeHtml(product.name)}" onerror="this.src='/images/placeholder.png'">
+                            <div class="page-chat-product-info">
+                                <div class="page-chat-product-name">${this.escapeHtml(product.name)}</div>
+                                <div class="page-chat-product-details">
+                                    ${priceHtml}
+                                    ${product.category ? `<span class="page-chat-product-category">${this.escapeHtml(product.category)}</span>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        item.addEventListener('click', () => {
+                            this.selectProduct({
+                                id: product.id,
+                                name: product.name,
+                                imageUrl: product.imageUrl
+                            });
+                            picker.remove();
+                        });
+                        listContainer.appendChild(item);
+                    });
+
+                    const loadedCount = page * 10;
+                    if (loadedCount < totalCount) {
+                        const loadMoreBtn = document.createElement('button');
+                        loadMoreBtn.className = 'page-chat-product-load-more';
+                        loadMoreBtn.textContent = `Load more (${totalCount - loadedCount} remaining)`;
+                        loadMoreBtn.addEventListener('click', () => {
+                            loadProducts(searchInput.value.trim(), currentPage + 1, true);
+                        });
+                        listContainer.appendChild(loadMoreBtn);
+                    }
+                } else if (!append) {
+                    listContainer.innerHTML = `
+                        <div class="page-chat-product-empty">
+                            No products found. Try a different search.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                if (!append) {
+                    listContainer.innerHTML = `
+                        <div class="page-chat-product-empty">
+                            Failed to load products. Please try again.
+                        </div>
+                    `;
+                }
+            } finally {
+                isLoading = false;
+            }
+        };
+
+        loadProducts();
+
+        // Tab handlers (for Provider chatting with Staff/Admin)
+        if (tabs.length > 0) {
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const source = tab.dataset.source;
+                    if (source === currentSource) return;
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update source and reload
+                    currentSource = source;
+                    searchInput.value = '';
+                    loadProducts('', 1, false);
+                });
+            });
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadProducts(e.target.value.trim(), 1, false);
+            }, 300);
+        });
+
+        searchInput.addEventListener('click', (e) => e.stopPropagation());
+
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            picker.remove();
+        });
+
+        setTimeout(() => searchInput.focus(), 100);
+
+        const closePicker = (e) => {
+            if (!picker.contains(e.target) && e.target !== this.productBtn && !this.productBtn.contains(e.target)) {
+                picker.remove();
+                document.removeEventListener('click', closePicker);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closePicker), 10);
+    }
+
+    selectProduct(product) {
+        this.selectedProduct = product;
+        this.showSelectedProductIndicator(product);
+    }
+
+    showSelectedProductIndicator(product) {
+        // Remove existing indicator
+        const existingIndicator = document.querySelector('.page-chat-selected-product');
+        if (existingIndicator) existingIndicator.remove();
+
+        const indicator = document.createElement('div');
+        indicator.className = 'page-chat-selected-product';
+        indicator.innerHTML = `
+            <img class="page-chat-selected-image" src="${this.escapeHtml(product.imageUrl || '/images/placeholder.png')}" alt="${this.escapeHtml(product.name)}" onerror="this.src='/images/placeholder.png'">
+            <div class="page-chat-selected-info">
+                <div class="page-chat-selected-label">Attaching product:</div>
+                <div class="page-chat-selected-name">${this.escapeHtml(product.name)}</div>
+            </div>
+            <button type="button" class="page-chat-selected-remove" title="Remove">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+
+        this.mediaContainer.parentNode.insertBefore(indicator, this.mediaContainer);
+
+        indicator.querySelector('.page-chat-selected-remove').addEventListener('click', () => {
+            this.selectedProduct = null;
+            indicator.remove();
+        });
+    }
+
+    getSelectedProduct() {
+        return this.selectedProduct;
+    }
+
+    clearSelectedProduct() {
+        this.selectedProduct = null;
+        const indicator = document.querySelector('.page-chat-selected-product');
+        if (indicator) indicator.remove();
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
