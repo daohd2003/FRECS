@@ -389,12 +389,18 @@
                 const messageText = messageInput.value.trim();
                 if (messageText && signalRConnection) {
                     const recipientId = selectedConversation.otherParticipant.userId;
+                    
+                    // Get selected product from ChatMediaFeatures if available
+                    const chatMediaFeatures = window.chatMediaFeaturesInstance;
+                    const selectedProduct = chatMediaFeatures?.getSelectedProduct?.() || null;
+                    const productId = selectedProduct?.id || null;
 
                     // Create temporary message with timestamp for immediate display
                     const tempMessage = {
                         content: messageText,
                         senderId: currentUserId,
-                        sentAt: new Date().toISOString()
+                        sentAt: new Date().toISOString(),
+                        productContext: selectedProduct
                     };
                     
                     // Display message immediately
@@ -402,9 +408,13 @@
                     messagesContainerEl.appendChild(el);
                     messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
 
-                    signalRConnection.invoke("SendMessageAsync", selectedConversation.id, recipientId, messageText, null)
+                    signalRConnection.invoke("SendMessageAsync", selectedConversation.id, recipientId, messageText, productId)
                         .then(() => {
                             messageInput.value = '';
+                            // Clear selected product after sending
+                            if (chatMediaFeatures?.clearSelectedProduct) {
+                                chatMediaFeatures.clearSelectedProduct();
+                            }
                         })
                         .catch(err => {
                             console.error("Failed to send message:", err);
@@ -600,17 +610,18 @@
 
             init();
 
-            // Initialize Chat Media Features (Emoji, GIF, Voice)
+            // Initialize Chat Media Features (Emoji, GIF, Voice, Product)
             setTimeout(() => {
                 if (typeof ChatMediaFeatures !== 'undefined') {
-                    new ChatMediaFeatures({
+                    window.chatMediaFeaturesInstance = new ChatMediaFeatures({
                         messageInput: messageInput,
                         sendBtn: sendBtn,
                         messageForm: sendMessageForm,
                         apiUrl: apiUrl,
                         accessToken: accessToken,
                         getSelectedConversation: () => selectedConversation,
-                        getSignalRConnection: () => signalRConnection
+                        getSignalRConnection: () => signalRConnection,
+                        currentUserRole: 'admin'
                     });
                 }
             }, 100);
@@ -618,5 +629,3 @@
     </script>
     <script src="~/js/chat-media-features.js"></script>
 }
-
-
