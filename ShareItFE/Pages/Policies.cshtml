@@ -444,5 +444,25 @@
                 contentWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
+
+        // Handle query parameter on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const policyName = urlParams.get('policy');
+            
+            if (policyName) {
+                // Find the button with matching policy name
+                const buttons = document.querySelectorAll('.policy-nav-btn');
+                buttons.forEach(btn => {
+                    const btnText = btn.querySelector('span')?.textContent?.trim().toLowerCase();
+                    if (btnText && btnText === policyName.toLowerCase().replace(/-/g, ' ')) {
+                        const policyId = btn.getAttribute('data-policy-id');
+                        if (policyId) {
+                            showPolicy(policyId);
+                        }
+                    }
+                });
+            }
+        });
     </script>
 }
