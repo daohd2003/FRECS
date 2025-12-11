@@ -1981,7 +1981,10 @@
                         messagesContainer.innerHTML = '';
                         await setupSignalRConnection();
                         await loadMessages(currentConversationId, currentPage);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll xuống dưới
+                        // Đợi DOM render xong rồi mới scroll xuống dưới
+                        requestAnimationFrame(() => {
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        });
                     } catch (error) {
                         console.error(error);
                         messagesContainer.innerHTML = `<div class="text-center text-red-500">${error.message}</div>`;
@@ -2005,8 +2008,14 @@
 
                 if (closeChatBtn) {
                     closeChatBtn.addEventListener('click', () => {
-                    chatModal.classList.add('hidden');
-                    document.body.classList.remove('overflow-hidden');
+                        chatModal.classList.add('hidden');
+                        document.body.classList.remove('overflow-hidden');
+                        // Reset state khi đóng modal để lần mở tiếp theo load lại đúng
+                        currentConversationId = null;
+                        currentPage = 1;
+                        allMessagesLoaded = false;
+                        isLoadingMessages = false;
+                        messagesContainer.innerHTML = '';
                         if (signalRConnection) {
                             signalRConnection.stop().then(() => signalRConnection = null);
                         }
