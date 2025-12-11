@@ -1443,7 +1443,7 @@
     background: #ffffff;
     border-radius: 12px 12px 0 0;
     padding: 0;
-    max-height: 320px;
+    max-height: 280px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
