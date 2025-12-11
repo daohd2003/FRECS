@@ -1235,3 +1235,316 @@
     color: #6b7280;
     margin-top: 4px;
 }
+
+
+/* ==================== PAGE CHAT PRODUCT PICKER ==================== */
+.page-chat-product-picker {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding: 0;
+    height: 350px;
+    max-height: 400px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 8px;
+}
+
+.page-chat-product-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    flex-shrink: 0 !important;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f3e8ff 100%) !important;
+}
+
+.page-chat-product-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    letter-spacing: -0.3px;
+}
+
+.page-chat-product-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #666666;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.page-chat-product-close:hover {
+    background: #f0f0f0;
+    color: #333333;
+}
+
+/* Product Picker Tabs (for Provider chatting with Staff/Admin) */
+.page-chat-product-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.page-chat-product-tab {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+}
+
+.page-chat-product-tab:hover {
+    background: #f9fafb;
+    color: #374151;
+}
+
+.page-chat-product-tab.active {
+    color: #8b5cf6;
+    border-bottom-color: #8b5cf6;
+    background: #faf5ff;
+}
+
+.page-chat-product-search {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.page-chat-product-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f5f5f5;
+    color: #333333;
+    font-size: 13px;
+    outline: none;
+}
+
+.page-chat-product-input:focus {
+    background: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.page-chat-product-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* Important for flex child to allow shrinking and enable scroll */
+    max-height: 220px; /* Ensure scrollable area has max height */
+}
+
+.page-chat-product-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page-chat-product-content::-webkit-scrollbar-thumb {
+    background: #d0d0d0;
+    border-radius: 3px;
+}
+
+.page-chat-product-content::-webkit-scrollbar-thumb:hover {
+    background: #b0b0b0;
+}
+
+.page-chat-product-list {
+    padding: 8px;
+}
+
+.page-chat-product-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+}
+
+.page-chat-product-item:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.2);
+}
+
+.page-chat-product-image {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: #f0f0f0;
+}
+
+.page-chat-product-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.page-chat-product-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.page-chat-product-details {
+    font-size: 11px;
+    color: #666666;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.page-chat-product-price {
+    color: #8b5cf6;
+    font-weight: 500;
+}
+
+.page-chat-product-category {
+    color: #888888;
+}
+
+.page-chat-product-loading,
+.page-chat-product-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: #999999;
+    font-size: 13px;
+}
+
+.page-chat-product-loading svg {
+    animation: page-chat-spin 1s linear infinite;
+    margin-bottom: 8px;
+}
+
+.page-chat-product-load-more {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed #d0d0d0;
+    border-radius: 8px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.page-chat-product-load-more:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: #8b5cf6;
+}
+
+/* Selected product indicator */
+.page-chat-selected-product {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f3e8ff 100%);
+    border-radius: 8px;
+    border: 1px solid #e9d5ff;
+}
+
+.page-chat-selected-image {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.page-chat-selected-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.page-chat-selected-label {
+    font-size: 10px;
+    color: #7c3aed;
+    font-weight: 500;
+}
+
+.page-chat-selected-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.page-chat-selected-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #999999;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.page-chat-selected-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Scrollbar for product picker */
+.page-chat-product-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page-chat-product-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.page-chat-product-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+
+/* Buy price styling - different color from rental price */
+.page-chat-product-buy-price {
+    color: #059669 !important;
+    font-weight: 600;
+}
+
+.page-chat-product-buy-price::before {
+    content: "Buy: ";
+    font-weight: 400;
+    color: #666666;
+}
+
+.page-chat-product-price:not(.page-chat-product-buy-price)::before {
+    content: "Rent: ";
+    font-weight: 400;
+    color: #666666;
+}

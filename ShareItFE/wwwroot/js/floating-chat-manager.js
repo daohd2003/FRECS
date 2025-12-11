@@ -79,6 +79,7 @@ class FloatingChatManager {
             this.accessToken = window.adminChatConfig.accessToken;
             this.apiUrl = window.adminChatConfig.apiBaseUrl;
             this.signalRUrl = window.adminChatConfig.signalRRootUrl;
+            this.currentUserRole = window.adminChatConfig.currentUserRole;
         }
         
         // Fallback to cookies if not available from config
@@ -87,6 +88,22 @@ class FloatingChatManager {
         }
         if (!this.accessToken) {
             this.accessToken = this.getCookie('AccessToken');
+        }
+        if (!this.currentUserRole) {
+            this.currentUserRole = this.getCookie('UserRole');
+        }
+        // Fallback: Try to detect role from URL path
+        if (!this.currentUserRole) {
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('/provider/')) {
+                this.currentUserRole = 'provider';
+            } else if (path.includes('/admin/')) {
+                this.currentUserRole = 'admin';
+            } else if (path.includes('/staff/')) {
+                this.currentUserRole = 'staff';
+            } else if (path.includes('/customer/')) {
+                this.currentUserRole = 'customer';
+            }
         }
         
         // Fallback to global config for API URLs
@@ -206,14 +223,10 @@ class FloatingChatManager {
         
         if (chat) {
             // Update product context if message has new product context
-            // Only update for provider (receiver) - customer doesn't need to see product banner
-            // Check if sender's role is customer (meaning current user is provider)
-            const senderRole = chat.role?.toLowerCase();
-            const isCurrentUserProvider = senderRole === 'customer';
-            
-            if (message.productContext && message.productContext.id && isCurrentUserProvider) {
-                // Only provider sees product banner from customer's message
+            // All users (Provider, Staff, Admin) see product banner when receiving message with product
+            if (message.productContext && message.productContext.id) {
                 chat.productContext = message.productContext;
+                chat._productContextExplicitlySet = true;
                 this.updateProductBanner(chat);
             }
             
@@ -280,9 +293,8 @@ class FloatingChatManager {
                 const avatar = this.getInitials(senderName);
                 
                 // Open chat with proper name, role and product context from message
-                // Only show product context if sender is customer (current user is provider)
-                const isCurrentUserProvider = senderRole?.toLowerCase() === 'customer';
-                const productContext = isCurrentUserProvider ? (message.productContext || null) : null;
+                // All users see product banner when receiving message with product
+                const productContext = message.productContext || null;
                 await this.openChat(message.senderId, senderName, avatar, false, senderRole, productContext);
                 
                 // Add the message
@@ -448,6 +460,11 @@ class FloatingChatManager {
                         <button type="button" class="chat-media-btn" data-action="gif" title="Send GIF">
                             <span class="gif-text">GIF</span>
                         </button>
+                        <button type="button" class="chat-media-btn" data-action="product" title="Attach product">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/>
+                            </svg>
+                        </button>
                     </div>
                     <form class="chat-input-form">
                         <textarea class="chat-input" placeholder="Aa" rows="1"></textarea>
@@ -609,6 +626,9 @@ class FloatingChatManager {
                 break;
             case 'gif':
                 this.toggleGifPicker(chat);
+                break;
+            case 'product':
+                this.toggleProductPicker(chat);
                 break;
         }
     }
@@ -1145,6 +1165,11 @@ class FloatingChatManager {
                 <button type="button" class="chat-media-btn" data-action="gif" title="Send GIF">
                     <span class="gif-text">GIF</span>
                 </button>
+                <button type="button" class="chat-media-btn" data-action="product" title="Attach product">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/>
+                    </svg>
+                </button>
             </div>
             <form class="chat-input-form">
                 <textarea class="chat-input" placeholder="Aa" rows="1"></textarea>
@@ -1653,6 +1678,316 @@ class FloatingChatManager {
         }
     }
 
+    // ==================== PRODUCT PICKER ====================
+    toggleProductPicker(chat) {
+        const chatInput = chat.element.querySelector('.chat-input');
+        let picker = chat.element.querySelector('.product-picker');
+        if (picker) {
+            picker.remove();
+            if (chatInput) {
+                chatInput.classList.remove('picker-open');
+                chatInput.style.height = 'auto';
+                chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+            }
+            return;
+        }
+
+        // Close other pickers if open
+        const stickerPicker = chat.element.querySelector('.sticker-picker');
+        if (stickerPicker) stickerPicker.remove();
+        const gifPicker = chat.element.querySelector('.gif-picker');
+        if (gifPicker) gifPicker.remove();
+        const emojiPicker = chat.element.querySelector('.emoji-picker');
+        if (emojiPicker) emojiPicker.remove();
+
+        // Collapse textarea when picker opens
+        if (chatInput) {
+            chatInput.classList.add('picker-open');
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 60) + 'px';
+        }
+
+        // Provider always has tabs to choose between own products and all products
+        const currentRole = this.currentUserRole?.toLowerCase();
+        const showTabs = currentRole === 'provider';
+
+        picker = document.createElement('div');
+        picker.className = 'product-picker';
+        picker.innerHTML = `
+            <div class="product-picker-header">
+                <span class="product-picker-title">${showTabs ? 'My Products' : 'Select a Product'}</span>
+                ${showTabs ? `
+                <button type="button" class="product-picker-toggle" data-source="my" title="Switch to All Products">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+                    </svg>
+                </button>
+                ` : ''}
+                <button type="button" class="product-picker-close" title="Close">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="product-picker-search">
+                <input type="text" class="product-picker-search-input" placeholder="Search products..." autocomplete="off">
+            </div>
+            <div class="product-picker-content">
+                <div class="product-picker-list">
+                    <div class="product-picker-loading">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                        <div>Loading products...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const inputArea = chat.element.querySelector('.chat-input-area');
+        inputArea.appendChild(picker);
+
+        const searchInput = picker.querySelector('.product-picker-search-input');
+        const closeBtn = picker.querySelector('.product-picker-close');
+        const listContainer = picker.querySelector('.product-picker-list');
+        const toggleBtn = picker.querySelector('.product-picker-toggle');
+        const titleEl = picker.querySelector('.product-picker-title');
+
+        // State for pagination and source
+        let currentPage = 1;
+        let totalCount = 0;
+        let isLoading = false;
+        let searchTimeout = null;
+        let currentSource = 'my'; // 'my' for own products, 'all' for browse products
+
+        // Load products
+        const loadProducts = async (searchTerm = '', page = 1, append = false) => {
+            if (isLoading) return;
+            isLoading = true;
+
+            if (!append) {
+                listContainer.innerHTML = `
+                    <div class="product-picker-loading">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                        <div>Loading products...</div>
+                    </div>
+                `;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    pageSize: '10'
+                });
+                if (searchTerm) params.append('searchTerm', searchTerm);
+                // Pass recipientId and recipientRole for proper product filtering
+                if (chat.userId) params.append('recipientId', chat.userId);
+                if (chat.role) params.append('recipientRole', chat.role);
+                // Pass source for Provider to choose between own products or all products
+                if (showTabs) params.append('source', currentSource);
+
+                const response = await fetch(`${this.apiUrl}/conversations/products-for-chat?${params}`, {
+                    headers: { 'Authorization': `Bearer ${this.accessToken}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load products');
+
+                const data = await response.json();
+                totalCount = data.totalCount;
+                currentPage = page;
+
+                if (!append) {
+                    listContainer.innerHTML = '';
+                } else {
+                    // Remove load more button if exists
+                    const loadMoreBtn = listContainer.querySelector('.product-picker-load-more');
+                    if (loadMoreBtn) loadMoreBtn.remove();
+                }
+
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(product => {
+                        const item = document.createElement('div');
+                        item.className = 'product-picker-item';
+                        item.dataset.productId = product.id;
+                        // Build price display based on available options
+                        let priceHtml = '';
+                        if (product.pricePerDay && product.pricePerDay > 0) {
+                            priceHtml += `<span class="product-picker-item-price">₫${product.pricePerDay.toLocaleString()}/day</span>`;
+                        }
+                        if (product.purchasePrice && product.purchasePrice > 0) {
+                            priceHtml += `<span class="product-picker-item-price product-picker-item-buy-price">₫${product.purchasePrice.toLocaleString()}</span>`;
+                        }
+                        if (!priceHtml) {
+                            priceHtml = '<span class="product-picker-item-price">Price not set</span>';
+                        }
+                        
+                        item.innerHTML = `
+                            <img class="product-picker-item-image" src="${this.escapeHtml(product.imageUrl || '/images/placeholder.png')}" alt="${this.escapeHtml(product.name)}" onerror="this.src='/images/placeholder.png'">
+                            <div class="product-picker-item-info">
+                                <div class="product-picker-item-name">${this.escapeHtml(product.name)}</div>
+                                <div class="product-picker-item-details">
+                                    ${priceHtml}
+                                    ${product.category ? `<span class="product-picker-item-category">${this.escapeHtml(product.category)}</span>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        item.addEventListener('click', () => {
+                            this.selectProductForChat(chat, {
+                                id: product.id,
+                                name: product.name,
+                                imageUrl: product.imageUrl
+                            });
+                            picker.remove();
+                            if (chatInput) {
+                                chatInput.classList.remove('picker-open');
+                                chatInput.style.height = 'auto';
+                                chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+                            }
+                        });
+                        listContainer.appendChild(item);
+                    });
+
+                    // Add load more button if there are more items
+                    const loadedCount = page * 10;
+                    if (loadedCount < totalCount) {
+                        const loadMoreBtn = document.createElement('button');
+                        loadMoreBtn.className = 'product-picker-load-more';
+                        loadMoreBtn.textContent = `Load more (${totalCount - loadedCount} remaining)`;
+                        loadMoreBtn.addEventListener('click', () => {
+                            loadProducts(searchInput.value.trim(), currentPage + 1, true);
+                        });
+                        listContainer.appendChild(loadMoreBtn);
+                    }
+                } else if (!append) {
+                    listContainer.innerHTML = `
+                        <div class="product-picker-empty">
+                            No products found. Try a different search.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                if (!append) {
+                    listContainer.innerHTML = `
+                        <div class="product-picker-empty">
+                            Failed to load products. Please try again.
+                        </div>
+                    `;
+                }
+            } finally {
+                isLoading = false;
+            }
+        };
+
+        // Initial load
+        loadProducts();
+
+        // Toggle button handler (for Provider to switch between My Products and All Products)
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Toggle source
+                currentSource = currentSource === 'my' ? 'all' : 'my';
+                toggleBtn.dataset.source = currentSource;
+                
+                // Update title and button tooltip
+                titleEl.textContent = currentSource === 'my' ? 'My Products' : 'All Products';
+                toggleBtn.title = currentSource === 'my' ? 'Switch to All Products' : 'Switch to My Products';
+                
+                // Reload products
+                searchInput.value = '';
+                loadProducts('', 1, false);
+            });
+        }
+
+        // Search handler with debounce
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadProducts(e.target.value.trim(), 1, false);
+            }, 300);
+        });
+
+        searchInput.addEventListener('click', (e) => e.stopPropagation());
+
+        // Close button handler
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            picker.remove();
+            if (chatInput) {
+                chatInput.classList.remove('picker-open');
+                chatInput.style.height = 'auto';
+                chatInput.style.height = Math.min(chatInput.scrollHeight, 150) + 'px';
+            }
+        });
+
+        // Focus search input
+        setTimeout(() => searchInput.focus(), 100);
+
+        // Close on outside click
+        const chatInputRef = chat.element.querySelector('.chat-input');
+        setTimeout(() => {
+            document.addEventListener('click', function closeProductPickerHandler(e) {
+                if (!picker.contains(e.target) && !e.target.closest('[data-action="product"]')) {
+                    picker.remove();
+                    if (chatInputRef) {
+                        chatInputRef.classList.remove('picker-open');
+                        chatInputRef.style.height = 'auto';
+                        chatInputRef.style.height = Math.min(chatInputRef.scrollHeight, 150) + 'px';
+                    }
+                    document.removeEventListener('click', closeProductPickerHandler);
+                }
+            });
+        }, 100);
+    }
+
+    /**
+     * Select a product to attach to the chat
+     * Stores in pendingProductContext (banner only updates after message is sent)
+     */
+    selectProductForChat(chat, product) {
+        // Store in pending - don't update banner until message is sent
+        chat.pendingProductContext = product;
+        this.showSelectedProductIndicator(chat, product);
+    }
+
+    /**
+     * Show selected product indicator above input
+     */
+    showSelectedProductIndicator(chat, product) {
+        // Remove existing indicator if any
+        const existingIndicator = chat.element.querySelector('.chat-selected-product');
+        if (existingIndicator) existingIndicator.remove();
+
+        const inputArea = chat.element.querySelector('.chat-input-area');
+        const indicator = document.createElement('div');
+        indicator.className = 'chat-selected-product';
+        indicator.innerHTML = `
+            <img class="chat-selected-product-image" src="${this.escapeHtml(product.imageUrl || '/images/placeholder.png')}" alt="${this.escapeHtml(product.name)}" onerror="this.src='/images/placeholder.png'">
+            <div class="chat-selected-product-info">
+                <div class="chat-selected-product-label">Attaching product:</div>
+                <div class="chat-selected-product-name">${this.escapeHtml(product.name)}</div>
+            </div>
+            <button type="button" class="chat-selected-product-remove" title="Remove">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+
+        // Insert at the beginning of input area
+        inputArea.insertBefore(indicator, inputArea.firstChild);
+
+        // Remove button handler
+        indicator.querySelector('.chat-selected-product-remove').addEventListener('click', () => {
+            chat.pendingProductContext = null;
+            indicator.remove();
+        });
+    }
+
     toggleMinimize(userId) {
         const chat = this.chats.get(userId);
         if (!chat) return;
@@ -1939,18 +2274,21 @@ class FloatingChatManager {
         if (!message || !this.signalRConnection || !chat.conversationId) return;
 
         try {
+            // Use pending product context if available, otherwise use current context
+            const productContextToSend = chat.pendingProductContext || chat.productContext;
+            
             // Show message immediately
             const tempMessage = {
                 content: message,
                 senderId: this.currentUserId,
                 sentAt: new Date().toISOString(),
-                productContext: chat.productContext // Include product context in temp message
+                productContext: productContextToSend // Include product context in temp message
             };
             this.addMessageToChat(chat, tempMessage);
             this.scrollToBottom(chat);
 
             // Send via SignalR with productId if available
-            const productId = chat.productContext?.id || null;
+            const productId = productContextToSend?.id || null;
             await this.signalRConnection.invoke(
                 "SendMessageAsync",
                 chat.conversationId,
@@ -1968,8 +2306,17 @@ class FloatingChatManager {
             if (likeBtn) likeBtn.style.display = 'flex';
             if (sendBtn) sendBtn.style.display = 'none';
             
-            // Clear product context after first message sent (optional - keep for ongoing conversation)
-            // chat.productContext = null;
+            // After successful send: update product banner if pending product was sent
+            if (chat.pendingProductContext) {
+                chat.productContext = chat.pendingProductContext;
+                chat._productContextExplicitlySet = true;
+                this.updateProductBanner(chat);
+                chat.pendingProductContext = null;
+                
+                // Remove the selected product indicator
+                const indicator = chat.element.querySelector('.chat-selected-product');
+                if (indicator) indicator.remove();
+            }
         } catch (error) {
             console.error('Error sending message:', error);
             window.toastManager?.error('Failed to send message');
