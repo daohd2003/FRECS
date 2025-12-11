@@ -52,10 +52,11 @@ namespace Services.CustomerDashboardServices
                 .Where(o => o.CreatedAt >= previousStart && o.CreatedAt < previousEnd)
                 .ToList();
 
-            // Calculate current period spending (Subtotal - DiscountAmount)
+            // Calculate current period spending (Subtotal - all discounts)
             // This excludes deposit and penalty
-            var currentSpending = currentOrders.Sum(o => o.Subtotal - o.DiscountAmount);
-            var previousSpending = previousOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+            // All discounts: DiscountAmount (from code) + ItemRentalCountDiscount + LoyaltyDiscount
+            var currentSpending = currentOrders.Sum(o => o.Subtotal - o.DiscountAmount - o.ItemRentalCountDiscount - o.LoyaltyDiscount);
+            var previousSpending = previousOrders.Sum(o => o.Subtotal - o.DiscountAmount - o.ItemRentalCountDiscount - o.LoyaltyDiscount);
             
             // Calculate spending change percentage
             var spendingChangePercentage = previousSpending > 0 
@@ -78,7 +79,7 @@ namespace Services.CustomerDashboardServices
                 : (currentPenaltyPaid > 0 ? 100 : 0);
 
             // Total amounts all time - broken down by type (exclude pending/cancelled orders)
-            var totalRentalPurchaseAllTime = confirmedOrders.Sum(o => o.Subtotal - o.DiscountAmount);
+            var totalRentalPurchaseAllTime = confirmedOrders.Sum(o => o.Subtotal - o.DiscountAmount - o.ItemRentalCountDiscount - o.LoyaltyDiscount);
             var totalDepositedAllTime = confirmedOrders.Sum(o => o.TotalDeposit); // Total deposits paid by customer
             var totalPenaltiesAllTime = await GetTotalPenaltiesAllTimeAsync(customerId);
 
@@ -187,7 +188,7 @@ namespace Services.CustomerDashboardServices
                 {
                     var date = startOfWeek.AddDays(i);
                     var dayOrders = filteredOrders.Where(o => o.CreatedAt.Date == date.Date);
-                    var amount = dayOrders.Sum(o => o.Subtotal - o.DiscountAmount); // Exclude deposits
+                    var amount = dayOrders.Sum(o => o.Subtotal - o.DiscountAmount - o.ItemRentalCountDiscount - o.LoyaltyDiscount); // Exclude deposits
 
                     trendData.Add(new SpendingTrendDto
                     {
@@ -205,7 +206,7 @@ namespace Services.CustomerDashboardServices
                     var monthStart = new DateTime(year, month, 1);
                     var monthEnd = monthStart.AddMonths(1).AddDays(-1);
                     var monthOrders = filteredOrders.Where(o => o.CreatedAt.Month == month && o.CreatedAt.Year == year);
-                    var amount = monthOrders.Sum(o => o.Subtotal - o.DiscountAmount); // Exclude deposits
+                    var amount = monthOrders.Sum(o => o.Subtotal - o.DiscountAmount - o.ItemRentalCountDiscount - o.LoyaltyDiscount); // Exclude deposits
 
                     trendData.Add(new SpendingTrendDto
                     {
@@ -222,7 +223,7 @@ namespace Services.CustomerDashboardServices
                 {
                     var date = new DateTime(startDate.Year, startDate.Month, day);
                     var dayOrders = filteredOrders.Where(o => o.CreatedAt.Date == date.Date);
-                    var amount = dayOrders.Sum(o => o.Subtotal - o.DiscountAmount); // Exclude deposits
+                    var amount = dayOrders.Sum(o => o.Subtotal - o.DiscountAmount - o.ItemRentalCountDiscount - o.LoyaltyDiscount); // Exclude deposits
 
                     trendData.Add(new SpendingTrendDto
                     {
