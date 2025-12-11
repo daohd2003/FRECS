@@ -26,6 +26,9 @@ namespace ShareItFE.Pages
 
         public List<PolicyConfigDto> Policies { get; set; } = new();
         public string ErrorMessage { get; set; } = string.Empty;
+        
+        [BindProperty(SupportsGet = true)]
+        public string? Policy { get; set; }
 
         public async Task<IActionResult> OnGetAsync()
         {
