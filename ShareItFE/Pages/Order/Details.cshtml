@@ -2259,6 +2259,15 @@
                                     <i class="bi bi-check-circle-fill text-success"></i>
                                     <span>This violation has been ${statusDisplay.toLowerCase()}</span>
                                 </div>
+                                ${violation.adminResolutionNote ? `
+                                    <div class="admin-resolution-section" style="margin-top: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                                        <h6 style="color: #92400e; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600;">
+                                            <i class="bi bi-shield-check"></i> Admin's Decision
+                                            ${violation.adminResolutionType ? `<span style="background: #fbbf24; color: #78350f; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 8px;">${violation.adminResolutionType.replace(/_/g, ' ')}</span>` : ''}
+                                        </h6>
+                                        <div style="background: white; padding: 12px; border-radius: 6px; color: #1f2937; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${violation.adminResolutionNote}</div>
+                                    </div>
+                                ` : ''}
                             `}
                         </div>
                     `;

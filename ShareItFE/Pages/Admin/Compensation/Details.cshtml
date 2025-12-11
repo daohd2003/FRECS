@@ -990,7 +990,8 @@
 
                 const customerId = disputeData.customer?.id;
                 const providerId = disputeData.provider?.id;
-                const orderCode = disputeData.orderItem?.orderId?.toString().substring(0, 8).toUpperCase() || 'N/A';
+                const orderId = disputeData.orderItem?.orderId; // Get orderId for navigation
+                const orderCode = orderId?.toString().substring(0, 8).toUpperCase() || 'N/A';
 
                 // Determine resolution message
                 let customerMessage = '';
@@ -1008,7 +1009,7 @@
                 }
 
                 // NotificationType enum: order=0, message=1, system=2, content_violation=3
-                const notificationType = 2; // system
+                const notificationType = 0; // order - so it can navigate to order detail
 
                 // Send notification to customer using manual endpoint (admin only)
                 if (customerId) {
@@ -1019,7 +1020,8 @@
                         body: JSON.stringify({
                             userId: customerId,
                             message: customerMessage,
-                            type: notificationType
+                            type: notificationType,
+                            relatedEntityId: orderId // Include orderId for navigation
                         })
                     });
                     console.log('Customer notification response:', customerResponse.status);
@@ -1034,7 +1036,8 @@
                         body: JSON.stringify({
                             userId: providerId,
                             message: providerMessage,
-                            type: notificationType
+                            type: notificationType,
+                            relatedEntityId: orderId // Include orderId for navigation
                         })
                     });
                     console.log('Provider notification response:', providerResponse.status);

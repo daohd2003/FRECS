@@ -12,5 +12,9 @@ namespace BusinessObject.DTOs.NotificationDto
         public Guid UserId { get; set; }
         public string Message { get; set; }
         public NotificationType Type { get; set; }
+        /// <summary>
+        /// ID của entity liên quan (OrderId, ProductId, etc.) - dùng để điều hướng khi click notification
+        /// </summary>
+        public Guid? RelatedEntityId { get; set; }
     }
 }

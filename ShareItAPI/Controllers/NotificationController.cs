@@ -81,7 +81,7 @@ namespace ShareItAPI.Controllers
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> SendManualNotification([FromBody] ManualNotificationRequest request)
         {
-            await _notificationService.SendNotification(request.UserId, request.Message, request.Type);
+            await _notificationService.SendNotification(request.UserId, request.Message, request.Type, request.RelatedEntityId);
             return Ok(new ApiResponse<string>("Notification sent manually", null));
         }
 
