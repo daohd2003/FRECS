@@ -364,4 +364,4 @@ FodyWeavers.xsd
 
 # Nội dung file .gitignore cần có:
 appsettings.json
-azure-pipelines.yml
+azure-pipeline.yml
