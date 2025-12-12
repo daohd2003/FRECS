@@ -716,9 +716,9 @@ class FloatingChatManager {
     async handleFileUpload(chat, file) {
         if (!file || !chat.conversationId) return;
 
-        // Validate file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            window.toastManager?.error('File size must be less than 10MB');
+        // Validate file size (max 25MB)
+        if (file.size > 25 * 1024 * 1024) {
+            window.toastManager?.error('File size must be less than 25MB');
             return;
         }
 
