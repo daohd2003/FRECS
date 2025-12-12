@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Nội dung file .gitignore cần có:
+appsettings.json
+azure-pipelines.yml
