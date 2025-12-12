@@ -1,4 +1,5 @@
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
@@ -93,7 +94,7 @@ namespace Repositories.RentalViolationRepositories
         {
             try
             {
-                violation.UpdatedAt = DateTime.UtcNow;
+                violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 _context.RentalViolations.Update(violation);
                 await _context.SaveChangesAsync();
                 return true;

@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.IssueResolutionDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -92,7 +93,14 @@ namespace Repositories.CompensationDisputeRepositories
                     SenderId = m.SenderId,
                     SenderName = m.Sender.Profile != null ? m.Sender.Profile.FullName : m.Sender.Email,
                     Content = m.Content,
-                    SentAt = m.SentAt
+                    SentAt = m.SentAt,
+                    Attachment = string.IsNullOrEmpty(m.AttachmentUrl) ? null : new MessageAttachmentDto
+                    {
+                        Url = m.AttachmentUrl,
+                        Type = m.AttachmentType,
+                        MimeType = m.MimeType,
+                        FileName = m.FileName
+                    }
                 })
                 .ToListAsync();
 
@@ -191,7 +199,7 @@ namespace Repositories.CompensationDisputeRepositories
                 return false;
 
             violation.Status = status;
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
             await _context.SaveChangesAsync();
             return true;
         }

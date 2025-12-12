@@ -12,7 +12,7 @@ namespace ShareItAPI.Controllers
 {
     [Route("api/customer/banks")]
     [ApiController]
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class CustomerBankController : ControllerBase
     {
         private readonly ICustomerBankService _customerBankService;

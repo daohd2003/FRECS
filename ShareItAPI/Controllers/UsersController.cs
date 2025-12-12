@@ -132,40 +132,12 @@ namespace ShareItAPI.Controllers
         [Authorize(Roles = "admin,staff")]
         public async Task<IActionResult> GetAllWithOrderStats()
         {
-            var users = await _userService.GetAllAsync();
-            
-            // Load order stats for each user
-            var usersWithStats = new List<object>();
-            foreach (var user in users)
-            {
-                var stats = await _userService.GetUserOrderStatsAsync(user.Id);
-                
-                usersWithStats.Add(new
-                {
-                    user.Id,
-                    user.Email,
-                    user.Role,
-                    user.IsActive,
-                    user.CreatedAt,
-                    user.LastLogin,
-                    user.Profile,
-                    TotalOrders = stats?.TotalOrders ?? 0,
-                    OrdersByStatus = stats?.OrdersByStatus ?? new OrdersByStatusDto(),
-                    ReturnedOrdersBreakdown = stats?.ReturnedOrdersBreakdown ?? new ReturnedOrdersBreakdownDto()
-                });
-            }
-            
-            // For staff, only return customers and providers
+            // Check if staff - they can only see customers and providers
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (userRole?.ToLower() == "staff")
-            {
-                usersWithStats = usersWithStats
-                    .Where(u => {
-                        var roleValue = u.GetType().GetProperty("Role")?.GetValue(u)?.ToString();
-                        return roleValue == "customer" || roleValue == "provider";
-                    })
-                    .ToList();
-            }
+            var staffOnly = userRole?.ToLower() == "staff";
+            
+            // Use optimized method that loads all data in ONE query
+            var usersWithStats = await _userService.GetAllUsersWithOrderStatsAsync(staffOnly);
             
             return Ok(new ApiResponse<object>("Success", usersWithStats));
         }

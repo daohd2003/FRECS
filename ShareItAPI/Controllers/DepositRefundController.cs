@@ -86,10 +86,10 @@ namespace ShareItAPI.Controllers
         /// <summary>
         /// Feature: View deposit history
         /// The user views the history of funds deposited.
-        /// Get customer's refund history
+        /// Get customer's refund history (also available for providers who rent/buy from other providers)
         /// </summary>
         [HttpGet("my")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetMyRefunds()
         {
             try
@@ -150,14 +150,36 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// Reopen a rejected refund request
+        /// Reopen a rejected refund request (Admin can reopen any, Customer/Provider can only reopen their own)
         /// </summary>
         [HttpPost("reopen/{refundId}")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,customer,provider")]
         public async Task<IActionResult> ReopenRefund(Guid refundId)
         {
             try
             {
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return Unauthorized(new ApiResponse<object>("Invalid user ID", null));
+                }
+
+                // If customer or provider, verify they own this refund request
+                if (userRole == "customer" || userRole == "provider")
+                {
+                    var refund = await _refundService.GetRefundDetailAsync(refundId);
+                    if (refund == null)
+                    {
+                        return NotFound(new ApiResponse<object>("Refund request not found", null));
+                    }
+                    if (refund.CustomerId != userId)
+                    {
+                        return Forbid();
+                    }
+                }
+
                 var success = await _refundService.ReopenRefundAsync(refundId);
                 if (success)
                 {

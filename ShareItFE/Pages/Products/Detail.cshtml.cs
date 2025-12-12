@@ -49,6 +49,7 @@ namespace ShareItFE.Pages.Products
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
         public int TotalFeedbacks { get; set; } = 0;
+        public int VisibleFeedbacks { get; set; } = 0; // Number of visible feedbacks (after filtering blocked)
         public int PageSize { get; set; } = 5;
         
 
@@ -220,22 +221,16 @@ namespace ShareItFE.Pages.Products
             if (TempData["ErrorMessage"] is string errorMsg)
                 ErrorMessage = errorMsg;
 
-            // Debug: Print all query parameters
-            var queryParams = Request.Query.ToList();
-            Console.WriteLine($"All Query Parameters: {string.Join(", ", queryParams.Select(q => $"{q.Key}={q.Value}"))}");
-            
             // Fallback: Get page from Request.Query if [FromQuery] doesn't work
             if (page == 1 && Request.Query.ContainsKey("page"))
             {
                 if (int.TryParse(Request.Query["page"], out int queryPage))
                 {
                     page = queryPage;
-                    Console.WriteLine($"Found page in query string: {page}");
                 }
             }
             
             CurrentPage = page > 0 ? page : 1;
-            Console.WriteLine($"OnGetAsync Start - ProductId: {id}, RequestedPage: {page}, CurrentPage: {CurrentPage}");
             try
             {
                 // No-op: StartDate/RentalDays handled later in Cart
@@ -302,7 +297,12 @@ namespace ShareItFE.Pages.Products
                 }
 
                 // Fetch feedbacks with pagination using correct endpoint
+                // Pass currentUserId to backend so it can filter blocked feedbacks properly
                 var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
+                if (CurrentUserId.HasValue)
+                {
+                    feedbacksRequestUri += $"&currentUserId={CurrentUserId.Value}";
+                }
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
@@ -310,8 +310,6 @@ namespace ShareItFE.Pages.Products
                     try
                     {
                         var responseContent = await feedbacksResponse.Content.ReadAsStringAsync();
-                        Console.WriteLine($"Feedback API Response: {responseContent}"); // Debug log
-                        
                         var apiResponse = JsonSerializer.Deserialize<ApiResponse<PaginatedResponse<FeedbackResponseDto>>>(responseContent, _jsonOptions);
                         var paginatedData = apiResponse?.Data;
                         
@@ -319,9 +317,10 @@ namespace ShareItFE.Pages.Products
                         {
                             Feedbacks = paginatedData.Items ?? new List<FeedbackResponseDto>();
                             TotalFeedbacks = paginatedData.TotalItems;
+                            VisibleFeedbacks = paginatedData.VisibleCount ?? paginatedData.TotalItems;
                             TotalPages = paginatedData.TotalPages;
-                            // Don't override CurrentPage - keep the value from query parameter
-                            Console.WriteLine($"API returned page: {paginatedData.Page}, keeping CurrentPage: {CurrentPage}");
+                            
+                            Console.WriteLine($"[Pagination Debug] TotalItems: {TotalFeedbacks}, PageSize: {PageSize}, TotalPages: {TotalPages}, CurrentPage: {CurrentPage}");
                         }
                         else
                         {
@@ -330,9 +329,8 @@ namespace ShareItFE.Pages.Products
                             TotalPages = 1;
                         }
                     }
-                    catch (JsonException jsonEx)
+                    catch (JsonException)
                     {
-                        Console.WriteLine($"JSON Error parsing feedbacks: {jsonEx.Message}");
                         Feedbacks = new List<FeedbackResponseDto>();
                         TotalFeedbacks = 0;
                         TotalPages = 1;
@@ -369,11 +367,6 @@ namespace ShareItFE.Pages.Products
                         if (Product != null && Product.ProviderId == userGuid)
                         {
                             IsOwnProduct = true;
-                            Console.WriteLine($"[OnGetAsync] IsOwnProduct set to TRUE - UserId: {userGuid}, ProviderId: {Product.ProviderId}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[OnGetAsync] IsOwnProduct is FALSE - UserId: {userGuid}, ProviderId: {Product?.ProviderId}");
                         }
 
                         var favoriteUri = $"api/favorites/{userId}";
@@ -420,7 +413,6 @@ namespace ShareItFE.Pages.Products
                 CurrentUserId = Guid.Parse(userIdString);
             }
             
-            Console.WriteLine($"OnGetAsync Complete - ProductId: {id}, PageParam: {page}, CurrentPage: {CurrentPage}, TotalFeedbacks: {TotalFeedbacks}, TotalPages: {TotalPages}");
             return Page();
         }
 
@@ -606,7 +598,6 @@ namespace ShareItFE.Pages.Products
         private async Task LoadInitialData(Guid id, int page = 1)
         {
             CurrentPage = page > 0 ? page : 1;
-            Console.WriteLine($"LoadInitialData - ProductId: {id}, Page: {page}, CurrentPage: {CurrentPage}");
             
             ApiBaseUrl = _configuration.GetApiBaseUrl(_environment);
             SignalRRootUrl = _configuration.GetApiRootUrl(_environment);
@@ -672,7 +663,12 @@ namespace ShareItFE.Pages.Products
                 }
 
                 // Fetch feedbacks with pagination using correct endpoint
+                // Pass currentUserId to backend so it can filter blocked feedbacks properly
                 var feedbacksRequestUri = $"api/feedbacks/product/{id}?page={CurrentPage}&pageSize={PageSize}";
+                if (CurrentUserId.HasValue)
+                {
+                    feedbacksRequestUri += $"&currentUserId={CurrentUserId.Value}";
+                }
                 var feedbacksResponse = await client.GetAsync(feedbacksRequestUri);
 
                 if (feedbacksResponse.IsSuccessStatusCode)
@@ -689,6 +685,7 @@ namespace ShareItFE.Pages.Products
                         {
                             Feedbacks = paginatedData.Items ?? new List<FeedbackResponseDto>();
                             TotalFeedbacks = paginatedData.TotalItems;
+                            VisibleFeedbacks = paginatedData.VisibleCount ?? paginatedData.TotalItems;
                             TotalPages = paginatedData.TotalPages;
                             // Don't override CurrentPage - keep the value from query parameter
                             Console.WriteLine($"API returned page: {paginatedData.Page}, keeping CurrentPage: {CurrentPage}");
@@ -848,6 +845,22 @@ namespace ShareItFE.Pages.Products
                 TransactionType = BusinessObject.Enums.TransactionType.rental;
             }
             // If neither is available, keep the default (Rental) - the form will be disabled anyway
+        }
+
+        /// <summary>
+        /// AJAX handler for loading reviews with pagination
+        /// Called by JavaScript when user clicks pagination buttons
+        /// </summary>
+        public async Task<IActionResult> OnGetReviewsAsync(Guid id, [FromQuery] int page = 1)
+        {
+            // Validate page number
+            CurrentPage = page > 0 ? page : 1;
+            
+            // Load product and feedback data
+            await LoadInitialData(id, CurrentPage);
+            
+            // Return partial page (JavaScript will extract the reviews section)
+            return Page();
         }
 
     }

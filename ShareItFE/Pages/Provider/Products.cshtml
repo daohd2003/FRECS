@@ -288,7 +288,7 @@
                                             }
                                             else
                                             {
-                                                <button type="button" onclick="deleteProduct('@product.Id', '@product.Name', @product.RentCount)" class="text-red-600 hover:text-red-900" title="Delete Product">
+                                                <button type="button" onclick="deleteProduct('@product.Id', '@product.Name', @product.RentCount, '@product.AvailabilityStatus')" class="text-red-600 hover:text-red-900" title="Delete Product">
                                                     <i data-lucide="trash-2" class="h-4 w-4"></i>
                                                 </button>
                                             }
@@ -488,7 +488,13 @@
         }
 
         // Delete product function with smart logic
-        function deleteProduct(productId, productName, rentCount) {
+        function deleteProduct(productId, productName, rentCount, availabilityStatus) {
+            // Check if product status is Pending
+            if (availabilityStatus && availabilityStatus.toLowerCase() === 'pending') {
+                alert('Cannot delete product with Pending status. Please wait for admin approval or contact support.');
+                return;
+            }
+            
             let message = `Are you sure you want to delete "${productName}"?`;
             let warningMessage = '';
             

@@ -76,6 +76,15 @@ namespace BusinessObject.DTOs.IssueResolutionDto
         public string SenderName { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public DateTime SentAt { get; set; }
+        public MessageAttachmentDto? Attachment { get; set; }
+    }
+
+    public class MessageAttachmentDto
+    {
+        public string Url { get; set; } = string.Empty;
+        public string? Type { get; set; }
+        public string? MimeType { get; set; }
+        public string? FileName { get; set; }
     }
 
     public class OrderItemInfoDto

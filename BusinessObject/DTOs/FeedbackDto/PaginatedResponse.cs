@@ -7,5 +7,11 @@
         public int PageSize { get; set; }
         public int TotalItems { get; set; }
         public int TotalPages => (int)Math.Ceiling((double)TotalItems / PageSize);
+        
+        /// <summary>
+        /// Number of visible items (after filtering blocked content)
+        /// Used for display: "Showing X reviews" where X = VisibleCount
+        /// </summary>
+        public int? VisibleCount { get; set; }
     }
 }

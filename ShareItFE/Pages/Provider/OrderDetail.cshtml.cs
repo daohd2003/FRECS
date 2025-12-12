@@ -37,6 +37,9 @@ namespace ShareItFE.Pages.Provider
         public List<BusinessObject.DTOs.RentalViolationDto.RentalViolationDto> ExistingViolations { get; set; } = new List<BusinessObject.DTOs.RentalViolationDto.RentalViolationDto>();
         public bool HasExistingViolations => ExistingViolations.Any();
         
+        public List<BusinessObject.DTOs.RentalViolationDto.RentalViolationDetailDto> ViolationDetails { get; set; } = new List<BusinessObject.DTOs.RentalViolationDto.RentalViolationDetailDto>();
+        public bool HasAdminResolvedViolations => ViolationDetails.Any(v => !string.IsNullOrEmpty(v.AdminResolutionNote));
+        
         public string ApiBaseUrl => _configuration.GetApiBaseUrl(_environment);
 
         public async Task<IActionResult> OnGetAsync(Guid id)
@@ -86,6 +89,17 @@ namespace ShareItFE.Pages.Provider
                                 if (violationsApiResponse?.Data != null)
                                 {
                                     ExistingViolations = violationsApiResponse.Data.ToList();
+                                }
+                            }
+                            
+                            // Load violation details (with admin resolution notes)
+                            var violationDetailsResponse = await client.GetAsync($"api/rental-violations/order/{id}/details");
+                            if (violationDetailsResponse.IsSuccessStatusCode)
+                            {
+                                var violationDetailsApiResponse = await violationDetailsResponse.Content.ReadFromJsonAsync<BusinessObject.DTOs.ApiResponses.ApiResponse<IEnumerable<BusinessObject.DTOs.RentalViolationDto.RentalViolationDetailDto>>>(_jsonOptions);
+                                if (violationDetailsApiResponse?.Data != null)
+                                {
+                                    ViolationDetails = violationDetailsApiResponse.Data.ToList();
                                 }
                             }
                         }

@@ -120,7 +120,7 @@
                     {
                         @foreach (var category in Model.Categories)
                         {
-                            var productCount = category.Products?.Count ?? 0;
+                            var productCount = category.ActiveProductCount;
                             var imageUrl = !string.IsNullOrEmpty(category.ImageUrl) 
                                 ? category.ImageUrl 
                                 : "https://images.pexels.com/photos/1036622/pexels-photo-1036622.jpeg?auto=compress&cs=tinysrgb&w=300&h=400&fit=crop";

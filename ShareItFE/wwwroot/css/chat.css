@@ -347,17 +347,25 @@
 .message-bubble img,
 .message-bubble video {
     display: block;
-    max-width: 100%;
+    max-width: 260px; /* Giới hạn kích thước tối đa */
+    width: auto;
+    height: auto;
     background: transparent !important;
     border-radius: 8px;
     margin: 0;
     padding: 0;
+    object-fit: contain;
 }
 
 /* Remove background from image containers */
 .message-bubble img {
     background-color: transparent !important;
     box-shadow: none !important;
+}
+
+/* Ensure bubble container constrains media properly */
+.message-bubble {
+    overflow: hidden;
 }
 
 /* Link styling in messages */
@@ -426,6 +434,7 @@
     flex-direction: column;
     max-width: 70%;
     word-wrap: break-word;
+    overflow: hidden;
 }
 
     .message-bubble-container.me {
@@ -437,3 +446,1105 @@
         align-items: flex-start;
         width: -webkit-fill-available;
     }
+
+/* Ensure message bubble doesn't exceed container */
+.message-bubble-container .message-bubble {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+
+/* ==================== PAGE CHAT MEDIA FEATURES (prefix: page-chat-) ==================== */
+
+/* Media action buttons row */
+.page-chat-media-actions {
+    display: flex;
+    gap: 4px;
+    padding: 8px 1rem 0;
+    background: #f9fafb;
+}
+
+.page-chat-media-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #8b5cf6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.page-chat-media-btn:hover {
+    background: rgba(139, 92, 246, 0.15);
+    transform: scale(1.1);
+}
+
+.page-chat-media-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.page-chat-gif-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: #8b5cf6;
+}
+
+/* Emoji button */
+.page-chat-emoji-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #fbbf24;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.page-chat-emoji-btn:hover {
+    transform: scale(1.15);
+}
+
+.page-chat-emoji-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Like button - emoji style */
+.page-chat-like-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+    margin-left: 4px;
+}
+
+.page-chat-like-btn:hover {
+    transform: scale(1.2);
+    background: rgba(139, 92, 246, 0.1);
+}
+
+/* ==================== PAGE CHAT EMOJI PICKER (Messenger-style) ==================== */
+.page-chat-emoji-picker {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding: 8px;
+    max-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-chat-emoji-search {
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.page-chat-emoji-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+    color: #1f2937;
+    font-size: 13px;
+    outline: none;
+}
+
+.page-chat-emoji-search-input:focus {
+    background: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.page-chat-emoji-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 6px 0;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-x: auto;
+    flex-shrink: 0;
+    margin-bottom: 8px;
+}
+
+.page-chat-emoji-tab {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-chat-emoji-tab:hover {
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.page-chat-emoji-tab.active {
+    background: rgba(139, 92, 246, 0.2);
+}
+
+.page-chat-emoji-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.page-chat-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+}
+
+.page-chat-emoji-item {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+}
+
+.page-chat-emoji-item:hover {
+    background: rgba(139, 92, 246, 0.15);
+    transform: scale(1.2);
+}
+
+.page-chat-emoji-empty {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+    font-size: 13px;
+    grid-column: span 8;
+}
+
+.page-chat-emoji-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page-chat-emoji-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.page-chat-emoji-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.page-chat-emoji-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.page-chat-emoji-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.page-chat-emoji-tabs::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 2px;
+}
+
+/* ==================== PAGE CHAT STICKER PICKER ==================== */
+.page-chat-sticker-picker {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    max-height: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-chat-sticker-search {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.page-chat-sticker-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+    color: #1f2937;
+    font-size: 13px;
+    outline: none;
+}
+
+.page-chat-sticker-input:focus {
+    background: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.page-chat-sticker-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.page-chat-sticker-tab {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-chat-sticker-tab:hover {
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.page-chat-sticker-tab.active {
+    background: rgba(139, 92, 246, 0.2);
+}
+
+.page-chat-sticker-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    min-height: 0;
+}
+
+.page-chat-sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+}
+
+.page-chat-sticker-item {
+    font-size: 28px;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+}
+
+.page-chat-sticker-item:hover {
+    background: rgba(139, 92, 246, 0.15);
+    transform: scale(1.15);
+}
+
+/* ==================== PAGE CHAT GIF PICKER ==================== */
+.page-chat-gif-picker {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding: 8px;
+    max-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-chat-gif-search {
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.page-chat-gif-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+    color: #1f2937;
+    font-size: 13px;
+    outline: none;
+}
+
+.page-chat-gif-input:focus {
+    background: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.page-chat-gif-container {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.page-chat-gif-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.page-chat-gif-item {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.page-chat-gif-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px #8b5cf6;
+}
+
+.page-chat-gif-loading, .page-chat-gif-empty {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+    font-size: 13px;
+    grid-column: span 3;
+}
+
+.page-chat-gif-loading svg {
+    animation: page-chat-spin 1s linear infinite;
+    margin-bottom: 8px;
+}
+
+@keyframes page-chat-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ==================== PAGE CHAT VOICE RECORDING UI ==================== */
+.page-chat-recording-ui {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 1rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.page-chat-recording-ui.hidden {
+    display: none;
+}
+
+.page-chat-rec-cancel {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.page-chat-rec-cancel:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: scale(1.1);
+}
+
+.page-chat-rec-timer {
+    flex: 1;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937;
+    font-family: monospace;
+}
+
+.page-chat-rec-stop {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    animation: page-chat-pulse 1.5s infinite;
+}
+
+@keyframes page-chat-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+}
+
+.page-chat-rec-stop:hover {
+    transform: scale(1.05);
+}
+
+/* ==================== PAGE CHAT VOICE PREVIEW UI ==================== */
+.page-chat-preview-ui {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 1rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.page-chat-preview-ui.hidden {
+    display: none;
+}
+
+.page-chat-prev-cancel {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.page-chat-prev-cancel:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+.page-chat-prev-play {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    border: none;
+    background: #8b5cf6;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.page-chat-prev-play:hover {
+    background: #7c3aed;
+}
+
+.page-chat-waveform {
+    flex: 1;
+    height: 36px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: #e5e7eb;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.page-chat-wave-bars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    height: 28px;
+}
+
+.page-chat-wave-bar {
+    width: 3px;
+    min-width: 3px;
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 2px;
+    flex-shrink: 0;
+    transition: background 0.1s ease;
+}
+
+.page-chat-wave-bar.active {
+    background: #8b5cf6;
+}
+
+.page-chat-prev-duration {
+    font-size: 14px;
+    color: #1f2937;
+    font-family: monospace;
+    min-width: 40px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.page-chat-prev-send {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    border: none;
+    background: #8b5cf6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.page-chat-prev-send:hover {
+    background: #7c3aed;
+    transform: scale(1.1);
+}
+
+/* Scrollbar styling for page chat pickers */
+.page-chat-sticker-content::-webkit-scrollbar,
+.page-chat-gif-container::-webkit-scrollbar,
+.page-chat-emoji-picker::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page-chat-sticker-content::-webkit-scrollbar-track,
+.page-chat-gif-container::-webkit-scrollbar-track,
+.page-chat-emoji-picker::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.page-chat-sticker-content::-webkit-scrollbar-thumb,
+.page-chat-gif-container::-webkit-scrollbar-thumb,
+.page-chat-emoji-picker::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+
+/* ==================== FIX AUDIO/VIDEO IN MESSAGE BUBBLE ==================== */
+.message-bubble audio,
+.message-bubble video {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+/* Voice message - remove bubble background when containing voice player */
+.message-bubble:has(.voice-message-player) {
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.message-bubble .voice-message-player {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #e5e7eb;
+    border-radius: 20px;
+    max-width: 240px;
+    min-height: 40px;
+    width: fit-content;
+    box-sizing: border-box;
+}
+
+/* Voice player for receiver (them) - gray style */
+.message-bubble.them .voice-message-player {
+    background: #e5e7eb !important;
+}
+
+.message-bubble.them .voice-message-player .voice-play-btn {
+    background: rgba(0, 0, 0, 0.1) !important;
+    color: #1f2937 !important;
+}
+
+.message-bubble.them .voice-message-player .voice-duration-display {
+    color: #6b7280 !important;
+}
+
+.message-bubble.them .voice-message-player .waveform-bar {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+
+.message-bubble.them .voice-message-player .waveform-bar.active {
+    background: #1f2937 !important;
+}
+
+/* Voice player for sender (me) - purple style */
+.message-bubble.me .voice-message-player {
+    background: #8b5cf6 !important;
+}
+
+.message-bubble.me .voice-message-player .voice-play-btn {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+}
+
+.message-bubble.me .voice-message-player .voice-play-btn:hover {
+    background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.message-bubble.me .voice-message-player .voice-play-btn svg {
+    fill: white !important;
+}
+
+.message-bubble.me .voice-message-player .voice-duration-display {
+    color: white !important;
+}
+
+.message-bubble.me .voice-message-player .waveform-bar {
+    background: rgba(255, 255, 255, 0.5) !important;
+}
+
+.message-bubble.me .voice-message-player .waveform-bar.active {
+    background: white !important;
+}
+
+/* Voice player components - scoped to voice-message-player to avoid conflicts */
+.voice-message-player .voice-play-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.1);
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.voice-message-player .voice-play-btn:hover {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.voice-message-player .voice-waveform-display {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    height: 24px;
+    min-width: 0;
+}
+
+/* Scope waveform-bar to voice-message-player to avoid conflict with floating-chat */
+.voice-message-player .waveform-bar {
+    width: 3px;
+    min-width: 3px;
+    min-height: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 2px;
+    transition: background 0.1s ease;
+    flex-shrink: 0;
+}
+
+.voice-message-player .waveform-bar.active {
+    background: #1f2937;
+}
+
+.voice-message-player .voice-duration-display {
+    font-size: 12px;
+    color: #6b7280;
+    font-family: monospace;
+    min-width: 35px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+/* Native audio element styling */
+.message-bubble audio {
+    display: block;
+    max-width: 240px;
+    width: 100%;
+    height: 40px;
+    border-radius: 20px;
+}
+
+/* Remove bubble background when only contains native audio */
+.message-bubble:has(audio:only-child) {
+    padding: 6px 8px;
+    background: transparent !important;
+}
+
+/* Style native audio in me/them bubbles */
+.message-bubble.me audio {
+    filter: invert(1) hue-rotate(180deg);
+}
+
+.message-bubble.them audio {
+    filter: none;
+}
+
+/* Ensure GIF images display properly */
+.message-bubble img[alt="GIF"],
+.message-bubble img[src*="giphy.com"],
+.message-bubble img[src*="tenor.com"],
+.message-bubble img[src*="media.giphy"] {
+    max-width: 260px;
+    border-radius: 8px;
+    background: transparent !important;
+}
+
+/* Generic .gif URL - but exclude cloudinary audio/video */
+.message-bubble img[src$=".gif"]:not([src*="cloudinary"]):not([src*="res.cloudinary"]) {
+    max-width: 260px;
+    border-radius: 8px;
+    background: transparent !important;
+}
+
+/* Voice/Audio from Cloudinary rendered as img - limit height */
+.message-bubble img[src*="cloudinary"][src*="video"],
+.message-bubble img[src*="cloudinary"][src*="webm"],
+.message-bubble img[src*="res.cloudinary"][src*="video"] {
+    max-width: 240px;
+    max-height: 40px;
+    border-radius: 20px;
+    object-fit: contain;
+}
+
+/* Video attachment size limit info */
+.page-chat-video-limit {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+
+/* ==================== PAGE CHAT PRODUCT PICKER ==================== */
+.page-chat-product-picker {
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    padding: 0;
+    height: 350px;
+    max-height: 400px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 8px;
+}
+
+.page-chat-product-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    flex-shrink: 0 !important;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f3e8ff 100%) !important;
+}
+
+.page-chat-product-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    letter-spacing: -0.3px;
+}
+
+.page-chat-product-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #666666;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.page-chat-product-close:hover {
+    background: #f0f0f0;
+    color: #333333;
+}
+
+/* Product Picker Tabs (for Provider chatting with Staff/Admin) */
+.page-chat-product-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.page-chat-product-tab {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+}
+
+.page-chat-product-tab:hover {
+    background: #f9fafb;
+    color: #374151;
+}
+
+.page-chat-product-tab.active {
+    color: #8b5cf6;
+    border-bottom-color: #8b5cf6;
+    background: #faf5ff;
+}
+
+.page-chat-product-search {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.page-chat-product-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f5f5f5;
+    color: #333333;
+    font-size: 13px;
+    outline: none;
+}
+
+.page-chat-product-input:focus {
+    background: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.page-chat-product-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* Important for flex child to allow shrinking and enable scroll */
+    max-height: 220px; /* Ensure scrollable area has max height */
+}
+
+.page-chat-product-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page-chat-product-content::-webkit-scrollbar-thumb {
+    background: #d0d0d0;
+    border-radius: 3px;
+}
+
+.page-chat-product-content::-webkit-scrollbar-thumb:hover {
+    background: #b0b0b0;
+}
+
+.page-chat-product-list {
+    padding: 8px;
+}
+
+.page-chat-product-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+}
+
+.page-chat-product-item:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.2);
+}
+
+.page-chat-product-image {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: #f0f0f0;
+}
+
+.page-chat-product-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.page-chat-product-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.page-chat-product-details {
+    font-size: 11px;
+    color: #666666;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.page-chat-product-price {
+    color: #8b5cf6;
+    font-weight: 500;
+}
+
+.page-chat-product-category {
+    color: #888888;
+}
+
+.page-chat-product-loading,
+.page-chat-product-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: #999999;
+    font-size: 13px;
+}
+
+.page-chat-product-loading svg {
+    animation: page-chat-spin 1s linear infinite;
+    margin-bottom: 8px;
+}
+
+.page-chat-product-load-more {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed #d0d0d0;
+    border-radius: 8px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.page-chat-product-load-more:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: #8b5cf6;
+}
+
+/* Selected product indicator */
+.page-chat-selected-product {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #f8f4ff 0%, #f3e8ff 100%);
+    border-radius: 8px;
+    border: 1px solid #e9d5ff;
+}
+
+.page-chat-selected-image {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.page-chat-selected-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.page-chat-selected-label {
+    font-size: 10px;
+    color: #7c3aed;
+    font-weight: 500;
+}
+
+.page-chat-selected-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.page-chat-selected-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #999999;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.page-chat-selected-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Scrollbar for product picker */
+.page-chat-product-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.page-chat-product-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.page-chat-product-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+
+/* Buy price styling - different color from rental price */
+.page-chat-product-buy-price {
+    color: #059669 !important;
+    font-weight: 600;
+}
+
+.page-chat-product-buy-price::before {
+    content: "Buy: ";
+    font-weight: 400;
+    color: #666666;
+}
+
+.page-chat-product-price:not(.page-chat-product-buy-price)::before {
+    content: "Rent: ";
+    font-weight: 400;
+    color: #666666;
+}

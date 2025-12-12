@@ -1,4 +1,5 @@
 using BusinessObject.DTOs.RevenueDtos;
+using BusinessObject.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -297,7 +298,7 @@ namespace Services.Tests.Controllers
                 }
             };
 
-            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5))
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5, null))
                 .ReturnsAsync(topRevenue);
 
             // Act
@@ -309,7 +310,7 @@ namespace Services.Tests.Controllers
             Assert.Single(payload);
             Assert.Equal("Product A", payload[0].ProductName);
             Assert.Equal(5000, payload[0].Revenue);
-            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5), Times.Once);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5, null), Times.Once);
         }
 
         [Fact]
@@ -324,7 +325,7 @@ namespace Services.Tests.Controllers
             // Assert
             var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
             Assert.Equal("User not found", unauthorized.Value);
-            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<int>()), Times.Never);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<int>(), It.IsAny<TransactionType?>()), Times.Never);
         }
 
         [Fact]
@@ -333,7 +334,7 @@ namespace Services.Tests.Controllers
             // Arrange
             var providerId = Guid.NewGuid();
             SetupProvider(providerId);
-            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5))
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5, null))
                 .ThrowsAsync(new ArgumentException("Invalid date range"));
 
             // Act
@@ -350,7 +351,7 @@ namespace Services.Tests.Controllers
             // Arrange
             var providerId = Guid.NewGuid();
             SetupProvider(providerId);
-            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5))
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, 5, null))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
@@ -374,7 +375,7 @@ namespace Services.Tests.Controllers
 
             var topRevenue = new List<TopRevenueItemDto>();
 
-            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5))
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5, null))
                 .ReturnsAsync(topRevenue);
 
             // Act
@@ -382,7 +383,7 @@ namespace Services.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5), Times.Once);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", startDate, endDate, 5, null), Times.Once);
         }
 
         [Fact]
@@ -395,7 +396,7 @@ namespace Services.Tests.Controllers
 
             var topRevenue = new List<TopRevenueItemDto>();
 
-            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, limit))
+            _serviceMock.Setup(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, limit, null))
                 .ReturnsAsync(topRevenue);
 
             // Act
@@ -403,7 +404,7 @@ namespace Services.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, limit), Times.Once);
+            _serviceMock.Verify(s => s.GetTopRevenueByProductAsync(providerId, "month", null, null, limit, null), Times.Once);
         }
 
         #endregion

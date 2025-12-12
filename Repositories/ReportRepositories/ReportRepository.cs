@@ -75,6 +75,24 @@ namespace Repositories.ReportRepositories
                 // Tự động set OrderId từ OrderItem
                 dto.OrderId = orderItem.OrderId;
             }
+            // Kiểm tra nếu report về toàn bộ Order
+            else if (dto.ReportType == ReportType.Order)
+            {
+                if (!dto.OrderId.HasValue)
+                    throw new ArgumentException("OrderId is required for Order reports");
+
+                var order = await _context.Orders
+                    .FirstOrDefaultAsync(o => o.Id == dto.OrderId.Value);
+                
+                if (order == null)
+                    throw new ArgumentException("Order not found");
+                
+                if (order.Status != OrderStatus.in_use)
+                    throw new InvalidOperationException("Can only report orders when order is in use");
+                
+                // Đảm bảo OrderItemId là null cho Order report
+                dto.OrderItemId = null;
+            }
 
             // Logic tạo Report với hỗ trợ OrderId, OrderItemId và EvidenceImages
             var report = new Report
@@ -88,7 +106,7 @@ namespace Repositories.ReportRepositories
                 Subject = dto.Subject,
                 Description = dto.Description,
                 Status = ReportStatus.open,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 Priority = dto.Priority,
                 EvidenceImages = dto.EvidenceImages != null && dto.EvidenceImages.Any() 
                     ? JsonSerializer.Serialize(dto.EvidenceImages) 

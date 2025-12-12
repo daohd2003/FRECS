@@ -144,8 +144,39 @@ namespace Services.RentalViolationServices
                                 uploadedFilePublicIds.Add(uploadResult.PublicId);
                             }
 
-                            // Determine file type
-                            string fileType = file.ContentType.StartsWith("image/") ? "image" : "video";
+                            // Determine file type - check both ContentType and file extension for accuracy
+                            string fileType = "image"; // default
+                            if (file.ContentType != null)
+                            {
+                                if (file.ContentType.StartsWith("image/"))
+                                {
+                                    fileType = "image";
+                                }
+                                else if (file.ContentType.StartsWith("video/"))
+                                {
+                                    fileType = "video";
+                                }
+                                else
+                                {
+                                    // Fallback: check file extension if ContentType is not reliable
+                                    var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                                    var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                                    if (videoExtensions.Contains(extension))
+                                    {
+                                        fileType = "video";
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // If ContentType is null, check extension
+                                var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                                var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                                if (videoExtensions.Contains(extension))
+                                {
+                                    fileType = "video";
+                                }
+                            }
 
                             // Save to database
                             var image = new RentalViolationImage
@@ -220,6 +251,20 @@ namespace Services.RentalViolationServices
             var depositAmount = violation.OrderItem.DepositPerUnit * violation.OrderItem.Quantity;
             var refundAmount = depositAmount - violation.PenaltyAmount;
 
+            // Get admin resolution note if violation was resolved by admin
+            string? adminResolutionNote = null;
+            string? adminResolutionType = null;
+            if (violation.Status == ViolationStatus.RESOLVED_BY_ADMIN)
+            {
+                var resolution = await _context.IssueResolutions
+                    .FirstOrDefaultAsync(r => r.ViolationId == violationId);
+                if (resolution != null)
+                {
+                    adminResolutionNote = resolution.Reason;
+                    adminResolutionType = resolution.ResolutionType.ToString();
+                }
+            }
+
             var detailDto = new RentalViolationDetailDto
             {
                 ViolationId = violation.ViolationId,
@@ -250,7 +295,9 @@ namespace Services.RentalViolationServices
                     UploadedByDisplay = img.UploadedBy == EvidenceUploadedBy.PROVIDER ? "Nhà cung cấp" : "Khách hàng",
                     FileType = img.FileType,
                     UploadedAt = img.UploadedAt
-                }).ToList()
+                }).ToList(),
+                AdminResolutionNote = adminResolutionNote,
+                AdminResolutionType = adminResolutionType
             };
 
             return detailDto;
@@ -261,16 +308,27 @@ namespace Services.RentalViolationServices
             var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
             var violationDtos = _mapper.Map<IEnumerable<RentalViolationDto>>(violations).ToList();
 
-            // Populate evidence URLs for each violation
+            // Populate evidence URLs and images for each violation
             foreach (var dto in violationDtos)
             {
                 var violation = violations.First(v => v.ViolationId == dto.ViolationId);
                 if (violation.Images != null && violation.Images.Any())
                 {
-                    dto.EvidenceUrls = violation.Images
+                    var providerImages = violation.Images
                         .Where(img => img.UploadedBy == BusinessObject.Enums.EvidenceUploadedBy.PROVIDER)
-                        .Select(img => img.ImageUrl)
                         .ToList();
+
+                    dto.EvidenceUrls = providerImages.Select(img => img.ImageUrl).ToList();
+                    dto.EvidenceImages = providerImages.Select(img => new RentalViolationImageDto
+                    {
+                        ImageId = img.ImageId,
+                        ViolationId = img.ViolationId,
+                        ImageUrl = img.ImageUrl,
+                        UploadedBy = img.UploadedBy,
+                        UploadedByDisplay = img.UploadedBy == EvidenceUploadedBy.PROVIDER ? "Nhà cung cấp" : "Khách hàng",
+                        FileType = img.FileType,
+                        UploadedAt = img.UploadedAt
+                    }).ToList();
                     dto.EvidenceCount = dto.EvidenceUrls.Count;
                 }
             }
@@ -283,11 +341,32 @@ namespace Services.RentalViolationServices
             var violations = await _violationRepo.GetViolationsByOrderIdAsync(orderId);
             var detailDtos = new List<RentalViolationDetailDto>();
 
+            // Get all violation IDs that were resolved by admin
+            var violationIds = violations
+                .Where(v => v.Status == ViolationStatus.RESOLVED_BY_ADMIN)
+                .Select(v => v.ViolationId)
+                .ToList();
+
+            // Batch fetch all admin resolutions for these violations
+            var adminResolutions = await _context.IssueResolutions
+                .Where(r => violationIds.Contains(r.ViolationId))
+                .ToDictionaryAsync(r => r.ViolationId, r => r);
+
             foreach (var violation in violations)
             {
                 // Calculate deposit amount and refund amount
                 var depositAmount = violation.OrderItem.DepositPerUnit * violation.OrderItem.Quantity;
                 var refundAmount = depositAmount - violation.PenaltyAmount;
+
+                // Get admin resolution note if available
+                string? adminResolutionNote = null;
+                string? adminResolutionType = null;
+                if (violation.Status == ViolationStatus.RESOLVED_BY_ADMIN && 
+                    adminResolutions.TryGetValue(violation.ViolationId, out var resolution))
+                {
+                    adminResolutionNote = resolution.Reason;
+                    adminResolutionType = resolution.ResolutionType.ToString();
+                }
 
                 var detailDto = new RentalViolationDetailDto
                 {
@@ -310,7 +389,9 @@ namespace Services.RentalViolationServices
                     CreatedAt = violation.CreatedAt,
                     UpdatedAt = violation.UpdatedAt,
                     OrderItem = _mapper.Map<OrderItemDetailsDto>(violation.OrderItem),
-                    Images = _mapper.Map<List<RentalViolationImageDto>>(violation.Images)
+                    Images = _mapper.Map<List<RentalViolationImageDto>>(violation.Images),
+                    AdminResolutionNote = adminResolutionNote,
+                    AdminResolutionType = adminResolutionType
                 };
 
                 detailDtos.Add(detailDto);
@@ -391,7 +472,7 @@ namespace Services.RentalViolationServices
                 violation.PenaltyAmount = dto.PenaltyAmount.Value;
 
             // Keep existing status (don't reset to PENDING like UpdateViolationByProviderAsync)
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             return await _violationRepo.UpdateViolationAsync(violation);
         }
@@ -414,7 +495,7 @@ namespace Services.RentalViolationServices
             {
                 // Customer accepts
                 violation.Status = ViolationStatus.CUSTOMER_ACCEPTED;
-                violation.CustomerResponseAt = DateTime.UtcNow;
+                violation.CustomerResponseAt = DateTimeHelper.GetVietnamTime();
 
                 // Update violation first
                 var updateResult = await _violationRepo.UpdateViolationAsync(violation);
@@ -430,7 +511,7 @@ namespace Services.RentalViolationServices
                 // Customer rejects - does not automatically escalate to admin
                 violation.Status = ViolationStatus.CUSTOMER_REJECTED;
                 violation.CustomerNotes = dto.CustomerNotes;
-                violation.CustomerResponseAt = DateTime.UtcNow;
+                violation.CustomerResponseAt = DateTimeHelper.GetVietnamTime();
 
                 // Upload customer's evidence if any
                 if (dto.EvidenceFiles != null && dto.EvidenceFiles.Any())
@@ -444,7 +525,39 @@ namespace Services.RentalViolationServices
                             "violations"
                         );
 
-                        string fileType = file.ContentType.StartsWith("image/") ? "image" : "video";
+                        // Determine file type - check both ContentType and file extension for accuracy
+                        string fileType = "image"; // default
+                        if (file.ContentType != null)
+                        {
+                            if (file.ContentType.StartsWith("image/"))
+                            {
+                                fileType = "image";
+                            }
+                            else if (file.ContentType.StartsWith("video/"))
+                            {
+                                fileType = "video";
+                            }
+                            else
+                            {
+                                // Fallback: check file extension if ContentType is not reliable
+                                var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                                var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                                if (videoExtensions.Contains(extension))
+                                {
+                                    fileType = "video";
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // If ContentType is null, check extension
+                            var extension = Path.GetExtension(file.FileName)?.ToLower() ?? string.Empty;
+                            var videoExtensions = new[] { ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv" };
+                            if (videoExtensions.Contains(extension))
+                            {
+                                fileType = "video";
+                            }
+                        }
 
                         var image = new RentalViolationImage
                         {
@@ -566,7 +679,7 @@ namespace Services.RentalViolationServices
                     Notes = totalPenalties > 0
                         ? $"Deposit refund after all violations resolved. Total penalties: {totalPenalties:N0} ₫"
                         : "Full deposit refund - no penalties",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTimeHelper.GetVietnamTime()
                 };
 
                 await _context.DepositRefunds.AddAsync(depositRefund);
@@ -611,7 +724,7 @@ namespace Services.RentalViolationServices
                 {
                     var oldStatus = order.Status; // Store old status for UpdateProductCounts
                     order.Status = OrderStatus.returned;
-                    order.UpdatedAt = DateTime.UtcNow;
+                    order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
                     // Update product counts (RentCount/BuyCount) when order becomes returned
                     await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
@@ -664,7 +777,7 @@ namespace Services.RentalViolationServices
             {
                 var oldStatus = order.Status; // Store old status for UpdateProductCounts
                 order.Status = OrderStatus.returned;
-                order.UpdatedAt = DateTime.UtcNow;
+                order.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
                 // Update product counts (RentCount/BuyCount) when order becomes returned
                 await UpdateProductCounts(order, oldStatus, OrderStatus.returned);
@@ -802,7 +915,7 @@ namespace Services.RentalViolationServices
 
             // Update status to PENDING_ADMIN_REVIEW
             violation.Status = ViolationStatus.PENDING_ADMIN_REVIEW;
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             // Store escalation reason in separate fields based on who escalated
             if (!string.IsNullOrEmpty(escalationReason))
@@ -877,8 +990,8 @@ namespace Services.RentalViolationServices
 
             // Update provider response
             violation.ProviderResponseToCustomer = response;
-            violation.ProviderResponseAt = DateTime.UtcNow;
-            violation.UpdatedAt = DateTime.UtcNow;
+            violation.ProviderResponseAt = DateTimeHelper.GetVietnamTime();
+            violation.UpdatedAt = DateTimeHelper.GetVietnamTime();
 
             var updateResult = await _violationRepo.UpdateViolationAsync(violation);
 

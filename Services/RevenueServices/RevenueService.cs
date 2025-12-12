@@ -2,6 +2,7 @@ using AutoMapper;
 using BusinessObject.DTOs.RevenueDtos;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.RevenueRepositories;
 using Repositories.TransactionRepositories;
 using Repositories.BankAccountRepositories;
@@ -39,7 +40,7 @@ namespace Services.RevenueServices
                 throw new ArgumentException("Start date cannot be later than end date. Please select a valid date range.");
             }
 
-            var now = DateTime.UtcNow;
+            var now = DateTimeHelper.GetVietnamTime();
             DateTime currentPeriodStart, currentPeriodEnd, previousPeriodStart, previousPeriodEnd;
 
             // Determine period ranges
@@ -194,7 +195,7 @@ namespace Services.RevenueServices
                 PendingAmount = pendingAmount,
                 TotalEarnings = totalEarnings,
                 TotalPayouts = totalPayouts,
-                NextPayoutDate = DateTime.UtcNow.AddDays(7),
+                NextPayoutDate = DateTimeHelper.GetVietnamTime().AddDays(7),
                 RecentPayouts = recentPayouts
             };
         }
@@ -226,7 +227,7 @@ namespace Services.RevenueServices
                 AccountHolderName = ba.AccountHolderName,
                 RoutingNumber = ba.RoutingNumber,
                 IsPrimary = ba.IsPrimary,
-                CreatedAt = DateTime.UtcNow // BankAccount doesn't have CreatedAt, using current time
+                CreatedAt = DateTimeHelper.GetVietnamTime() // BankAccount doesn't have CreatedAt, using current time
             }).ToList();
         }
 
@@ -306,7 +307,7 @@ namespace Services.RevenueServices
                 Amount = amount,
                 Status = TransactionStatus.completed,
                 Content = "payout",
-                TransactionDate = DateTime.UtcNow
+                TransactionDate = DateTimeHelper.GetVietnamTime()
             };
 
             await _transactionRepository.AddTransactionAsync(transaction);
@@ -419,9 +420,9 @@ namespace Services.RevenueServices
             };
         }
 
-        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5)
+        public async Task<List<TopRevenueItemDto>> GetTopRevenueByProductAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5, TransactionType? transactionType = null)
         {
-            var now = DateTime.UtcNow;
+            var now = DateTimeHelper.GetVietnamTime();
             DateTime start, end;
 
             // Determine period ranges (same logic as GetRevenueStatsAsync)
@@ -449,12 +450,12 @@ namespace Services.RevenueServices
                 }
             }
 
-            return await _revenueRepository.GetTopRevenueByProductAsync(userId, start, end, limit);
+            return await _revenueRepository.GetTopRevenueByProductAsync(userId, start, end, limit, transactionType);
         }
 
         public async Task<List<TopCustomerDto>> GetTopCustomersAsync(Guid userId, string period = "month", DateTime? startDate = null, DateTime? endDate = null, int limit = 5)
         {
-            var now = DateTime.UtcNow;
+            var now = DateTimeHelper.GetVietnamTime();
             DateTime start, end;
 
             // Determine period ranges (same logic as GetRevenueStatsAsync)

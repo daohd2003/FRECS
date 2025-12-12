@@ -332,48 +332,75 @@
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <!-- Top 5 Revenue by Product -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top 5 Product Revenue</h3>
-                        @if (Model.TopRevenueItems != null && Model.TopRevenueItems.Any())
-                        {
-                            <div class="space-y-4">
-                                @foreach (var item in Model.TopRevenueItems)
-                                {
-                                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                        <div class="flex items-center space-x-4 flex-1">
-                                            @if (!string.IsNullOrEmpty(item.ProductImageUrl))
-                                            {
-                                                <img src="@item.ProductImageUrl" alt="@item.ProductName" class="w-16 h-16 object-cover rounded-lg" />
-                                            }
-                                            else
-                                            {
-                                                <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                    <i data-lucide="image" class="h-8 w-8 text-gray-400"></i>
-                                                </div>
-                                            }
-                                            <div class="flex-1 min-w-0">
-                                                <h4 class="text-sm font-semibold text-gray-900 truncate">@item.ProductName</h4>
-                                                <div class="flex items-center space-x-2 mt-1">
-                                                    <span class="text-xs px-2 py-1 rounded-full @(item.TransactionType == "rental" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700")">
-                                                        @(item.TransactionType == "rental" ? "Rental" : "Purchase")
-                                                    </span>
-                                                    <span class="text-xs text-gray-500">@item.OrderCount orders</span>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Top 5 Product Revenue</h3>
+                            <div class="flex items-center space-x-2" id="revenueFilterButtons"
+                                 data-period="@Model.Period"
+                                 data-start="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                                 data-end="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                                 data-limit="5"
+                                 data-active-filter="@(string.IsNullOrEmpty(Model.RevenueTypeFilter) ? "all" : Model.RevenueTypeFilter)">
+                                <button type="button" data-revenue-filter="all"
+                                        class="px-3 py-1 text-xs rounded-lg transition-colors @(Model.RevenueTypeFilter == "all" || string.IsNullOrEmpty(Model.RevenueTypeFilter) ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")">
+                                    All
+                                </button>
+                                <button type="button" data-revenue-filter="rental"
+                                        class="px-3 py-1 text-xs rounded-lg transition-colors @(Model.RevenueTypeFilter == "rental" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")">
+                                    Rental
+                                </button>
+                                <button type="button" data-revenue-filter="purchase"
+                                        class="px-3 py-1 text-xs rounded-lg transition-colors @(Model.RevenueTypeFilter == "purchase" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")">
+                                    Purchase
+                                </button>
+                            </div>
+                        </div>
+                        <div id="topRevenueBody">
+                            @if (Model.TopRevenueItems != null && Model.TopRevenueItems.Any())
+                            {
+                                <div class="space-y-4">
+                                    @foreach (var item in Model.TopRevenueItems)
+                                    {
+                                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <div class="flex items-center space-x-4 flex-1">
+                                                <a href="/products/detail/@item.ProductId" class="flex-shrink-0">
+                                                    @if (!string.IsNullOrEmpty(item.ProductImageUrl))
+                                                    {
+                                                        <img src="@item.ProductImageUrl" alt="@item.ProductName" class="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors">
+                                                            <i data-lucide="image" class="h-8 w-8 text-gray-400"></i>
+                                                        </div>
+                                                    }
+                                                </a>
+                                                <div class="flex-1 min-w-0">
+                                                    <a href="/products/detail/@item.ProductId" class="block">
+                                                        <h4 class="text-sm font-semibold text-gray-900 truncate hover:text-purple-600 cursor-pointer transition-colors">@item.ProductName</h4>
+                                                    </a>
+                                                    <div class="flex items-center space-x-2 mt-1">
+                                                        <span class="text-xs px-2 py-1 rounded-full @(item.TransactionType == "rental" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700")">
+                                                            @(item.TransactionType == "rental" ? "Rental" : "Purchase")
+                                                        </span>
+                                                        <span class="text-xs text-gray-500">@item.OrderCount orders</span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div class="text-right ml-4">
+                                                <p class="text-sm font-bold text-gray-900">@item.Revenue.ToString("N0")₫</p>
+                                            </div>
                                         </div>
-                                        <div class="text-right ml-4">
-                                            <p class="text-sm font-bold text-gray-900">@item.Revenue.ToString("N0")₫</p>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-center py-8 text-gray-500">
-                                <i data-lucide="package" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
-                                <p>No product revenue data available</p>
-                            </div>
-                        }
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-8 text-gray-500">
+                                    <i data-lucide="package" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
+                                    <p>No product revenue data available</p>
+                                </div>
+                            }
+                        </div>
                     </div>
 
                     <!-- Top 5 Customers -->
@@ -819,7 +846,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Withdrawal History</h3>
                 
-                @if (Model.WithdrawalHistory.Any())
+                @if (Model.PagedWithdrawalHistory.Any())
                 {
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -833,7 +860,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach (var withdrawal in Model.WithdrawalHistory)
+                                @foreach (var withdrawal in Model.PagedWithdrawalHistory)
                                 {
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -865,6 +892,27 @@
                             </tbody>
                         </table>
                     </div>
+                    @if (Model.WithdrawalTotalPages > 1)
+                    {
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between mt-4 space-y-3 md:space-y-0">
+                            <p class="text-sm text-gray-600">Page @Model.WithdrawalPage of @Model.WithdrawalTotalPages</p>
+                            <div class="flex items-center space-x-2">
+                                <a href="?tab=payout&period=@Model.Period&withdrawalPage=@(Model.WithdrawalPage - 1)@(Model.StartDate.HasValue && Model.EndDate.HasValue ? $"&StartDate={Model.StartDate:yyyy-MM-dd}&EndDate={Model.EndDate:yyyy-MM-dd}" : string.Empty)"
+                                   class="px-3 py-1 text-sm rounded-lg border @(Model.WithdrawalPage <= 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white text-gray-700 hover:bg-gray-50")"
+                                   @(Model.WithdrawalPage <= 1 ? "aria-disabled=\"true\"" : string.Empty)>Previous</a>
+                                @for (int i = 1; i <= Model.WithdrawalTotalPages; i++)
+                                {
+                                    <a href="?tab=payout&period=@Model.Period&withdrawalPage=@i@(Model.StartDate.HasValue && Model.EndDate.HasValue ? $"&StartDate={Model.StartDate:yyyy-MM-dd}&EndDate={Model.EndDate:yyyy-MM-dd}" : string.Empty)"
+                                       class="px-3 py-1 text-sm rounded-lg border @(i == Model.WithdrawalPage ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 hover:bg-gray-50")">
+                                        @i
+                                    </a>
+                                }
+                                <a href="?tab=payout&period=@Model.Period&withdrawalPage=@(Model.WithdrawalPage + 1)@(Model.StartDate.HasValue && Model.EndDate.HasValue ? $"&StartDate={Model.StartDate:yyyy-MM-dd}&EndDate={Model.EndDate:yyyy-MM-dd}" : string.Empty)"
+                                   class="px-3 py-1 text-sm rounded-lg border @(Model.WithdrawalPage >= Model.WithdrawalTotalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white text-gray-700 hover:bg-gray-50")"
+                                   @(Model.WithdrawalPage >= Model.WithdrawalTotalPages ? "aria-disabled=\"true\"" : string.Empty)>Next</a>
+                            </div>
+                        </div>
+                    }
                 }
                 else
                 {
@@ -963,6 +1011,139 @@
         // Make toast functions global
         window.showToast = showToast;
         window.closeToast = closeToast;
+
+        // Top revenue filter (AJAX) ----------------------------------------
+        function formatCurrency(value) {
+            return `${Number(value || 0).toLocaleString('vi-VN')}₫`;
+        }
+
+        function setActiveRevenueFilter(selected) {
+            const buttons = document.querySelectorAll('[data-revenue-filter]');
+            buttons.forEach(button => {
+                const type = button.dataset.revenueFilter || 'all';
+                const baseClasses = 'px-3 py-1 text-xs rounded-lg transition-colors';
+                let activeClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+
+                if (type === selected) {
+                    activeClasses = type === 'rental'
+                        ? 'bg-blue-600 text-white'
+                        : type === 'purchase'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-purple-600 text-white';
+                }
+
+                button.className = `${baseClasses} ${activeClasses}`;
+            });
+        }
+
+        function renderTopRevenue(items) {
+            const container = document.getElementById('topRevenueBody');
+            if (!container) return;
+
+            if (!items || items.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i data-lucide="package" class="h-12 w-12 mx-auto text-gray-300 mb-4"></i>
+                        <p>No product revenue data available</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const badgeClasses = item.transactionType === 'rental'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-green-100 text-green-700';
+
+                const imageHtml = item.productImageUrl
+                    ? `<img src="${item.productImageUrl}" alt="${item.productName ?? 'Product'}" class="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" />`
+                    : `<div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors">
+                            <i data-lucide="image" class="h-8 w-8 text-gray-400"></i>
+                       </div>`;
+
+                return `
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <a href="/products/detail/${item.productId}" class="flex-shrink-0">${imageHtml}</a>
+                            <div class="flex-1 min-w-0">
+                                <a href="/products/detail/${item.productId}" class="block">
+                                    <h4 class="text-sm font-semibold text-gray-900 truncate hover:text-purple-600 cursor-pointer transition-colors">${item.productName ?? 'Unknown'}</h4>
+                                </a>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="text-xs px-2 py-1 rounded-full ${badgeClasses}">
+                                        ${item.transactionType === 'rental' ? 'Rental' : 'Purchase'}
+                                    </span>
+                                    <span class="text-xs text-gray-500">${item.orderCount ?? 0} orders</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right ml-4">
+                            <p class="text-sm font-bold text-gray-900">${formatCurrency(item.revenue)}</p>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function loadTopRevenue(transactionType = 'all') {
+            const container = document.getElementById('topRevenueBody');
+            const filterGroup = document.getElementById('revenueFilterButtons');
+            if (!container || !filterGroup) return;
+
+            const period = filterGroup.dataset.period || 'month';
+            const start = filterGroup.dataset.start;
+            const end = filterGroup.dataset.end;
+            const limit = filterGroup.dataset.limit || 5;
+
+            const params = new URLSearchParams({ handler: 'TopRevenue', period, limit });
+            if (transactionType && transactionType !== 'all') {
+                params.append('transactionType', transactionType);
+            }
+            if (start) params.append('startDate', start);
+            if (end) params.append('endDate', end);
+
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i data-lucide="loader-2" class="h-8 w-8 mx-auto animate-spin mb-2"></i>
+                    <p>Loading...</p>
+                </div>`;
+
+            try {
+                const response = await fetch(`?${params.toString()}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load data');
+                }
+
+                const data = await response.json();
+                renderTopRevenue(Array.isArray(data) ? data : []);
+            } catch (error) {
+                console.error('Top revenue load error:', error);
+                container.innerHTML = `
+                    <div class="text-center py-8 text-red-500">
+                        <p>Unable to load revenue data. Please try again.</p>
+                    </div>`;
+                showToast('Không thể tải dữ liệu Top Revenue. Vui lòng thử lại.', 'error');
+            } finally {
+                setActiveRevenueFilter(transactionType || 'all');
+                lucide.createIcons();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const filterGroup = document.getElementById('revenueFilterButtons');
+            if (!filterGroup) return;
+
+            const currentFilter = filterGroup.dataset.activeFilter || 'all';
+            setActiveRevenueFilter(currentFilter);
+
+            document.querySelectorAll('[data-revenue-filter]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const filter = button.dataset.revenueFilter || 'all';
+                    loadTopRevenue(filter);
+                });
+            });
+        });
 
         // Bank Account Modal Functions
         function openAddBankAccountModal() {

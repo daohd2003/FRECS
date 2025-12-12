@@ -319,11 +319,12 @@
                             </button>
                         }
                         
-                        <!-- Handle Violations Button (for returned_with_issue orders) -->
-                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue)
+                        <!-- Handle/Review Violations Button -->
+                        @if (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue 
+                            || (Model.Order.Status == BusinessObject.Enums.OrderStatus.returned && Model.Order.HasReturnIssues))
                         {
                             <button type="button" class="btn btn-warning handle-violations-btn" data-order-id="@Model.Order.Id">
-                                <i class="bi bi-exclamation-triangle"></i> Handle Violations
+                                <i class="bi bi-exclamation-triangle"></i> @(Model.Order.Status == BusinessObject.Enums.OrderStatus.returned_with_issue ? "Handle Violations" : "View Penalties")
                             </button>
                         }
                         
@@ -517,8 +518,25 @@
                 <input type="hidden" id="report-provider-id-item" value="@Model.Order?.ProviderId" />
                 
                 <div class="form-group">
-                    <label>Select Product to Report <span class="text-danger">*</span></label>
+                    <label>What would you like to report? <span class="text-danger">*</span></label>
                     <div class="product-selection">
+                        <!-- Option to report entire order -->
+                        <div class="product-option">
+                            <input type="radio" id="report-entire-order" name="selectedProduct" value="entire-order" class="form-check-input" />
+                            <label for="report-entire-order" class="product-label" style="background: #fef3c7; border: 1px solid #f59e0b;">
+                                <div style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; background: #f59e0b; border-radius: 4px;">
+                                    <i class="bi bi-box-seam" style="font-size: 24px; color: white;"></i>
+                                </div>
+                                <div class="product-info">
+                                    <strong style="color: #92400e;">Report Entire Order</strong>
+                                    <small style="color: #b45309;">Report an issue with the whole order</small>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <!-- Separator -->
+                        <div style="text-align: center; color: #9ca3af; font-size: 12px; padding: 5px 0;">— or select a specific product —</div>
+                        
                         @foreach (var item in Model.Order.Items)
                         {
                             <div class="product-option">
@@ -558,6 +576,12 @@
                         <option value="Hygiene/Cleanliness Issue">Hygiene/Cleanliness Issue</option>
                         <option value="Other">Other</option>
                     </select>
+                </div>
+                
+                <div class="form-group" id="custom-issue-type-group" style="display: none;">
+                    <label for="custom-issue-type">Specify Issue Type <span class="text-danger">*</span></label>
+                    <input type="text" id="custom-issue-type" class="form-control" placeholder="Enter your issue type..." maxlength="100" />
+                    <small class="text-muted">Please describe the type of issue you're experiencing</small>
                 </div>
                 
                 <div class="form-group">
@@ -1679,9 +1703,24 @@
             document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     if (this.checked) {
-                        document.getElementById('report-item-id').value = this.value;
+                        // Set report-item-id only if not reporting entire order
+                        document.getElementById('report-item-id').value = this.value === 'entire-order' ? '' : this.value;
                     }
                 });
+            });
+            
+            // Handle Issue Type change - show/hide custom input when "Other" is selected
+            document.getElementById('report-item-subject').addEventListener('change', function() {
+                const customGroup = document.getElementById('custom-issue-type-group');
+                const customInput = document.getElementById('custom-issue-type');
+                if (this.value === 'Other') {
+                    customGroup.style.display = 'block';
+                    customInput.required = true;
+                } else {
+                    customGroup.style.display = 'none';
+                    customInput.required = false;
+                    customInput.value = '';
+                }
             });
             
             // Handle Add Images button click
@@ -1794,26 +1833,43 @@
                 document.querySelectorAll('input[name="selectedProduct"]').forEach(radio => {
                     radio.checked = false;
                 });
+                // Hide custom issue type field
+                document.getElementById('custom-issue-type-group').style.display = 'none';
+                document.getElementById('custom-issue-type').value = '';
+                document.getElementById('custom-issue-type').required = false;
                 updateEvidenceCounter();
             };
             
             window.submitItemReport = async function() {
-                const itemId = document.getElementById('report-item-id').value;
-                const subject = document.getElementById('report-item-subject').value;
+                const selectedProduct = document.querySelector('input[name="selectedProduct"]:checked');
+                let subject = document.getElementById('report-item-subject').value;
+                const customIssueType = document.getElementById('custom-issue-type').value;
                 const description = document.getElementById('report-item-description').value;
                 const priority = document.getElementById('report-item-priority').value;
                 const orderId = document.getElementById('report-item-order-id').value;
                 const providerId = document.getElementById('report-provider-id-item').value;
                 
                 // Validation
-                if (!itemId) {
-                    alert('Please select a product to report');
+                if (!selectedProduct) {
+                    alert('Please select what you want to report');
                     return;
                 }
+                
+                const isEntireOrder = selectedProduct.value === 'entire-order';
+                const itemId = isEntireOrder ? null : selectedProduct.value;
                 
                 if (!subject) {
                     alert('Please select an issue type');
                     return;
+                }
+                
+                // If "Other" is selected, use custom issue type
+                if (subject === 'Other') {
+                    if (!customIssueType || customIssueType.trim().length < 3) {
+                        alert('Please specify your issue type (minimum 3 characters)');
+                        return;
+                    }
+                    subject = customIssueType.trim();
                 }
                 
                 if (!description || description.trim().length < 5) {
@@ -1870,16 +1926,21 @@
                         headers['Authorization'] = `Bearer ${accessToken}`;
                     }
                     
+                    // Build report data based on report type
                     const reportData = {
                         reporteeId: providerId,
                         orderId: orderId,
-                        orderItemId: itemId,
-                        reportType: 'OrderItem',
+                        reportType: isEntireOrder ? 'Order' : 'OrderItem',
                         subject: subject,
                         description: description.trim(),
                         priority: priority,
                         evidenceImages: evidenceUrls
                     };
+                    
+                    // Only include orderItemId if reporting a specific item
+                    if (!isEntireOrder) {
+                        reportData.orderItemId = itemId;
+                    }
                     
                     const response = await fetch('@Model.ApiBaseUrl/report', {
                         method: 'POST',
@@ -1888,7 +1949,10 @@
                     });
                     
                     if (response.ok) {
-                        alert('Your product report has been submitted successfully. Our team will review it shortly.');
+                        const successMessage = isEntireOrder 
+                            ? 'Your order report has been submitted successfully. Our team will review it shortly.'
+                            : 'Your product report has been submitted successfully. Our team will review it shortly.';
+                        alert(successMessage);
                         closeReportItemModal();
                     } else {
                         const errorData = await response.json().catch(() => ({ message: 'Failed to submit report' }));
@@ -1930,8 +1994,6 @@
                 $('#violations-content').addClass('hidden');
 
                 try {
-                    console.log('Loading violations for orderId:', orderId);
-                    
                     // Try API directly first - use details endpoint for product info
                     const accessToken = '@(Request.Cookies["AccessToken"])';
                     const response = await fetch(`@Model.ApiBaseUrl/rental-violations/order/${orderId}/details`, {
@@ -1978,16 +2040,14 @@
                 }
                 
                 violations.forEach((violation, index) => {
-                    console.log('Processing violation:', violation); // Debug log
-                    console.log('OrderItem structure:', violation.orderItem); // Debug OrderItem structure
-                    
                     // Extract evidence data from images array
-                    const evidenceUrls = violation.images ? violation.images.map(img => img.imageUrl) : [];
+                    // Handle both camelCase (imageUrl) and PascalCase (ImageUrl) from API
+                    const evidenceData = violation.images ? violation.images.map(img => ({
+                        url: img.imageUrl || img.ImageUrl || '',
+                        fileType: (img.fileType || img.FileType || '').toLowerCase()
+                    })).filter(item => item.url) : [];
+                    const evidenceUrls = evidenceData.map(item => item.url);
                     const evidenceCount = violation.images ? violation.images.length : 0;
-                    
-                    console.log('Evidence URLs extracted:', evidenceUrls); // Debug evidence URLs
-                    console.log('Evidence count extracted:', evidenceCount); // Debug evidence count
-                    console.log('Raw images array:', violation.images); // Debug images array
                     
                     const statusClass = violation.status.toLowerCase().replace(/_/g, '-');
                     const statusDisplay = violation.status.replace(/_/g, ' ');
@@ -1998,9 +2058,6 @@
                     const productImage = violation.orderItem?.primaryImageUrl || '/images/placeholder.jpg';
                     const productSize = violation.orderItem?.size || '';
                     const productColor = violation.orderItem?.color || '';
-                    
-                    console.log('OrderItem structure:', violation.orderItem); // Debug log
-                    console.log('Product info:', { productName, productImage, productSize, productColor }); // Debug log
                     
                     html += `
                         <div class="violation-card" data-violation-id="${violation.violationId}">
@@ -2032,17 +2089,49 @@
                                         <p>${violation.description}</p>
                                     </div>
                                     
-                                    <!-- Evidence Images Section -->
-                                    ${evidenceUrls && evidenceUrls.length > 0 ? `
+                                    <!-- Evidence Images/Videos Section -->
+                                    ${evidenceData && evidenceData.length > 0 ? `
                                         <div class="violation-evidence">
-                                            <h6><i class="bi bi-images"></i> Evidence Photos</h6>
+                                            <h6><i class="bi bi-images"></i> Evidence (Photos/Videos)</h6>
                                             <div class="evidence-gallery">
-                                                ${evidenceUrls.map((url, idx) => `
-                                                    <div class="evidence-item">
-                                                        <img src="${url}" alt="Evidence ${idx + 1}" class="evidence-image" onclick="openImageModal('${url}', 'Evidence ${idx + 1}')" />
-                                                        <div class="evidence-number">${idx + 1}</div>
-                                                    </div>
-                                                `).join('')}
+                                                ${evidenceData.map((evidence, idx) => {
+                                                    const url = evidence.url;
+                                                    const fileType = evidence.fileType;
+                                                    const isVideo = fileType === 'video';
+                                                    // Escape URL for HTML attribute
+                                                    const escapedUrl = url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                                                    
+                                                    if (isVideo) {
+                                                        return `
+                                                        <div class="evidence-item" style="position: relative;">
+                                                            <video src="${escapedUrl}" 
+                                                                   class="evidence-video" 
+                                                                   preload="metadata"
+                                                                   playsinline
+                                                                   webkit-playsinline
+                                                                   style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; cursor: pointer;"
+                                                                   data-video-url="${escapedUrl}"
+                                                                   data-video-title="Evidence ${idx + 1}"
+                                                                   onerror="console.error('Video load error:', this.src); this.style.display='none';">
+                                                                <source src="${escapedUrl}" type="video/mp4">
+                                                                <source src="${escapedUrl}" type="video/webm">
+                                                                Your browser does not support the video tag.
+                                                            </video>
+                                                            <div class="evidence-number">${idx + 1}</div>
+                                                            <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; pointer-events: none;">
+                                                                <i class="bi bi-play-circle"></i> VIDEO
+                                                            </div>
+                                                        </div>
+                                                    `;
+                                                    } else {
+                                                        return `
+                                                        <div class="evidence-item">
+                                                            <img src="${url}" alt="Evidence ${idx + 1}" class="evidence-image" data-image-url="${escapedUrl}" data-image-title="Evidence ${idx + 1}" style="cursor: pointer;" />
+                                                            <div class="evidence-number">${idx + 1}</div>
+                                                        </div>
+                                                    `;
+                                                    }
+                                                }).join('')}
                                             </div>
                                         </div>
                                     ` : evidenceCount > 0 ? `
@@ -2170,12 +2259,43 @@
                                     <i class="bi bi-check-circle-fill text-success"></i>
                                     <span>This violation has been ${statusDisplay.toLowerCase()}</span>
                                 </div>
+                                ${violation.adminResolutionNote ? `
+                                    <div class="admin-resolution-section" style="margin-top: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                                        <h6 style="color: #92400e; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 600;">
+                                            <i class="bi bi-shield-check"></i> Admin's Decision
+                                            ${violation.adminResolutionType ? `<span style="background: #fbbf24; color: #78350f; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 8px;">${violation.adminResolutionType.replace(/_/g, ' ')}</span>` : ''}
+                                        </h6>
+                                        <div style="background: white; padding: 12px; border-radius: 6px; color: #1f2937; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${violation.adminResolutionNote}</div>
+                                    </div>
+                                ` : ''}
                             `}
                         </div>
                     `;
                 });
                 
                 $('#violations-list').html(html);
+                
+                // Bind click event to evidence images using event delegation
+                $(document).off('click', '.evidence-image').on('click', '.evidence-image', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const imageUrl = $(this).data('image-url');
+                    const imageTitle = $(this).data('image-title') || 'Evidence Photo';
+                    if (imageUrl) {
+                        openImageModal(imageUrl, imageTitle, false);
+                    }
+                });
+                
+                // Bind click event to evidence videos - open in modal for fullscreen viewing
+                $(document).off('click', '.evidence-video').on('click', '.evidence-video', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const videoUrl = $(this).data('video-url') || $(this).attr('src');
+                    const videoTitle = $(this).data('video-title') || 'Evidence Video';
+                    if (videoUrl) {
+                        openImageModal(videoUrl, videoTitle, true);
+                    }
+                });
                 
                 // Bind event handlers
                 $('.accept-violation-btn').on('click', function() {
@@ -2437,40 +2557,57 @@
                 }
             }
 
-            // Image Modal for Evidence Photos
-            function openImageModal(imageUrl, title) {
+            // Image/Video Modal for Evidence - Expose to global scope
+            window.openImageModal = function(imageUrl, title, isVideo = false) {
                 // Remove existing modal if any
                 $('#image-modal').remove();
                 
-                // Create image modal
-                const imageModal = `
-                    <div id="image-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; z-index: 9999;">
-                        <div class="image-modal-content" style="max-width: 90vw; max-height: 90vh; position: relative; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                // Escape title for HTML
+                const escapedTitle = (title || (isVideo ? 'Evidence Video' : 'Evidence Photo')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const escapedUrl = imageUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                
+                // Create media modal (supports both image and video)
+                const mediaModal = `
+                    <div id="image-modal" class="modal-overlay" style="display: flex; align-items: center; justify-content: center; z-index: 9999; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8);">
+                        <div class="image-modal-content" style="max-width: 90vw; max-height: 90vh; position: relative; background: ${isVideo ? '#000' : 'white'}; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
                             <div class="image-modal-header" style="padding: 16px 20px; background: #343a40; color: white; display: flex; justify-content: space-between; align-items: center;">
-                                <h5 style="margin: 0; font-weight: 600;">${title}</h5>
-                                <button onclick="closeImageModal()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.3s;">&times;</button>
+                                <h5 style="margin: 0; font-weight: 600;">${escapedTitle}</h5>
+                                <button class="close-image-modal-btn" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.3s;">&times;</button>
                             </div>
-                            <div class="image-modal-body" style="padding: 0; text-align: center; background: #f8f9fa;">
-                                <img src="${imageUrl}" alt="${title}" style="max-width: 100%; max-height: 70vh; object-fit: contain; display: block; margin: 0 auto;">
+                            <div class="image-modal-body" style="padding: 20px; text-align: center; background: ${isVideo ? '#000' : '#f8f9fa'}; max-height: calc(90vh - 80px); overflow: auto; display: flex; align-items: center; justify-content: center;">
+                                ${isVideo ? `
+                                    <video src="${escapedUrl}" 
+                                           controls 
+                                           autoplay
+                                           style="max-width: 100%; max-height: calc(90vh - 120px); object-fit: contain; display: block; margin: 0 auto;">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                ` : `
+                                    <img src="${escapedUrl}" alt="${escapedTitle}" style="max-width: 100%; max-height: calc(90vh - 120px); object-fit: contain; display: block; margin: 0 auto;">
+                                `}
                             </div>
                         </div>
                     </div>
                 `;
                 
-                $('body').append(imageModal);
-                $('#image-modal').removeClass('hidden');
+                $('body').append(mediaModal);
+                
+                // Close button handler
+                $('.close-image-modal-btn').on('click', function() {
+                    window.closeImageModal();
+                });
                 
                 // Close on click outside
                 $('#image-modal').on('click', function(e) {
                     if (e.target === this) {
-                        closeImageModal();
+                        window.closeImageModal();
                     }
                 });
-            }
+            };
 
-            function closeImageModal() {
+            window.closeImageModal = function() {
                 $('#image-modal').remove();
-            }
+            };
 
             // Handle ESC key to close image modal
             $(document).on('keydown', function(e) {

@@ -1,5 +1,6 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.DashboardStatsDto;
+using BusinessObject.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.DashboardServices;
@@ -32,7 +33,7 @@ namespace ShareItAPI.Controllers
                 return Ok(new { 
                     message = "Dashboard controller is working",
                     serviceInjected = _dashboardService != null,
-                    timestamp = DateTime.UtcNow
+                    timestamp = DateTimeHelper.GetVietnamTime()
                 });
             }
             catch (Exception ex)
@@ -49,16 +50,17 @@ namespace ShareItAPI.Controllers
         {
             try
             {
+                var vietnamNow = DateTimeHelper.GetVietnamTime();
                 var filter = new DashboardFilterDto
                 {
-                    StartDate = startDate ?? DateTime.UtcNow.AddDays(-30),
-                    EndDate = endDate ?? DateTime.UtcNow,
+                    StartDate = startDate ?? vietnamNow.AddDays(-30),
+                    EndDate = endDate ?? vietnamNow,
                     Preset = "Custom"
                 };
 
                 // Set preset based on date range
                 var daysDiff = (filter.EndDate - filter.StartDate).Days;
-                if (filter.EndDate.Date == DateTime.UtcNow.Date && filter.StartDate.Date == DateTime.UtcNow.Date)
+                if (filter.EndDate.Date == vietnamNow.Date && filter.StartDate.Date == vietnamNow.Date)
                     filter.Preset = "Today";
                 else if (daysDiff == 7)
                     filter.Preset = "Last 7 Days";
@@ -90,8 +92,9 @@ namespace ShareItAPI.Controllers
         {
             try
             {
-                var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-                var end = endDate ?? DateTime.UtcNow;
+                var vietnamNow = DateTimeHelper.GetVietnamTime();
+                var start = startDate ?? vietnamNow.AddDays(-30);
+                var end = endDate ?? vietnamNow;
                 
                 object data = type.ToLower() switch
                 {

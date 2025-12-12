@@ -1,14 +1,14 @@
 ﻿// Helper function to format date for Vietnam timezone
 function formatDateForVietnam(dateString) {
     try {
-        // API now returns Vietnam time directly, no need to convert from UTC
         const date = new Date(dateString);
         
-        // Format as Vietnam locale (already Vietnam time)
+        // Format as Vietnam locale with explicit timezone
         return date.toLocaleDateString('vi-VN', {
             year: 'numeric',
             month: '2-digit',
-            day: '2-digit'
+            day: '2-digit',
+            timeZone: 'Asia/Ho_Chi_Minh'
         });
     } catch (e) {
         console.error('Error formatting date:', e, 'Original dateString:', dateString);
@@ -348,8 +348,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-gray-700 mb-3"><strong class="font-semibold">Rent Count:</strong> ${item.rentCount || 0}</p>
                     <p class="text-gray-700 mb-3"><strong class="font-semibold">Average Rating:</strong> ${item.averageRating ? item.averageRating.toFixed(1) : 'N/A'}</p>
                     <p class="text-gray-700 mb-3"><strong class="font-semibold">Provider:</strong> ${item.providerName || 'N/A'}</p>
-                    <p class="text-gray-700 mb-3"><strong class="font-semibold">Created At:</strong> ${item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'N/A'}</p>
-                    <p class="text-gray-700 mb-3"><strong class="font-semibold">Last Updated:</strong> ${item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB') : 'N/A'}</p>
+                    <p class="text-gray-700 mb-3"><strong class="font-semibold">Created At:</strong> ${item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'N/A'}</p>
+                    <p class="text-gray-700 mb-3"><strong class="font-semibold">Last Updated:</strong> ${item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'N/A'}</p>
                     <p class="text-gray-700 mb-3"><strong class="font-semibold">Condition:</strong> N/A</p> <p class="text-gray-700 mb-3"><strong class="font-semibold">Location:</strong> N/A</p>
                 </div>
             </div>

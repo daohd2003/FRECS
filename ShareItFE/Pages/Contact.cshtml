@@ -122,7 +122,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="office-icon"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                             <div>
                                 <p class="office-title">FRECS Headquarters</p>
-                                <p>123 Fashion Avenue<br />New York, NY 10001</p>
+                                <p>FPT University<br />Đà Nẵng, Việt Nam</p>
                             </div>
                         </div>
                         <div class="office-info-item">
@@ -130,8 +130,8 @@
                             <div>
                                 <p class="office-title">Business Hours</p>
                                 <p>
-                                    Monday - Friday: 9:00 AM - 6:00 PM EST<br />
-                                    Saturday: 10:00 AM - 4:00 PM EST<br />
+                                    Monday - Friday: 8:00 AM - 5:00 PM<br />
+                                    Saturday: 8:00 AM - 12:00 PM<br />
                                     Sunday: Closed
                                 </p>
                             </div>
@@ -139,46 +139,9 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <h3>Quick Help</h3>
-                    <div class="quick-links-list">
-                        <a href="/Help/FAQ" class="quick-link">→ Frequently Asked Questions</a>
-                        <a href="/Help/HowToRent" class="quick-link">→ How to Rent Guide</a>
-                        <a href="/Help/SizeGuide" class="quick-link">→ Size Guide</a>
-                        <a href="/Help/ReturnPolicy" class="quick-link">→ Return Policy</a>
-                        <a href="/Help/ProviderGuidelines" class="quick-link">→ Provider Guidelines</a>
-                    </div>
-                </div>
             </div>
         </div>
 
-        <div class="faq-section">
-            <div class="section-header">
-                <h2>Frequently Asked Questions</h2>
-                <p>Find quick answers to common questions</p>
-            </div>
-            <div class="faq-grid">
-                @foreach (var category in Model.FaqCategories)
-                {
-                    <a href="@category.Link" class="faq-card">
-                        <div class="faq-icon-wrapper">
-                            @Html.Raw(category.IconSvg)
-                        </div>
-                        <h3>@category.Title</h3>
-                        <p>@category.Description</p>
-                    </a>
-                }
-            </div>
-        </div>
-
-        <div class="cta-section">
-            <h2>Still Need Help?</h2>
-            <p>Our customer success team is standing by to help you with any questions or concerns.</p>
-            <div class="cta-buttons">
-                <button id="startChatButton" class="button-secondary">Start Live Chat</button>
-                <a href="/Contact/ScheduleCall" class="button-outline" style="text-decoration:none;">Schedule a Call</a>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -218,5 +181,4 @@
             });
         });
     </script>
-}
 }

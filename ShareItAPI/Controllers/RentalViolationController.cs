@@ -229,20 +229,22 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [CUSTOMER] Phản hồi một vi phạm đã tồn tại (đồng ý hoặc từ chối)
+        /// [CUSTOMER/PROVIDER] Phản hồi một vi phạm đã tồn tại (đồng ý hoặc từ chối)
         /// </summary>
         /// <remarks>
-        /// Endpoint này dùng để PHẢN HỒI một vi phạm đã được Provider tạo trước đó.
+        /// Endpoint này dùng để PHẢN HỒI một vi phạm đã được Provider (chủ sản phẩm) tạo trước đó.
         /// 
-        /// Customer cần:
+        /// Người mua (customer hoặc provider đóng vai trò người mua) cần:
         /// - Cung cấp ViolationId trong URL (ID của vi phạm đã tồn tại)
         /// - IsAccepted: true = đồng ý bồi thường, false = từ chối
         /// - CustomerNotes: Lý do từ chối (bắt buộc nếu IsAccepted = false)
         /// - EvidenceFiles: Ảnh/video phản biện (optional)
+        /// 
+        /// Note: Provider cũng có thể mua hàng từ provider khác, nên cần cho phép cả 2 role.
         /// </remarks>
         /// <param name="violationId">ID của vi phạm cần phản hồi (lấy từ danh sách vi phạm)</param>
         [HttpPost("{violationId:guid}/respond")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> CustomerRespond(Guid violationId, [FromForm] CustomerViolationResponseDto dto)
         {
             try
@@ -279,10 +281,13 @@ namespace ShareItAPI.Controllers
         }
 
         /// <summary>
-        /// [CUSTOMER] Lấy danh sách tất cả vi phạm của tôi
+        /// [CUSTOMER/PROVIDER] Lấy danh sách tất cả vi phạm của tôi (khi tôi là người mua)
         /// </summary>
+        /// <remarks>
+        /// Provider cũng có thể mua hàng từ provider khác, nên cần cho phép cả 2 role.
+        /// </remarks>
         [HttpGet("customer/my-violations")]
-        [Authorize(Roles = "customer")]
+        [Authorize(Roles = "customer,provider")]
         public async Task<IActionResult> GetMyViolations()
         {
             try

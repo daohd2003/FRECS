@@ -499,6 +499,38 @@
                         </div>
                     }
                     
+                <!-- Admin Resolution Notes (for resolved violations) -->
+                @if (Model.HasAdminResolvedViolations)
+                {
+                    <div class="card" style="border: 2px solid #f59e0b; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);">
+                        <h3 class="card-title" style="color: #92400e;">
+                            <i data-lucide="shield-check" class="w-5 h-5" style="color: #f59e0b;"></i>
+                            Admin Resolution
+                        </h3>
+                        <div class="space-y-4">
+                            @foreach (var violation in Model.ViolationDetails.Where(v => !string.IsNullOrEmpty(v.AdminResolutionNote)))
+                            {
+                                <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <span style="font-weight: 600; color: #92400e;">@violation.ViolationTypeDisplay</span>
+                                        @if (!string.IsNullOrEmpty(violation.AdminResolutionType))
+                                        {
+                                            <span style="background: #fbbf24; color: #78350f; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                                                @violation.AdminResolutionType.Replace("_", " ")
+                                            </span>
+                                        }
+                                    </div>
+                                    <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0; white-space: pre-wrap;">@violation.AdminResolutionNote</p>
+                                    <div style="margin-top: 8px; font-size: 12px; color: #92400e;">
+                                        <i data-lucide="banknote" class="w-3 h-3" style="display: inline;"></i>
+                                        Final Penalty: <strong>₫@violation.PenaltyAmount.ToString("N0")</strong>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                    
                 </div>
             </div>
     }

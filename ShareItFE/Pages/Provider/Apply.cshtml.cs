@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Text.Json;
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.ProviderApplications;
@@ -31,6 +32,9 @@ namespace ShareItFE.Pages.Provider
         public string? ErrorMessage { get; set; }
 
         public string ApiBaseUrl { get; private set; } = string.Empty;
+        
+        // Current user ID for localStorage security
+        public string CurrentUserId { get; private set; } = string.Empty;
 
         public class InputModel
         {
@@ -59,6 +63,9 @@ namespace ShareItFE.Pages.Provider
         public void OnGet()
         {
             ApiBaseUrl = _configuration.GetApiRootUrl(_environment);
+            
+            // Get current user ID for localStorage security
+            CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
             // Clear ModelState và reset Input để tránh browser autofill từ cache
             ModelState.Clear();

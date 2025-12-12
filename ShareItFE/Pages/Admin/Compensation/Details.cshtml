@@ -9,6 +9,59 @@
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+<style>
+    /* Voice Message Player Styles */
+    .voice-message-player {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: rgba(0,0,0,0.08);
+        border-radius: 20px;
+        min-width: 180px;
+        max-width: 240px;
+    }
+    .voice-play-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        border: none;
+        background: #667eea;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .voice-play-btn:hover {
+        background: #5a67d8;
+        transform: scale(1.05);
+    }
+    .voice-waveform-display {
+        flex: 1;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .voice-waveform-display .waveform-bar {
+        width: 3px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 2px;
+        transition: background 0.1s;
+    }
+    .voice-waveform-display .waveform-bar.active {
+        background: #667eea;
+    }
+    .voice-duration-display {
+        color: #666;
+        min-width: 36px;
+        text-align: right;
+    }
+</style>
+
 <div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-[1800px] mx-auto">
         <!-- Back Button -->
@@ -510,12 +563,32 @@
                     <div>
                         <h3 class="text-sm font-semibold text-gray-700 mb-2">Evidence from Provider</h3>
                         <div class="grid grid-cols-2 gap-2">
-                            ${disputeData.providerEvidence.map(evidence => `
-                                <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                                     onclick="showImage('${evidence.imageUrl}')">
-                                    <img src="${evidence.imageUrl}" alt="Evidence" class="w-full h-full object-cover" />
-                                </div>
-                            `).join('')}
+                            ${disputeData.providerEvidence.map(evidence => {
+                                const isVideo = evidence.fileType === 'video';
+                                if (isVideo) {
+                                    return `
+                                        <div class="relative aspect-square bg-gray-900 rounded-lg overflow-hidden">
+                                            <video src="${evidence.imageUrl}" 
+                                                   class="w-full h-full object-cover" 
+                                                   controls
+                                                   preload="metadata">
+                                                Your browser does not support the video tag.
+                                            </video>
+                                            <div class="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                                                <i data-lucide="video" class="w-3 h-3"></i>
+                                                Video
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    return `
+                                        <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                                             onclick="showImage('${evidence.imageUrl}')">
+                                            <img src="${evidence.imageUrl}" alt="Evidence" class="w-full h-full object-cover" />
+                                        </div>
+                                    `;
+                                }
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -556,12 +629,32 @@
                     <div>
                         <h3 class="text-sm font-semibold text-gray-700 mb-2">Rebuttal Evidence</h3>
                         <div class="grid grid-cols-2 gap-2">
-                            ${disputeData.customerEvidence.map(evidence => `
-                                <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                                     onclick="showImage('${evidence.imageUrl}')">
-                                    <img src="${evidence.imageUrl}" alt="Customer Evidence" class="w-full h-full object-cover" />
-                                </div>
-                            `).join('')}
+                            ${disputeData.customerEvidence.map(evidence => {
+                                const isVideo = evidence.fileType === 'video';
+                                if (isVideo) {
+                                    return `
+                                        <div class="relative aspect-square bg-gray-900 rounded-lg overflow-hidden">
+                                            <video src="${evidence.imageUrl}" 
+                                                   class="w-full h-full object-cover" 
+                                                   controls
+                                                   preload="metadata">
+                                                Your browser does not support the video tag.
+                                            </video>
+                                            <div class="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                                                <i data-lucide="video" class="w-3 h-3"></i>
+                                                Video
+                                            </div>
+                                        </div>
+                                    `;
+                                } else {
+                                    return `
+                                        <div class="relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                                             onclick="showImage('${evidence.imageUrl}')">
+                                            <img src="${evidence.imageUrl}" alt="Customer Evidence" class="w-full h-full object-cover" />
+                                        </div>
+                                    `;
+                                }
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -578,18 +671,133 @@
 
             const html = disputeData.messages.map(message => {
                 const isProvider = message.senderId === disputeData.provider.id;
+                let contentHtml = '';
+                
+                // Check for attachment
+                if (message.attachment && message.attachment.url) {
+                    const att = message.attachment;
+                    if (att.type === 'audio') {
+                        const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        contentHtml = `
+                            <div class="voice-message-player" data-audio-id="${audioId}">
+                                <audio id="${audioId}" src="${escapeHtml(att.url)}" preload="metadata"></audio>
+                                <button type="button" class="voice-play-btn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                                <div class="voice-waveform-display">${generateWaveformBars(15)}</div>
+                                <span class="voice-duration-display text-xs font-mono">0:00</span>
+                            </div>
+                        `;
+                    } else if (att.type === 'image') {
+                        const isGif = att.mimeType === 'image/gif' || att.url.toLowerCase().includes('.gif') || att.url.includes('giphy.com');
+                        contentHtml = `
+                            <img src="${escapeHtml(att.url)}" alt="${isGif ? 'GIF' : 'Image'}" 
+                                 class="max-w-[200px] rounded-lg cursor-pointer hover:opacity-80 transition-opacity ${isGif ? '' : ''}"
+                                 onclick="showImage('${escapeHtml(att.url)}')" />
+                        `;
+                    } else if (att.type === 'video') {
+                        contentHtml = `
+                            <video src="${escapeHtml(att.url)}" controls class="max-w-[200px] rounded-lg"></video>
+                        `;
+                    }
+                    // Add text content if exists
+                    if (message.content) {
+                        contentHtml += `<p class="text-sm text-gray-900 mt-2">${escapeHtml(message.content)}</p>`;
+                    }
+                } else {
+                    contentHtml = `<p class="text-sm text-gray-900">${escapeHtml(message.content)}</p>`;
+                }
+                
                 return `
                     <div class="p-3 rounded-lg ${isProvider ? 'bg-red-50 ml-4' : 'bg-blue-50 mr-4'}">
                         <div class="flex items-center justify-between mb-1">
                             <span class="text-xs font-semibold text-gray-700">${escapeHtml(message.senderName)}</span>
                             <span class="text-xs text-gray-500">${formatDate(message.sentAt)}</span>
                         </div>
-                        <p class="text-sm text-gray-900">${escapeHtml(message.content)}</p>
+                        ${contentHtml}
                     </div>
                 `;
             }).join('');
 
             $('#communication-history').html(html);
+            
+            // Setup voice players and scroll to bottom after rendering
+            setTimeout(() => {
+                // Setup voice players
+                document.querySelectorAll('.voice-message-player').forEach(container => {
+                    const audioId = container.dataset.audioId;
+                    if (audioId) setupVoicePlayer(audioId, container);
+                });
+                
+                // Scroll to bottom to show latest messages
+                const historyContainer = document.getElementById('communication-history');
+                if (historyContainer) {
+                    historyContainer.scrollTop = historyContainer.scrollHeight;
+                }
+            }, 150);
+        }
+        
+        function generateWaveformBars(count) {
+            let bars = '';
+            for (let i = 0; i < count; i++) {
+                bars += '<div class="waveform-bar" style="height: ' + (Math.random() * 60 + 20) + '%"></div>';
+            }
+            return bars;
+        }
+        
+        function setupVoicePlayer(audioId, container) {
+            const audio = document.getElementById(audioId);
+            const playBtn = container.querySelector('.voice-play-btn');
+            const durationEl = container.querySelector('.voice-duration-display');
+            const waveformBars = container.querySelectorAll('.waveform-bar');
+            
+            if (!audio) return;
+            
+            audio.addEventListener('loadedmetadata', () => {
+                if (audio.duration && !isNaN(audio.duration)) {
+                    durationEl.textContent = Math.floor(audio.duration/60) + ':' + Math.floor(audio.duration%60).toString().padStart(2,'0');
+                }
+            });
+            
+            playBtn.addEventListener('click', () => {
+                if (audio.paused) {
+                    // Pause all other audio
+                    document.querySelectorAll('.voice-message-player audio').forEach(a => {
+                        if (a.id !== audioId && !a.paused) {
+                            a.pause();
+                            a.currentTime = 0;
+                            const c = a.closest('.voice-message-player');
+                            if(c) {
+                                c.querySelector('.voice-play-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                                c.querySelectorAll('.waveform-bar').forEach(b => b.classList.remove('active'));
+                            }
+                        }
+                    });
+                    audio.play();
+                    playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                }
+            });
+            
+            audio.addEventListener('timeupdate', () => {
+                const r = Math.max(0, Math.ceil(audio.duration - audio.currentTime));
+                durationEl.textContent = Math.floor(r/60) + ':' + (r%60).toString().padStart(2,'0');
+                const p = audio.currentTime / audio.duration;
+                const ac = Math.floor(p * waveformBars.length);
+                waveformBars.forEach((b,i) => {
+                    if(i < ac) b.classList.add('active');
+                    else b.classList.remove('active');
+                });
+            });
+            
+            audio.addEventListener('ended', () => {
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                waveformBars.forEach(b => b.classList.remove('active'));
+                audio.currentTime = 0;
+                durationEl.textContent = Math.floor(audio.duration/60) + ':' + Math.floor(audio.duration%60).toString().padStart(2,'0');
+            });
         }
 
         function disableDecisionForm() {
@@ -790,7 +998,8 @@
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Asia/Ho_Chi_Minh'
             });
         }
 
@@ -821,7 +1030,8 @@
 
                 const customerId = disputeData.customer?.id;
                 const providerId = disputeData.provider?.id;
-                const orderCode = disputeData.orderItem?.orderId?.toString().substring(0, 8).toUpperCase() || 'N/A';
+                const orderId = disputeData.orderItem?.orderId; // Get orderId for navigation
+                const orderCode = orderId?.toString().substring(0, 8).toUpperCase() || 'N/A';
 
                 // Determine resolution message
                 let customerMessage = '';
@@ -839,7 +1049,7 @@
                 }
 
                 // NotificationType enum: order=0, message=1, system=2, content_violation=3
-                const notificationType = 2; // system
+                const notificationType = 0; // order - so it can navigate to order detail
 
                 // Send notification to customer using manual endpoint (admin only)
                 if (customerId) {
@@ -850,7 +1060,8 @@
                         body: JSON.stringify({
                             userId: customerId,
                             message: customerMessage,
-                            type: notificationType
+                            type: notificationType,
+                            relatedEntityId: orderId // Include orderId for navigation
                         })
                     });
                     console.log('Customer notification response:', customerResponse.status);
@@ -865,7 +1076,8 @@
                         body: JSON.stringify({
                             userId: providerId,
                             message: providerMessage,
-                            type: notificationType
+                            type: notificationType,
+                            relatedEntityId: orderId // Include orderId for navigation
                         })
                     });
                     console.log('Provider notification response:', providerResponse.status);

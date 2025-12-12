@@ -1,6 +1,7 @@
 using BusinessObject.DTOs.ApiResponses;
 using BusinessObject.DTOs.PolicyConfigDto;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.PolicyConfigRepositories;
 
 namespace Services.PolicyConfigServices
@@ -94,7 +95,7 @@ namespace Services.PolicyConfigServices
                     PolicyName = dto.PolicyName,
                     Content = dto.Content,
                     IsActive = dto.IsActive,
-                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTimeHelper.GetVietnamTime(),
                     UpdatedByAdminId = adminId
                 };
 
@@ -128,7 +129,7 @@ namespace Services.PolicyConfigServices
                 policy.PolicyName = dto.PolicyName;
                 policy.Content = dto.Content;
                 policy.IsActive = dto.IsActive;
-                policy.UpdatedAt = DateTime.UtcNow;
+                policy.UpdatedAt = DateTimeHelper.GetVietnamTime();
                 policy.UpdatedByAdminId = adminId;
 
                 await _policyRepository.UpdatePolicyAsync(policy);

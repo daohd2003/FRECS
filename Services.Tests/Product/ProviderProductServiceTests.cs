@@ -2,6 +2,7 @@ using AutoMapper;
 using BusinessObject.DTOs.ProductDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using Repositories.ProductRepositories;
 using Services.CloudServices;
@@ -45,6 +46,7 @@ namespace Services.Tests.Product
         private readonly Mock<IConversationService> _mockConversationService;
         private readonly Mock<ICloudinaryService> _mockCloudinaryService;
         private readonly Mock<INotificationService> _mockNotificationService;
+        private readonly Mock<IMemoryCache> _mockCache;
         private readonly ProductService _service;
 
         public ProviderProductServiceTests()
@@ -56,6 +58,7 @@ namespace Services.Tests.Product
             _mockConversationService = new Mock<IConversationService>();
             _mockCloudinaryService = new Mock<ICloudinaryService>();
             _mockNotificationService = new Mock<INotificationService>();
+            _mockCache = new Mock<IMemoryCache>();
 
             _service = new ProductService(
                 _mockRepository.Object,
@@ -64,7 +67,8 @@ namespace Services.Tests.Product
                 _mockServiceProvider.Object,
                 _mockConversationService.Object,
                 _mockCloudinaryService.Object,
-                _mockNotificationService.Object
+                _mockNotificationService.Object,
+                _mockCache.Object
             );
         }
 

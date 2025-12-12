@@ -32,7 +32,7 @@ const revenueChartCtx = document.getElementById('revenueChart');
 if (revenueChartCtx) {
     const labels = revenueData.map(d => {
         const date = new Date(d.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' });
     });
     const revenues = revenueData.map(d => d.revenue);
     const orders = revenueData.map(d => d.orders);
@@ -918,7 +918,7 @@ function renderProductsTablePaginated(paginationInfo, filter) {
                             <td>${item.providerName}</td>
                             <td>${item.pricePerDay.toLocaleString('vi-VN')}₫</td>
                             <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
+                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -956,7 +956,7 @@ function renderOrdersTablePaginated(paginationInfo, filter) {
                             <td>${item.providerName}</td>
                             <td>${item.totalAmount.toLocaleString('vi-VN')}₫</td>
                             <td><span class="status-badge status-${item.status.toLowerCase().replace('_', '-')}">${formatOrderStatus(item.status)}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
+                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -990,7 +990,7 @@ function renderReportsTablePaginated(paginationInfo) {
                             <td><strong>${item.subject}</strong></td>
                             <td>${item.reporterName}</td>
                             <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
+                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -1026,7 +1026,7 @@ function renderViolationsTablePaginated(paginationInfo) {
                             <td>${item.customerName}</td>
                             <td>${item.fineAmount ? item.fineAmount.toLocaleString('vi-VN') + '₫' : 'N/A'}</td>
                             <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
+                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -1068,7 +1068,7 @@ function renderUsersTablePaginated(paginationInfo) {
                             <td>${item.email}</td>
                             <td><span class="role-badge">${item.role}</span></td>
                             <td><span class="status-badge ${item.isActive ? 'status-active' : 'status-banned'}">${item.isActive ? 'Active' : 'Banned'}</span></td>
-                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
+                            <td>${new Date(item.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</td>
                         </tr>
                         `;
                     }).join('')}

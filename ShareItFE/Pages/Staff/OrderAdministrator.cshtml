@@ -1531,16 +1531,16 @@
                                                 <line x1="8" y1="2" x2="8" y2="6"></line>
                                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                                             </svg>
-                                            @order.RentalStartDate.Value.ToString("MM/dd/yyyy")
+                                            @order.RentalStartDate.Value.ToString("dd/MM/yyyy")
                                         </div>
-                                        <div class="rental-dates">to @order.RentalEndDate.Value.ToString("MM/dd/yyyy")</div>
+                                        <div class="rental-dates">to @order.RentalEndDate.Value.ToString("dd/MM/yyyy")</div>
                                     }
                                     else
                                     {
                                         <span>-</span>
                                     }
                                 </td>
-                                <td><span class="date-time">@order.CreatedAt.ToString("MM/dd/yyyy, hh:mm tt")</span></td>
+                                <td><span class="date-time">@order.CreatedAt.ToString("dd/MM/yyyy, HH:mm")</span></td>
                                 <td>
                                     <button onclick="viewOrderDetail('@order.Id')" class="btn-view">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1661,6 +1661,7 @@
         let allProviders = []; // Store all unique providers
         let abortController = null; // For canceling previous requests
         let isLoading = false; // Track loading state
+        let allOrdersUnfiltered = []; // Store ALL orders (not filtered by tab) for provider filter
         
         // Revenue data
         const revenueData = {
@@ -1789,9 +1790,13 @@
         function loadProviders() {
             const providerList = document.getElementById('providerList');
             
-            // Extract unique providers from allOrders
+            // Use allOrdersUnfiltered (all orders regardless of tab) for provider list
+            // This ensures providers are always available even when on "All Orders" tab
+            const ordersForProviders = allOrdersUnfiltered.length > 0 ? allOrdersUnfiltered : allOrders;
+            
+            // Extract unique providers from all orders
             const providerMap = new Map();
-            allOrders.forEach(order => {
+            ordersForProviders.forEach(order => {
                 if (!providerMap.has(order.providerName)) {
                     providerMap.set(order.providerName, {
                         name: order.providerName,
@@ -1805,7 +1810,7 @@
             allProviders = Array.from(providerMap.values());
             
             if (allProviders.length === 0) {
-                providerList.innerHTML = '<div class="loading">No providers found</div>';
+                providerList.innerHTML = '<div class="loading">No providers found. Please wait for data to load...</div>';
                 return;
             }
             
@@ -2111,6 +2116,9 @@
                     });
                 }
                 
+                // Store ALL orders (unfiltered) for provider filter modal
+                allOrdersUnfiltered = [...orders];
+                
                 // Filter by tab with strict validation
                 if (currentTab === 'rental') {
                     orders = orders.filter(o => {
@@ -2360,13 +2368,13 @@
         
         function formatDate(dateString) {
             const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' });
         }
         
         function formatDateTime(dateString) {
             const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + ', ' + 
-                   date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }) + ', ' + 
+                   date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Ho_Chi_Minh' });
         }
         
         function formatStatusText(status) {
@@ -2807,7 +2815,7 @@
         }
         
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('Page loaded. Token:', accessToken ? 'exists' : 'missing');
             console.log('API Base URL:', apiBaseUrl);
             console.log('Current tab:', currentTab);
@@ -2815,6 +2823,10 @@
             
             // Update revenue display based on initial tab
             updateRevenueDisplay(currentTab);
+            
+            // Load orders immediately on page load to populate allOrdersUnfiltered
+            // This ensures provider filter has data available
+            await loadOrders();
             
             // ESC key to close lightbox
             document.addEventListener('keydown', function(event) {

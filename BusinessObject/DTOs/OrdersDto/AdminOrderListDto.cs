@@ -21,5 +21,6 @@ namespace BusinessObject.DTOs.OrdersDto
         public decimal Subtotal { get; set; }
         public decimal DiscountAmount { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsPaid { get; set; } // Payment completed (Transaction.Status == completed)
     }
 }

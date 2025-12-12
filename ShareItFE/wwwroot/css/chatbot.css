@@ -237,7 +237,7 @@
     }
 
 /* Chat Body */
-.chat-body {
+.chatbot-widget .chat-body {
     flex-grow: 1;
     padding: 15px;
     overflow-y: auto;
@@ -322,7 +322,7 @@
 /* Chat Input Form */
 .chat-input-form {
     display: flex;
-    padding: 10px 15px;
+    padding: 25px 15px;
     border-top: 1px solid #4a4a4a;
     background-color: #3a3b3d; /* Same as header background */
     border-bottom-left-radius: 10px;
@@ -346,8 +346,8 @@
         color: #a0a0a0;
     }
 
-.chat-send-btn {
-    background-color: #007bff; /* Send button background */
+.chatbot-send-btn {
+    background-color: #007bff;
     color: white;
     border: none;
     border-radius: 20px;
@@ -356,8 +356,11 @@
     font-size: 14px;
     font-weight: bold;
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-    .chat-send-btn:hover {
+    .chatbot-send-btn:hover {
         background-color: #0056b3;
     }

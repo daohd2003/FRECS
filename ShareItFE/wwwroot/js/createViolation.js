@@ -110,10 +110,11 @@ function prePopulateViolations(existingViolations) {
                 
                 // Show existing evidence files info (if any)
                 if (violation.evidenceCount && violation.evidenceCount > 0) {
-                    console.log(`DEBUG: Showing evidence for ${itemId} - count: ${violation.evidenceCount}, URLs:`, violation.evidenceUrls);
-                    showExistingEvidenceInfo(itemId, violation.evidenceCount, violation.evidenceUrls);
-                } else {
-                    console.log(`DEBUG: No evidence for ${itemId} - count: ${violation.evidenceCount}`);
+                    // Use EvidenceImages if available (includes FileType), otherwise fallback to EvidenceUrls
+                    const evidenceData = violation.evidenceImages && violation.evidenceImages.length > 0 
+                        ? violation.evidenceImages 
+                        : (violation.evidenceUrls || []).map(url => ({ imageUrl: url, fileType: null }));
+                    showExistingEvidenceInfo(itemId, violation.evidenceCount, evidenceData);
                 }
             }, 100);
         }
@@ -121,7 +122,8 @@ function prePopulateViolations(existingViolations) {
 }
 
 // Show existing evidence files information
-function showExistingEvidenceInfo(itemId, evidenceCount, evidenceUrls = []) {
+// evidenceData can be array of objects with {imageUrl, fileType} or array of strings (URLs)
+function showExistingEvidenceInfo(itemId, evidenceCount, evidenceData = []) {
     const previewArea = document.getElementById('preview_' + itemId);
     if (!previewArea || !evidenceCount || evidenceCount === 0) return;
     
@@ -129,27 +131,72 @@ function showExistingEvidenceInfo(itemId, evidenceCount, evidenceUrls = []) {
     previewArea.innerHTML = '';
     previewArea.classList.add('has-files');
     
-    // Add existing files (with actual images if URLs available)
+    // Normalize evidenceData - handle both object format and string format
+    const normalizedData = evidenceData.map(item => {
+        if (typeof item === 'string') {
+            return { imageUrl: item, fileType: null };
+        }
+        return {
+            imageUrl: item.imageUrl || item.ImageUrl || '',
+            fileType: item.fileType || item.FileType || null
+        };
+    });
+    
+    // Add existing files (with actual images/videos if URLs available)
     for (let i = 0; i < evidenceCount; i++) {
         const existingFileDiv = document.createElement('div');
         existingFileDiv.className = 'preview-item existing-evidence';
         
-        if (i < evidenceUrls.length && evidenceUrls[i]) {
-            // Show actual image
-            const imageUrl = evidenceUrls[i];
-            existingFileDiv.innerHTML = `
-                <div style="position: relative; border-radius: 8px; overflow: hidden; height: 120px;">
-                    <img src="${imageUrl}" 
-                         alt="Evidence ${i + 1}" 
-                         style="width: 100%; height: 100%; object-fit: cover; border: 2px solid #10b981;"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div style="background: #f3f4f6; border: 2px solid #10b981; border-radius: 8px; padding: 12px; text-align: center; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box;">
-                        <i class="fas fa-image" style="font-size: 24px; color: #10b981; margin-bottom: 8px;"></i>
-                        <div style="font-size: 11px; color: #374151; font-weight: 600;">Evidence ${i + 1}</div>
-                        <div style="font-size: 10px; color: #10b981; margin-top: 4px;">Already uploaded</div>
+        if (i < normalizedData.length && normalizedData[i].imageUrl) {
+            const evidence = normalizedData[i];
+            const imageUrl = evidence.imageUrl;
+            const fileType = evidence.fileType ? evidence.fileType.toLowerCase() : null;
+            const isVideo = fileType === 'video';
+            
+            if (isVideo) {
+                // Escape URL for HTML attribute
+                const escapedUrl = imageUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                // Show video player
+                existingFileDiv.innerHTML = `
+                    <div style="position: relative; border-radius: 8px; overflow: hidden; height: 120px;">
+                        <video src="${escapedUrl}" 
+                               style="width: 100%; height: 100%; object-fit: cover; border: 2px solid #10b981;"
+                               controls
+                               preload="metadata"
+                               playsinline
+                               webkit-playsinline
+                               onerror="console.error('Video load error:', this.src); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <source src="${escapedUrl}" type="video/mp4">
+                            <source src="${escapedUrl}" type="video/webm">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div style="background: #f3f4f6; border: 2px solid #10b981; border-radius: 8px; padding: 12px; text-align: center; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box;">
+                            <i class="fas fa-video" style="font-size: 24px; color: #10b981; margin-bottom: 8px;"></i>
+                            <div style="font-size: 11px; color: #374151; font-weight: 600;">Evidence ${i + 1}</div>
+                            <div style="font-size: 10px; color: #10b981; margin-top: 4px;">Video - Already uploaded</div>
+                            <div style="font-size: 9px; color: #ef4444; margin-top: 4px;">Click to view</div>
+                        </div>
+                        <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; pointer-events: none;">
+                            <i class="fas fa-play"></i> VIDEO
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                // Show image
+                existingFileDiv.innerHTML = `
+                    <div style="position: relative; border-radius: 8px; overflow: hidden; height: 120px;">
+                        <img src="${imageUrl}" 
+                             alt="Evidence ${i + 1}" 
+                             style="width: 100%; height: 100%; object-fit: cover; border: 2px solid #10b981;"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div style="background: #f3f4f6; border: 2px solid #10b981; border-radius: 8px; padding: 12px; text-align: center; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top: 0; left: 0; width: 100%; box-sizing: border-box;">
+                            <i class="fas fa-image" style="font-size: 24px; color: #10b981; margin-bottom: 8px;"></i>
+                            <div style="font-size: 11px; color: #374151; font-weight: 600;">Evidence ${i + 1}</div>
+                            <div style="font-size: 10px; color: #10b981; margin-top: 4px;">Already uploaded</div>
+                        </div>
+                    </div>
+                `;
+            }
         } else {
             // Show placeholder for missing URLs
             existingFileDiv.innerHTML = `
@@ -358,10 +405,25 @@ function previewFiles(input, itemId) {
     
     // Add new files to the array
     Array.from(input.files).forEach((file) => {
+        // Validate file format (must match backend validation)
+        const fileName = file.name.toLowerCase();
+        const extension = fileName.substring(fileName.lastIndexOf('.'));
+        
+        const allowedImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+        const allowedVideoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv'];
+        
+        const isImage = allowedImageExtensions.includes(extension);
+        const isVideo = allowedVideoExtensions.includes(extension);
+        
+        if (!isImage && !isVideo) {
+            alert(`File "${file.name}" has invalid format. Only images (JPG, PNG, GIF, WebP, BMP) or videos (MP4, MOV, AVI, MKV, WebM, FLV, WMV) are accepted.`);
+            return;
+        }
+        
         // Validate file size (10MB for images, 100MB for videos)
-        const maxSize = file.type.startsWith('image/') ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
+        const maxSize = isImage ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
         if (file.size > maxSize) {
-            alert(`File "${file.name}" is too large. Maximum ${file.type.startsWith('image/') ? '10MB' : '100MB'} allowed.`);
+            alert(`File "${file.name}" is too large. Maximum ${isImage ? '10MB' : '100MB'} allowed.`);
             return;
         }
         

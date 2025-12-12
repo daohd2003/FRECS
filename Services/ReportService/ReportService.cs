@@ -122,17 +122,24 @@ namespace Services.ReportService
             var report = await _reportRepository.GetReportWithDetailsAsync(reportId);
             if (report == null) return (false, "Report not found.");
 
+            // Only allow response when status is resolved
+            if (newStatus != ReportStatus.resolved)
+            {
+                return (false, "Response can only be sent when resolving the report.");
+            }
+
             report.AdminResponse = responseMessage;
             report.Status = newStatus;
             await _reportRepository.UpdateAsync(report);
 
+            // Only send email when status is resolved
             string subject = $"Re: Your report about '{report.Subject}'";
             string body = $"An admin has responded to your report: <br/><p><i>{responseMessage}</i></p>";
             await _emailRepository.SendEmailAsync(report.Reporter.Email, subject, body);
 
             var reportViewModel = _mapper.Map<ReportViewModel>(report);
             await _hubContext.Clients.All.SendAsync("ReportStatusChanged", reportViewModel);
-            return (true, "Response sent and status updated.");
+            return (true, "Report resolved and response sent to reporter.");
         }
 
         public async Task<(bool Success, string Message)> UpdateStatusAsync(Guid reportId, ReportStatus newStatus)

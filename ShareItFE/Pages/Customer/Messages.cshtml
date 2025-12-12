@@ -46,6 +46,78 @@
 </div>
 @section Scripts {
     <script src="~/js/dist/browser/signalr.js"></script>
+    <style>
+        /* Voice message player styles */
+        .voice-message-player {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            min-width: 180px;
+            max-width: 240px;
+        }
+        .message-bubble.me .voice-message-player {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .voice-play-btn {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .message-bubble.them .voice-play-btn {
+            background: #667eea;
+        }
+        .voice-waveform-display {
+            flex: 1;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .voice-waveform-display .waveform-bar {
+            width: 3px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+            transition: background 0.1s;
+        }
+        .message-bubble.me .voice-waveform-display .waveform-bar {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .voice-waveform-display .waveform-bar.active {
+            background: #667eea;
+        }
+        .message-bubble.me .voice-waveform-display .waveform-bar.active {
+            background: white;
+        }
+        .voice-duration-display {
+            font-size: 12px;
+            font-family: monospace;
+            min-width: 32px;
+            text-align: right;
+        }
+    </style>
+    <script>
+        // Helper function for waveform bars
+        function generateWaveformBars(count) {
+            let bars = '';
+            for (let i = 0; i < count; i++) {
+                const height = Math.random() * 60 + 20;
+                bars += '<div class="waveform-bar" style="height: ' + height + '%"></div>';
+            }
+            return bars;
+        }
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const conversationListEl = document.getElementById('conversation-list-body');
@@ -91,6 +163,12 @@
                 
                 if (message.attachment) {
                     const att = message.attachment;
+                    // Check if this is a voice message (webm from voice recording)
+                    const isVoiceMessage = att.type === 'audio' || 
+                        (att.mimeType && att.mimeType.includes('audio')) ||
+                        (att.fileName && att.fileName.includes('voice')) ||
+                        (att.url && att.url.includes('.webm') && att.type === 'video');
+                    
                     if (att.type === 'image') {
                         const img = document.createElement('img');
                         img.src = att.url;
@@ -106,13 +184,102 @@
                             caption.style.marginTop = '6px';
                             bubbleDiv.appendChild(caption);
                         }
-                    } else if (att.type === 'video') {
+                    } else if (att.type === 'video' && !isVoiceMessage) {
                         const video = document.createElement('video');
                         video.src = att.url;
                         video.controls = true;
                         video.style.maxWidth = '260px';
                         video.style.borderRadius = '8px';
                         bubbleDiv.appendChild(video);
+                        if (message.content) {
+                            const caption = document.createElement('div');
+                            caption.textContent = message.content;
+                            caption.style.marginTop = '6px';
+                            bubbleDiv.appendChild(caption);
+                        }
+                    } else if (isVoiceMessage) {
+                        // Voice message with custom player
+                        const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        const voiceContainer = document.createElement('div');
+                        voiceContainer.className = 'voice-message-player';
+                        voiceContainer.innerHTML = `
+                            <button type="button" class="voice-play-btn" data-audio-id="${audioId}">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </button>
+                            <div class="voice-waveform-display">
+                                ${generateWaveformBars(15)}
+                            </div>
+                            <span class="voice-duration-display">0:00</span>
+                            <audio id="${audioId}" src="${att.url}" style="display:none"></audio>
+                        `;
+                        bubbleDiv.appendChild(voiceContainer);
+                        
+                        // Setup audio player after adding to DOM
+                        setTimeout(() => {
+                            const audio = document.getElementById(audioId);
+                            const playBtn = voiceContainer.querySelector('.voice-play-btn');
+                            const durationEl = voiceContainer.querySelector('.voice-duration-display');
+                            const waveformBars = voiceContainer.querySelectorAll('.waveform-bar');
+                            
+                            if (audio) {
+                                audio.addEventListener('loadedmetadata', () => {
+                                    if (audio.duration && !isNaN(audio.duration)) {
+                                        const mins = Math.floor(audio.duration / 60);
+                                        const secs = Math.floor(audio.duration % 60);
+                                        durationEl.textContent = mins + ':' + secs.toString().padStart(2, '0');
+                                    }
+                                });
+                                
+                                playBtn.addEventListener('click', () => {
+                                    if (audio.paused) {
+                                        // Stop other audios
+                                        document.querySelectorAll('.voice-message-player audio').forEach(a => {
+                                            if (a.id !== audioId && !a.paused) {
+                                                a.pause();
+                                                a.currentTime = 0;
+                                                const otherContainer = a.closest('.voice-message-player');
+                                                if (otherContainer) {
+                                                    otherContainer.querySelector('.voice-play-btn').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                                                    otherContainer.querySelectorAll('.waveform-bar').forEach(b => b.classList.remove('active'));
+                                                }
+                                            }
+                                        });
+                                        audio.play();
+                                        playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+                                    } else {
+                                        audio.pause();
+                                        playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                                    }
+                                });
+                                
+                                audio.addEventListener('timeupdate', () => {
+                                    const remaining = Math.max(0, Math.ceil(audio.duration - audio.currentTime));
+                                    const mins = Math.floor(remaining / 60);
+                                    const secs = remaining % 60;
+                                    durationEl.textContent = mins + ':' + secs.toString().padStart(2, '0');
+                                    
+                                    // Update waveform
+                                    const progress = audio.currentTime / audio.duration;
+                                    const activeCount = Math.floor(progress * waveformBars.length);
+                                    waveformBars.forEach((bar, i) => {
+                                        if (i < activeCount) bar.classList.add('active');
+                                        else bar.classList.remove('active');
+                                    });
+                                });
+                                
+                                audio.addEventListener('ended', () => {
+                                    playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                                    waveformBars.forEach(b => b.classList.remove('active'));
+                                    audio.currentTime = 0;
+                                    const mins = Math.floor(audio.duration / 60);
+                                    const secs = Math.floor(audio.duration % 60);
+                                    durationEl.textContent = mins + ':' + secs.toString().padStart(2, '0');
+                                });
+                            }
+                        }, 100);
+                        
                         if (message.content) {
                             const caption = document.createElement('div');
                             caption.textContent = message.content;
@@ -260,12 +427,30 @@
 
                     const messages = await response.json();
 
-                    // Thêm vào đầu (cũ nhất trên đầu, mới nhất ở dưới)
-                    messages.reverse().forEach(msg => {
-                        const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
-                        const el = createMessageElement(msg, isMe);
-                        messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
-                    });
+                    // API trả về: newest first (mới nhất trước, cũ nhất sau)
+                    // Hiển thị: oldest on top, newest at bottom (cũ nhất ở trên, mới nhất ở dưới)
+                    
+                    // Reverse để có thứ tự: oldest first (cũ nhất trước, mới nhất sau)
+                    messages.reverse();
+                    
+                    if (page === 1) {
+                        // Page 1: append từng tin nhắn (cũ nhất append trước → ở trên)
+                        messages.forEach(msg => {
+                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(msg, isMe);
+                            messagesContainerEl.appendChild(el);
+                        });
+                    } else {
+                        // Page 2+: prepend vào đầu container
+                        // Sau khi reverse: [oldest, ..., newest]
+                        // Prepend từ cuối về đầu để oldest ở trên cùng
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                            const msg = messages[i];
+                            const isMe = msg.senderId.toLowerCase() === currentUserId.toLowerCase();
+                            const el = createMessageElement(msg, isMe);
+                            messagesContainerEl.insertBefore(el, messagesContainerEl.firstChild);
+                        }
+                    }
 
                     return messages.length;
                 } catch (err) {
@@ -320,12 +505,18 @@
                 const messageText = messageInput.value.trim();
                 if (messageText && signalRConnection) {
                     const recipientId = selectedConversation.otherParticipant.userId;
+                    
+                    // Get selected product from ChatMediaFeatures if available
+                    const chatMediaFeatures = window.chatMediaFeaturesInstance;
+                    const selectedProduct = chatMediaFeatures?.getSelectedProduct?.() || null;
+                    const productId = selectedProduct?.id || null;
 
                     // Create temporary message with timestamp for immediate display
                     const tempMessage = {
                         content: messageText,
                         senderId: currentUserId,
-                        sentAt: new Date().toISOString()
+                        sentAt: new Date().toISOString(),
+                        productContext: selectedProduct
                     };
                     
                     // Display message immediately
@@ -333,9 +524,13 @@
                     messagesContainerEl.appendChild(el);
                     messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
 
-                    signalRConnection.invoke("SendMessageAsync", selectedConversation.id, recipientId, messageText, null) // Thêm `null` ở cuối
+                    signalRConnection.invoke("SendMessageAsync", selectedConversation.id, recipientId, messageText, productId)
                         .then(() => {
                             messageInput.value = '';
+                            // Clear selected product after sending
+                            if (chatMediaFeatures?.clearSelectedProduct) {
+                                chatMediaFeatures.clearSelectedProduct();
+                            }
                         })
                         .catch(err => {
                             console.error("Failed to send message:", err);
@@ -353,6 +548,14 @@
                 const file = e.target.files[0];
                 uploadInput.value = '';
                 if (!file || !selectedConversation || !signalRConnection) return;
+                
+                // Video size limit: 25MB for luxury rental web
+                const MAX_VIDEO_SIZE = 25 * 1024 * 1024; // 25MB
+                if (file.type.startsWith('video/') && file.size > MAX_VIDEO_SIZE) {
+                    alert('Video file is too large. Maximum size is 25MB.');
+                    return;
+                }
+                
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
@@ -456,7 +659,19 @@
                     signalRConnection.on("ReceiveMessage", (message) => {
                         const convoToUpdate = conversations.find(c => c.id === message.conversationId);
                         if (convoToUpdate) {
-                            convoToUpdate.lastMessageContent = message.content;
+                            // Cập nhật lastMessageContent - hiển thị thông tin attachment nếu có
+                            if (message.attachment) {
+                                const attachmentType = message.attachment.type;
+                                if (attachmentType === 'image') {
+                                    convoToUpdate.lastMessageContent = message.content || '📷 Sent an image';
+                                } else if (attachmentType === 'video') {
+                                    convoToUpdate.lastMessageContent = message.content || '🎥 Sent a video';
+                                } else {
+                                    convoToUpdate.lastMessageContent = message.content || `📎 ${message.attachment.fileName || 'Sent a file'}`;
+                                }
+                            } else {
+                                convoToUpdate.lastMessageContent = message.content;
+                            }
                             convoToUpdate.updatedAt = message.sentAt;
                             convoToUpdate.productContext = message.productContext;
                             if (!selectedConversation || message.conversationId !== selectedConversation.id) {
@@ -471,11 +686,19 @@
 
                         if (selectedConversation && message.conversationId === selectedConversation.id) {
                             const isMe = message.senderId.toLowerCase() === currentUserId.toLowerCase();
-                            // Only display message if it's not from current user (to avoid duplicate with temp message)
-                            if (!isMe) {
-                                const el = createMessageElement(message, isMe);
-                                messagesContainerEl.appendChild(el); // Thêm vào CUỐI
-                                messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight; // Scroll xuống dưới
+                            // Hiển thị tin nhắn: với attachment thì luôn hiển thị, với text thì chỉ hiển thị từ người khác
+                            const hasAttachment = message.attachment && message.attachment.url;
+                            if (!isMe || hasAttachment) {
+                                // Nếu là tin nhắn của mình có attachment, cần hiển thị vì không có temp message cho attachment
+                                if (isMe && hasAttachment) {
+                                    const el = createMessageElement(message, isMe);
+                                    messagesContainerEl.appendChild(el);
+                                    messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight;
+                                } else if (!isMe) {
+                                    const el = createMessageElement(message, isMe);
+                                    messagesContainerEl.appendChild(el); // Thêm vào CUỐI
+                                    messagesContainerEl.scrollTop = messagesContainerEl.scrollHeight; // Scroll xuống dưới
+                                }
                             }
                             // QUAN TRỌNG: Cập nhật banner sản phẩm ngay lập tức (regardless of who sent it)
                             if (message.productContext) {
@@ -500,6 +723,23 @@
             }
 
             init();
+
+            // Initialize Chat Media Features (Emoji, GIF, Voice, Product)
+            setTimeout(() => {
+                if (typeof ChatMediaFeatures !== 'undefined') {
+                    window.chatMediaFeaturesInstance = new ChatMediaFeatures({
+                        messageInput: messageInput,
+                        sendBtn: sendBtn,
+                        messageForm: sendMessageForm,
+                        apiUrl: apiUrl,
+                        accessToken: accessToken,
+                        getSelectedConversation: () => selectedConversation,
+                        getSignalRConnection: () => signalRConnection,
+                        currentUserRole: 'customer'
+                    });
+                }
+            }, 100);
         });
     </script>
+    <script src="~/js/chat-media-features.js"></script>
 }

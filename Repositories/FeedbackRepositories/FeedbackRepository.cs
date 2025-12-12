@@ -110,16 +110,44 @@ namespace Repositories.FeedbackRepositories
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
-        public async Task<PaginatedResponse<Feedback>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize)
+        /// <summary>
+        /// Get paginated feedbacks for a product with optional filtering
+        /// </summary>
+        /// <param name="productId">Product ID</param>
+        /// <param name="page">Page number</param>
+        /// <param name="pageSize">Items per page</param>
+        /// <param name="includeBlocked">If true, includes blocked feedbacks (for provider/admin). If false, only visible feedbacks.</param>
+        /// <returns>Paginated feedback list</returns>
+        public async Task<PaginatedResponse<Feedback>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize, bool includeBlocked)
         {
-            var query = _context.Feedbacks
+            // Start with base query
+            IQueryable<Feedback> query = _context.Feedbacks
+                .Where(f => f.ProductId == productId);
+
+            // Filter by visibility BEFORE pagination (unless includeBlocked is true)
+            if (!includeBlocked)
+            {
+                query = query.Where(f => f.IsVisible);
+            }
+
+            // Apply ordering and includes
+            query = query
+                .OrderByDescending(f => f.CreatedAt)
+                .Include(f => f.Customer).ThenInclude(c => c.Profile)
+                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile);
+
+            // Count total items AFTER filtering
+            var totalItems = await _context.Feedbacks
                 .Where(f => f.ProductId == productId)
-                .Include(f => f.Customer).ThenInclude(c => c.Profile) // Include để mapping CustomerName
-                .Include(f => f.ProviderResponder).ThenInclude(pr => pr.Profile) // Include để mapping ProviderResponderName
-                .OrderByDescending(f => f.CreatedAt);
+                .Where(f => includeBlocked || f.IsVisible)
+                .CountAsync();
+            
+            // Count only visible feedbacks for display
+            var visibleCount = await _context.Feedbacks
+                .Where(f => f.ProductId == productId && f.IsVisible)
+                .CountAsync();
 
-            var totalItems = await query.CountAsync();
-
+            // Paginate AFTER filtering
             var items = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -130,8 +158,15 @@ namespace Repositories.FeedbackRepositories
                 Items = items,
                 Page = page,
                 PageSize = pageSize,
-                TotalItems = totalItems
+                TotalItems = totalItems, // Total after filtering (for pagination)
+                VisibleCount = visibleCount // Always count visible (for display)
             };
+        }
+        
+        // Overload for backward compatibility
+        public async Task<PaginatedResponse<Feedback>> GetFeedbacksByProductAsync(Guid productId, int page, int pageSize)
+        {
+            return await GetFeedbacksByProductAsync(productId, page, pageSize, includeBlocked: false);
         }
 
         /// <summary>
@@ -149,7 +184,7 @@ namespace Repositories.FeedbackRepositories
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
         }
-
+        
         // Feedback Management Methods
         public async Task<PaginatedResponse<Feedback>> GetAllFeedbacksWithFilterAsync(FeedbackFilterDto filter)
         {
@@ -311,6 +346,6 @@ namespace Repositories.FeedbackRepositories
                 .Include(f => f.BlockedBy).ThenInclude(b => b.Profile)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
-        }
+        }   
     }
 }

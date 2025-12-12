@@ -451,7 +451,7 @@ namespace Services.OrderServices
                 TotalPenaltyAmount = totalPenalties,
                 RefundAmount = refundAmount,
                 Status = BusinessObject.Enums.TransactionStatus.initiated,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTimeHelper.GetVietnamTime(),
                 Notes = totalPenalties > 0 
                     ? $"Deposit refund with penalty deduction. Total penalties: {totalPenalties:N0} ₫" 
                     : "Full deposit refund - no violations"
@@ -761,7 +761,7 @@ namespace Services.OrderServices
                             
                             if (discountCode != null && 
                                 discountCode.Status == BusinessObject.Enums.DiscountStatus.Active &&
-                                discountCode.ExpirationDate > DateTime.UtcNow &&
+                                discountCode.ExpirationDate > DateTimeHelper.GetVietnamTime() &&
                                 discountCode.UsedCount < discountCode.Quantity)
                             {
                                 // Determine applicable subtotal based on discount code UsageType
@@ -1099,7 +1099,18 @@ namespace Services.OrderServices
                 }
 
                 var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-                
+
+                // Violation summary (provider view)
+                var orderItemIds = order.Items.Select(i => i.Id).ToList();
+                var violationQuery = _context.RentalViolations
+                    .AsNoTracking()
+                    .Where(v => orderItemIds.Contains(v.OrderItemId));
+                orderDetailsDto.HasReturnIssues = await violationQuery.AnyAsync();
+                if (orderDetailsDto.HasReturnIssues)
+                {
+                    orderDetailsDto.TotalPenaltyAmount = await violationQuery.SumAsync(v => v.PenaltyAmount);
+                }
+
                 // Fetch payment info from Transaction for provider
                 var transaction = await _context.Transactions
                     .AsNoTracking()
@@ -1145,7 +1156,18 @@ namespace Services.OrderServices
                 }
 
                 var orderDetailsDto = _mapper.Map<OrderDetailsDto>(order);
-                
+
+                // Violation summary for customer view (to surface penalties even after resolve)
+                var orderItemIds = order.Items.Select(i => i.Id).ToList();
+                var violationQuery = _context.RentalViolations
+                    .AsNoTracking()
+                    .Where(v => orderItemIds.Contains(v.OrderItemId));
+                orderDetailsDto.HasReturnIssues = await violationQuery.AnyAsync();
+                if (orderDetailsDto.HasReturnIssues)
+                {
+                    orderDetailsDto.TotalPenaltyAmount = await violationQuery.SumAsync(v => v.PenaltyAmount);
+                }
+
                 // Fetch latest payment method without loading entire transactions collection
                 var latestPaymentMethod = await _context.Transactions
                     .AsNoTracking()
@@ -1471,31 +1493,29 @@ namespace Services.OrderServices
 
         public async Task<IEnumerable<AdminOrderListDto>> GetAllOrdersForAdminAsync()
         {
-            // OPTIMIZED: Only load basic order info without items
+            // OPTIMIZED: Load orders and paid order IDs separately (faster than Include)
             var orders = await _orderRepo.GetAllOrdersBasicAsync();
-            
-            // Show all orders for admin (no status filter)
-            var validOrders = orders;
+            var paidOrderIds = await _orderRepo.GetPaidOrderIdsAsync();
             
             var result = new List<AdminOrderListDto>();
             
-            foreach (var order in validOrders)
+            foreach (var order in orders)
             {
                 // Use consistent logic with GetOrderDetailForAdminAsync
                 var transactionType = DetermineTransactionType(order);
                 
-                // Group items by transaction type for calculation
-                // But respect the order-level transaction type determination
-                var rentalItems = order.Items?.Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.rental).ToList();
-                var purchaseItems = order.Items?.Where(i => i.TransactionType == BusinessObject.Enums.TransactionType.purchase).ToList();
+                // Calculate total discount (all types)
+                var totalDiscount = order.DiscountAmount + order.ItemRentalCountDiscount + order.LoyaltyDiscount;
+                
+                // TotalAmount = Subtotal - all discounts (NOT including deposit)
+                var displayTotal = order.Subtotal - totalDiscount;
+                
+                // Check if payment is completed using pre-loaded set
+                var isPaid = paidOrderIds.Contains(order.Id);
                 
                 // If order is determined as rental, only create rental entry
                 if (transactionType == "rental")
                 {
-                    // Use order's Subtotal and DiscountAmount from database
-                    // TotalAmount should be: Subtotal - DiscountAmount (for display in list)
-                    var displayTotal = order.Subtotal - order.DiscountAmount;
-                    
                     result.Add(new AdminOrderListDto
                     {
                         Id = order.Id,
@@ -1512,17 +1532,14 @@ namespace Services.OrderServices
                         Status = order.Status,
                         TotalAmount = displayTotal,
                         Subtotal = order.Subtotal,
-                        DiscountAmount = order.DiscountAmount,
-                        CreatedAt = order.CreatedAt
+                        DiscountAmount = totalDiscount,
+                        CreatedAt = order.CreatedAt,
+                        IsPaid = isPaid
                     });
                 }
                 // If order is determined as purchase, only create purchase entry
                 else
                 {
-                    // Use order's Subtotal and DiscountAmount from database
-                    // TotalAmount should be: Subtotal - DiscountAmount (for display in list)
-                    var displayTotal = order.Subtotal - order.DiscountAmount;
-                    
                     result.Add(new AdminOrderListDto
                     {
                         Id = order.Id,
@@ -1539,8 +1556,9 @@ namespace Services.OrderServices
                         Status = order.Status,
                         TotalAmount = displayTotal,
                         Subtotal = order.Subtotal,
-                        DiscountAmount = order.DiscountAmount,
-                        CreatedAt = order.CreatedAt
+                        DiscountAmount = totalDiscount,
+                        CreatedAt = order.CreatedAt,
+                        IsPaid = isPaid
                     });
                 }
             }

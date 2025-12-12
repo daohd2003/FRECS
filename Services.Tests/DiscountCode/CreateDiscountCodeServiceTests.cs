@@ -2,30 +2,13 @@ using AutoMapper;
 using BusinessObject.DTOs.DiscountCodeDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.DiscountCodeRepositories;
 using Services.DiscountCodeServices;
 
 namespace Services.Tests.DiscountCode
 {
-    /// <summary>
-    /// Unit tests for DiscountCodeService - Create Discount Code functionality
-    /// Test cases based on the provided test matrix
-    /// 
-    /// Test Coverage Matrix (Backend Service Layer):
-    /// ┌─────────┬──────────────────────────────────┬───────────────────────────────────────────────────────────┬──────────────────────┐
-    /// │ Test ID │ Scenario                         │ Expected Result                                           │ Exception Type       │
-    /// ├─────────┼──────────────────────────────────┼───────────────────────────────────────────────────────────┼──────────────────────┤
-    /// │ UTCID01 │ Valid, unique code               │ Return DiscountCodeDto successfully                       │ No exception         │
-    /// │ UTCID02 │ Duplicate code                   │ InvalidOperationException: "Discount code ... exists."    │ InvalidOperationEx   │
-    /// │ UTCID05 │ Past expiration date             │ InvalidOperationException: "Expiration date must be..."   │ InvalidOperationEx   │
-    /// └─────────┴──────────────────────────────────┴───────────────────────────────────────────────────────────┴──────────────────────┘
-    /// 
-    /// Note: Service layer tests business logic and exception messages.
-    ///       Model validation (blank code, value=0, quantity=0) is tested at Controller layer.
-    ///       
-    /// How to run these tests:
-    /// dotnet test --filter "FullyQualifiedName~CreateDiscountCodeServiceTests"
-    /// </summary>
+
     public class CreateDiscountCodeServiceTests
     {
         private readonly Mock<IDiscountCodeRepository> _mockDiscountCodeRepository;
@@ -345,7 +328,7 @@ namespace Services.Tests.DiscountCode
         public async Task CreateDiscountCode_ExpirationDateJustAfterNow_ShouldReturnDiscountCodeDto()
         {
             // Arrange
-            var futureDate = DateTime.UtcNow.AddMinutes(1); // Just 1 minute in the future
+            var futureDate = DateTimeHelper.GetVietnamTime().AddMinutes(1); // Just 1 minute in the future (Vietnam time)
             
             var createDto = new CreateDiscountCodeDto
             {
@@ -405,7 +388,7 @@ namespace Services.Tests.DiscountCode
             // Assert
             Assert.NotNull(result);
             Assert.Equal("BOUNDARY", result.Code);
-            Assert.True(result.ExpirationDate > DateTime.UtcNow);
+            Assert.True(result.ExpirationDate > DateTimeHelper.GetVietnamTime());
         }
 
         /// <summary>

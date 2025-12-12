@@ -2,6 +2,7 @@ using AutoMapper;
 using BusinessObject.DTOs.IssueResolutionDto;
 using BusinessObject.Enums;
 using BusinessObject.Models;
+using BusinessObject.Utilities;
 using Repositories.CompensationDisputeRepositories;
 using System;
 using System.Collections.Generic;
@@ -96,7 +97,7 @@ namespace Services.CompensationDisputeServices
                 ProviderCompensationAmount = providerCompensationAmount,
                 Reason = dto.Reason,
                 ResolutionStatus = ResolutionStatus.COMPLETED,
-                ProcessedAt = DateTime.UtcNow,
+                ProcessedAt = DateTimeHelper.GetVietnamTime(),
                 ProcessedByAdminId = adminId
             };
 
@@ -108,17 +109,47 @@ namespace Services.CompensationDisputeServices
             // Cập nhật violation penalty amount
             await _repository.UpdateViolationAsync(violation);
 
-            // Cập nhật order status sang "returned" sau khi admin đã resolve violation
-            var orderToUpdate = await _context.Orders.FindAsync(violation.OrderItem.OrderId);
+            // Kiểm tra xem tất cả violations trong order đã được resolve chưa
+            // Chỉ update order status sang "returned" khi TẤT CẢ violations đã resolved
+            var orderId = violation.OrderItem.OrderId;
+            var orderToUpdate = await _context.Orders
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+            
             if (orderToUpdate != null && orderToUpdate.Status == OrderStatus.returned_with_issue)
             {
-                orderToUpdate.Status = OrderStatus.returned;
-                orderToUpdate.UpdatedAt = DateTime.UtcNow;
-                _context.Orders.Update(orderToUpdate);
+                // Lấy tất cả violations của order này
+                var allViolationsInOrder = await _context.RentalViolations
+                    .Where(v => orderToUpdate.Items.Select(i => i.Id).Contains(v.OrderItemId))
+                    .ToListAsync();
+                
+                // Kiểm tra xem tất cả violations đã resolved chưa
+                var allResolved = allViolationsInOrder.All(v =>
+                    v.Status == ViolationStatus.CUSTOMER_ACCEPTED ||
+                    v.Status == ViolationStatus.RESOLVED ||
+                    v.Status == ViolationStatus.RESOLVED_BY_ADMIN);
+                
+                if (allResolved)
+                {
+                    orderToUpdate.Status = OrderStatus.returned;
+                    orderToUpdate.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                    _context.Orders.Update(orderToUpdate);
+                    
+                    // Update product RentCount when order becomes returned
+                    // This ensures "Rented x times" in Browse Collection is accurate
+                    foreach (var item in orderToUpdate.Items)
+                    {
+                        if (item.TransactionType == TransactionType.rental && item.Product != null)
+                        {
+                            item.Product.RentCount += item.Quantity;
+                            _context.Products.Update(item.Product);
+                        }
+                    }
+                }
             }
 
             // Tạo hoặc cập nhật DepositRefund record
-            var orderId = violation.OrderItem.OrderId;
             var existingRefund = await _context.DepositRefunds
                 .FirstOrDefaultAsync(dr => dr.OrderId == orderId);
 
@@ -156,7 +187,7 @@ namespace Services.CompensationDisputeServices
                         RefundAmount = totalDeposit - customerFineAmount,
                         Status = TransactionStatus.initiated,
                         Notes = $"Refund after admin resolution: {dto.ResolutionType}. Reason: {truncatedReason}",
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTimeHelper.GetVietnamTime()
                     };
 
                     await _context.DepositRefunds.AddAsync(depositRefund);
@@ -171,11 +202,14 @@ namespace Services.CompensationDisputeServices
         /// <summary>
         /// Sync order status for all resolved violations
         /// Updates orders from "returned_with_issue" to "returned" if all violations are resolved
+        /// Also updates product RentCount for accurate "Rented x times" display
         /// </summary>
         public async Task<int> SyncResolvedOrderStatusesAsync()
         {
             // Find all orders with status "returned_with_issue" that have all violations resolved
             var ordersToUpdate = await _context.Orders
+                .Include(o => o.Items)
+                    .ThenInclude(i => i.Product)
                 .Where(o => o.Status == OrderStatus.returned_with_issue)
                 .Where(o => o.Items.All(item => 
                     !_context.RentalViolations.Any(v => v.OrderItemId == item.Id) ||
@@ -187,7 +221,17 @@ namespace Services.CompensationDisputeServices
             foreach (var order in ordersToUpdate)
             {
                 order.Status = OrderStatus.returned;
-                order.UpdatedAt = DateTime.UtcNow;
+                order.UpdatedAt = DateTimeHelper.GetVietnamTime();
+                
+                // Update product RentCount when order becomes returned
+                foreach (var item in order.Items)
+                {
+                    if (item.TransactionType == TransactionType.rental && item.Product != null)
+                    {
+                        item.Product.RentCount += item.Quantity;
+                        _context.Products.Update(item.Product);
+                    }
+                }
             }
 
             await _context.SaveChangesAsync();

@@ -9,7 +9,7 @@ namespace ShareItAPI.Controllers
 {
     [ApiController]
     [Route("api/deposits")]
-    [Authorize(Roles = "customer")]
+    [Authorize(Roles = "customer,provider")]
     public class DepositController : ControllerBase
     {
         private readonly IDepositService _depositService;

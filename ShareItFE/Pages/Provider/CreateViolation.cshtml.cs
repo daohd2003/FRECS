@@ -176,7 +176,12 @@ namespace ShareItFE.Pages.Provider
                     createSuccess = await CreateNewViolationsAsync(form, orderId, existingViolationItemIds, apiClient);
                     if (!createSuccess)
                     {
-                        TempData["ErrorMessage"] = "Failed to create new violations";
+                        // Error message should already be set in CreateNewViolationsAsync
+                        // If not set, use default message
+                        if (TempData["ErrorMessage"] == null)
+                        {
+                            TempData["ErrorMessage"] = "Failed to create new violations. Please check your input and try again.";
+                        }
                         await ReloadOrderDataAsync(orderId, apiClient);
                         return Page();
                     }
@@ -303,11 +308,40 @@ namespace ShareItFE.Pages.Provider
                 }
                 else
                 {
+                    // Read error message from API response
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    try
+                    {
+                        var errorResponse = JsonSerializer.Deserialize<BusinessObject.DTOs.ApiResponses.ApiResponse<string>>(
+                            errorContent,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        );
+                        
+                        // Store error message for display
+                        if (!string.IsNullOrEmpty(errorResponse?.Message))
+                        {
+                            TempData["ErrorMessage"] = errorResponse.Message;
+                        }
+                        else
+                        {
+                            TempData["ErrorMessage"] = $"Failed to create violation report. Status: {response.StatusCode}";
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, use raw content or default message
+                        TempData["ErrorMessage"] = !string.IsNullOrEmpty(errorContent) 
+                            ? $"Failed to create violation report: {errorContent}"
+                            : $"Failed to create violation report. Status: {response.StatusCode}";
+                    }
+                    
                     return false;
                 }
             }
             catch (Exception ex)
             {
+                // Store exception message for debugging
+                TempData["ErrorMessage"] = $"An error occurred while creating violation report: {ex.Message}";
                 return false;
             }
         }
@@ -332,7 +366,12 @@ namespace ShareItFE.Pages.Provider
                 }
                 else
                 {
-                    TempData["ErrorMessage"] = "Failed to create violation report";
+                    // Error message should already be set in CreateNewViolationsAsync
+                    // If not set, use default message
+                    if (TempData["ErrorMessage"] == null)
+                    {
+                        TempData["ErrorMessage"] = "Failed to create violation report. Please check your input and try again.";
+                    }
                     await ReloadOrderDataAsync(orderId, apiClient);
                     return Page();
                 }

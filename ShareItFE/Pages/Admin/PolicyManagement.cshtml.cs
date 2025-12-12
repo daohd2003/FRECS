@@ -30,6 +30,11 @@ namespace ShareItFE.Pages.Admin
         public List<PolicyConfigDto> Policies { get; set; } = new();
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// TinyMCE API Key from configuration
+        /// </summary>
+        public string TinyMceApiKey => _configuration["TinyMCE:ApiKey"] ?? string.Empty;
 
         [BindProperty]
         public Guid? SelectedPolicyId { get; set; }

@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,10 @@ namespace Services.Tests.OrderTests
         {
             _mockOrderRepository = new Mock<IOrderRepository>();
             _mockMapper = new Mock<IMapper>();
+            
+            // Setup default mock for GetPaidOrderIdsAsync (returns empty set by default)
+            _mockOrderRepository.Setup(x => x.GetPaidOrderIdsAsync())
+                .ReturnsAsync(new HashSet<System.Guid>());
             
             // Create OrderService with minimal dependencies for GetAllOrdersForAdminAsync
             // Note: This method only uses _orderRepo, so other dependencies can be null

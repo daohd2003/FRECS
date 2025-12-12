@@ -2,6 +2,7 @@ using AutoMapper;
 using BusinessObject.DTOs.DiscountCodeDto;
 using BusinessObject.Models;
 using BusinessObject.Enums;
+using BusinessObject.Utilities;
 using Repositories.DiscountCodeRepositories;
 
 namespace Services.DiscountCodeServices
@@ -46,8 +47,8 @@ namespace Services.DiscountCodeServices
                 throw new InvalidOperationException($"Discount code '{createDto.Code}' already exists.");
             }
 
-            // Validate expiration date
-            if (createDto.ExpirationDate <= DateTime.UtcNow)
+            // Validate expiration date (compare with Vietnam time UTC+7)
+            if (createDto.ExpirationDate <= DateTimeHelper.GetVietnamTime())
             {
                 throw new InvalidOperationException("Expiration date must be in the future.");
             }
@@ -72,8 +73,8 @@ namespace Services.DiscountCodeServices
                 throw new InvalidOperationException($"Discount code '{updateDto.Code}' already exists.");
             }
 
-            // Validate expiration date
-            if (updateDto.ExpirationDate <= DateTime.UtcNow && updateDto.Status == DiscountStatus.Active)
+            // Validate expiration date (compare with Vietnam time UTC+7)
+            if (updateDto.ExpirationDate <= DateTimeHelper.GetVietnamTime() && updateDto.Status == DiscountStatus.Active)
             {
                 throw new InvalidOperationException("Cannot set Active status with past expiration date.");
             }

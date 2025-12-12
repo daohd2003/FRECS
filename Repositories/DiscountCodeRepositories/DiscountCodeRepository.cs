@@ -1,5 +1,6 @@
 using BusinessObject.Models;
 using BusinessObject.Enums;
+using BusinessObject.Utilities;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Repositories.RepositoryBase;
@@ -21,7 +22,7 @@ namespace Repositories.DiscountCodeRepositories
         public async Task<IEnumerable<DiscountCode>> GetActiveDiscountCodesAsync()
         {
             return await _context.DiscountCodes
-                .Where(dc => dc.Status == DiscountStatus.Active && dc.ExpirationDate > DateTime.UtcNow)
+                .Where(dc => dc.Status == DiscountStatus.Active && dc.ExpirationDate > DateTimeHelper.GetVietnamTime())
                 .OrderBy(dc => dc.CreatedAt)
                 .ToListAsync();
         }
@@ -29,7 +30,7 @@ namespace Repositories.DiscountCodeRepositories
         public async Task<IEnumerable<DiscountCode>> GetExpiredDiscountCodesAsync()
         {
             return await _context.DiscountCodes
-                .Where(dc => dc.ExpirationDate <= DateTime.UtcNow || dc.Status == DiscountStatus.Expired)
+                .Where(dc => dc.ExpirationDate <= DateTimeHelper.GetVietnamTime() || dc.Status == DiscountStatus.Expired)
                 .OrderBy(dc => dc.CreatedAt)
                 .ToListAsync();
         }
@@ -49,13 +50,13 @@ namespace Repositories.DiscountCodeRepositories
         public async Task UpdateExpiredStatusAsync()
         {
             var expiredCodes = await _context.DiscountCodes
-                .Where(dc => dc.Status == DiscountStatus.Active && dc.ExpirationDate <= DateTime.UtcNow)
+                .Where(dc => dc.Status == DiscountStatus.Active && dc.ExpirationDate <= DateTimeHelper.GetVietnamTime())
                 .ToListAsync();
 
             foreach (var code in expiredCodes)
             {
                 code.Status = DiscountStatus.Expired;
-                code.UpdatedAt = DateTime.UtcNow;
+                code.UpdatedAt = DateTimeHelper.GetVietnamTime();
             }
 
             if (expiredCodes.Any())
@@ -107,7 +108,7 @@ namespace Repositories.DiscountCodeRepositories
                 UserId = userId,
                 DiscountCodeId = discountCodeId,
                 OrderId = orderId,
-                UsedAt = DateTime.UtcNow
+                UsedAt = DateTimeHelper.GetVietnamTime()
             };
 
             await _context.UsedDiscountCodes.AddAsync(usedDiscountCode);

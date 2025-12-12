@@ -821,80 +821,41 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
             return;
         }
 
-        console.log('User data:', user);
+        console.log('showUserDetail - User data before loading stats:', user);
         this.selectedUser = user;
         
         try {
-            // Show modal with basic info first
-            this.populateUserDetailModal(user);
+            // Populate header with basic user info immediately
+            this.populateUserDetailHeader(user);
+            
+            // Show modal
             this.showUserDetailModal();
+            
+            // Show loading state in modal body
+            const modalBody = document.querySelector('#userDetailModal .modal-body');
+            if (modalBody) {
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 3rem;">
+                        <div class="loading-spinner" style="margin-bottom: 1rem;"></div>
+                        <p>Loading order statistics...</p>
+                    </div>
+                `;
+            }
             
             // Load order stats on-demand
             await this.loadUserOrderStats(userId);
+            
         } catch (error) {
             console.error('Error populating user detail modal:', error);
             this.showError('Failed to load user details. Please try again.');
         }
     }
     
-    async loadUserOrderStats(userId) {
-        try {
-            // Show loading state in modal
-            const modalBody = document.querySelector('#userDetailModal .modal-body');
-            if (modalBody) {
-                const loadingDiv = document.createElement('div');
-                loadingDiv.id = 'orderStatsLoading';
-                loadingDiv.style.textAlign = 'center';
-                loadingDiv.style.padding = '2rem';
-                loadingDiv.innerHTML = '<p>Loading order statistics...</p>';
-                modalBody.appendChild(loadingDiv);
-            }
-            
-            const response = await fetch(`${this.config.apiBaseUrl}/users/${userId}/order-stats`, {
-                headers: {
-                    'Authorization': `Bearer ${this.config.accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to load order statistics');
-            }
-            
-            const result = await response.json();
-            const stats = result.data;
-            
-            // Update user object with loaded stats
-            const user = this.users.find(u => u.id === userId);
-            if (user) {
-                user.totalOrders = stats.totalOrders;
-                user.ordersByStatus = stats.ordersByStatus;
-                user.returnedOrdersBreakdown = stats.returnedOrdersBreakdown;
-            }
-            
-            // Remove loading state
-            const loadingDiv = document.getElementById('orderStatsLoading');
-            if (loadingDiv) {
-                loadingDiv.remove();
-            }
-            
-            // Re-populate modal with stats
-            this.populateUserDetailModal(user);
-            
-        } catch (error) {
-            console.error('Error loading order stats:', error);
-            const loadingDiv = document.getElementById('orderStatsLoading');
-            if (loadingDiv) {
-                loadingDiv.innerHTML = '<p style="color: #dc2626;">Failed to load order statistics</p>';
-            }
-        }
-    }
-
-    populateUserDetailModal(user) {
+    populateUserDetailHeader(user) {
         const profile = user.profile || {};
         const avatarUrl = profile.profilePictureUrl || profile.avatarUrl || this.getDefaultAvatar(user.email);
         
-        // Basic info
+        // Basic info in header
         document.getElementById('userDetailAvatar').src = avatarUrl;
         document.getElementById('userDetailAvatar').alt = profile.fullName || 'Unknown User';
         document.getElementById('userDetailName').textContent = profile.fullName || 'Unknown User';
@@ -904,7 +865,6 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         const roleBadge = document.getElementById('userDetailRole');
         const statusBadge = document.getElementById('userDetailStatus');
         
-        // Handle both 'role' and 'Role' (camelCase and PascalCase)
         const userRole = (user.role || user.Role || '').toString().toLowerCase();
         const isActive = user.isActive !== undefined ? user.isActive : user.IsActive;
         
@@ -913,6 +873,79 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         
         statusBadge.textContent = isActive ? 'Active' : 'Inactive';
         statusBadge.className = `badge badge-${isActive ? 'active' : 'inactive'}`;
+        
+        // Update lock/unlock button
+        const lockUnlockBtn = document.getElementById('lockUnlockBtn');
+        const lockUnlockText = document.getElementById('lockUnlockText');
+        
+        if (lockUnlockBtn && lockUnlockText) {
+            if (isActive) {
+                lockUnlockBtn.className = 'btn btn-danger';
+                lockUnlockText.textContent = 'Lock User';
+            } else {
+                lockUnlockBtn.className = 'btn btn-success';
+                lockUnlockText.textContent = 'Unlock User';
+            }
+        }
+    }
+    
+    async loadUserOrderStats(userId) {
+        try {
+            const response = await fetch(`${this.config.apiBaseUrl}/users/${userId}/order-stats`, {
+                headers: {
+                    'Authorization': `Bearer ${this.config.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API Error:', response.status, errorText);
+                throw new Error(`Failed to load order statistics: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            const stats = result.data;
+            
+            console.log('Loaded order stats from API:', stats);
+            
+            // Update user object with loaded stats (handle both camelCase and PascalCase)
+            const user = this.users.find(u => u.id === userId);
+            if (user && stats) {
+                user.totalOrders = stats.totalOrders ?? stats.TotalOrders ?? 0;
+                user.ordersByStatus = stats.ordersByStatus ?? stats.OrdersByStatus ?? {};
+                user.returnedOrdersBreakdown = stats.returnedOrdersBreakdown ?? stats.ReturnedOrdersBreakdown ?? {};
+                
+                console.log('Updated user object with stats:', user);
+                
+                // Populate modal with full data
+                this.populateUserDetailModal(user);
+            } else {
+                console.error('User not found or stats is null:', { userId, stats });
+                // Still populate with basic user info
+                if (user) {
+                    this.populateUserDetailModal(user);
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error loading order stats:', error);
+            // Show error in modal
+            const modalBody = document.querySelector('#userDetailModal .modal-body');
+            if (modalBody) {
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #dc2626;">
+                        <p>Failed to load order statistics</p>
+                        <p style="font-size: 0.875rem; color: #6b7280;">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    populateUserDetailModal(user) {
+        // Get role for determining labels
+        const userRole = (user.role || user.Role || '').toString().toLowerCase();
 
         // ✅ Hiển thị Order Statistics và Returned Orders Breakdown
         const ordersByStatus = user.ordersByStatus || user.OrdersByStatus || {};
@@ -1034,38 +1067,6 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
                 </div>
             </div>
         `;
-
-        // Update lock/unlock button
-        const lockUnlockBtn = document.getElementById('lockUnlockBtn');
-        const lockUnlockText = document.getElementById('lockUnlockText');
-        
-        if (lockUnlockBtn && lockUnlockText) {
-        const lockUnlockIcon = lockUnlockBtn.querySelector('svg');
-        
-            if (isActive) {
-            lockUnlockBtn.className = 'btn btn-danger';
-            lockUnlockText.textContent = 'Lock User';
-                if (lockUnlockIcon) {
-            lockUnlockIcon.innerHTML = `
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <circle cx="12" cy="16" r="1"></circle>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            `;
-                }
-        } else {
-            lockUnlockBtn.className = 'btn btn-success';
-            lockUnlockText.textContent = 'Unlock User';
-                if (lockUnlockIcon) {
-            lockUnlockIcon.innerHTML = `
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <circle cx="12" cy="16" r="1"></circle>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            `;
-                }
-            }
-        } else {
-            console.error('Lock/Unlock button elements not found');
-        }
     }
 
     async handleLockUnlockUser() {
@@ -1077,11 +1078,11 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
             await this.unblockUser(this.selectedUser.id);
         }
         
-        // Update the modal with new user data
+        // Update the modal header with new user data (status changed)
         const updatedUser = this.users.find(u => u.id === this.selectedUser.id);
         if (updatedUser) {
             this.selectedUser = updatedUser;
-            this.populateUserDetailModal(updatedUser);
+            this.populateUserDetailHeader(updatedUser);
         }
     }
 
@@ -1225,7 +1226,8 @@ Progress: Day ${stats.currentDay} of ${stats.daysInMonth} (${stats.monthProgress
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
-            day: '2-digit'
+            day: '2-digit',
+            timeZone: 'Asia/Ho_Chi_Minh'
         });
     }
 
